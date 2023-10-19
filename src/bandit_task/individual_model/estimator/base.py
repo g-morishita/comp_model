@@ -56,7 +56,11 @@ class MLEstimator(BaseEstimator):
         self.rewards = None
 
     def fit(
-        self, num_choices: int, choices: Sequence[int | float], rewards: Sequence[int | float], **kwargs: dict
+        self,
+        num_choices: int,
+        choices: Sequence[int],
+        rewards: Sequence[int | float],
+        **kwargs: dict
     ) -> Sequence[int | float]:
         """
         Fit the model using Maximum Likelihood Estimation.
@@ -67,8 +71,8 @@ class MLEstimator(BaseEstimator):
             raise ValueError("The range of `actions` exceeds `num_choices`.")
 
         self.num_choices = num_choices
-        self.choices = choices
-        self.rewards = rewards
+        self.choices = np.array(choices)
+        self.rewards = np.array(rewards)
 
         # Extract optimization options from keyword arguments
         options_for_min = read_options({"maxiter", "tol", "method", "n_trials"})
