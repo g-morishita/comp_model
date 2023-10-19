@@ -9,6 +9,7 @@ from scipy.optimize import minimize
 
 # Custom imports from the parent directories
 from src.bandit_task.lib.utility import read_options
+from ...type import NDArrayNumber
 
 
 class BaseEstimator(ABC):
@@ -23,7 +24,7 @@ class BaseEstimator(ABC):
         num_choices: int,
         choices: Sequence[int | float],
         rewards: Sequence[int | float],
-        **kwargs: dict
+        **kwargs: dict,
     ) -> None:
         """
         Abstract method for fitting the estimator.
@@ -62,7 +63,7 @@ class MLEstimator(BaseEstimator):
         num_choices: int,
         choices: Sequence[int],
         rewards: Sequence[int | float],
-        **kwargs: dict
+        **kwargs: dict,
     ) -> Sequence[int | float]:
         """
         Fit the model using Maximum Likelihood Estimation.
@@ -165,10 +166,10 @@ class HierarchicalEstimator:
     def fit(
         self,
         num_choices: int,
-        choices: Sequence[int | float],
-        rewards: Sequence[int | float],
-        groups: Sequence[int | float],
-        **kwargs: dict
+        choices: NDArrayNumber,
+        rewards: NDArrayNumber,
+        groups: NDArrayNumber,
+        **kwargs: dict,
     ) -> None:
         """
         Fit the hierarchical model to the provided data.
@@ -181,8 +182,12 @@ class HierarchicalEstimator:
             The total number of choices available.
         choices : Sequence[int | float]
             The observed choices made by users or agents.
+            The rows correspond to a session.
+            The columns correspond to a trial.
         rewards : Sequence[int | float]
             The rewards or outcomes corresponding to each action.
+            The rows correspond to a session.
+            The columns correspond to a trial.
         groups : Sequence[int | float]
             Group identifiers for each observation. Used to determine which observations belong to which group.
         kwargs : dict, optional
@@ -198,6 +203,20 @@ class HierarchicalEstimator:
         The exact hierarchical structure and which parameters are considered global vs.
         group-specific will depend on the implementation details.
         """
+        choices = np.array(choices)
+        rewards = np.array(rewards)
+        groups = np.array(groups)
+        if choices.shape != rewards.shape:
+            raise ValueError(
+                f"The shapes of choices and rewards must match. "
+                f"choices.shape={choices.shape} and rewards.shape={rewards.shape}"
+            )
+
+        if np.unique(groups).shape[0] < choices.shape[0]:
+            raise ValueError(
+                "The number of sessions exceeds the number of unique groups."
+            )
+
         with open(self.stan_file, "r") as f:
             stan_code = f.read()
 

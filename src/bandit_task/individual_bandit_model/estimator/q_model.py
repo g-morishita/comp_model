@@ -5,6 +5,8 @@ from typing import Sequence
 
 from .base import MLEstimator, HierarchicalEstimator
 
+from ...type import NDArrayNumber
+
 
 class QSotfmaxMLE(MLEstimator):
     def __init__(self) -> None:
@@ -58,13 +60,23 @@ class QSotfmaxMLE(MLEstimator):
 class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
     def __init__(self):
         super().__init__()
-        self.stan_file = "stan_files/hierarchical_social_q_learning.stan"
+        self.stan_file = "stan_files/hierarchical_q_learning.stan"
 
     def convert_stan_data(
         self,
         num_choices: int,
-        choices: Sequence[int | float],
-        rewards: Sequence[int | float],
-        groups: Sequence[int | float],
+        choices: NDArrayNumber,
+        rewards: NDArrayNumber,
+        groups: NDArrayNumber,
     ):
-        pass
+        n_uniq_groups = np.unique(groups)
+        n_sessions = choices.shape[0]
+        n_trials = choices.shape[1]
+
+        return {
+            "N": n_uniq_groups,
+            "S": n_sessions,
+            "T": n_trials,
+            "C": choices.reshape(),
+            "R": reward.reshape(),
+        }
