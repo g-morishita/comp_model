@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 import numpy as np
-from numpy import ndarray
 from scipy.optimize import minimize
 
 # Custom imports from the parent directories
@@ -57,8 +56,8 @@ class MLEstimator(BaseEstimator):
         self.rewards = None
 
     def fit(
-        self, num_choices: int, choices: ndarray, rewards: ndarray, **kwargs: dict
-    ) -> ndarray:
+        self, num_choices: int, choices: Sequence[int | float], rewards: Sequence[int | float], **kwargs: dict
+    ) -> Sequence[int | float]:
         """
         Fit the model using Maximum Likelihood Estimation.
         """
@@ -109,14 +108,14 @@ class MLEstimator(BaseEstimator):
         return self.estimated_params
 
     @abstractmethod
-    def initialize_params(self) -> np.ndarray:
+    def initialize_params(self) -> Sequence[int | float]:
         """
         Abstract method for initializing parameters for optimization.
         """
         pass
 
     @abstractmethod
-    def neg_ll(self, params: ndarray) -> float:
+    def neg_ll(self, params: Sequence[int | float]) -> float:
         """
         Calculate the negative log-likelihood for the current parameters.
         """
