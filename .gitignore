@@ -1,1 +1,3 @@
 .idea
+src/bandit_task.egg-info
+**/__pycache__
