@@ -11,7 +11,7 @@ from src.bandit_task.lib.utility import read_options
 
 class BaseEstimator(ABC):
     """
-    The computational individual_model base class.
+    The computational individual_bandit_model base class.
     This serves as an abstract class for other estimator classes.
     """
 

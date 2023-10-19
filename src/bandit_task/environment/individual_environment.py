@@ -2,8 +2,8 @@ import copy
 from warnings import warn
 
 from ..bandit_instance.instance import Bandit
-from ..individual_model.simulator.base import BaseSimulator
-from ..individual_model.estimator.base import BaseEstimator
+from ..individual_bandit_model.simulator.base import BaseSimulator
+from ..individual_bandit_model.estimator.base import BaseEstimator
 
 
 class Generator:
