@@ -131,3 +131,65 @@ class MLEstimator(BaseEstimator):
         Define constraints for the optimization problem.
         """
         pass
+
+
+class HierarchicalEstimator:
+    """
+    Hierarchical (or multi-level) model estimator.
+
+    This class implements a hierarchical model that estimates parameters at multiple
+    levels. At the higher level, global parameters are estimated that apply across all groups.
+    At the lower level, group-specific parameters are estimated that can vary from one group to another.
+
+    A hierarchical model shares statistical strength across groups, making it especially
+    useful when some groups might have limited data.
+
+    Attributes
+    ----------
+    (Any class-level attributes should be documented here, if they exist.)
+
+    Methods
+    -------
+    fit :
+        Estimate the model's parameters based on the provided data.
+    (Other methods should be documented similarly.)
+    """
+
+    @abstractmethod
+    def fit(
+            self,
+            num_choices: int,
+            choices: Sequence[int | float],
+            rewards: Sequence[int | float],
+            groups: Sequence[int | float],
+            **kwargs: dict
+    ) -> None:
+        """
+        Fit the hierarchical model to the provided data.
+
+        The method estimates both global and group-specific parameters.
+
+        Parameters
+        ----------
+        num_choices : int
+            The total number of choices available.
+        choices : Sequence[int | float]
+            The observed choices made by users or agents.
+        rewards : Sequence[int | float]
+            The rewards or outcomes corresponding to each action.
+        groups : Sequence[int | float]
+            Group identifiers for each observation. Used to determine which observations belong to which group.
+        kwargs : dict, optional
+            Additional optional parameters for fitting.
+
+        Returns
+        -------
+        None
+            The results are stored as attributes of the instance.
+
+        Notes
+        -----
+        The exact hierarchical structure and which parameters are considered global vs.
+        group-specific will depend on the implementation details.
+        """
+        pass
