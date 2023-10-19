@@ -52,8 +52,3 @@ class QSotfmaxMLE(MLEstimator):
         lb = np.array([0, 0])
         ub = [1, np.inf]
         return LinearConstraint(A, lb, ub)
-
-
-if __name__ == "__main__":
-    estimator = QSotfmaxMLE()
-    estimator.fit(2, [1, 0, 0, 0, 1], [1, 1, 0, 1, 0])

@@ -3,6 +3,7 @@ from warnings import warn
 
 from ..bandit_instance.instance import Bandit
 from ..individual_model.simulator.base import BaseSimulator
+from ..individual_model.estimator.base import BaseEstimator
 
 
 class Generator:
@@ -87,3 +88,44 @@ class Generator:
         self.history = {"choices": [], "rewards": []}
         self.done_simulation = False
         self.total_trials = 0
+
+
+class ParameterRecovery:
+    def __init__(
+        self,
+        estimator: BaseEstimator,
+        simulator: BaseSimulator,
+        bandit_instance: Bandit,
+    ) -> None:
+        if not isinstance(estimator, BaseEstimator):
+            raise ValueError(
+                f"A simulator should be inherited from BaseSimulator class "
+                f'from "estimator" package. {estimator.__class__.__name__} is given.'
+            )
+        if not isinstance(simulator, BaseSimulator):
+            raise ValueError(
+                f"A simulator should be inherited from BaseSimulator class "
+                f'from "simulator" package. {simulator.__class__.__name__} is given.'
+            )
+        if not isinstance(bandit_instance, Bandit):
+            raise ValueError(
+                f"bandit_task should be inherited Bandit class {bandit_instance.__class__.__name__} is given."
+            )
+
+        self.estimator = estimator
+        self.generator = Generator(simulator, bandit_instance)
+
+    def simulate(self, n_trials: int) -> None:
+        self.generator.simulate(n_trials)
+
+    def fit(self, **kwargs):
+        if not self.generator.done_simulation:
+            raise Exception(
+                "You should call simulate first to generate simulation data"
+            )
+
+        num_choices = len(self.generator.bandit_instance.arms)
+        choices = self.generator.history["choices"]
+        rewards = self.generator.history["rewards"]
+
+        return self.estimator.fit(num_choices, choices, rewards)
