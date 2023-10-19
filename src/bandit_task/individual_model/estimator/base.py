@@ -1,5 +1,6 @@
 import warnings
 from abc import ABC, abstractmethod
+from typing import Sequence
 
 import numpy as np
 from numpy import ndarray
@@ -17,7 +18,11 @@ class BaseEstimator(ABC):
 
     @abstractmethod
     def fit(
-        self, num_choices: int, choices: array_like, rewards: array_like, **kwargs: dict
+        self,
+        num_choices: int,
+        choices: Sequence[int | float],
+        rewards: Sequence[int | float],
+        **kwargs: dict
     ) -> None:
         """
         Abstract method for fitting the estimator.
