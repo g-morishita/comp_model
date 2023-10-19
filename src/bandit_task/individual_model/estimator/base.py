@@ -6,8 +6,6 @@ from numpy import ndarray
 from scipy.optimize import minimize
 
 # Custom imports from the parent directories
-from ...error import AlreadyFittedError
-from ...types import array_like
 from ...utility import read_options
 
 
@@ -47,8 +45,6 @@ class MLEstimator(BaseEstimator):
     """
 
     def __init__(self):
-        # Flag to indicate whether the estimator has been fitted or not
-        self.is_fitted = False
         # Placeholder for the estimated parameters post-fitting
         self.estimated_params = None
         self.num_choices = None
@@ -56,17 +52,11 @@ class MLEstimator(BaseEstimator):
         self.rewards = None
 
     def fit(
-        self, num_choices: int, choices: array_like, rewards: array_like, **kwargs: dict
+        self, num_choices: int, choices: ndarray, rewards: ndarray, **kwargs: dict
     ) -> ndarray:
         """
         Fit the model using Maximum Likelihood Estimation.
         """
-        # Check if the model is already fitted
-        if self.is_fitted:
-            raise AlreadyFittedError(
-                "The model has been already fitted. Create a new object to fit again."
-            )
-
         if len(choices) != len(rewards):
             raise ValueError("The sizes of `actions` and `rewards` must be the same.")
         if max(choices) > num_choices:
@@ -106,10 +96,9 @@ class MLEstimator(BaseEstimator):
                     min_nll = result.fun
                     opt_param = result.x
 
-        self.is_fitted = True
         if opt_param is None:
             warnings.warn("The estimation did not work.")
-            return
+            return np.array([])
 
         self.estimated_params = opt_param
         return self.estimated_params
