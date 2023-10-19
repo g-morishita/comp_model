@@ -6,7 +6,7 @@ from numpy import ndarray
 from scipy.optimize import minimize
 
 # Custom imports from the parent directories
-from ...utility import read_options
+from src.bandit_task.lib.utility import read_options
 
 
 class BaseEstimator(ABC):
