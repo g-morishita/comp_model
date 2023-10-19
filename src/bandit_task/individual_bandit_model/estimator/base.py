@@ -2,7 +2,9 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Sequence
 
+import arviz as az
 import numpy as np
+import stan
 from scipy.optimize import minimize
 
 # Custom imports from the parent directories
@@ -155,14 +157,18 @@ class HierarchicalEstimator:
     (Other methods should be documented similarly.)
     """
 
+    def __init__(self):
+        self.stan_file = None
+        self.posterior_sample = None
+
     @abstractmethod
     def fit(
-            self,
-            num_choices: int,
-            choices: Sequence[int | float],
-            rewards: Sequence[int | float],
-            groups: Sequence[int | float],
-            **kwargs: dict
+        self,
+        num_choices: int,
+        choices: Sequence[int | float],
+        rewards: Sequence[int | float],
+        groups: Sequence[int | float],
+        **kwargs: dict
     ) -> None:
         """
         Fit the hierarchical model to the provided data.
@@ -192,4 +198,26 @@ class HierarchicalEstimator:
         The exact hierarchical structure and which parameters are considered global vs.
         group-specific will depend on the implementation details.
         """
+        with open(self.stan_file, "r") as f:
+            stan_code = f.read()
+
+        stan_data = self.convert_stan_data(num_choices, choices, rewards, groups)
+
+        posterior = stan.build(stan_code, data=stan_data, random_seed=1)
+        posterior_fit = posterior.sample(num_chains=4, num_samples=1000)
+
+        self.posterior_sample = az.from_pystan(
+            posterior=posterior_fit,
+            posterior_model=posterior,
+            log_likelihood=["log_lik"],
+        )
+
+    @abstractmethod
+    def convert_stan_data(
+        self,
+        num_choices: int,
+        choices: Sequence[int | float],
+        rewards: Sequence[int | float],
+        groups: Sequence[int | float],
+    ):
         pass

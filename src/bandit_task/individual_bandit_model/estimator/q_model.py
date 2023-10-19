@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
+from typing import Sequence
 
-from .base import MLEstimator
+from .base import MLEstimator, HierarchicalEstimator
 
 
 class QSotfmaxMLE(MLEstimator):
@@ -52,3 +53,18 @@ class QSotfmaxMLE(MLEstimator):
         lb = np.array([0, 0])
         ub = [1, np.inf]
         return LinearConstraint(A, lb, ub)
+
+
+class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
+    def __init__(self):
+        super().__init__()
+        self.stan_file = "stan_files/hierarchical_social_q_learning.stan"
+
+    def convert_stan_data(
+        self,
+        num_choices: int,
+        choices: Sequence[int | float],
+        rewards: Sequence[int | float],
+        groups: Sequence[int | float],
+    ):
+        pass
