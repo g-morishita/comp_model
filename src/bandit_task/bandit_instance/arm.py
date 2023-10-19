@@ -1,5 +1,4 @@
 from abc import ABC
-from typing import Union
 
 import numpy as np
 
@@ -14,7 +13,7 @@ class Arm(ABC):
         Abstract method to be implemented by subclasses to generate reward values.
     """
 
-    def generate_reward(self) -> Union[int, float]:
+    def generate_reward(self) -> int | float:
         """
         Generate a reward after selecting this arm.
 
@@ -38,7 +37,7 @@ class NormalArm(Arm):
         The standard deviation of the normal distribution.
     """
 
-    def __init__(self, mean: Union[int, float], sd: Union[int, float]) -> None:
+    def __init__(self, mean: int | float, sd: int | float) -> None:
         self.mean = mean
         self.sd = sd
 
@@ -69,7 +68,7 @@ class BernoulliDistArm(Arm):
         If the provided mean is not between 0 and 1.
     """
 
-    def __init__(self, mean: Union[int, float]) -> None:
+    def __init__(self, mean: int | float) -> None:
         if (mean < 0) or (mean > 1):
             raise ValueError(f"mean must be between 0 and 1. {mean} is given.")
         self.mean = mean
