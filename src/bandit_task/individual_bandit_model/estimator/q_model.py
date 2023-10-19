@@ -1,10 +1,10 @@
+import os
+
 import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
-from typing import Sequence
 
 from .base import MLEstimator, HierarchicalEstimator
-
 from ...type import NDArrayNumber
 
 
@@ -60,7 +60,8 @@ class QSotfmaxMLE(MLEstimator):
 class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
     def __init__(self):
         super().__init__()
-        self.stan_file = "stan_files/hierarchical_q_learning.stan"
+        module_path = os.path.abspath(__file__)
+        self.stan_file = os.path.join(module_path, "stan_files/hierarchical_q_learning.stan")
 
     def convert_stan_data(
         self,
@@ -69,14 +70,26 @@ class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
         rewards: NDArrayNumber,
         groups: NDArrayNumber,
     ):
-        n_uniq_groups = np.unique(groups)
+        uniq_groups = np.unique(groups)
+        n_uniq_groups = uniq_groups.shape[0]
         n_sessions = choices.shape[0]
         n_trials = choices.shape[1]
+        # Assume every group has the same number of sessions.
+        reshaped_choices = np.zeros(
+            (n_uniq_groups, n_sessions // n_uniq_groups, n_trials)
+        )
+        reshaped_rewards = np.zeros(
+            (n_uniq_groups, n_sessions // n_uniq_groups, n_trials)
+        )
+
+        for g in uniq_groups:
+            reshaped_choices[g, :, :] = choices[groups == g]
+            reshaped_rewards[g, :, :] = rewards[groups == g]
 
         return {
             "N": n_uniq_groups,
             "S": n_sessions,
             "T": n_trials,
-            "C": choices.reshape(),
-            "R": rewards.reshape(),
+            "C": reshaped_choices,
+            "R": reshaped_rewards,
         }

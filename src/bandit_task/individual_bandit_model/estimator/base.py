@@ -162,7 +162,6 @@ class HierarchicalEstimator:
         self.stan_file = None
         self.posterior_sample = None
 
-    @abstractmethod
     def fit(
         self,
         num_choices: int,
@@ -210,11 +209,6 @@ class HierarchicalEstimator:
             raise ValueError(
                 f"The shapes of choices and rewards must match. "
                 f"choices.shape={choices.shape} and rewards.shape={rewards.shape}"
-            )
-
-        if np.unique(groups).shape[0] < choices.shape[0]:
-            raise ValueError(
-                "The number of sessions exceeds the number of unique groups."
             )
 
         with open(self.stan_file, "r") as f:
