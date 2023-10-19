@@ -16,30 +16,29 @@ class QSotfmaxMLE(MLEstimator):
     def neg_ll(self, args):
         lr, beta = args
 
-        # Create a matrix that will indicate which choices were taken at each time
-        action_taken = np.zeros((len(self.choices), self.num_choices))
-        action_taken[np.arange(len(self.choices)), self.choices] = 1
+        # Initialize Q-values matrix with zeros
+        Q = np.zeros((len(self.choices), self.num_choices))
 
-        # Calculate delta, the prediction error for each choice
-        deltas = lr * (
-            self.rewards[:, None]
-            - np.where(
-                action_taken,
-                np.roll(action_taken, shift=1, axis=0) @ self.choices[:, None],
-                0,
-            )
-        )
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, len(self.choices)):
+            a_t = self.choices[t]  # Action taken at time t
+            r_t = self.rewards[t]  # Reward received at time t
+            delta_t = r_t - Q[t - 1, a_t]
 
-        # Update q-values
-        q_vals = np.cumsum(deltas * action_taken, axis=0)
+            # Q-value update
+            Q[t, a_t] = Q[t - 1, a_t] + lr * delta_t
 
-        # Calculate choice probabilities
-        choice_prob = softmax(beta * q_vals, axis=1)
+            # For actions not taken, Q-values remain the same
+            for a in range(self.num_choices):
+                if a != a_t:
+                    Q[t, a] = Q[t - 1, a]
 
-        # Negative log-likelihood calculation
-        nll = -np.log(
-            choice_prob[np.arange(len(self.choices)), self.choices] + 1e-8
-        ).sum()
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * Q, axis=1)
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(len(self.choices)), self.choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
 
@@ -53,3 +52,8 @@ class QSotfmaxMLE(MLEstimator):
         lb = np.array([0, 0])
         ub = [1, np.inf]
         return LinearConstraint(A, lb, ub)
+
+
+if __name__ == "__main__":
+    estimator = QSotfmaxMLE()
+    estimator.fit(2, [1, 0, 0, 0, 1], [1, 1, 0, 1, 0])
