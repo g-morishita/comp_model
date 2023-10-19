@@ -78,5 +78,5 @@ class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
             "S": n_sessions,
             "T": n_trials,
             "C": choices.reshape(),
-            "R": reward.reshape(),
+            "R": rewards.reshape(),
         }

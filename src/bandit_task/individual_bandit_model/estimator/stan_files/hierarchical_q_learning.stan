@@ -3,8 +3,7 @@ data {
   int<lower=1> S; // The number of sessions
   int<lower=1> T; // The number of trials
   int C[N,S,T]; // Choices
-  int PC[N,S,T]; // Partner's choice
-  int PR[N,S,T]; // Partner's rewards
+  int R[N,S,T]; // Rewards
 }
 
 parameters {
@@ -33,19 +32,22 @@ model {
 
   alpha_nd ~ normal(0,1); // learning rate (before transformation)
   beta_nd ~ normal(0,1); // inverse temperature (before transformation)
+  mu_alpha_nd ~ normal(0, 1);
+  sigma_alpha_nd ~ normal(0, 1);
+  mu_beta_nd ~ normal(0, 1);
+  sigma_beta_nd ~ normal(0, 1);
 
   for ( i in 1:N ) { // participant
-
     for (j in 1:S) { // session
 
       Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
       for ( t in 1:T ) { // trial
-        // Update Q value according to the partner's choice and reward.
-        Q[PC[i, j, t], 1] = Q[PC[i, j, t], 1] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t], 1]);
-
         // Add the likelihood according to your own choice
         // 3 - Q[C[t] - 1] means the index of the action that's not chosen.
         target += log(1.0 / (1.0 + exp(-beta[i] * (Q[C[i, j, t], 1] - Q[3 - C[i, j, t], 1]))));
+
+        // Update Q value according to the partner's choice and reward.
+        Q[C[i, j, t], 1] = Q[C[i, j, t], 1] + alpha[i] * (R[i, j, t] - Q[C[i, j, t], 1]);
       }
     }
   }
@@ -72,12 +74,13 @@ generated quantities {
 
       Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
       for ( t in 1:T ) { // trials
-
-        // update action value
-        Q[PC[i,j,t],1] = Q[PC[i,j,t],1] + alpha[i] * (PR[i,j,t] - Q[PC[i,j,t],1]);
-
+        // Add the likelihood according to your own choice
+        // 3 - Q[C[t] - 1] means the index of the action that's not chosen.
         trial_count = trial_count + 1;
-        log_lik[trial_count] = log( eps + 1.0/(1.0 + exp(-beta[i] * (Q[C[i,j,t],1] - Q[ 3 - C[i,j,t],1]) )) );
+        log_lik[trial_count] = log(1.0 / (1.0 + exp(-beta[i] * (Q[C[i, j, t], 1] - Q[3 - C[i, j, t], 1]))));
+
+        // Update Q value according to the partner's choice and reward.
+        Q[C[i, j, t], 1] = Q[C[i, j, t], 1] + alpha[i] * (R[i, j, t] - Q[C[i, j, t], 1]);
       }
     }
   }
