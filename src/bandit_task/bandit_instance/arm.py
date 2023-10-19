@@ -53,7 +53,7 @@ class NormalArm(Arm):
         return np.random.normal(self.mean, self.sd)
 
 
-class BernoulliDistArm(Arm):
+class BernoulliArm(Arm):
     """
     Represents an arm with Bernoulli-distributed rewards.
 
