@@ -60,8 +60,11 @@ class QSotfmaxMLE(MLEstimator):
 class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
     def __init__(self):
         super().__init__()
-        module_path = os.path.abspath(__file__)
-        self.stan_file = os.path.join(module_path, "stan_files/hierarchical_q_learning.stan")
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path, "stan_files/hierarchical_q_learning.stan"
+        )
+        self.group2ind = None
 
     def convert_stan_data(
         self,
@@ -72,24 +75,23 @@ class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
     ):
         uniq_groups = np.unique(groups)
         n_uniq_groups = uniq_groups.shape[0]
-        n_sessions = choices.shape[0]
-        n_trials = choices.shape[1]
         # Assume every group has the same number of sessions.
-        reshaped_choices = np.zeros(
-            (n_uniq_groups, n_sessions // n_uniq_groups, n_trials)
-        )
-        reshaped_rewards = np.zeros(
-            (n_uniq_groups, n_sessions // n_uniq_groups, n_trials)
-        )
+        n_sessions_per_group = choices.shape[0] // n_uniq_groups
+        n_trials = choices.shape[1]
+        reshaped_choices = np.zeros((n_uniq_groups, n_sessions_per_group, n_trials))
+        reshaped_rewards = np.zeros((n_uniq_groups, n_sessions_per_group, n_trials))
+
+        self.group2ind = dict(zip(uniq_groups, np.arange(len(uniq_groups))))
 
         for g in uniq_groups:
-            reshaped_choices[g, :, :] = choices[groups == g]
-            reshaped_rewards[g, :, :] = rewards[groups == g]
+            reshaped_choices[self.group2ind[g], :, :] = choices[groups == g]
+            reshaped_rewards[self.group2ind[g], :, :] = rewards[groups == g]
 
-        return {
+        stan_data = {
             "N": n_uniq_groups,
-            "S": n_sessions,
+            "S": n_sessions_per_group,
             "T": n_trials,
-            "C": reshaped_choices,
-            "R": reshaped_rewards,
+            "C": (reshaped_choices + 1).astype(int).tolist(),
+            "R": reshaped_rewards.astype(int).tolist(),
         }
+        return stan_data

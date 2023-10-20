@@ -4,11 +4,11 @@ from typing import Sequence
 
 import arviz as az
 import numpy as np
-import stan
+from cmdstanpy import CmdStanModel
 from scipy.optimize import minimize
 
 # Custom imports from the parent directories
-from src.bandit_task.lib.utility import read_options
+from ...lib.utility import read_options
 from ...type import NDArrayNumber
 
 
@@ -211,17 +211,12 @@ class HierarchicalEstimator:
                 f"choices.shape={choices.shape} and rewards.shape={rewards.shape}"
             )
 
-        with open(self.stan_file, "r") as f:
-            stan_code = f.read()
-
         stan_data = self.convert_stan_data(num_choices, choices, rewards, groups)
+        model = CmdStanModel(stan_file=self.stan_file)
+        fit = model.sample(data=stan_data)
 
-        posterior = stan.build(stan_code, data=stan_data, random_seed=1)
-        posterior_fit = posterior.sample(num_chains=4, num_samples=1000)
-
-        self.posterior_sample = az.from_pystan(
-            posterior=posterior_fit,
-            posterior_model=posterior,
+        self.posterior_sample = az.from_cmdstanpy(
+            posterior=fit,
             log_likelihood=["log_lik"],
         )
 
