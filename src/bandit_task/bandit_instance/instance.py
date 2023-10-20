@@ -15,6 +15,9 @@ class Bandit(ABC):
         Abstract method to select and execute a choice (pull an arm) to get a reward.
     """
 
+    def __init__(self):
+        self.arms = None
+
     @abstractmethod
     def select_choice(self, choice: int) -> int | float:
         """Selects an arm (choice) and returns the corresponding reward."""
@@ -36,6 +39,7 @@ class NormalBandit(Bandit):
     def __init__(
         self, means: Sequence[int | float], sds: Sequence[int | float]
     ) -> None:
+        super().__init__()
         if len(means) != len(sds):
             raise ValueError(
                 f"lengths of means and sds must match. \
@@ -77,10 +81,8 @@ class BernoulliBandit(Bandit):
         List of probabilities (mean) for each arm's Bernoulli distribution.
     """
 
-    def __init__(
-        self,
-        means: Sequence[int | float],
-    ) -> None:
+    def __init__(self, means: Sequence[int | float]) -> None:
+        super().__init__()
         self.arms = [BernoulliArm(mean) for mean in means]
 
     def select_choice(self, choice: int) -> int:

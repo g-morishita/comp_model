@@ -47,6 +47,11 @@ class Generator:
                 f"bandit_task should be inherited Bandit class {bandit_instance.__class__.__name__} is given."
             )
 
+        if len(simulator.q_values) != len(bandit_instance.arms):
+            raise ValueError(
+                "The number of values and the number of choices must match."
+            )
+
         self.simulator = simulator
         self.original_simulator = copy.deepcopy(simulator)
         self.bandit_instance = bandit_instance

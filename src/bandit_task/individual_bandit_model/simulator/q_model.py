@@ -31,6 +31,7 @@ class QSoftmaxSimulator(BaseSimulator):
         initial_values : ndarray
             Initial Q-values for each action.
         """
+        super().__init__()
         self.lr = lr
         self.beta = beta
         self.q_values = np.array(initial_values)
