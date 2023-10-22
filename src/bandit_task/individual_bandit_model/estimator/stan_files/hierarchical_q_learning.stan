@@ -2,8 +2,9 @@ data {
   int<lower=1> N; // The number of participants
   int<lower=1> S; // The number of sessions
   int<lower=1> T; // The number of trials
-  int C[N,S,T]; // Choices
-  int R[N,S,T]; // Rewards
+  int<lower=1> NC; // The number of unique choices
+  array[N, S, T] int C; // Choices
+  array[N, S, T] real R; // Rewards
 }
 
 parameters {
@@ -28,7 +29,7 @@ transformed parameters {
 }
 
 model {
-  matrix[2,1] Q; // Q values
+  vector[NC] Q; // Q values
 
   alpha_nd ~ normal(0,1); // learning rate (before transformation)
   beta_nd ~ normal(0,1); // inverse temperature (before transformation)
@@ -40,14 +41,17 @@ model {
   for ( i in 1:N ) { // participant
     for (j in 1:S) { // session
 
-      Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
+      // Initialize Q values
+      for (k in 1:NC) {
+        Q[k] = 0.5;
+      }
+
       for ( t in 1:T ) { // trial
         // Add the likelihood according to your own choice
-        // 3 - Q[C[t] - 1] means the index of the action that's not chosen.
-        target += log(1.0 / (1.0 + exp(-beta[i] * (Q[C[i, j, t], 1] - Q[3 - C[i, j, t], 1]))));
+        target += log_softmax(beta[i] * Q)[C[i, j, t]];
 
         // Update Q value according to the partner's choice and reward.
-        Q[C[i, j, t], 1] = Q[C[i, j, t], 1] + alpha[i] * (R[i, j, t] - Q[C[i, j, t], 1]);
+        Q[C[i, j, t]] = Q[C[i, j, t]] + alpha[i] * (R[i, j, t] - Q[C[i, j, t]]);
       }
     }
   }
@@ -59,7 +63,7 @@ generated quantities {
 
   vector[N * S * T] log_lik;
   int trial_count;
-  matrix[2,1] Q; // Q values
+  vector[NC] Q; // Q values
 
   real eps;
   eps = machine_precision();
@@ -72,15 +76,18 @@ generated quantities {
 
     for (j in 1:S) { // session
 
-      Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
+      // Initialize Q values
+      for (k in 1:NC) {
+        Q[k] = 0.5;
+      }
+
       for ( t in 1:T ) { // trials
         // Add the likelihood according to your own choice
-        // 3 - Q[C[t] - 1] means the index of the action that's not chosen.
         trial_count = trial_count + 1;
-        log_lik[trial_count] = log(1.0 / (1.0 + exp(-beta[i] * (Q[C[i, j, t], 1] - Q[3 - C[i, j, t], 1]))));
+        log_lik[trial_count] = log_softmax(beta[i] * Q)[C[i, j, t]];
 
         // Update Q value according to the partner's choice and reward.
-        Q[C[i, j, t], 1] = Q[C[i, j, t], 1] + alpha[i] * (R[i, j, t] - Q[C[i, j, t], 1]);
+        Q[C[i, j, t]] = Q[C[i, j, t]] + alpha[i] * (R[i, j, t] - Q[C[i, j, t]]);
       }
     }
   }

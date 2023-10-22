@@ -213,12 +213,7 @@ class HierarchicalEstimator:
 
         stan_data = self.convert_stan_data(num_choices, choices, rewards, groups)
         model = CmdStanModel(stan_file=self.stan_file)
-        fit = model.sample(data=stan_data)
-
-        self.posterior_sample = az.from_cmdstanpy(
-            posterior=fit,
-            log_likelihood=["log_lik"],
-        )
+        self.posterior_sample = model.sample(data=stan_data)
 
     @abstractmethod
     def convert_stan_data(

@@ -91,6 +91,7 @@ class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
             "N": n_uniq_groups,
             "S": n_sessions_per_group,
             "T": n_trials,
+            "NC": np.unique(choices).shape[0],
             "C": (reshaped_choices + 1).astype(int).tolist(),
             "R": reshaped_rewards.astype(int).tolist(),
         }
