@@ -4,7 +4,6 @@ from typing import Sequence
 
 import numpy as np
 from cmdstanpy import CmdStanModel
-from scipy.optimize import minimize
 
 # Custom imports from the parent directories
 from ...lib.utility import read_options, optimize_non_convex_obj
@@ -126,15 +125,10 @@ class HierarchicalEstimator:
     A hierarchical model shares statistical strength across groups, making it especially
     useful when some groups might have limited data.
 
-    Attributes
-    ----------
-    (Any class-level attributes should be documented here, if they exist.)
-
     Methods
     -------
     fit :
         Estimate the model's parameters based on the provided data.
-    (Other methods should be documented similarly.)
     """
 
     def __init__(self):
@@ -201,5 +195,5 @@ class HierarchicalEstimator:
         choices: Sequence[int | float],
         rewards: Sequence[int | float],
         groups: Sequence[int | float],
-    ):
+    ) -> NDArrayNumber:
         pass
