@@ -134,3 +134,6 @@ class ParameterRecovery:
         rewards = self.generator.history["rewards"]
 
         return self.estimator.fit(num_choices, choices, rewards)
+
+    def reset(self):
+        self.generator.reset()
