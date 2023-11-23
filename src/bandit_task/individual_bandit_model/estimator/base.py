@@ -7,7 +7,7 @@ from cmdstanpy import CmdStanModel
 from scipy.optimize import minimize
 
 # Custom imports from the parent directories
-from ...lib.utility import read_options
+from ...lib.utility import read_options, optimize_non_convex_obj
 from ...type import NDArrayNumber
 
 
@@ -24,7 +24,7 @@ class BaseEstimator(ABC):
         choices: Sequence[int | float],
         rewards: Sequence[int | float],
         **kwargs: dict,
-    ) -> None:
+    ) -> Sequence[int | float]:
         """
         Abstract method for fitting the estimator.
 
@@ -68,9 +68,9 @@ class MLEstimator(BaseEstimator):
         Fit the model using Maximum Likelihood Estimation.
         """
         if len(choices) != len(rewards):
-            raise ValueError("The sizes of `actions` and `rewards` must be the same.")
+            raise ValueError("The sizes of `choices` and `rewards` must be the same.")
         if max(choices) > num_choices:
-            raise ValueError("The range of `actions` exceeds `num_choices`.")
+            raise ValueError("The range of `choices` exceeds `num_choices`.")
 
         self.num_choices = num_choices
         self.choices = np.array(choices)
@@ -79,42 +79,22 @@ class MLEstimator(BaseEstimator):
         # Extract optimization options from keyword arguments
         options_for_min = read_options({"maxiter", "tol", "method", "n_trials"})
         method = options_for_min.get("method")
-        n_trials = options_for_min.get("n_trials", 5)
+        n_trials = options_for_min.get(
+            "n_trials", 5
+        )  # The number of optimization to run to prevent local minima.
 
-        # Initialize variables for optimization results
-        min_nll = np.inf  # Minimum negative log-likelihood
-        opt_param = None  # Optimal parameters
-
-        # Optimize using multiple initializations
-        for _ in range(n_trials):
-            init_param = self.initialize_params()
-            result = minimize(
-                self.neg_ll,
-                init_param,
-                method=method,
-                constraints=self.constraints(),
-                options=options_for_min,
-            )
-
-            # Warning if optimization was not successful
-            if not result.success:
-                warnings.warn(result.message)
-            else:
-                print("The minimization succeeded!")
-                # Update the best parameters if new result is better
-                if min_nll > result.fun:
-                    min_nll = result.fun
-                    opt_param = result.x
-
-        if opt_param is None:
-            warnings.warn("The estimation did not work.")
-            return np.array([])
-
-        self.estimated_params = opt_param
+        self.estimated_params = optimize_non_convex_obj(
+            self.neg_ll,
+            self.initialize_params(),
+            method=method,
+            constraints=self.constraints(),
+            n_trials=n_trials,
+            options=options_for_min,
+        )
         return self.estimated_params
 
     @abstractmethod
-    def initialize_params(self) -> Sequence[int | float]:
+    def initialize_params(self) -> NDArrayNumber:
         """
         Abstract method for initializing parameters for optimization.
         """

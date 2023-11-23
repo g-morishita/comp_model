@@ -1,3 +1,9 @@
+import warnings
+
+import numpy as np
+from scipy.optimize import minimize
+
+
 def read_options(allowed_keywords: set, **kwargs: dict) -> dict:
     """
     Extracts keyword arguments that match the set of allowed keywords.
@@ -31,3 +37,35 @@ def read_options(allowed_keywords: set, **kwargs: dict) -> dict:
             options[k] = v
 
     return options
+
+
+def optimize_non_convex_obj(obj, init_param, constraints, method, n_trials, options):
+    # Initialize variables for optimization results
+    min_nll = np.inf  # Minimum negative log-likelihood
+    opt_param = None  # Optimal parameters
+
+    # Optimize using multiple initializations
+    for _ in range(n_trials):
+        result = minimize(
+            obj,
+            init_param,
+            method=method,
+            constraints=constraints,
+            options=options,
+        )
+
+        # Warning if optimization was not successful
+        if not result.success:
+            warnings.warn(result.message)
+        else:
+            print("The minimization succeeded!")
+            # Update the best parameters if new result is better
+            if min_nll > result.fun:
+                min_nll = result.fun
+                opt_param = result.x
+
+    if opt_param is None:
+        warnings.warn("The estimation did not work. An empty array is returned.")
+        return np.array([])
+
+    return opt_param
