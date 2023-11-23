@@ -2,7 +2,6 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Sequence
 
-import arviz as az
 import numpy as np
 from cmdstanpy import CmdStanModel
 from scipy.optimize import minimize
