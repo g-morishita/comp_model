@@ -9,10 +9,6 @@ from .base import MLEstimator, HierarchicalEstimator
 from ...type import NDArrayNumber
 
 
-class BayesianActionSoftmaxWithoutYourReward:
-
-
-
 class HierarchicalActionSoftmaxWithoutYourReward(HierarchicalEstimator):
     """
     Implements a bayesian hierarchical action learning model.

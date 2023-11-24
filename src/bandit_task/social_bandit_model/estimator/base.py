@@ -106,6 +106,7 @@ class MLEstimator(BaseEstimator):
             options=options_for_min,
         )
         return self.estimated_params
+
     @abstractmethod
     def initialize_params(self) -> NDArrayNumber:
         """
