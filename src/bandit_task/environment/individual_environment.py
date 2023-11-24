@@ -1,9 +1,12 @@
 import copy
+from typing import Sequence
 from warnings import warn
+from collections import Iterable
 
 from ..bandit_instance.instance import Bandit
+from ..individual_bandit_model.estimator.base import BaseEstimator, HierarchicalEstimator
 from ..individual_bandit_model.simulator.base import BaseSimulator
-from ..individual_bandit_model.estimator.base import BaseEstimator
+from ..lib.utility import is_iterable
 
 
 class Generator:
@@ -137,3 +140,61 @@ class ParameterRecovery:
 
     def reset(self):
         self.generator.reset()
+
+
+class HierarchicalParameterRecovery:
+    def __init__(
+        self,
+        estimator: BaseEstimator,
+        simulators: Iterable[BaseSimulator],
+        bandit_instance: Bandit,
+    ) -> None:
+        if not isinstance(estimator, HierarchicalEstimator):
+            raise ValueError(
+                f"A simulator should be inherited from HierarchicalEstimator class "
+                f'from "estimator" package. {estimator.__class__.__name__} is given.'
+            )
+        for simulator in simulators:
+            if not isinstance(simulator, BaseSimulator):
+                raise ValueError(
+                    f"A simulator should be inherited from BaseSimulator class "
+                    f'from "simulator" package. {simulator.__class__.__name__} is given.'
+                )
+        if not isinstance(bandit_instance, Bandit):
+            raise ValueError(
+                f"bandit_task should be inherited Bandit class {bandit_instance.__class__.__name__} is given."
+            )
+
+        self.estimator = estimator
+        self.generator = []
+        for ind, simulator in enumerate(simulators):
+            self.generator[ind] = Generator(simulator, bandit_instance)
+
+        self.groups = []
+        self.choices = []
+        self.rewards = []
+        self.done_simulation = False
+
+    def simulate(self, n_trials: int, n_sessions) -> None:
+        for ind, generator in enumerate(self.generator):
+            for _ in range(n_sessions):
+                self.groups.append(ind)
+                generator.simulate(n_trials)
+                self.choices.append(generator.history["choices"])
+                self.rewards.append(generator.history["rewards"])
+                generator.reset()
+
+        self.done_simulation = True
+
+    def fit(self, **kwargs):
+        if not self.done_simulation:
+            raise Exception(
+                "You should call simulate first to generate simulation data"
+            )
+
+        num_choices = len(self.generator[0].bandit_instance.arms)
+        choices = self.choices
+        rewards = self.rewards
+        groups = self.groups
+
+        return self.estimator.fit(num_choices, choices, rewards, groups)
