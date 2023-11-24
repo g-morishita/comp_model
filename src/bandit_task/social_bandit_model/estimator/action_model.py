@@ -9,6 +9,10 @@ from .base import MLEstimator, HierarchicalEstimator
 from ...type import NDArrayNumber
 
 
+class BayesianActionSoftmaxWithoutYourReward:
+
+
+
 class HierarchicalActionSoftmaxWithoutYourReward(HierarchicalEstimator):
     """
     Implements a bayesian hierarchical action learning model.
@@ -18,7 +22,7 @@ class HierarchicalActionSoftmaxWithoutYourReward(HierarchicalEstimator):
         super().__init__()
         module_path = os.path.dirname(__file__)
         self.stan_file = os.path.join(
-            module_path, "stan_files/hierarchical_action_learning.stan"
+            module_path, "stan_files/hierarchical_social_action_learning.stan"
         )
         self.group2ind = None
 
@@ -60,4 +64,5 @@ class HierarchicalActionSoftmaxWithoutYourReward(HierarchicalEstimator):
             "C": (reshaped_your_choices + 1).astype(int).tolist(),
             "PC": (reshaped_partner_choices + 1).astype(int).tolist(),
         }
+        print(stan_data)
         return stan_data

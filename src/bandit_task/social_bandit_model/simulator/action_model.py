@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import ndarray
+from typing import Sequence
 from scipy.special import softmax
 
 
@@ -13,11 +13,11 @@ class ActionSoftmaxSimulator:
         The learning rate used to update Q-values.
     beta : float
         A temperature parameter for the softmax function to control exploration vs. exploitation.
-    action_values : ndarray
+    action_values : Sequence[float]
         A numpy array storing values for each action.
     """
 
-    def __init__(self, lr: float, beta: float, initial_values: ndarray) -> None:
+    def __init__(self, lr: float, beta: float, initial_values: Sequence[float]) -> None:
         """
         Initialize the ActionSoftmaxSimulator with learning rate, beta parameter, and initial action values.
 
@@ -33,7 +33,7 @@ class ActionSoftmaxSimulator:
         super().__init__()
         self.lr = lr
         self.beta = beta
-        self.action_values = np.array(initial_values) / sum(initial_values)  # normalize action values
+        self.action_values = np.array(initial_values)
 
     def make_choice(self) -> int:
         """
@@ -49,23 +49,22 @@ class ActionSoftmaxSimulator:
         # Randomly select an action based on its probability.
         return np.random.choice(len(self.action_values), p=choice_prob)
 
-    def learn(self, partner_choices: int) -> None:
+    def learn(self, partner_choice: int) -> None:
         """
         Update the action value for the partner's choice
 
         Parameters
         ----------
-        partner_choices : int
+        partner_choice : int
             The index of the partner's choice
         """
-        delta = 1 - self.action_values[partner_choices]
         # Update the action value for the partner's choice
-        self.action_values[partner_choices] = (
-            self.action_values[partner_choices] + self.lr * delta
+        self.action_values[partner_choice] = (
+                self.action_values[partner_choice] + self.lr * (1 - self.action_values[partner_choice])
         )
 
         for unchosen_choice in range(len(self.action_values)):
-            if unchosen_choice != partner_choices:
+            if unchosen_choice != partner_choice:
                 self.action_values[unchosen_choice] = (
-                    self.action_values[unchosen_choice] - self.lr * delta / (len(self.action_values) - 1)
+                    self.action_values[unchosen_choice] + self.lr * (0 - self.action_values[unchosen_choice])
                 )

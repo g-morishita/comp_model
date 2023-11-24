@@ -33,6 +33,10 @@ model {
 
   alpha_nd ~ normal(0,1); // learning rate (before transformation)
   beta_nd ~ normal(0,1); // inverse temperature (before transformation)
+  mu_alpha_nd ~ normal(0, 1);
+  sigma_alpha_nd ~ normal(0, 1);
+  mu_beta_nd ~ normal(0, 1);
+  sigma_beta_nd ~ normal(0, 1);
 
   for ( i in 1:N ) { // participant
 
@@ -47,9 +51,9 @@ model {
         // Update action value according to the partner's choice.
         for (k in 1:NC) {
           if (PC[i, j, t] == k) {
-              Q[k] = Q[k] + alpha[i] * (1 - Q[k]);
+            Q[k] = Q[k] + alpha[i] * (1 - Q[k]);
           } else {
-            Q[k] =   Q[k] - alpha[i] * (1 - Q[k]) / (NC - 1);
+            Q[k] = Q[k] + alpha[i] * (0 - Q[k]);
           }
         }
 
@@ -66,7 +70,7 @@ generated quantities {
 
   vector[N * S * T] log_lik;
   int trial_count;
-  matrix[2,1] Q; // Q values
+  vector[NC] Q; // Q values
 
   real eps;
   eps = machine_precision();
@@ -78,8 +82,10 @@ generated quantities {
   for ( i in 1:N ) { // participant
 
     for (j in 1:S) { // session
-
-      Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
+      // Initialize action values
+      for (k in 1:NC) {
+        Q[k] = 0.5;
+      }
       for ( t in 1:T ) { // trials
 
         // Update action value according to the partner's choice.
@@ -87,12 +93,12 @@ generated quantities {
           if (PC[i, j, t] == k) {
               Q[k] = Q[k] + alpha[i] * (1 - Q[k]);
           } else {
-            Q[k] =   Q[k] - alpha[i] * (1 - Q[k]) / (NC - 1);
+            Q[k] =   Q[k] + alpha[i] * (0 - Q[k]);
           }
         }
 
         trial_count = trial_count + 1;
-        target += log_softmax(beta[i] * Q)[C[i, j, t]];
+        log_lik[trial_count] = log_softmax(beta[i] * Q)[C[i, j, t]];
       }
     }
   }
