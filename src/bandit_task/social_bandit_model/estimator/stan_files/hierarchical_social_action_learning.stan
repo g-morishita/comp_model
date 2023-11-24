@@ -2,8 +2,9 @@ data {
   int<lower=1> N; // The number of participants
   int<lower=1> S; // The number of sessions
   int<lower=1> T; // The number of trials
-  int C[N,S,T]; // Choices
-  int PC[N,S,T]; // Partner's choice
+  int<lower=1> NC; // The number of unique choices
+  array[N,S,T] int C; // Choices
+  array[N,S,T] int PC; // Partner's choice
 }
 
 parameters {
@@ -28,7 +29,7 @@ transformed parameters {
 }
 
 model {
-  matrix[2,1] Q; // Q values
+  vector[NC] Q; // action values
 
   alpha_nd ~ normal(0,1); // learning rate (before transformation)
   beta_nd ~ normal(0,1); // inverse temperature (before transformation)
@@ -37,20 +38,23 @@ model {
 
     for (j in 1:S) { // session
 
-      Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
+      // Initialize action values
+      for (k in 1:NC) {
+        Q[k] = 0.5;
+      }
+
       for ( t in 1:T ) { // trial
-        // Update Q value according to the partner's choice and reward.
-        if (PC[i, j, t] == 1) {
-          Q[1, 1] = Q[1, 1] + alpha[i] * (1 - Q[1, 1]);
-          Q[2, 1] = 1 - Q[1, 1];
-        } else {
-          Q[2, 1] = Q[2, 1] + alpha[i] * (1 - Q[2, 1]);
-          Q[1, 1] = 1 - Q[2, 1];
+        // Update action value according to the partner's choice.
+        for (k in 1:NC) {
+          if (PC[i, j, t] == k) {
+              Q[k] = Q[k] + alpha[i] * (1 - Q[k]);
+          } else {
+            Q[k] =   Q[k] - alpha[i] * (1 - Q[k]) / (NC - 1);
+          }
         }
 
         // Add the likelihood according to your own choice
-        // 3 - Q[C[t] - 1] means the index of the action that's not chosen.
-        target += log(1.0 / (1.0 + exp(-beta[i] * (Q[C[i, j, t], 1] - Q[3 - C[i, j, t], 1]))));
+        target += log_softmax(beta[i] * Q)[C[i, j, t]];
       }
     }
   }
@@ -78,17 +82,17 @@ generated quantities {
       Q[1, 1] = 0.5; Q[2, 1] = 0.5; // Initialize Q values
       for ( t in 1:T ) { // trials
 
-        // update action value
-        if (PC[i, j, t] == 1) {
-          Q[1, 1] = Q[1, 1] + alpha[i] * (1 - Q[1, 1]);
-          Q[2, 1] = 1 - Q[1, 1];
-        } else {
-          Q[2, 1] = Q[2, 1] + alpha[i] * (1 - Q[2, 1]);
-          Q[1, 1] = 1 - Q[2, 1];
+        // Update action value according to the partner's choice.
+        for (k in 1:NC) {
+          if (PC[i, j, t] == k) {
+              Q[k] = Q[k] + alpha[i] * (1 - Q[k]);
+          } else {
+            Q[k] =   Q[k] - alpha[i] * (1 - Q[k]) / (NC - 1);
+          }
         }
 
         trial_count = trial_count + 1;
-        log_lik[trial_count] = log( eps + 1.0/(1.0 + exp(-beta[i] * (Q[C[i,j,t],1] - Q[ 3 - C[i,j,t],1]) )) );
+        target += log_softmax(beta[i] * Q)[C[i, j, t]];
       }
     }
   }
