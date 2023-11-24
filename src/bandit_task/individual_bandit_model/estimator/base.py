@@ -1,4 +1,3 @@
-import warnings
 from abc import ABC, abstractmethod
 from typing import Sequence
 
@@ -111,6 +110,48 @@ class MLEstimator(BaseEstimator):
         """
         Define constraints for the optimization problem.
         """
+        pass
+
+
+class BayesianEstimator(BaseEstimator):
+    """
+    Bayesian model estimator
+
+    """
+
+    def __init__(self):
+        self.stan_file = None
+        self.posterior_sample = None
+
+    def fit(
+        self,
+        num_choices: int,
+        choices: Sequence[int],
+        rewards: Sequence[int | float],
+        **kwargs: dict,
+    ) -> None:
+        """
+        Fit the Bayesian model to the provided data.
+        """
+        if len(choices) != len(rewards):
+            raise ValueError("The sizes of `choices` and `rewards` must be the same.")
+        if max(choices) > num_choices:
+            raise ValueError("The range of `choices` exceeds `num_choices`.")
+
+        choices = np.array(choices)
+        rewards = np.array(rewards)
+
+        stan_data = self.convert_stan_data(num_choices, choices, rewards)
+        model = CmdStanModel(stan_file=self.stan_file)
+        self.posterior_sample = model.sample(data=stan_data)
+
+    @abstractmethod
+    def convert_stan_data(
+        self,
+        num_choices: int,
+        choices: Sequence[int | float],
+        rewards: Sequence[int | float],
+    ) -> NDArrayNumber:
         pass
 
 
