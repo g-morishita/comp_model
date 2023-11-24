@@ -149,8 +149,8 @@ class BayesianEstimator(BaseEstimator):
     def convert_stan_data(
         self,
         num_choices: int,
-        choices: Sequence[int | float],
-        rewards: Sequence[int | float],
+        choices: NDArrayNumber,
+        rewards: NDArrayNumber,
     ) -> NDArrayNumber:
         pass
 

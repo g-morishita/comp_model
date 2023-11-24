@@ -4,6 +4,14 @@ import numpy as np
 from scipy.optimize import minimize
 
 
+def is_iterable(obj):
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+
+
 def read_options(allowed_keywords: set, **kwargs: dict) -> dict:
     """
     Extracts keyword arguments that match the set of allowed keywords.
