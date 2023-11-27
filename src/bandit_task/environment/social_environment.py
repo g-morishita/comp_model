@@ -1,10 +1,11 @@
 import copy
+from typing import Collection
 from warnings import warn
 
 from ..bandit_instance.instance import Bandit
 from ..individual_bandit_model.simulator.base import BaseSimulator
 from ..lib.utility import check_params_type
-from ..social_bandit_model.estimator.base import BaseEstimator
+from ..social_bandit_model.estimator.base import BaseEstimator, HierarchicalEstimator
 
 
 class Generator:
@@ -34,6 +35,14 @@ class Generator:
     def __init__(self, simulator: BaseSimulator, partner: BaseSimulator, bandit_instance: Bandit) -> None:
         """
         Initialize the generator with a simulator and bandit instance.
+        The data generation process is as follows:
+
+        1. Partner Makes a Decision: In each round, the partner (another player or a computer program) decides on an action to take.
+        2. Observe Partner's Reward: Based on this decision, a reward (like points or a score) is given.
+        3. Partner Learns from Experience: The partner then uses the information from their decision and the received reward to improve their strategy for future rounds.
+        4. Simulator Learns from Partner's Experience: A simulator, acting on your behalf, also learns from the partner's decision and reward.
+        5. Simulator Makes Your Decision: Next, the simulator decides on an action for you.
+        6. Observe Your Reward: A reward is calculated for your decision.
 
         Parameters
         ----------
@@ -118,3 +127,71 @@ class ParameterRecovery:
     def fit(self, **kwargs):
         num_choices = len(self.generator.bandit_instance.arms)
         self.estimator.fit(num_choices, **self.generator.history)
+
+
+class HierarchicalParameterRecovery:
+    def __init__(
+        self,
+        estimator: HierarchicalEstimator,
+        simulators: Collection[BaseSimulator],
+        partners: Collection[BaseSimulator],
+        bandit_instance: Bandit,
+    ) -> None:
+
+        check_params_type({estimator: HierarchicalEstimator, bandit_instance: Bandit})
+        if len(simulators) != len(partners):
+            raise ValueError(f"The length of `simulators` and `partners` must match.")
+
+        for simulator, partner in zip(simulators, partners):
+            check_params_type({simulator: BaseSimulator, partner: BaseSimulator})
+
+        self.estimator = estimator
+        self.generators = []
+        for simulator, partner in zip(simulators, partners):
+            self.generators += [Generator(simulator, partner, bandit_instance)]
+
+        self.history = {
+            "your_choices": [],
+            "your_rewards": [],
+            "partner_choices": [],
+            "partner_rewards": [],
+            "groups": []
+        }
+        self.done_simulation = False
+
+    def simulate(self, n_trials: int, n_sessions) -> None:
+        for ind, generator in enumerate(self.generators):
+            for _ in range(n_sessions):
+                self.history["groups"].append(ind)
+                generator.simulate(n_trials)
+                for key in ["your_choices", "your_rewards", "partner_choices", "partner_rewards"]:
+                    self.history[key].append(generator.history[key])
+
+                generator.reset()
+
+        self.done_simulation = True
+
+    def fit(self, **kwargs):
+        if not self.done_simulation:
+            raise Exception(
+                "You should call simulate first to generate simulation data"
+            )
+
+        num_choices = len(self.generators[0].bandit_instance.arms)
+
+        return self.estimator.fit(num_choices, **self.history)
+
+    def reset(self):
+        for generator in self.generators:
+            generator.reset()
+
+        self.history = {
+            "your_choices": [],
+            "your_rewards": [],
+            "partner_choices": [],
+            "partner_rewards": [],
+            "groups": []
+        }
+        self.done_simulation = False
+
+
