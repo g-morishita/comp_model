@@ -1,7 +1,6 @@
 import copy
-from typing import Sequence
+from typing import Iterable
 from warnings import warn
-from collections import Iterable
 
 from ..bandit_instance.instance import Bandit
 from ..individual_bandit_model.estimator.base import BaseEstimator, HierarchicalEstimator
@@ -167,8 +166,8 @@ class HierarchicalParameterRecovery:
 
         self.estimator = estimator
         self.generator = []
-        for ind, simulator in enumerate(simulators):
-            self.generator[ind] = Generator(simulator, bandit_instance)
+        for simulator in simulators:
+            self.generator += [Generator(simulator, bandit_instance)]
 
         self.groups = []
         self.choices = []
