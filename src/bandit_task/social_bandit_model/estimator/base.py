@@ -73,7 +73,7 @@ class MLEstimator(BaseEstimator):
             partner_choices: Sequence[int | float],
             partner_rewards: Sequence[int | float] | None,
             **kwargs: dict,
-    ) -> None:
+    ) -> NDArrayNumber:
         """
         Fit the model using Maximum Likelihood Estimation.
         """
@@ -322,3 +322,13 @@ class HierarchicalEstimator:
         lppd = np.log(np.exp(log_lik).mean(axis=0)).sum()
         penalty = np.sum(np.var(log_lik, axis=0))
         return -2 * (lppd - penalty)
+
+    def estimate(self, variable_name, mode="mean"):
+        if self.posterior_sample is None:
+            raise Exception("Not fitted yet")
+    
+        if mode == "mean":
+            return np.mean(self.posterior_sample.stan_variable(variable_name)), np.std(self.posterior_sample.stan_variable(variable_name))
+
+        if mode == "med":
+            return np.mean(self.posterior_sample.stan_variable(variable_name))
