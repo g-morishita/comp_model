@@ -35,6 +35,10 @@ model {
 
   alpha_nd ~ normal(0,1); // learning rate (before transformation)
   beta_nd ~ normal(0,1); // inverse temperature (before transformation)
+  mu_alpha_nd ~ normal(0, 1);
+  sigma_alpha_nd ~ normal(0, 1);
+  mu_beta_nd ~ normal(0, 1);
+  sigma_beta_nd ~ normal(0, 1);
 
   for ( i in 1:N ) { // participant
     for (j in 1:S) { // session
