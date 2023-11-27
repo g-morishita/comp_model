@@ -24,8 +24,8 @@ class QSotfmaxMLE(MLEstimator):
 
         # For each trial, calculate delta and update Q-values
         for t in range(1, len(self.choices)):
-            a_t = self.choices[t]  # Action taken at time t
-            r_t = self.rewards[t]  # Reward received at time t
+            a_t = self.choices[t-1]  # Action taken at time t
+            r_t = self.rewards[t-1]  # Reward received at time t
             delta_t = r_t - Q[t - 1, a_t]
 
             # Q-value update

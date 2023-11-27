@@ -2,7 +2,7 @@ import numpy as np
 from numpy import ndarray
 from .base import BaseSimulator
 from scipy.special import softmax
-
+from typing import Sequence
 
 class QSoftmaxSimulator(BaseSimulator):
     """
@@ -14,11 +14,11 @@ class QSoftmaxSimulator(BaseSimulator):
         The learning rate used to update Q-values.
     beta : float
         A temperature parameter for the softmax function to control exploration vs. exploitation.
-    q_values : ndarray
+    q_values : Sequence[int, float]
         A numpy array storing Q-values for each action.
     """
 
-    def __init__(self, lr: float, beta: float, initial_values: ndarray) -> None:
+    def __init__(self, lr: float, beta: float, initial_values: Sequence[int | float]) -> None:
         """
         Initialize the QSoftmaxSimulator with learning rate, beta parameter, and initial Q-values.
 
@@ -28,13 +28,13 @@ class QSoftmaxSimulator(BaseSimulator):
             Learning rate.
         beta : float
             Temperature parameter for the softmax function.
-        initial_values : ndarray
+        initial_values : Sequence[int, float]
             Initial Q-values for each action.
         """
         super().__init__()
         self.lr = lr
         self.beta = beta
-        self.q_values = np.array(initial_values)
+        self.q_values = np.array(initial_values, dtype=float)
 
     def make_choice(self) -> int:
         """
