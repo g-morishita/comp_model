@@ -5,11 +5,29 @@ from scipy.optimize import minimize
 
 
 def is_iterable(obj):
+    """Check if a variable is interable or not"""
     try:
         iter(obj)
         return True
     except TypeError:
         return False
+
+
+def check_params_type(param_type_pairs: dict) -> None:
+    """
+    Check if parameters are compatible with given types.
+
+    Parameters
+    ----------
+    param_type_pairs : dict
+        A dictionary to keep pairs of a parameter and its expected type.
+
+    Returns
+    -------
+    """
+    for param, type in param_type_pairs.items():
+        if not isinstance(param, type):
+            raise ValueError(f"{param} should be inherited from {type} class. {param.__class__.__name__} is given.")
 
 
 def read_options(allowed_keywords: set, **kwargs: dict) -> dict:

@@ -3,6 +3,8 @@ from warnings import warn
 
 from ..bandit_instance.instance import Bandit
 from ..individual_bandit_model.simulator.base import BaseSimulator
+from ..lib.utility import check_params_type
+from ..social_bandit_model.estimator.base import BaseEstimator
 
 
 class Generator:
@@ -42,25 +44,7 @@ class Generator:
         bandit_instance : Bandit
             The bandit task to get rewards from based on choices.
         """
-        if not isinstance(simulator, BaseSimulator):
-            raise ValueError(
-                f"A simulator should be inherited from BaseSimulator class "
-                f'from "simulator" package. {simulator.__class__.__name__} is given.'
-            )
-        if not isinstance(partner, BaseSimulator):
-            raise ValueError(
-                f"A partner should be inherited from BaseSimulator class "
-                f'from "simulator" package. {simulator.__class__.__name__} is given.'
-            )
-        if not isinstance(bandit_instance, Bandit):
-            raise ValueError(
-                f"bandit_task should be inherited Bandit class {bandit_instance.__class__.__name__} is given."
-            )
-
-        if len(simulator.q_values) != len(bandit_instance.arms):
-            raise ValueError(
-                "The number of values and the number of choices must match."
-            )
+        check_params_type({simulator: BaseSimulator, partner: BaseSimulator, bandit_instance: Bandit})
 
         self.simulator = None
         self.partner = None
@@ -71,6 +55,7 @@ class Generator:
         self.original_partner = copy.deepcopy(partner)
         self.bandit_instance = bandit_instance
         self.reset()
+
     def simulate(self, n_trials: int) -> None:
         """
         Simulate a given number of trials in the bandit environment.
@@ -114,3 +99,22 @@ class Generator:
         self.history = {"your_choices": [], "your_rewards": [], "partner_choices": [], "partner_rewards": []}
         self.done_simulation = False
         self.total_trials = 0
+
+
+class ParameterRecovery:
+
+    def __init__(self, simulator: BaseSimulator, estimator: BaseEstimator, partner: BaseSimulator, bandit_instance: Bandit) -> None:
+        check_params_type({simulator: BaseSimulator,
+                           estimator: BaseEstimator,
+                           partner: BaseSimulator,
+                           bandit_instance: Bandit})
+
+        self.estimator = estimator
+        self.generator = Generator(simulator, partner, bandit_instance)
+
+    def simulate(self, n_trials: int) -> None:
+        self.generator.simulate(n_trials)
+
+    def fit(self, **kwargs):
+        num_choices = len(self.generator.bandit_instance.arms)
+        self.estimator.fit(num_choices, **self.generator.history)
