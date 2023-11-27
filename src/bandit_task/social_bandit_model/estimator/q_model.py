@@ -23,12 +23,12 @@ class QSotfmaxMLEWithoutYourReward(MLEstimator):
 
         # Initialize Q-values matrix with zeros
         Q = np.zeros((len(self.your_choices), self.num_choices))
-        n_trials =  len(self.your_choices)
+        n_trials = len(self.your_choices)
 
         # For each trial, calculate delta and update Q-values
         for t in range(1, n_trials):
-            current_partner_choice = self.partner_choices[t]  # Choice made at time t
-            current_partner_reward = self.partner_rewards[t]  # Reward received at time t
+            current_partner_choice = self.partner_choices[t-1]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[t-1]  # Reward received at time t
             delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
 
             # Q-value update
@@ -37,7 +37,7 @@ class QSotfmaxMLEWithoutYourReward(MLEstimator):
             # For actions not taken, Q-values remain the same
             for other_choice in range(self.num_choices):
                 if other_choice != current_partner_choice:
-                    Q[t, other_choice] = Q[t - 1, current_partner_choice]
+                    Q[t, other_choice] = Q[t - 1, other_choice]
 
         # Calculate choice probabilities using softmax function
         choice_prob = softmax(beta * Q, axis=1)
