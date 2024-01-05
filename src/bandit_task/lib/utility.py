@@ -26,8 +26,16 @@ def check_params_type(param_type_pairs: dict) -> None:
     -------
     """
     for param, type in param_type_pairs.items():
-        if not isinstance(param, type):
-            raise ValueError(f"{param} should be inherited from {type} class. {param.__class__.__name__} is given.")
+        if not is_iterable(type):
+            type = [type]
+
+        match = False
+        for t in type:
+            if isinstance(param, t):
+                match = True
+
+        if not match:
+            raise ValueError(f"{param} should be inherited from {type} classes. {param.__class__.__name__} is given.")
 
 
 def read_options(allowed_keywords: set, **kwargs: dict) -> dict:

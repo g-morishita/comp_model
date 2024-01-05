@@ -47,6 +47,10 @@ class BaseEstimator(ABC):
         """
         pass
 
+    def calculate_ic(self) -> float:
+        """Calculate information criteria"""
+        raise NotImplementedError
+
 
 class MLEstimator(BaseEstimator):
     """
@@ -316,8 +320,8 @@ class HierarchicalEstimator:
     ) -> NDArrayNumber:
         pass
 
-    def calculate_waic(self):
-        """Calculate WAIC"""
+    def calculate_ic(self) -> float:
+        """Calculate WAIC. The lower, the better"""
         log_lik = self.posterior_sample.stan_variable("log_lik")
         lppd = np.log(np.exp(log_lik).mean(axis=0)).sum()
         penalty = np.sum(np.var(log_lik, axis=0))

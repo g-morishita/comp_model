@@ -95,6 +95,7 @@ def calculate_average_correct_rates(
         raise ValueError(f"`reward_prob.shape[0]` should match the number of sessions.")
 
     # TODO: add comments
+    # There might be a bug
     if reward_prob.ndim == 2:
         reward_prob = reward_prob.reshape(n_sessions, 1, n_choices)
         reward_prob = np.tile(reward_prob, (1, n_trials, 1))

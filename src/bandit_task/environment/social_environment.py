@@ -6,6 +6,7 @@ from ..bandit_instance.instance import Bandit
 from ..individual_bandit_model.simulator.base import BaseSimulator
 from ..lib.utility import check_params_type
 from ..social_bandit_model.estimator.base import BaseEstimator, HierarchicalEstimator
+from ..social_bandit_model.simulator.action_model import ActionSoftmaxSimulator
 
 
 class Generator:
@@ -53,7 +54,7 @@ class Generator:
         bandit_instance : Bandit
             The bandit task to get rewards from based on choices.
         """
-        check_params_type({simulator: BaseSimulator, partner: BaseSimulator, bandit_instance: Bandit})
+        check_params_type({simulator: [BaseSimulator, ActionSoftmaxSimulator], partner: BaseSimulator, bandit_instance: Bandit})
 
         self.simulator = None
         self.partner = None
@@ -88,7 +89,11 @@ class Generator:
             self.history["partner_rewards"].append(partner_reward)
 
             self.partner.learn(partner_choice, partner_reward)
-            self.simulator.learn(partner_choice, partner_reward)
+
+            if isinstance(self.simulator, BaseSimulator):
+                self.simulator.learn(partner_choice, partner_reward)
+            elif isinstance(self.simulator, ActionSoftmaxSimulator):
+                self.simulator.learn(partner_choice)
 
             # Make your own choice
             your_choice = self.simulator.make_choice()
@@ -133,7 +138,7 @@ class HierarchicalParameterRecovery:
     def __init__(
         self,
         estimator: HierarchicalEstimator,
-        simulators: Collection[BaseSimulator],
+        simulators: Collection[BaseSimulator | ActionSoftmaxSimulator],
         partners: Collection[BaseSimulator],
         bandit_instance: Bandit,
     ) -> None:
@@ -143,7 +148,7 @@ class HierarchicalParameterRecovery:
             raise ValueError(f"The length of `simulators` and `partners` must match.")
 
         for simulator, partner in zip(simulators, partners):
-            check_params_type({simulator: BaseSimulator, partner: BaseSimulator})
+            check_params_type({simulator: [BaseSimulator, ActionSoftmaxSimulator], partner: BaseSimulator})
 
         self.estimator = estimator
         self.generators = []
@@ -193,5 +198,3 @@ class HierarchicalParameterRecovery:
             "groups": []
         }
         self.done_simulation = False
-
-
