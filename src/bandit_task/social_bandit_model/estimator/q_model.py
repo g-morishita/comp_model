@@ -5,11 +5,11 @@ import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
 
-from .base import MLEstimator, HierarchicalEstimator
+from .base import MLEstimator, HierarchicalEstimator, BayesianEstimator
 from ...type import NDArrayNumber
 
 
-class QSotfmaxMLEWithoutYourReward(MLEstimator):
+class QSotfmaxMLEWithoutOwnReward(MLEstimator):
     def __init__(self) -> None:
         """
         This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
@@ -66,7 +66,24 @@ class QSotfmaxMLEWithoutYourReward(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
-class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
+class BayesianQSoftmaxWithOwnReward(BayesianEstimator):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(module_path, "stan_files/social_q_learning.stan")
+
+    def fit(
+        self,
+        num_choices: int,
+        your_choices: Sequence[int | float],
+        your_rewards: Sequence[int | float] | None,
+        partner_choices: Sequence[int | float],
+        partner_rewards: Sequence[int | float] | None,
+    ) -> None:
+        pass
+
+
+class HierarchicalBayesianQSoftmaxWithoutOwnReward(HierarchicalEstimator):
     def __init__(self):
         super().__init__()
         module_path = os.path.dirname(__file__)
