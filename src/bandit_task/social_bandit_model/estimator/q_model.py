@@ -70,17 +70,32 @@ class BayesianQSoftmaxWithOwnReward(BayesianEstimator):
     def __init__(self):
         super().__init__()
         module_path = os.path.dirname(__file__)
-        self.stan_file = os.path.join(module_path, "stan_files/social_q_learning.stan")
+        self.stan_file = os.path.join(module_path, "stan_files/social_q_learning_with_own_rewards.stan")
 
-    def fit(
+    def convert_stan_data(
         self,
         num_choices: int,
         your_choices: Sequence[int | float],
         your_rewards: Sequence[int | float] | None,
         partner_choices: Sequence[int | float],
         partner_rewards: Sequence[int | float] | None,
-    ) -> None:
-        pass
+    ) -> dict:
+        n_trials = len(your_choices)
+        your_choices = np.array(your_choices)
+        partner_choices = np.array(partner_choices)
+        your_rewards = np.array(your_rewards)
+        partner_rewards = np.array(partner_rewards)
+
+        stan_data = {
+            "T": n_trials,
+            "NC": num_choices,
+            "C": (your_choices + 1).astype(int).tolist(),
+            "R": your_rewards.astype(int).tolist(),
+            "PC": (partner_choices + 1).astype(int).tolist(),
+            "PR": partner_rewards.astype(int).tolist(),
+        }
+
+        return stan_data
 
 
 class HierarchicalBayesianQSoftmaxWithoutOwnReward(HierarchicalEstimator):
@@ -157,7 +172,7 @@ class HierarchicalBayesianQSoftmaxWithOwnReward(HierarchicalEstimator):
         partner_choices: NDArrayNumber,
         partner_rewards: NDArrayNumber | None,
         groups: NDArrayNumber,
-    ) -> NDArrayNumber:
+    ) -> dict:
         uniq_groups = np.unique(groups)
         n_uniq_groups = uniq_groups.shape[0]
         # Assume every group has the same number of sessions.
@@ -198,4 +213,5 @@ class HierarchicalBayesianQSoftmaxWithOwnReward(HierarchicalEstimator):
             "PC": (reshaped_partner_choices + 1).astype(int).tolist(),
             "PR": reshaped_partner_rewards.astype(int).tolist(),
         }
+
         return stan_data
