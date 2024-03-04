@@ -2,3 +2,5 @@
 src/bandit_task.egg-info
 **/__pycache__
 **/.ipynb_checkpoints
+*.hpp
+.DS_Store
