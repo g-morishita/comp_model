@@ -210,7 +210,7 @@ class BayesianEstimator:
             your_rewards: NDArrayNumber | None,
             partner_choices: NDArrayNumber,
             partner_rewards: NDArrayNumber | None,
-    ) -> NDArrayNumber:
+    ) -> dict:
         pass
 
 
