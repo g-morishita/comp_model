@@ -9,26 +9,25 @@ data {
   array[N,S,T] int PR; // Partner's rewards
 }
 
-
 parameters {
-  vector[N] alpha_own_nd; //
-  vector[N] alpha_partner_nd; //
-  vector[N] beta_nd; //
+  vector[N] alpha_own_nd;
+  vector[N] alpha_partner_nd;
+  vector[N] beta_nd;
 
   // Population level parameters of mean and variance of
   // learning rate and inverse temperature
   real mu_alpha_own_nd;
   real sigma_alpha_own_nd;
-   real mu_alpha_partner_nd;
+  real mu_alpha_partner_nd;
   real sigma_alpha_partner_nd;
   real mu_beta_nd;
   real sigma_beta_nd;
 }
 
 transformed parameters {
-  vector<lower=0,upper=1.0>[N] alpha_own; // transformed learning rate for your own experience [0, 1]
-  vector<lower=0,upper=1.0>[N] alpha_partner; // transformed learning rate for partner's experience [0, 1]
-  vector<lower=0>[N] beta; // transformed inverse temperature [0, inf)
+  vector<lower=0,upper=1.0>[N] alpha_own;
+  vector<lower=0,upper=1.0>[N] alpha_partner;
+  vector<lower=0>[N] beta;
 
   // Transform the parameters
   alpha_own = inv_logit(mu_alpha_own_nd + exp(sigma_alpha_own_nd) * alpha_own_nd);
@@ -39,17 +38,17 @@ transformed parameters {
 model {
   vector[NC] Q; // Q values
 
-  alpha_own_nd ~ normal(0,1); // learning rate for your own experience (before transformation)
-  alpha_partner_nd ~ normal(0, 1) // learning rate for partner's experience (before transformation)
-  beta_nd ~ normal(0,1); // inverse temperature (before transformation)
+  alpha_own_nd ~ normal(0, 1); // learning rate for your own experience (before transformation)
+  alpha_partner_nd ~ normal(0, 1); // learning rate for partner's experience (before transformation)
+  beta_nd ~ normal(0, 1); // inverse temperature (before transformation)
   mu_alpha_own_nd ~ normal(0, 1);
   sigma_alpha_own_nd ~ normal(0, 1);
-   mu_alpha_partner_nd ~ normal(0, 1);
+  mu_alpha_partner_nd ~ normal(0, 1);
   sigma_alpha_partner_nd ~ normal(0, 1);
   mu_beta_nd ~ normal(0, 1);
   sigma_beta_nd ~ normal(0, 1);
 
-  for ( i in 1:N ) { // participant
+  for (i in 1:N) { // participant
     for (j in 1:S) { // session
 
       // Initialize Q values
@@ -57,7 +56,7 @@ model {
         Q[k] = 0.5;
       }
 
-      for ( t in 1:T ) { // trial
+      for (t in 1:T) { // trial
         // Update Q value according to partner's choice and reward.
         Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha_partner[i] * (PR[i, j, t] - Q[PC[i, j, t]]);
 
@@ -88,14 +87,14 @@ generated quantities {
   mu_beta = exp(mu_beta_nd);
 
   trial_count = 0;
-  for ( i in 1:N ) { // participant
+  for (i in 1:N) { // participant
     for (j in 1:S) { // session
       // Initialize Q values
       for (k in 1:NC) {
         Q[k] = 0.5;
       }
 
-      for ( t in 1:T ) { // trials
+      for (t in 1:T) { // trials
         // Update Q value according to the partner's choice and reward.
         Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha_partner[i] * (PR[i, j, t] - Q[PC[i, j, t]]);
 
