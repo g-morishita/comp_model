@@ -212,7 +212,7 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
                     Q[t, other_choice] = Q[t - 1, other_choice]
 
         # Calculate choice probabilities using softmax function
-        values = beta * Q + coef_info_bonus * 1 / np.sqrt(n_chosen)
+        values = beta * Q + coef_info_bonus * 1 / n_chosen
         choice_prob = softmax(values, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!

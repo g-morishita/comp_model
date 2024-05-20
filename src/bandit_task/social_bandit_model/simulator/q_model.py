@@ -81,7 +81,7 @@ class QSoftmaxInfoBonusSimulator(QSoftmaxSimulator):
         # Calculate the probability of each action using the softmax function.
         values = (
             self.q_values * self.beta
-            + 1 / np.sqrt(self.n_chosen) * self.coef_info_bonus
+            + 1 / self.n_chosen * self.coef_info_bonus
         )
         choice_prob = softmax(values)
         # Randomly select an action based on its probability.
