@@ -225,7 +225,7 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         init_lr = np.random.beta(2, 2)
         init_beta = np.random.gamma(2, 0.333)
         init_coef_bonus_info = np.random.uniform(0, 5)
-        return np.array([init_lr, init_beta])
+        return np.array([init_lr, init_beta, init_coef_bonus_info])
 
     def constraints(self):
         A = np.eye(3)
