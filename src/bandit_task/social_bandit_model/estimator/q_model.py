@@ -418,7 +418,9 @@ class HierarchicalBayesianQSoftmaxWithOwnRewardSameLr(HierarchicalEstimator):
         return stan_data
 
 
-class HierarchicalBayesianQSoftmaxInfoBonusWithOwnRewardSameLr(HierarchicalBayesianQSoftmaxWithOwnRewardSameLr):
+class HierarchicalBayesianQSoftmaxInfoBonusWithOwnRewardSameLr(
+    HierarchicalBayesianQSoftmaxWithOwnRewardSameLr
+):
     def __init__(self):
         super().__init__()
         module_path = os.path.dirname(__file__)
