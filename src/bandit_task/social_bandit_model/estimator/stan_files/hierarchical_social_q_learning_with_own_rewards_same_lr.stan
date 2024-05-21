@@ -34,11 +34,11 @@ model {
   vector[NC] Q; // Q values
 
   alpha_nd ~ normal(0, 1); // learning rate for your own experience (before transformation)
-  beta_nd ~ normal(0, 1); // inverse temperature (before transformation)
+  beta_nd ~ normal(0, 5); // inverse temperature (before transformation)
   mu_alpha_nd ~ normal(0, 1);
   sigma_alpha_nd ~ normal(0, 1);
-  mu_beta_nd ~ normal(0, 1);
-  sigma_beta_nd ~ normal(0, 1);
+  mu_beta_nd ~ normal(0, 5);
+  sigma_beta_nd ~ normal(0, 5);
 
   for (i in 1:N) { // participant
     for (j in 1:S) { // session
@@ -86,6 +86,7 @@ generated quantities {
 
       for (t in 1:T) { // trials
         // Add the likelihood according to your own choice
+        trial_count = trial_count + 1;
         log_lik[trial_count] = log_softmax(beta[i] * Q)[C[i, j, t]];
 
         // Update Q value according to your own choice and reward.
@@ -93,8 +94,6 @@ generated quantities {
 
         // Update Q value according to the partner's choice and reward.
         Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t]]);
-
-        trial_count = trial_count + 1;
       }
     }
   }
