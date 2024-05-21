@@ -86,7 +86,6 @@ generated quantities {
 
       for (t in 1:T) { // trials
         // Add the likelihood according to your own choice
-        trial_count = trial_count + 1;
         log_lik[trial_count] = log_softmax(beta[i] * Q)[C[i, j, t]];
 
         // Update Q value according to your own choice and reward.
@@ -94,6 +93,8 @@ generated quantities {
 
         // Update Q value according to the partner's choice and reward.
         Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t]]);
+
+        trial_count = trial_count + 1;
       }
     }
   }
