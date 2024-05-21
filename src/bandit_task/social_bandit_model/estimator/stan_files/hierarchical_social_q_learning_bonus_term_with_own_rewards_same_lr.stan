@@ -40,13 +40,13 @@ model {
   vector[NC] n_choices; // the number of chosen choices
 
   alpha_nd ~ normal(0, 1); // learning rate for your own experience (before transformation)
-  bonus_coef_nd ~ normal(0, 1) // the bonus coefficient (before toransformation)
-  beta_nd ~ normal(0, 1); // inverse temperature (before transformation)
+  bonus_coef_nd ~ normal(0, 5) // the bonus coefficient (before transformation)
+  beta_nd ~ normal(0, 5); // inverse temperature (before transformation)
   mu_alpha_nd ~ normal(0, 1);
   sigma_alpha_nd ~ normal(0, 1);
-  mu_bonus_coef_nd ~ normal(0, 1);
+  mu_bonus_coef_nd ~ normal(0, 5);
   sigma_bonus_coef_nd ~ normal(0, 1);
-  mu_beta_nd ~ normal(0, 1);
+  mu_beta_nd ~ normal(0, 5);
   sigma_beta_nd ~ normal(0, 1);
 
   for (i in 1:N) { // participant
