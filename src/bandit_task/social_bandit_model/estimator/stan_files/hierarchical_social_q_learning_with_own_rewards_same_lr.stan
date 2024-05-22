@@ -40,6 +40,10 @@ model {
   // mu_beta_nd ~ normal(0, 5);
   // sigma_beta_nd ~ normal(0, 1);
 
+  print(C);
+  print(R);
+  print(PC);
+  print(PR);
   for (i in 1:N) { // participant
     for (j in 1:S) { // session
 
