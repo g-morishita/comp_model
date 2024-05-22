@@ -34,7 +34,7 @@ model {
   vector[NC] Q; // Q values
 
   alpha_nd ~ normal(0, 1); // learning rate for your own experience (before transformation)
-  beta_nd ~ normal(0, 5); // inverse temperature (before transformation)
+  beta_nd ~ normal(0, 2); // inverse temperature (before transformation)
   // mu_alpha_nd ~ normal(0, 1);
   // sigma_alpha_nd ~ normal(0, 1);
   // mu_beta_nd ~ normal(0, 5);
