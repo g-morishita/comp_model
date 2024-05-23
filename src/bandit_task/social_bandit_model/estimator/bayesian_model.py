@@ -1,6 +1,3 @@
-import os
-from typing import Sequence
-
 import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
@@ -9,7 +6,7 @@ from .base import MLEstimator, HierarchicalEstimator, BayesianEstimator
 from ...type import NDArrayNumber
 
 
-class BetaModelSoftmaxWithOwnReward(MLEstimator):
+class BetaModelSoftmaxWithOwnRewardFixedIncrement(MLEstimator):
     def __init__(self):
         super().__init__()
 
@@ -17,14 +14,31 @@ class BetaModelSoftmaxWithOwnReward(MLEstimator):
         beta = params[0]
 
         n_trials = len(self.your_choices)
-        beta_params = np.ones((n_trials, 2, self.num_choices))
+        model_params = np.ones((n_trials, self.num_choices, 2))
 
         for t in range(1, n_trials):
-            beta_params[t, self.your_rewards[t - 1], self.your_choices[t - 1]] += 1
+            model_params[t, self.your_choices[t - 1], self.your_rewards[t - 1]] = (
+                model_params[t - 1, self.your_choices[t - 1], self.your_rewards[t - 1]]
+                + 1
+            )
+            model_params[
+                t, self.your_choices[t - 1], 1 - self.your_rewards[t - 1]
+            ] = model_params[
+                t - 1, self.your_choices[t - 1], 1 - self.your_rewards[t - 1]
+            ]
 
-        values_table = beta_params[:, 1, :] / beta_params.sum(axis=1)
+            # For actions not taken, the parameter values remain the same
+            for a in range(self.num_choices):
+                if a != self.your_choices[t - 1]:
+                    model_params[t, a, :] = model_params[t - 1, a, :]
+
+            model_params[
+                t, self.partner_choices[t - 1], self.partner_rewards[t - 1]
+            ] += 1
+
         # Calculate choice probabilities using softmax function
-        choice_prob = softmax(beta * values_table, axis=1)
+        values = model_params[:, :, 1] / model_params.sum(axis=2)
+        choice_prob = softmax(beta * values, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
         chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
