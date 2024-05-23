@@ -49,3 +49,51 @@ class BetaModelSoftmaxMLEWithFixedIncrement(MLEstimator):
         lb = np.array([0])
         ub = [np.inf]
         return LinearConstraint(A, lb, ub)
+
+
+class BetaModelInfoBonusSoftmaxMLEWithFixedIncrement(MLEstimator):
+    def __init__(self):
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        beta, coef_info_bonus = params
+
+        # Initialize the parameters with ones
+        model_params = np.ones((len(self.choices), self.num_choices, 2))
+
+        for t in range(1, len(self.choices)):
+            model_params[t, self.choices[t - 1], self.rewards[t - 1]] = (
+                model_params[t - 1, self.choices[t - 1], self.rewards[t - 1]] + 1
+            )
+            model_params[
+                t, self.choices[t - 1], 1 - self.rewards[t - 1]
+            ] = model_params[t - 1, self.choices[t - 1], 1 - self.rewards[t - 1]]
+
+            # For actions not taken, the parameter values remain the same
+            for a in range(self.num_choices):
+                if a != self.choices[t - 1]:
+                    model_params[t, a, :] = model_params[t - 1, a, :]
+
+        # Calculate choice probabilities using softmax function
+        sum_params = model_params.sum(axis=2)
+        prod_params = model_params.prod(axis=2)
+        variance = prod_params / ((sum_params**2) * (sum_params + 1))
+        values = model_params[:, :, 1] / sum_params + coef_info_bonus * np.std(variance)
+        choice_prob = softmax(beta * values, axis=1)
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(len(self.choices)), self.choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> NDArrayNumber:
+        init_beta = np.random.gamma(2, 0.3333)
+        init_coef_info_bonus = np.random.gamma(2, 0.3333)
+        return np.array([init_beta, init_coef_info_bonus])
+
+    def constraints(self):
+        A = np.eye(2)
+        lb = np.array([0, 0])
+        ub = [np.inf, np.inf]
+        return LinearConstraint(A, lb, ub)
