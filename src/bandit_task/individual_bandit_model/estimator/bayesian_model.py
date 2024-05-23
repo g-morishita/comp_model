@@ -18,12 +18,17 @@ class BetaModelSoftmaxMLEWithFixedIncrement(MLEstimator):
         model_params = np.ones((len(self.choices), self.num_choices, 2))
 
         for t in range(1, len(self.choices)):
-            model_params[t, self.choices[t - 1], self.rewards[t - 1]] += 1
+            model_params[t, self.choices[t - 1], self.rewards[t - 1]] = (
+                model_params[t - 1, self.choices[t - 1], self.rewards[t - 1]] + 1
+            )
+            model_params[
+                t, self.choices[t - 1], 1 - self.rewards[t - 1]
+            ] = model_params[t - 1, self.choices[t - 1], 1 - self.rewards[t - 1]]
 
             # For actions not taken, the parameter values remain the same
             for a in range(self.num_choices):
                 if a != self.choices[t - 1]:
-                    model_params[t, a, :] += model_params[t - 1, a, :]
+                    model_params[t, a, :] = model_params[t - 1, a, :]
 
         # Calculate choice probabilities using softmax function
         values = model_params[:, :, 1] / model_params.sum(axis=2)
