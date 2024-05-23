@@ -154,7 +154,7 @@ class QSotfmaxMLEWithOwnReward(MLEstimator):
             current_partner_reward = self.partner_rewards[
                 t - 1
             ]  # Reward received at time t
-            delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
 
             # Q-value update with observed experience
             Q[t, current_partner_choice] = (
@@ -273,7 +273,7 @@ class HierarchicalBayesianQSoftmaxWithoutOwnReward(HierarchicalEstimator):
         return stan_data
 
 
-class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
+class QSotfmaxInfoBonusMLEWithOwnRewardSameLr(MLEstimator):
     def __init__(self) -> None:
         """
         This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
@@ -318,7 +318,7 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
             current_partner_reward = self.partner_rewards[
                 t - 1
             ]  # Reward received at time t
-            delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
             # Q-value update
             Q[t, current_partner_choice] = Q[t, current_partner_choice] + lr * delta_t
             # increase the number of chosen choices
