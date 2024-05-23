@@ -22,6 +22,7 @@ class BetaModelSoftMax(BaseSimulator):
 
 
 class BetaModelInfoBonusSoftmax(BetaModelSoftMax):
+    # coef_info_bonus is not recovered.
     def __init__(self, n_choices, lr, beta, coef_info_bonus):
         super().__init__(n_choices, lr, beta)
         self.coef_info_bonus = coef_info_bonus
