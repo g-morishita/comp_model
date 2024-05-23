@@ -12,7 +12,6 @@ class BetaModelSoftMax(BaseSimulator):
 
     def make_choice(self):
         values = self.params[:, 1] / self.params.sum(axis=1)
-        print(values)
         # Calculate the probability of each action using the softmax function.
         choice_prob = softmax(values * self.beta)
         # Randomly select an action based on its probability.
