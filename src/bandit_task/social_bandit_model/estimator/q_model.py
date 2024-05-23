@@ -306,10 +306,6 @@ class QSotfmaxInfoBonusMLEWithOwnRewardSameLr(MLEstimator):
             for other_choice in range(self.num_choices):
                 if other_choice != current_your_choice:
                     n_chosen[t, other_choice] = n_chosen[t - 1, other_choice]
-
-            # For actions not taken, Q-values remain the same
-            for other_choice in range(self.num_choices):
-                if other_choice != current_your_choice:
                     Q[t, other_choice] = Q[t - 1, other_choice]
 
             current_partner_choice = self.partner_choices[
