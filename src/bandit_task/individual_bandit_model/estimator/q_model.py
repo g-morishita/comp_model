@@ -82,7 +82,9 @@ class ForgetfulQSoftmaxMLE(MLEstimator):
             # For actions not taken, Q-values remain the same
             for a in range(self.num_choices):
                 if a != a_t:
-                    Q[t, a] = Q[0, a] + (1 - forgetfulness) * Q[t - 1, a]
+                    Q[t, a] = (
+                        forgetfulness * Q[0, a] + (1 - forgetfulness) * Q[t - 1, a]
+                    )
 
         # Calculate choice probabilities using softmax function
         choice_prob = softmax(beta * Q, axis=1)

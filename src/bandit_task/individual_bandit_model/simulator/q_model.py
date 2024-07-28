@@ -129,7 +129,7 @@ class ForgetfulQSoftmaxSimulator(QSoftmaxSimulator):
         for action in range(len(self.q_values)):
             if action != choice:
                 self.q_values[action] = (
-                    self.initial_values[action]
+                    self.forgetfulness * self.initial_values[action]
                     + (1 - self.forgetfulness) * self.q_values[action]
                 )
 
