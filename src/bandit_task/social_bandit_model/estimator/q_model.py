@@ -421,12 +421,12 @@ class QSotfmaxInfoBonusMLEWithOwnRewardSameLr(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
-class ForgetfulQSoftmaxMLEWithOwnRewardDiffLrSameFr(MLEstimator):
+class ForgetfulQSoftmaxMLEWithOwnReward(MLEstimator):
     def __init__(self):
         super().__init__()
 
     def neg_ll(self, params: Sequence[int | float]) -> float:
-        lr_own, lr_partner, beta, forgetfulness = params
+        lr_own, lr_partner, beta, forgetfulness_own, forgetfulness_partner = params
 
         # Initialize Q-values matrix with 1/2
         Q = np.ones((len(self.your_choices), self.num_choices)) / 2
@@ -444,8 +444,8 @@ class ForgetfulQSoftmaxMLEWithOwnRewardDiffLrSameFr(MLEstimator):
             for other_choice in range(self.num_choices):
                 if other_choice != current_your_choice:
                     Q[t, other_choice] = (
-                        forgetfulness * Q[0, other_choice]
-                        + (1 - forgetfulness) * Q[t - 1, other_choice]
+                        forgetfulness_own * Q[0, other_choice]
+                        + (1 - forgetfulness_own) * Q[t - 1, other_choice]
                     )
 
             current_partner_choice = self.partner_choices[
@@ -462,8 +462,8 @@ class ForgetfulQSoftmaxMLEWithOwnRewardDiffLrSameFr(MLEstimator):
             for other_choice in range(self.num_choices):
                 if other_choice != current_partner_choice:
                     Q[t, other_choice] = (
-                        forgetfulness * Q[0, other_choice]
-                        + (1 - forgetfulness) * Q[t, other_choice]
+                        forgetfulness_partner * Q[0, other_choice]
+                        + (1 - forgetfulness_partner) * Q[t, other_choice]
                     )
 
         # Calculate choice probabilities using softmax function
@@ -474,6 +474,97 @@ class ForgetfulQSoftmaxMLEWithOwnRewardDiffLrSameFr(MLEstimator):
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        init_forgetfulness_own = np.random.beta(2, 2)
+        init_forgetfulness_partner = np.random.beta(2, 2)
+        return np.array(
+            [
+                init_lr_own,
+                init_lr_partner,
+                init_beta,
+                init_forgetfulness_own,
+                init_forgetfulness_partner,
+            ]
+        )
+
+    def constraints(self):
+        A = np.eye(5)
+        lb = np.array([0, 0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class ForgetfulQSoftmaxMLEWithOwnRewardMatchedLrFr(MLEstimator):
+    def __init__(self):
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, lr_partner, beta = params
+        forgetfulness_own = lr_own
+        forgetfulness_partner = lr_partner
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = self.your_choices[t - 1]
+            current_your_reward = self.your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr_own * delta_t
+
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    Q[t, other_choice] = (
+                        forgetfulness_own * Q[0, other_choice]
+                        + (1 - forgetfulness_own) * Q[t - 1, other_choice]
+                    )
+
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t, current_partner_choice] + lr_partner * delta_t
+            )
+            for other_choice in range(self.num_choices):
+                if other_choice != current_partner_choice:
+                    Q[t, other_choice] = (
+                        forgetfulness_partner * Q[0, other_choice]
+                        + (1 - forgetfulness_partner) * Q[t, other_choice]
+                    )
+
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * Q, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        return np.array([init_lr_own, init_lr_partner, init_beta])
+
+    def constraints(self):
+        A = np.eye(3)
+        lb = np.array([0, 0, 0])
+        ub = [1, 1, np.inf]
+        return LinearConstraint(A, lb, ub)
 
 
 class ForgetfulQSoftmaxMLEWithOwnRewardDiffLrSameFr(MLEstimator):
@@ -541,6 +632,75 @@ class ForgetfulQSoftmaxMLEWithOwnRewardDiffLrSameFr(MLEstimator):
         A = np.eye(4)
         lb = np.array([0, 0, 0, 0])
         ub = [1, 1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class ForgetfulQSoftmaxMLEWithOwnRewardSameLrSameFr(MLEstimator):
+    def __init__(self):
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, beta, forgetfulness_own = params
+        lr_partner = lr_own
+        forgetfulness_partner = forgetfulness_own
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = self.your_choices[t - 1]
+            current_your_reward = self.your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr_own * delta_t
+
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    Q[t, other_choice] = (
+                        forgetfulness_own * Q[0, other_choice]
+                        + (1 - forgetfulness_own) * Q[t - 1, other_choice]
+                    )
+
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t, current_partner_choice] + lr_partner * delta_t
+            )
+            for other_choice in range(self.num_choices):
+                if other_choice != current_partner_choice:
+                    Q[t, other_choice] = (
+                        forgetfulness_partner * Q[0, other_choice]
+                        + (1 - forgetfulness_partner) * Q[t, other_choice]
+                    )
+
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * Q, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_forgetfulness = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        return np.array([init_lr_own, init_beta, init_forgetfulness])
+
+    def constraints(self):
+        A = np.eye(3)
+        lb = np.array([0, 0, 0])
+        ub = [1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -752,7 +912,29 @@ class HierarchicalBayesianQSoftmaxWithOwnReward(HierarchicalEstimator):
 class HierarchicalBayesianQSoftmaxWithOwnRewardSameLr(
     HierarchicalBayesianQSoftmaxWithOwnReward
 ):
-    def __init__(self):
+    def __init__(self, mode):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        file_name = (
+            "stan_files/hierarchical_social_forgetful_q_learning_with_own_rewards.stan"
+        )
+        if mode == "sameLRsameFR":
+            file_name = "stan_files/hierarchical_social_forgetful_q_learning_with_own_rewards_same_lr_same_fr.stan"
+        elif mode == "MatchedLRFR":
+            file_name = "stan_files/hierarchical_social_forgetful_q_learning_with_own_rewards_matched_lr_fr.stan"
+        elif mode == "SameLRFR":
+            file_name = "stan_files/hierarchical_social_forgetful_q_learning_with_own_rewards_same_lr_fr.stan"
+        self.stan_file = os.path.join(
+            module_path,
+            file_name,
+        )
+        self.group2ind = None
+
+
+class HierarchicalBayesianForgetfulQSoftmax(HierarchicalBayesianQSoftmaxWithOwnReward):
+    def __init__(
+        self,
+    ):
         super().__init__()
         module_path = os.path.dirname(__file__)
         self.stan_file = os.path.join(
