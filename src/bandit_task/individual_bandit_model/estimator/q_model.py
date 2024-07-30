@@ -151,13 +151,13 @@ class StickyQSotfmaxMLE(MLEstimator):
     def initialize_params(self) -> np.ndarray:
         init_lr = np.random.beta(2, 2)
         init_beta = np.random.gamma(2, 0.333)
-        init_s = np.random.uniform(-10, 10)
+        init_s = np.random.beta(2, 2)
         return np.array([init_lr, init_beta, init_s])
 
     def constraints(self):
         A = np.eye(3)
-        lb = np.array([0, 0, -10])
-        ub = [1, np.inf, 10]
+        lb = np.array([0, 0, 0])
+        ub = [1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
 
 
