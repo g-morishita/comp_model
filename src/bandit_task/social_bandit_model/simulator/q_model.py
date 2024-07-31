@@ -118,6 +118,43 @@ class QSoftmaxInfoBonusSimulator(QSoftmaxSimulator):
         self.n_chosen[choice] += 1
 
 
+class StickyQSoftmaxSimulator(QSoftmaxSimulator):
+    def __init__(
+        self,
+        lr_own,
+        lr_partner,
+        beta,
+        stickiness_own,
+        stickiness_partner,
+        initial_values,
+    ):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.stickiness_own = stickiness_own
+        self.stickiness_partner = stickiness_partner
+        self.previous_own_choice = None
+        self.previous_partner_choice = None
+
+    def make_choice(self) -> int:
+        # Calculate the probability of each action using the softmax function.
+        values = self.q_values.copy()
+        if self.previous_own_choice is not None:
+            values[self.previous_own_choice] += self.stickiness_own
+        if self.previous_partner_choice is not None:
+            values[self.previous_own_choice] += self.stickiness_partner
+
+        choice_prob = softmax(values * self.beta)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
+
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        self.previous_own_choice = choice
+        super().learn_from_own(choice, reward)
+
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        self.previous_partner_choice = choice
+        super().learn_from_partner(choice, reward)
+
+
 class QSoftmaxBonusWithStickinessSimulator(QSoftmaxSimulator):
     def __init__(
         self,

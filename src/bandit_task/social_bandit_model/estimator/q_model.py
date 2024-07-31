@@ -769,6 +769,268 @@ class ForgetfulQSoftmaxMLEWithOwnRewardSameLrFr(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
+class StickyYourChoiceQSotfmaxMLEWithOwnRewardWithSameLr(MLEstimator):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr, beta, s = params
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        # Stickiness
+        stickiness = np.zeros((len(self.your_choices), self.num_choices))
+        stickiness[np.arange(1, len(self.your_choices)), self.your_choices[:-1]] = s
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = self.your_choices[t - 1]
+            current_your_reward = self.your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr * delta_t
+
+            # For actions not taken, n_chosen remain the same
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    Q[t, other_choice] = Q[t - 1, other_choice]
+
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = Q[t, current_partner_choice] + lr * delta_t
+
+        # Calculate choice probabilities using softmax function
+        values = beta * (Q + stickiness)
+        choice_prob = softmax(values, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        stickiness = np.random.gamma(2, 0.333)
+        return np.array([init_lr, init_beta, stickiness])
+
+    def constraints(self):
+        A = np.eye(3)
+        lb = np.array([0, 0, 0])
+        ub = [1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class StickyYourChoiceQSotfmaxMLEWithOwnReward(MLEstimator):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, lr_partner, beta, s = params
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        # Stickiness
+        stickiness = np.zeros((len(self.your_choices), self.num_choices))
+        stickiness[np.arange(1, len(self.your_choices)), self.your_choices[:-1]] = s
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = self.your_choices[t - 1]
+            current_your_reward = self.your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr_own * delta_t
+
+            # For actions not taken, n_chosen remain the same
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    Q[t, other_choice] = Q[t - 1, other_choice]
+
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t, current_partner_choice] + lr_partner * delta_t
+            )
+
+        # Calculate choice probabilities using softmax function
+        values = beta * (Q + stickiness)
+        choice_prob = softmax(values, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        stickiness = np.random.gamma(2, 0.333)
+        return np.array([init_lr_own, init_lr_partner, init_beta, stickiness])
+
+    def constraints(self):
+        A = np.eye(4)
+        lb = np.array([0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class StickyPartnerChoiceQSotfmaxMLEWithOwnReward(MLEstimator):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, lr_partner, beta, s = params
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        # Stickiness
+        stickiness = np.zeros((len(self.partner_choices), self.num_choices))
+        stickiness[
+            np.arange(1, len(self.partner_choices)), self.partner_choices[:-1]
+        ] = s
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = self.your_choices[t - 1]
+            current_your_reward = self.your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr_own * delta_t
+
+            # For actions not taken, n_chosen remain the same
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    Q[t, other_choice] = Q[t - 1, other_choice]
+
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t, current_partner_choice] + lr_partner * delta_t
+            )
+
+        # Calculate choice probabilities using softmax function
+        values = beta * (Q + stickiness)
+        choice_prob = softmax(values, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        stickiness = np.random.gamma(2, 0.333)
+        return np.array([init_lr_own, init_lr_partner, init_beta, stickiness])
+
+    def constraints(self):
+        A = np.eye(4)
+        lb = np.array([0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class StickyQSotfmaxMLEWithOwnReward(MLEstimator):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, lr_partner, beta, s_own, s_partner = params
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        # Stickiness for your own choice
+        stickiness_own = np.zeros((len(self.your_choices), self.num_choices))
+        stickiness_own[
+            np.arange(1, len(self.your_choices)), self.partner_choices[:-1]
+        ] = s_own
+        # Stickiness for partner own choice
+        stickiness_partner = np.zeros((len(self.partner_choices), self.num_choices))
+        stickiness_partner[
+            np.arange(1, len(self.partner_choices)), self.partner_choices[:-1]
+        ] = s_partner
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = self.your_choices[t - 1]
+            current_your_reward = self.your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr_own * delta_t
+
+            # For actions not taken, n_chosen remain the same
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    Q[t, other_choice] = Q[t - 1, other_choice]
+
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t, current_partner_choice] + lr_partner * delta_t
+            )
+
+        # Calculate choice probabilities using softmax function
+        values = beta * (Q + stickiness_own + stickiness_partner)
+        choice_prob = softmax(values, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        stickiness = np.random.gamma(2, 0.333)
+        return np.array([init_lr_own, init_lr_partner, init_beta, stickiness])
+
+    def constraints(self):
+        A = np.eye(4)
+        lb = np.array([0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
 class StickyQSotfmaxInfoBonusMLEWithOwnRewardSameLrSameStickiness(MLEstimator):
     def __init__(self) -> None:
         """
