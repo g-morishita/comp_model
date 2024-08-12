@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class BaseSimulator(ABC):
     def __init__(self):
-        self.q_values = None
+        pass
 
     @abstractmethod
     def make_choice(self):

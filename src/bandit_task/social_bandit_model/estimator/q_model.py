@@ -1,279 +1,199 @@
-import os
-from typing import Sequence
-
 import numpy as np
-from scipy.optimize import LinearConstraint
 from scipy.special import softmax
-
-from .base import MLEstimator, HierarchicalEstimator, BayesianEstimator
-from ...type import NDArrayNumber
+from .base import BaseSimulator
 
 
-class QSotfmaxMLEWithoutOwnReward(MLEstimator):
-    def __init__(self) -> None:
+class QSoftmaxSimulator(BaseSimulator):
+    def __init__(self, lr_own, lr_partner, beta, initial_values):
+        self.lr_own = lr_own
+        self.lr_partner = lr_partner
+        self.beta = beta
+        self.q_values = np.array(initial_values, dtype=float)
+
+    def make_choice(self) -> int:
         """
-        This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
-        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
-        The free parameters are a learning rate `lr` and an inverse temperature `beta`.
+        Make a choice (i.e., select an action) based on the Q-values and the softmax policy.
+
+        Returns
+        -------
+        int
+            The index of the selected action.
         """
-        super().__init__()
+        # Calculate the probability of each action using the softmax function.
+        choice_prob = softmax(self.q_values * self.beta)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
-        lr, beta = params
-
-        # Initialize Q-values matrix with zeros
-        Q = np.zeros((len(self.your_choices), self.num_choices))
-        n_trials = len(self.your_choices)
-
-        # For each trial, calculate delta and update Q-values
-        for t in range(1, n_trials):
-            current_partner_choice = self.partner_choices[
-                t - 1
-            ]  # Choice made at time t
-            current_partner_reward = self.partner_rewards[
-                t - 1
-            ]  # Reward received at time t
-            delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
-
-            # Q-value update
-            Q[t, current_partner_choice] = (
-                Q[t - 1, current_partner_choice] + lr * delta_t
-            )
-
-            # For actions not taken, Q-values remain the same
-            for other_choice in range(self.num_choices):
-                if other_choice != current_partner_choice:
-                    Q[t, other_choice] = Q[t - 1, other_choice]
-
-        # Calculate choice probabilities using softmax function
-        choice_prob = softmax(beta * Q, axis=1)
-
-        # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
-        nll = -np.log(chosen_prob + 1e-8).sum()
-
-        return nll
-
-    def initialize_params(self) -> np.ndarray:
-        init_lr = np.random.beta(2, 2)
-        init_beta = np.random.gamma(2, 0.333)
-        return np.array([init_lr, init_beta])
-
-    def constraints(self):
-        A = np.eye(2)
-        lb = np.array([0, 0])
-        ub = [1, np.inf]
-        return LinearConstraint(A, lb, ub)
-
-
-class ForgetfulQSotfmaxMLEWithoutOwnReward(MLEstimator):
-    def __init__(self, n_remembered_trials) -> None:
+    def learn_from_own(self, choice: int, reward: float) -> None:
         """
-        This class estimates free parameters of  a social forgetful Q learning model, which learns from partner's choices and
-        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
-        The free parameters are a learning rate `lr` and an inverse temperature `beta`.
-        How many trials the model remembers is fixed.
+        Update the Q-value for the chosen action based on the received reward.
 
-        n_remembered_trials : int
-            How many trials the model remembers.
+        Parameters
+        ----------
+        choice : int
+            The index of the chosen action.
+        reward : float
+            The received reward after taking the action.
         """
-        super().__init__()
-        self.n_remembered_trials = n_remembered_trials
+        # Calculate the difference between the received reward and the current Q-value of the action.
+        delta = reward - self.q_values[choice]
+        # Update the Q-value of the action.
+        self.q_values[choice] = self.q_values[choice] + self.lr_own * delta
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
-        lr, beta = params
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        """
+        Update the Q-value for partner's choice and the received reward.
 
-        # Initialize Q-values matrix with zeros
-        Q = np.zeros((len(self.your_choices), self.num_choices))
-        n_trials = len(self.your_choices)
-
-        # For each trial, calculate delta and update Q-values
-        for t in range(1, n_trials):
-            current_partner_choice = self.partner_choices[
-                t - 1
-            ]  # Choice made at time t
-            current_partner_reward = self.partner_rewards[
-                t - 1
-            ]  # Reward received at time t
-            delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
-
-            # Q-value update
-            Q[t, current_partner_choice] = (
-                Q[t - 1, current_partner_choice] + lr * delta_t
-            )
-
-            # For actions not taken, Q-values remain the same
-            for other_choice in range(self.num_choices):
-                if other_choice != current_partner_choice:
-                    Q[t, other_choice] = Q[t - 1, other_choice]
-
-        # Calculate choice probabilities using softmax function
-        choice_prob = softmax(beta * Q, axis=1)
-
-        # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
-        nll = -np.log(chosen_prob + 1e-8).sum()
-
-        return nll
-
-    def initialize_params(self) -> np.ndarray:
-        init_lr = np.random.beta(2, 2)
-        init_beta = np.random.gamma(2, 0.333)
-        return np.array([init_lr, init_beta])
-
-    def constraints(self):
-        A = np.eye(2)
-        lb = np.array([0, 0])
-        ub = [1, np.inf]
-        return LinearConstraint(A, lb, ub)
+        Parameters
+        ----------
+        choice : int
+            The index of the chosen action.
+        reward : float
+            The received reward after taking the action.
+        """
+        # Calculate the difference between the received reward and the current Q-value of the action.
+        delta = reward - self.q_values[choice]
+        # Update the Q-value of the action.
+        self.q_values[choice] = self.q_values[choice] + self.lr_partner * delta
 
 
-class BayesianQSoftmaxWithOwnReward(BayesianEstimator):
-    def __init__(self):
-        super().__init__()
-        module_path = os.path.dirname(__file__)
-        self.stan_file = os.path.join(module_path, "stan_files/social_q_learning_with_own_rewards.stan")
-
-    def convert_stan_data(
+class ForgetfulQSoftmaxSimulator(QSoftmaxSimulator):
+    def __init__(
         self,
-        num_choices: int,
-        your_choices: Sequence[int | float],
-        your_rewards: Sequence[int | float] | None,
-        partner_choices: Sequence[int | float],
-        partner_rewards: Sequence[int | float] | None,
-    ) -> dict:
-        n_trials = len(your_choices)
-        your_choices = np.array(your_choices)
-        partner_choices = np.array(partner_choices)
-        your_rewards = np.array(your_rewards)
-        partner_rewards = np.array(partner_rewards)
+        lr_own,
+        lr_partner,
+        beta,
+        forgetfulness_own,
+        forgetful_partner,
+        initial_values,
+    ):
+        self.lr_own = lr_own
+        self.lr_partner = lr_partner
+        self.beta = beta
+        self.forgetfulness_own = forgetfulness_own
+        self.forgetfulness_partner = forgetful_partner
+        self.initial_values = np.array(initial_values, dtype=float)
+        self.q_values = np.array(initial_values, dtype=float)
 
-        stan_data = {
-            "T": n_trials,
-            "NC": num_choices,
-            "C": (your_choices + 1).astype(int).tolist(),
-            "R": your_rewards.astype(int).tolist(),
-            "PC": (partner_choices + 1).astype(int).tolist(),
-            "PR": partner_rewards.astype(int).tolist(),
-        }
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        super().learn_from_own(choice, reward)
+        for action in range(len(self.q_values)):
+            if action != choice:
+                self.q_values[action] = (
+                    self.forgetfulness_own * self.initial_values[action]
+                    + (1 - self.forgetfulness_own) * self.q_values[action]
+                )
 
-        return stan_data
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        super().learn_from_partner(choice, reward)
+        for action in range(len(self.q_values)):
+            if action != choice:
+                self.q_values[action] = (
+                    self.forgetfulness_partner * self.initial_values[action]
+                    + (1 - self.forgetfulness_partner) * self.q_values[action]
+                )
 
 
-class HierarchicalBayesianQSoftmaxWithoutOwnReward(HierarchicalEstimator):
-    def __init__(self):
-        super().__init__()
-        module_path = os.path.dirname(__file__)
-        self.stan_file = os.path.join(
-            module_path, "stan_files/hierarchical_social_q_learning.stan"
+class QSoftmaxInfoBonusSimulator(QSoftmaxSimulator):
+    def __init__(self, lr_own, lr_partner, beta, coef_info_bonus, initial_values):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.n_chosen = np.ones(len(initial_values))
+        self.coef_info_bonus = coef_info_bonus
+
+    def make_choice(self) -> int:
+        # Calculate the probability of each action using the softmax function.
+        values = self.beta * (
+            self.q_values + 1 / np.sqrt(self.n_chosen) * self.coef_info_bonus
         )
-        self.group2ind = None
+        choice_prob = softmax(values)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
 
-    def convert_stan_data(
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        super().learn_from_own(choice, reward)
+        self.n_chosen[choice] += 1
+
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        super().learn_from_partner(choice, reward)
+        self.n_chosen[choice] += 1
+
+
+class StickyQSoftmaxSimulator(QSoftmaxSimulator):
+    def __init__(
         self,
-        num_choices: int,
-        your_choices: NDArrayNumber,
-        your_rewards: NDArrayNumber | None,
-        partner_choices: NDArrayNumber,
-        partner_rewards: NDArrayNumber | None,
-        groups: NDArrayNumber,
-    ) -> NDArrayNumber:
-        uniq_groups = np.unique(groups)
-        n_uniq_groups = uniq_groups.shape[0]
-        # Assume every group has the same number of sessions.
-        n_sessions_per_group = your_choices.shape[0] // n_uniq_groups
-        n_trials = your_choices.shape[1]
-        reshaped_your_choices = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
-        reshaped_partner_choices = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
-        reshaped_partner_rewards = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
+        lr_own,
+        lr_partner,
+        beta,
+        stickiness_own,
+        stickiness_partner,
+        initial_values,
+    ):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.stickiness_own = stickiness_own
+        self.stickiness_partner = stickiness_partner
+        self.previous_own_choice = None
+        self.previous_partner_choice = None
 
-        self.group2ind = dict(zip(uniq_groups, np.arange(len(uniq_groups))))
+    def make_choice(self) -> int:
+        # Calculate the probability of each action using the softmax function.
+        values = self.q_values.copy()
+        if self.previous_own_choice is not None:
+            values[self.previous_own_choice] += self.stickiness_own
+        if self.previous_partner_choice is not None:
+            values[self.previous_own_choice] += self.stickiness_partner
 
-        for g in uniq_groups:
-            reshaped_your_choices[self.group2ind[g], :, :] = your_choices[groups == g]
-            reshaped_partner_choices[self.group2ind[g], :, :] = partner_choices[
-                groups == g
-            ]
-            reshaped_partner_rewards[self.group2ind[g], :, :] = partner_rewards[
-                groups == g
-            ]
+        choice_prob = softmax(values * self.beta)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
 
-        stan_data = {
-            "N": n_uniq_groups,
-            "S": n_sessions_per_group,
-            "T": n_trials,
-            "NC": num_choices,
-            "C": (reshaped_your_choices + 1).astype(int).tolist(),
-            "PC": (reshaped_partner_choices + 1).astype(int).tolist(),
-            "PR": reshaped_partner_rewards.astype(int).tolist(),
-        }
-        return stan_data
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        self.previous_own_choice = choice
+        super().learn_from_own(choice, reward)
+
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        self.previous_partner_choice = choice
+        super().learn_from_partner(choice, reward)
 
 
-class HierarchicalBayesianQSoftmaxWithOwnReward(HierarchicalEstimator):
-    def __init__(self):
-        super().__init__()
-        module_path = os.path.dirname(__file__)
-        self.stan_file = os.path.join(
-            module_path,
-            "stan_files/hierarchical_social_q_learning_with_own_rewards.stan",
-        )
-        self.group2ind = None
-
-    def convert_stan_data(
+class QSoftmaxBonusWithStickinessSimulator(QSoftmaxSimulator):
+    def __init__(
         self,
-        num_choices: int,
-        your_choices: NDArrayNumber,
-        your_rewards: NDArrayNumber | None,
-        partner_choices: NDArrayNumber,
-        partner_rewards: NDArrayNumber | None,
-        groups: NDArrayNumber,
-    ) -> dict:
-        uniq_groups = np.unique(groups)
-        n_uniq_groups = uniq_groups.shape[0]
-        # Assume every group has the same number of sessions.
-        n_sessions_per_group = your_choices.shape[0] // n_uniq_groups
-        n_trials = your_choices.shape[1]
-        reshaped_your_choices = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
-        reshaped_your_rewards = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
-        reshaped_partner_choices = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
-        reshaped_partner_rewards = np.zeros(
-            (n_uniq_groups, n_sessions_per_group, n_trials)
-        )
+        lr_own,
+        lr_partner,
+        beta,
+        coef_info_bonus,
+        stickiness_own,
+        stickiness_partner,
+        initial_values,
+    ):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.n_chosen = np.ones(len(initial_values))
+        self.coef_info_bonus = coef_info_bonus
+        self.stickiness_own = stickiness_own
+        self.stickiness_partner = stickiness_partner
+        self.previous_own_choice = None
+        self.previous_partner_choice = None
 
-        self.group2ind = dict(zip(uniq_groups, np.arange(len(uniq_groups))))
+    def make_choice(self) -> int:
+        # Calculate the probability of each action using the softmax function.
+        values = self.beta * (
+            self.q_values + 1 / np.sqrt(self.n_chosen) * self.coef_info_bonus
+        )
+        if self.previous_own_choice is not None:
+            values[self.previous_own_choice] = self.stickiness_own
+        if self.previous_partner_choice is not None:
+            values[self.previous_own_choice] = self.stickiness_partner
 
-        for g in uniq_groups:
-            reshaped_your_choices[self.group2ind[g], :, :] = your_choices[groups == g]
-            reshaped_your_rewards[self.group2ind[g], :, :] = your_choices[groups == g]
-            reshaped_partner_choices[self.group2ind[g], :, :] = partner_choices[
-                groups == g
-            ]
-            reshaped_partner_rewards[self.group2ind[g], :, :] = partner_rewards[
-                groups == g
-            ]
+        choice_prob = softmax(values)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
 
-        stan_data = {
-            "N": n_uniq_groups,
-            "S": n_sessions_per_group,
-            "T": n_trials,
-            "NC": num_choices,
-            "C": (reshaped_your_choices + 1).astype(int).tolist(),
-            "R": reshaped_your_rewards.astype(int).tolist(),
-            "PC": (reshaped_partner_choices + 1).astype(int).tolist(),
-            "PR": reshaped_partner_rewards.astype(int).tolist(),
-        }
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        self.previous_own_choice = choice
+        super().learn_from_own(choice, reward)
+        self.n_chosen[choice] += 1
 
-        return stan_data
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        self.previous_partner_choice = choice
+        super().learn_from_partner(choice, reward)
+        self.n_chosen[choice] += 1

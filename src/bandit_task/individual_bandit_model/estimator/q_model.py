@@ -24,8 +24,8 @@ class QSotfmaxMLE(MLEstimator):
 
         # For each trial, calculate delta and update Q-values
         for t in range(1, len(self.choices)):
-            a_t = self.choices[t-1]  # Action taken at time t
-            r_t = self.rewards[t-1]  # Reward received at time t
+            a_t = self.choices[t - 1]  # Action taken at time t
+            r_t = self.rewards[t - 1]  # Reward received at time t
             delta_t = r_t - Q[t - 1, a_t]
 
             # Q-value update
@@ -54,6 +54,110 @@ class QSotfmaxMLE(MLEstimator):
         A = np.eye(2)
         lb = np.array([0, 0])
         ub = [1, np.inf]
+        return LinearConstraint(A, lb, ub)
+
+
+class ForgetfulQSoftmaxMLE(MLEstimator):
+    def __init__(self) -> None:
+        """
+        This class estimates free parameters of the forgetful Q learning model.
+        """
+        super().__init__()
+
+    def neg_ll(self, args):
+        lr, beta, forgetfulness = args
+
+        # Initialize Q-values matrix with zeros
+        Q = np.ones((len(self.choices), self.num_choices)) / 2
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, len(self.choices)):
+            a_t = self.choices[t - 1]  # Action taken at time t
+            r_t = self.rewards[t - 1]  # Reward received at time t
+            delta_t = r_t - Q[t - 1, a_t]
+
+            # Q-value update with prediction error delta
+            Q[t, a_t] = Q[t - 1, a_t] + lr * delta_t
+
+            # For actions not taken, Q-values remain the same
+            for a in range(self.num_choices):
+                if a != a_t:
+                    Q[t, a] = (
+                        forgetfulness * Q[0, a] + (1 - forgetfulness) * Q[t - 1, a]
+                    )
+
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * Q, axis=1)
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(len(self.choices)), self.choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        init_forgetfulness = np.random.uniform(2, 2)
+        return np.array([init_lr, init_beta, init_forgetfulness])
+
+    def constraints(self):
+        A = np.eye(3)
+        lb = np.array([0, 0, 0])
+        ub = [1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class StickyQSotfmaxMLE(MLEstimator):
+    def __init__(self) -> None:
+        """
+        This class estimates free parameters of  a sticky Q learning model, which makes a choice using softmax function using the maximum likelihood estimator (MLE).
+        The free parameters are a learning rate `lr`, an inverse temperature `beta`, and a stickiness `s`.
+        """
+        super().__init__()
+
+    def neg_ll(self, args):
+        lr, beta, s = args
+
+        # Initialize Q-values matrix with zeros
+        Q = np.ones((len(self.choices), self.num_choices)) / 2
+        # Stickiness
+        stickiness = np.zeros((len(self.choices), self.num_choices))
+        stickiness[np.arange(1, len(self.choices)), self.choices[:-1]] = s
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, len(self.choices)):
+            a_t = self.choices[t - 1]  # Action taken at time t
+            r_t = self.rewards[t - 1]  # Reward received at time t
+            delta_t = r_t - Q[t - 1, a_t]
+
+            # Q-value update with prediction error delta
+            Q[t, a_t] = Q[t - 1, a_t] + lr * delta_t
+
+            # For actions not taken, Q-values remain the same
+            for a in range(self.num_choices):
+                if a != a_t:
+                    Q[t, a] = Q[t - 1, a]
+
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * (Q + stickiness), axis=1)
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(len(self.choices)), self.choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        init_s = np.random.beta(2, 2)
+        return np.array([init_lr, init_beta, init_s])
+
+    def constraints(self):
+        A = np.eye(3)
+        lb = np.array([0, 0, 0])
+        ub = [1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
 
 

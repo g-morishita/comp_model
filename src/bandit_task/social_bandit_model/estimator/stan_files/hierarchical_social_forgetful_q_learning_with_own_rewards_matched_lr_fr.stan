@@ -38,6 +38,7 @@ transformed parameters {
 model {
   vector[NC] Q; // Q values
 
+  // Priors
   alpha_own_nd ~ normal(0, 1); // learning rate for your own experience (before transformation)
   alpha_partner_nd ~ normal(0, 1); // learning rate for partner's experience (before transformation)
   beta_nd ~ normal(0, 1); // inverse temperature (before transformation)
@@ -63,8 +64,20 @@ model {
         // Update Q value according to your own choice and reward.
         Q[C[i, j, t]] = Q[C[i, j, t]] + alpha_own[i] * (R[i, j, t] - Q[C[i, j, t]]);
 
+        for (k in 1:NC) {
+          if (k != C[i, j, t]) {
+            Q[k] = 0.5 * alpha_own[i] + Q[k] * (1 - alpha_own[i]);
+          }
+        }
+
          // Update Q value according to partner's choice and reward.
         Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha_partner[i] * (PR[i, j, t] - Q[PC[i, j, t]]);
+
+        for (k in 1:NC) {
+          if (k != PC[i, j, t]) {
+            Q[k] = 0.5 * alpha_partner[i] + Q[k] * (1 - alpha_partner[i]);
+          }
+        }
       }
     }
   }
@@ -80,7 +93,7 @@ generated quantities {
   vector[NC] Q; // Q values
 
   real eps;
-  eps = machine_precision();
+  eps = 1e-10; // Define a small number for precision
 
   mu_alpha_own = inv_logit(mu_alpha_own_nd);
   mu_alpha_partner = inv_logit(mu_alpha_partner_nd);
@@ -102,8 +115,20 @@ generated quantities {
         // Update Q value according to your own choice and reward.
         Q[C[i, j, t]] = Q[C[i, j, t]] + alpha_own[i] * (R[i, j, t] - Q[C[i, j, t]]);
 
+        for (k in 1:NC) {
+          if (k != C[i, j, t]) {
+            Q[k] = 0.5 * alpha_own[i] + Q[k] * (1 - alpha_own[i]);
+          }
+        }
+
         // Update Q value according to the partner's choice and reward.
         Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha_partner[i] * (PR[i, j, t] - Q[PC[i, j, t]]);
+
+        for (k in 1:NC) {
+          if (k != PC[i, j, t]) {
+            Q[k] = 0.5 * alpha_partner[i] + Q[k] * (1 - alpha_partner[i]);
+          }
+        }
       }
     }
   }

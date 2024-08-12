@@ -323,8 +323,13 @@ class HierarchicalEstimator:
     def calculate_ic(self) -> float:
         """Calculate WAIC. The lower, the better"""
         log_lik = self.posterior_sample.stan_variable("log_lik")
-        lppd = np.log(np.exp(log_lik).mean(axis=0)).sum()
+
+        # Use log-sum-exp trick for numerical stability
+        max_log_lik = np.max(log_lik, axis=0)
+        lppd = (np.log(np.exp(log_lik - max_log_lik).mean(axis=0)) + max_log_lik).sum()
+
         penalty = np.sum(np.var(log_lik, axis=0))
+
         return -2 * (lppd - penalty)
 
     def estimate(self, variable_name, mode="mean"):

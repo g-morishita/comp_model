@@ -3,7 +3,10 @@ from typing import Iterable
 from warnings import warn
 
 from ..bandit_instance.instance import Bandit
-from ..individual_bandit_model.estimator.base import BaseEstimator, HierarchicalEstimator
+from ..individual_bandit_model.estimator.base import (
+    BaseEstimator,
+    HierarchicalEstimator,
+)
 from ..individual_bandit_model.simulator.base import BaseSimulator
 from ..lib.utility import is_iterable
 
@@ -49,7 +52,9 @@ class Generator:
                 f"bandit_task should be inherited Bandit class {bandit_instance.__class__.__name__} is given."
             )
 
-        if len(simulator.q_values) != len(bandit_instance.arms):
+        if hasattr(simulator, "q_values") and (
+            len(simulator.q_values) != len(bandit_instance.arms)
+        ):
             raise ValueError(
                 "The number of values and the number of choices must match."
             )
