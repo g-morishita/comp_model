@@ -66,6 +66,68 @@ class QSotfmaxMLEWithoutOwnReward(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
+class ForgetfulQSotfmaxMLEWithoutOwnReward(MLEstimator):
+    def __init__(self, n_remembered_trials) -> None:
+        """
+        This class estimates free parameters of  a social forgetful Q learning model, which learns from partner's choices and
+        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
+        The free parameters are a learning rate `lr` and an inverse temperature `beta`.
+        How many trials the model remembers is fixed.
+
+        n_remembered_trials : int
+            How many trials the model remembers.
+        """
+        super().__init__()
+        self.n_remembered_trials = n_remembered_trials
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr, beta = params
+
+        # Initialize Q-values matrix with zeros
+        Q = np.zeros((len(self.your_choices), self.num_choices))
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
+
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t - 1, current_partner_choice] + lr * delta_t
+            )
+
+            # For actions not taken, Q-values remain the same
+            for other_choice in range(self.num_choices):
+                if other_choice != current_partner_choice:
+                    Q[t, other_choice] = Q[t - 1, other_choice]
+
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * Q, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        return np.array([init_lr, init_beta])
+
+    def constraints(self):
+        A = np.eye(2)
+        lb = np.array([0, 0])
+        ub = [1, np.inf]
+        return LinearConstraint(A, lb, ub)
+
+
 class BayesianQSoftmaxWithOwnReward(BayesianEstimator):
     def __init__(self):
         super().__init__()
