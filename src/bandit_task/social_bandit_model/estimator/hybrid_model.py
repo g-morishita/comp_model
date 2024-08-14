@@ -57,11 +57,13 @@ class RewardActionHybridMLE(MLEstimator):
             )
 
             # For actions not taken, action values are updated
-            for unchosen_choice in range(len(self.your_choices)):
+            for unchosen_choice in range(self.num_choices):
                 if unchosen_choice != current_partner_choice:
-                    action_values[unchosen_choice] = action_values[
-                        unchosen_choice
-                    ] + lr_for_action_values * (0 - action_values[unchosen_choice])
+                    action_values[t, unchosen_choice] = action_values[
+                        t - 1, unchosen_choice
+                    ] + lr_for_action_values * (
+                        0 - action_values[t - 1, unchosen_choice]
+                    )
 
         # Calculate choice probabilities using softmax function
         combined_values = q_values * weights_for_values + action_values * (
@@ -212,8 +214,10 @@ class RewardActionHybridMLE2(MLEstimator):
                     q_values[t, unchosen_choice] = q_values[t - 1, unchosen_choice]
 
             # Action value update
-            action_values[t, current_partner_choice] = (
-                action_values[t - 1, current_partner_choice] + lr_for_action_values * (1 - action_values[t - 1, current_partner_choice])
+            action_values[t, current_partner_choice] = action_values[
+                t - 1, current_partner_choice
+            ] + lr_for_action_values * (
+                1 - action_values[t - 1, current_partner_choice]
             )
 
             # For actions not taken, action values are updated
@@ -226,7 +230,11 @@ class RewardActionHybridMLE2(MLEstimator):
         # Calculate choice probabilities using softmax function
         q_choice_prob = softmax(q_values * beta, axis=1)
         imitation_prob = softmax(action_values * beta, axis=1)
-        choice_prob = softmax((1 - weight_for_imitation) * q_choice_prob + weight_for_imitation * imitation_prob, axis=1)
+        choice_prob = softmax(
+            (1 - weight_for_imitation) * q_choice_prob
+            + weight_for_imitation * imitation_prob,
+            axis=1,
+        )
 
         # Calculate negative log-likelihood using your own choices not partners!
         chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
@@ -239,7 +247,14 @@ class RewardActionHybridMLE2(MLEstimator):
         init_lr_for_action_values = np.random.beta(2, 2)
         init_beta = np.random.gamma(2, 0.333)
         init_weight_for_imitation = np.random.beta(2, 2)
-        return np.array([init_lr_for_q_values, init_lr_for_action_values, init_beta, init_weight_for_imitation])
+        return np.array(
+            [
+                init_lr_for_q_values,
+                init_lr_for_action_values,
+                init_beta,
+                init_weight_for_imitation,
+            ]
+        )
 
     def constraints(self):
         A = np.eye(4)
