@@ -120,7 +120,7 @@ class ForgetfulQSoftmaxMLEWithoutOwnReward(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
-class HierarchicalBayesianForgetfulQSoftmaxMLEWithoutOwnReward:
+class HierarchicalBayesianForgetfulQSoftmaxMLEWithoutOwnReward(HierarchicalEstimator):
     def __init__(self):
         super().__init__()
         module_path = os.path.dirname(__file__)
