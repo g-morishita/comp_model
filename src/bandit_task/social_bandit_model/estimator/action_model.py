@@ -42,7 +42,7 @@ class ActionSoftmaxMLEWithoutYourReward(MLEstimator):
         choice_prob = softmax(action_values * beta, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[1:]]
+        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll

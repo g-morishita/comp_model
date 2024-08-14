@@ -49,7 +49,7 @@ class QSotfmaxMLEWithoutOwnReward(MLEstimator):
         choice_prob = softmax(beta * Q, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
@@ -63,6 +63,59 @@ class QSotfmaxMLEWithoutOwnReward(MLEstimator):
         A = np.eye(2)
         lb = np.array([0, 0])
         ub = [1, np.inf]
+        return LinearConstraint(A, lb, ub)
+
+
+class ForgetfulQSoftmaxMLEWithoutOwnReward(MLEstimator):
+    def __init__(self):
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr, beta, forgetfulness = params
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+        n_trials = len(self.your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_partner_choice = self.partner_choices[
+                t - 1
+            ]  # Choice made at time t
+            current_partner_reward = self.partner_rewards[
+                t - 1
+            ]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t - 1, current_partner_choice] + lr * delta_t
+            )
+            for other_choice in range(self.num_choices):
+                if other_choice != current_partner_choice:
+                    Q[t, other_choice] = (
+                        forgetfulness * Q[0, other_choice]
+                        + (1 - forgetfulness) * Q[t - 1, other_choice]
+                    )
+
+        # Calculate choice probabilities using softmax function
+        choice_prob = softmax(beta * Q, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        init_forgetfulness = np.random.beta(2, 2)
+        return np.array([init_lr, init_beta, init_forgetfulness])
+
+    def constraints(self):
+        A = np.eye(3)
+        lb = np.array([0, 0, 0])
+        ub = [1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
 
 

@@ -72,7 +72,7 @@ class RewardActionHybridMLE(MLEstimator):
         choice_prob = softmax(combined_values * beta, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[1:]]
+        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
@@ -132,11 +132,11 @@ class RewardImmediateActionHybridMLE(MLEstimator):
 
         # Calculate choice probabilities using softmax function
         combined_values = q_values.copy()
-        combined_values[np.arange(1, n_trials), self.partner_choices[1:]] += stickiness
+        combined_values[np.arange(1, n_trials), self.partner_choices[:-1]] += stickiness
         choice_prob = softmax(combined_values * beta, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[1:]]
+        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
