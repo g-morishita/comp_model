@@ -17,17 +17,17 @@ class RewardActionHybridMLE(MLEstimator):
         The free parameters are
             - a learning rate for Q values `lr_for_q_values`
             - a learning rate for action values `lr_for_action_values`
-            - an inverse temperature for Q values `beta_for_q_values`.
-            - an inverse temperature for action values `beta_for_action_values`
+            - an inverse temperature `beta`.
+            - weights for q values `weights_for_values`
         """
         super().__init__()
 
     def neg_ll(self, params: Sequence[int | float]) -> float:
-        lr_for_q_values, lr_for_action_values, beta_for_q_values, beta_for_action_values = params
+        lr_for_q_values, lr_for_action_values, beta, weights_for_values = params
 
         # Initialize all the kind values matrix with 1/2s
         q_values = np.ones((len(self.your_choices), self.num_choices)) / 2
-        action_values = np.ones((len(self.your_choices), self.num_choices)) / 2
+        action_values = np.ones((len(self.your_choices), self.num_choices)) / 3
         n_trials = len(self.your_choices)
 
         # For each trial, calculate delta and update Q-values
@@ -50,8 +50,10 @@ class RewardActionHybridMLE(MLEstimator):
                     q_values[t, unchosen_choice] = q_values[t - 1, unchosen_choice]
 
             # Action value update
-            action_values[t, current_partner_choice] = (
-                action_values[t - 1, current_partner_choice] + lr_for_action_values * (1 - action_values[t - 1, current_partner_choice])
+            action_values[t, current_partner_choice] = action_values[
+                t - 1, current_partner_choice
+            ] + lr_for_action_values * (
+                1 - action_values[t - 1, current_partner_choice]
             )
 
             # For actions not taken, action values are updated
@@ -62,8 +64,10 @@ class RewardActionHybridMLE(MLEstimator):
                     ] + lr_for_action_values * (0 - action_values[unchosen_choice])
 
         # Calculate choice probabilities using softmax function
-        combined_values = q_values * beta_for_q_values + action_values * beta_for_action_values
-        choice_prob = softmax(combined_values, axis=1)
+        combined_values = q_values * weights_for_values + action_values * (
+            1 - weights_for_values
+        )
+        choice_prob = softmax(combined_values * beta, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
         chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
@@ -74,14 +78,16 @@ class RewardActionHybridMLE(MLEstimator):
     def initialize_params(self) -> np.ndarray:
         init_lr_for_q_values = np.random.beta(2, 2)
         init_lr_for_action_values = np.random.beta(2, 2)
-        init_beta_for_q_values = np.random.gamma(2, 0.333)
-        init_beta_for_action_values = np.random.gamma(2, 0.333)
-        return np.array([init_lr_for_q_values, init_lr_for_action_values, init_beta_for_q_values, init_beta_for_action_values])
+        init_beta = np.random.gamma(2, 0.333)
+        init_weights = np.random.beta(2, 2)
+        return np.array(
+            [init_lr_for_q_values, init_lr_for_action_values, init_beta, init_weights]
+        )
 
     def constraints(self):
         A = np.eye(4)
         lb = np.array([0, 0, 0, 0])
-        ub = [1, 1, np.inf, np.inf]
+        ub = [1, 1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -137,7 +143,9 @@ class RewardImmediateActionHybridMLE(MLEstimator):
                     action_values[unchosen_choice] = 0
 
         # Calculate choice probabilities using softmax function
-        combined_values = q_values * beta_for_q_values + action_values * beta_for_action_values
+        combined_values = (
+            q_values * beta_for_q_values + action_values * beta_for_action_values
+        )
         choice_prob = softmax(combined_values, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
@@ -150,7 +158,9 @@ class RewardImmediateActionHybridMLE(MLEstimator):
         init_lr_for_q_values = np.random.beta(2, 2)
         init_beta_for_q_values = np.random.gamma(2, 0.333)
         init_beta_for_action_values = np.random.gamma(2, 0.333)
-        return np.array([init_lr_for_q_values, init_beta_for_q_values, init_beta_for_action_values])
+        return np.array(
+            [init_lr_for_q_values, init_beta_for_q_values, init_beta_for_action_values]
+        )
 
     def constraints(self):
         A = np.eye(3)
