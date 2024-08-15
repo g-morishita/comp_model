@@ -103,6 +103,7 @@ generated quantities {
   int trial_count;
   vector[NC] Q; // Q values
   vector[NC] A; // Action values
+  vector[NC] combined_values; // Combined Q and A values
 
   real eps = 1e-9; // small constant instead of machine_precision()
 
