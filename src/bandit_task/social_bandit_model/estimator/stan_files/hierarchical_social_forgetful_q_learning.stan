@@ -76,6 +76,7 @@ model {
 generated quantities {
   real<lower=0,upper=1.0> mu_alpha;
   real<lower=0> mu_beta;
+  real<lower=0, upper=1.0> mu_f;
 
   vector[N * S * T] log_lik;
   int trial_count;
