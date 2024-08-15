@@ -152,3 +152,60 @@ class RewardImmediateActionHybridMLE(MLEstimator):
         lb = np.array([0, 0, 0])
         ub = [1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
+
+
+class HierarchicalBayesianRewardImmediateActionHybridMLE(HierarchicalEstimator):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path,
+            "stan_files/hierarchical_social_immediate_action_q_learning_without_rewards.stan",
+        )
+        self.group2ind = None
+
+    def convert_stan_data(
+        self,
+        num_choices: int,
+        your_choices: NDArrayNumber,
+        your_rewards: NDArrayNumber | None,
+        partner_choices: NDArrayNumber,
+        partner_rewards: NDArrayNumber | None,
+        groups: NDArrayNumber,
+    ) -> NDArrayNumber:
+        uniq_groups = np.unique(groups)
+        n_uniq_groups = uniq_groups.shape[0]
+        # Assume every group has the same number of sessions.
+        n_sessions_per_group = your_choices.shape[0] // n_uniq_groups
+        n_trials = your_choices.shape[1]
+        reshaped_your_choices = np.zeros(
+            (n_uniq_groups, n_sessions_per_group, n_trials)
+        )
+        reshaped_partner_choices = np.zeros(
+            (n_uniq_groups, n_sessions_per_group, n_trials)
+        )
+        reshaped_partner_rewards = np.zeros(
+            (n_uniq_groups, n_sessions_per_group, n_trials)
+        )
+
+        self.group2ind = dict(zip(uniq_groups, np.arange(len(uniq_groups))))
+
+        for g in uniq_groups:
+            reshaped_your_choices[self.group2ind[g], :, :] = your_choices[groups == g]
+            reshaped_partner_choices[self.group2ind[g], :, :] = partner_choices[
+                groups == g
+            ]
+            reshaped_partner_rewards[self.group2ind[g], :, :] = partner_rewards[
+                groups == g
+            ]
+
+        stan_data = {
+            "N": n_uniq_groups,
+            "S": n_sessions_per_group,
+            "T": n_trials,
+            "NC": num_choices,
+            "C": (reshaped_your_choices + 1).astype(int).tolist(),
+            "PC": (reshaped_partner_choices + 1).astype(int).tolist(),
+            "PR": reshaped_partner_rewards.astype(int).tolist(),
+        }
+        return stan_data
