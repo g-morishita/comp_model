@@ -87,7 +87,7 @@ generated quantities {
 
   mu_alpha = inv_logit(mu_alpha_nd);
   mu_beta = exp(mu_beta_nd);
-  mu_f = exp(mu_f_nd);
+  mu_f = inv_logit(mu_f_nd);
 
   trial_count = 0;
   for ( i in 1:N ) { // participant
