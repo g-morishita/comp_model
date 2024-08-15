@@ -12,6 +12,7 @@ data {
 parameters {
   vector[N] alpha_nd; //
   vector[N] beta_nd; //
+  vector[N] f_nd;
 
   // Population level parameters of mean and variance of
   // learning rate and inverse temperature
