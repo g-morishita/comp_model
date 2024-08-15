@@ -40,6 +40,7 @@ model {
 
   alpha_nd ~ normal(0,1); // learning rate (before transformation)
   beta_nd ~ normal(0,1); // inverse temperature (before transformation)
+  f_nd ~ normal(0,1); // forgetfulness parameter (before transformation)
   mu_alpha_nd ~ normal(0, 1);
   sigma_alpha_nd ~ normal(0, 1);
   mu_beta_nd ~ normal(0, 1);
