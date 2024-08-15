@@ -137,19 +137,8 @@ class HierarchicalBayesianForgetfulQSoftmaxMLEWithoutOwnReward(HierarchicalEstim
         partner_choices: NDArrayNumber,
         partner_rewards: NDArrayNumber | None,
         groups: NDArrayNumber,
-    ):
+    ) -> NDArrayNumber:
         uniq_groups = np.unique(groups)
-
-        if your_rewards is not None:
-            warn(
-                "`your_rewards` was given but it will not be used in this action learning model."
-            )
-
-        if partner_rewards is not None:
-            warn(
-                "`partner_rewards` was given but it will not be used in this action learning model."
-            )
-
         n_uniq_groups = uniq_groups.shape[0]
         # Assume every group has the same number of sessions.
         n_sessions_per_group = your_choices.shape[0] // n_uniq_groups
@@ -160,12 +149,18 @@ class HierarchicalBayesianForgetfulQSoftmaxMLEWithoutOwnReward(HierarchicalEstim
         reshaped_partner_choices = np.zeros(
             (n_uniq_groups, n_sessions_per_group, n_trials)
         )
+        reshaped_partner_rewards = np.zeros(
+            (n_uniq_groups, n_sessions_per_group, n_trials)
+        )
 
         self.group2ind = dict(zip(uniq_groups, np.arange(len(uniq_groups))))
 
         for g in uniq_groups:
             reshaped_your_choices[self.group2ind[g], :, :] = your_choices[groups == g]
             reshaped_partner_choices[self.group2ind[g], :, :] = partner_choices[
+                groups == g
+            ]
+            reshaped_partner_rewards[self.group2ind[g], :, :] = partner_rewards[
                 groups == g
             ]
 
@@ -176,8 +171,8 @@ class HierarchicalBayesianForgetfulQSoftmaxMLEWithoutOwnReward(HierarchicalEstim
             "NC": num_choices,
             "C": (reshaped_your_choices + 1).astype(int).tolist(),
             "PC": (reshaped_partner_choices + 1).astype(int).tolist(),
+            "PR": reshaped_partner_rewards.astype(int).tolist(),
         }
-
         return stan_data
 
 
