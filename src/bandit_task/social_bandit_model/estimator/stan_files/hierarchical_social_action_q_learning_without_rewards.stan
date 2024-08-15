@@ -68,7 +68,7 @@ model {
 
       // Initialize action values
       for (k in 1:NC) {
-        A[k] = 1 / NC;
+        A[k] = 1.0 / NC;
       }
 
       for (t in 1:T) { // trial
@@ -121,7 +121,7 @@ generated quantities {
       }
 
       for (k in 1:NC) {
-        A[k] = 1 / NC;
+        A[k] = 1.0 / NC;
       }
 
       for (t in 1:T) { // trials
