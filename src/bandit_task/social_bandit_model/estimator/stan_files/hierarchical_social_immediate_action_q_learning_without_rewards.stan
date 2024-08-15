@@ -58,7 +58,7 @@ model {
 
       for ( t in 1:T ) { // trial
         // Update Q value according to partner's choice and reward.
-        Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t]]) + s;
+        Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t]]) + s[i];
 
         // Add the likelihood according to your own choice
         target += log_softmax(beta[i] * Q)[C[i, j, t]];
