@@ -44,7 +44,7 @@ model {
 
       // Initialize action values
       for (k in 1:NC) {
-        Q[k] = 0.5;
+        Q[k] = 1 / NC;
       }
 
       for ( t in 1:T ) { // trial
