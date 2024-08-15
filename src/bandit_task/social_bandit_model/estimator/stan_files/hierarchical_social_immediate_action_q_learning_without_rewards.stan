@@ -93,7 +93,7 @@ generated quantities {
 
       for ( t in 1:T ) { // trials
         // Update Q value according to the partner's choice and reward.
-        Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t]]) + s;
+        Q[PC[i, j, t]] = Q[PC[i, j, t]] + alpha[i] * (PR[i, j, t] - Q[PC[i, j, t]]) + s[i];
 
         // Add the likelihood according to your own choice
         trial_count = trial_count + 1;
