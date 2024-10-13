@@ -92,7 +92,6 @@ def optimize_non_convex_obj(obj, init_param, constraints, method, n_trials, opti
         if not result.success:
             warnings.warn(result.message)
         else:
-            print("The minimization succeeded!")
             # Update the best parameters if new result is better
             if min_nll > result.fun:
                 min_nll = result.fun
