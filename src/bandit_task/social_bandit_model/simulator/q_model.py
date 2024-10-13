@@ -140,7 +140,7 @@ class StickyQSoftmaxSimulator(QSoftmaxSimulator):
         if self.previous_own_choice is not None:
             values[self.previous_own_choice] += self.stickiness_own
         if self.previous_partner_choice is not None:
-            values[self.previous_own_choice] += self.stickiness_partner
+            values[self.previous_partner_choice] += self.stickiness_partner
 
         choice_prob = softmax(values * self.beta)
         # Randomly select an action based on its probability.
@@ -180,9 +180,9 @@ class QSoftmaxBonusWithStickinessSimulator(QSoftmaxSimulator):
             self.q_values + 1 / np.sqrt(self.n_chosen) * self.coef_info_bonus
         )
         if self.previous_own_choice is not None:
-            values[self.previous_own_choice] = self.stickiness_own
+            values[self.previous_own_choice] += self.stickiness_own
         if self.previous_partner_choice is not None:
-            values[self.previous_partner_choice] = self.stickiness_partner
+            values[self.previous_partner_choice] += self.stickiness_partner
 
         choice_prob = softmax(values)
         # Randomly select an action based on its probability.
