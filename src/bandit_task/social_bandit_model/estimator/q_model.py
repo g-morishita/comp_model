@@ -1149,7 +1149,6 @@ class StickyQSotfmaxMLEWithOwnRewardWithSameLr(MLEstimator):
         stickiness_own[
             np.arange(1, len(self.your_choices)), self.your_choices[:-1]
         ] = s_own
-        print("corrected!")
 
         # Stickiness for partner own choice
         stickiness_partner = np.zeros((len(self.partner_choices), self.num_choices))
@@ -1218,6 +1217,7 @@ class StickyQSotfmaxMLEWithOwnRewardWithSameLr(MLEstimator):
 class StickyQSotfmaxMLEWithOwnReward(MLEstimator):
     # TODO: parameter recovery failed
     def __init__(self) -> None:
+        print("Corrected!")
         super().__init__()
 
     def neg_ll(self, params: Sequence[int | float]) -> float:
@@ -1225,11 +1225,13 @@ class StickyQSotfmaxMLEWithOwnReward(MLEstimator):
 
         # Initialize Q-values matrix with 1/2
         Q = np.ones((len(self.your_choices), self.num_choices)) / 2
+
         # Stickiness for your own choice
         stickiness_own = np.zeros((len(self.your_choices), self.num_choices))
         stickiness_own[
             np.arange(1, len(self.your_choices)), self.your_choices[:-1]
         ] = s_own
+
         # Stickiness for partner own choice
         stickiness_partner = np.zeros((len(self.partner_choices), self.num_choices))
         stickiness_partner[
