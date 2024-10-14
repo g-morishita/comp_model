@@ -3,7 +3,7 @@ from typing import Sequence
 from warnings import warn
 
 import numpy as np
-from scipy.optimize import LinearConstraint
+from scipy.optimize import LinearConstraint, Bounds
 from scipy.special import softmax
 
 from .base import MLEstimator, HierarchicalEstimator, BayesianEstimator
@@ -456,6 +456,85 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         A = np.eye(4)
         lb = np.array([0, 0, 0, 0])
         ub = [1, 1, np.inf, np.inf]
+        return LinearConstraint(A, lb, ub)
+
+
+class QSotfmaxDecayingInfoBonusMLEWithOwnRewardSameDecay(MLEstimator):
+    # TODO: parameter recovery failed. only initial_info_bonus and info_decaying_rate
+    def __init__(self) -> None:
+        """
+        This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
+        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
+        Also, it has an information bonus term.
+        The free parameters are
+            - a learning rate `lr` and an inverse temperature `beta`.
+        """
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, lr_partner, beta, initial_info_bonus, info_decaying_rate = params
+
+        n_trials = len(self.your_choices)
+        num_actions = self.num_choices
+
+        # Initialize Q-values and info_bonuses
+        Q = np.ones((n_trials + 1, num_actions)) * 0.5  # Initial Q-values set to 0.5
+        info_bonuses = (
+            np.ones((n_trials + 1, num_actions)) * initial_info_bonus
+        )  # Initial info bonuses
+
+        neg_log_likelihood = 0.0
+        for t in range(n_trials):
+            # Calculate action values
+            values = Q[t] + info_bonuses[t]
+            # Scale by beta
+            values_scaled = beta * values
+            # Compute choice probabilities using softmax
+            choice_probs = softmax(values_scaled)
+
+            # Get the probability of the chosen action
+            your_choice = self.your_choices[t]
+            choice_prob = choice_probs[your_choice]
+
+            # Accumulate negative log-likelihood
+            neg_log_likelihood -= np.log(
+                choice_prob + 1e-8
+            )  # Add small constant to prevent log(0)
+
+            # Update Q-values for your own choice
+            delta_own = self.your_rewards[t] - Q[t, your_choice]
+            Q[t + 1] = Q[t]  # Start from previous Q-values
+            Q[t + 1, your_choice] += lr_own * delta_own
+
+            # Update Q-values for partner's choice
+            partner_choice = self.partner_choices[t]
+            delta_partner = self.partner_rewards[t] - Q[t + 1, partner_choice]
+            Q[t + 1, partner_choice] += lr_partner * delta_partner
+
+            # Update info bonuses
+            info_bonuses[t + 1] = info_bonuses[t]
+            # Decay info bonus for your own choice
+            info_bonuses[t + 1, your_choice] *= info_decaying_rate
+            # Decay info bonus for partner's choice
+            info_bonuses[t + 1, partner_choice] *= info_decaying_rate
+
+        return neg_log_likelihood
+
+    def initialize_params(self):
+        # Provide initial guesses for the parameters
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(1, 5)
+        init_info_bonus = np.random.uniform(0, 1)
+        init_decay_rate = np.random.uniform(0, 1)
+        return np.array(
+            [init_lr_own, init_lr_partner, init_beta, init_info_bonus, init_decay_rate]
+        )
+
+    def constraints(self):
+        A = np.eye(5)
+        lb = np.array([0, 0, 0, -1, 0])
+        ub = [1, 1, np.inf, 1, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -1529,8 +1608,8 @@ class StickyPartnerChoiceQSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         init_lr_own = np.random.beta(2, 2)
         init_lr_partner = np.random.beta(2, 2)
         init_beta = np.random.gamma(2, 0.333)
-        init_coef_bonus_info = np.random.gamma(2, 0.333)
-        stickiness_partner = np.random.gamma(2, 0.333)
+        init_coef_bonus_info = np.random.beta(2, 2)
+        stickiness_partner = np.random.beta(2, 2)
         return np.array(
             [
                 init_lr_own,
@@ -1543,8 +1622,97 @@ class StickyPartnerChoiceQSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
 
     def constraints(self):
         A = np.eye(5)
-        lb = np.array([0, 0, 0, -np.inf, -np.inf])
-        ub = [1, 1, np.inf, np.inf, np.inf]
+        lb = np.array([0, 0, 0.001, 0, 0])
+        ub = [1, 1, 20, 1, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class MultipleSessionStickyPartnerChoiceQSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
+    # TODO: Information bonus term and stickiness term might have similar effects
+    #  so they might cause identifiability problem.
+    def __init__(self) -> None:
+        """
+        This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
+        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
+        Also, it has an information bonus term.
+        The free parameters are a learning rate `lr` and an inverse temperature `beta`.
+        """
+        super().__init__()
+
+    def neg_ll(self, params: Sequence[int | float]) -> float:
+        lr_own, lr_partner, beta, coef_info_bonus, stickiness_partner = params
+
+        n_trials = len(self.your_choices)
+        num_choices = self.num_choices
+
+        # Initialize Q-values and n_chosen
+        Q = np.ones((n_trials + 1, num_choices)) / 2
+        n_chosen = np.ones(num_choices)
+
+        # Initialize variables to store previous choices
+        previous_partner_choice = None
+
+        choice_prob = np.zeros((n_trials, num_choices))
+
+        for t in range(n_trials):
+            # Compute the information bonus
+            info_bonus = coef_info_bonus * (1 / np.sqrt(n_chosen))
+
+            # Calculate action values for softmax
+            values = Q[t] + info_bonus
+
+            # Add stickiness to the appropriate action values
+            if previous_partner_choice is not None:
+                values[previous_partner_choice] += stickiness_partner
+
+            # Scale by beta
+            values *= beta
+
+            # Compute choice probabilities
+            probs = softmax(values)
+            choice_prob[t] = probs
+
+            # Update n_chosen
+            n_chosen[self.your_choices[t]] += 1
+            n_chosen[self.partner_choices[t]] += 1
+
+            # Update Q-values
+            delta_own = self.your_rewards[t] - Q[t, self.your_choices[t]]
+            Q[t + 1] = Q[t]
+            Q[t + 1, self.your_choices[t]] += lr_own * delta_own
+
+            delta_partner = self.partner_rewards[t] - Q[t + 1, self.partner_choices[t]]
+            Q[t + 1, self.partner_choices[t]] += lr_partner * delta_partner
+
+            # Update previous choices
+            previous_own_choice = self.your_choices[t]
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
+        init_beta = np.random.gamma(2, 0.333)
+        init_coef_bonus_info = np.random.beta(2, 2)
+        stickiness_partner = np.random.beta(2, 2)
+        return np.array(
+            [
+                init_lr_own,
+                init_lr_partner,
+                init_beta,
+                init_coef_bonus_info,
+                stickiness_partner,
+            ]
+        )
+
+    def constraints(self):
+        A = np.eye(5)
+        lb = np.array([0, 0, 0.001, 0, 0])
+        ub = [1, 1, 20, 1, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -1710,12 +1878,12 @@ class ForgetfulQSoftmaxBonusMLEWithOwnReward(MLEstimator):
 
     def initialize_params(self) -> np.ndarray:
         # Provide reasonable initial parameter guesses
-        init_lr_own = np.random.uniform(0, 1)
-        init_lr_partner = np.random.uniform(0, 1)
+        init_lr_own = np.random.beta(2, 2)
+        init_lr_partner = np.random.beta(2, 2)
         init_beta = np.random.uniform(1, 5)
-        init_coef_info_bonus = np.random.uniform(-1, 1)
-        init_f_own = np.random.uniform(0, 1)
-        init_f_partner = np.random.uniform(0, 1)
+        init_coef_info_bonus = np.random.beta(2, 2)
+        init_f_own = np.random.beta(2, 2)
+        init_f_partner = np.random.beta(2, 2)
         return np.array(
             [
                 init_lr_own,
@@ -1730,8 +1898,8 @@ class ForgetfulQSoftmaxBonusMLEWithOwnReward(MLEstimator):
     def constraints(self):
         # Set parameter bounds
         A = np.eye(6)
-        lb = [0, 0, 0, -np.inf, 0, 0]
-        ub = [1, 1, np.inf, np.inf, 1, 1]
+        lb = [0, 0, 0, 0, 0, 0]
+        ub = [1, 1, np.inf, 1, 1, 1]
         return LinearConstraint(A, lb, ub)
 
 

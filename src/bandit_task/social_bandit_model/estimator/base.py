@@ -17,14 +17,14 @@ class BaseEstimator(ABC):
 
     @abstractmethod
     def fit(
-            self,
-            num_choices: int,
-            your_choices: Sequence[int | float],
-            your_rewards: Sequence[int | float] | None,
-            partner_choices: Sequence[int | float],
-            partner_rewards: Sequence[int | float] | None,
-            **kwargs: dict,
-            ) -> None:
+        self,
+        num_choices: int,
+        your_choices: Sequence[int | float],
+        your_rewards: Sequence[int | float] | None,
+        partner_choices: Sequence[int | float],
+        partner_rewards: Sequence[int | float] | None,
+        **kwargs: dict,
+    ) -> None:
         """
         Abstract method for fitting the estimator.
 
@@ -70,21 +70,25 @@ class MLEstimator(BaseEstimator):
         self.partner_rewards = None
 
     def fit(
-            self,
-            num_choices: int,
-            your_choices: Sequence[int | float],
-            your_rewards: Sequence[int | float] | None,
-            partner_choices: Sequence[int | float],
-            partner_rewards: Sequence[int | float] | None,
-            **kwargs: dict,
+        self,
+        num_choices: int,
+        your_choices: Sequence[int | float],
+        your_rewards: Sequence[int | float] | None,
+        partner_choices: Sequence[int | float],
+        partner_rewards: Sequence[int | float] | None,
+        **kwargs: dict,
     ) -> NDArrayNumber:
         """
         Fit the model using Maximum Likelihood Estimation.
         """
         if len(your_choices) != len(your_rewards):
-            raise ValueError("The sizes of `your_choices` and `your_rewards` must be the same.")
+            raise ValueError(
+                "The sizes of `your_choices` and `your_rewards` must be the same."
+            )
         if len(partner_choices) != len(partner_rewards):
-            raise ValueError("The sizes of `partner_choices` and `partner_rewards` must be the same.")
+            raise ValueError(
+                "The sizes of `partner_choices` and `partner_rewards` must be the same."
+            )
         if max(your_choices) > num_choices:
             raise ValueError("The range of `your_choices` exceeds `num_choices`.")
         if max(partner_choices) > num_choices:
@@ -99,7 +103,9 @@ class MLEstimator(BaseEstimator):
         # Extract optimization options from keyword arguments
         options_for_min = read_options({"maxiter", "tol", "method", "n_trials"})
         method = options_for_min.get("method")
-        n_trials = options_for_min.get("n_trials", 5)  # The number of optimization to run to prevent local minima.
+        n_trials = options_for_min.get(
+            "n_trials", 5
+        )  # The number of optimization to run to prevent local minima.
 
         self.estimated_params = optimize_non_convex_obj(
             self.neg_ll,
@@ -137,17 +143,18 @@ class BayesianEstimator:
     """
     Bayesian model estimator.
     """
+
     def __init__(self):
         self.stan_file = None
         self.posterior_sample = None
 
     def fit(
-            self,
-            num_choices: int,
-            your_choices: Sequence[int | float],
-            your_rewards: Sequence[int | float] | None,
-            partner_choices: Sequence[int | float],
-            partner_rewards: Sequence[int | float] | None,
+        self,
+        num_choices: int,
+        your_choices: Sequence[int | float],
+        your_rewards: Sequence[int | float] | None,
+        partner_choices: Sequence[int | float],
+        partner_rewards: Sequence[int | float] | None,
     ) -> None:
         """
         Fit the Bayesian model to the provided data.
@@ -190,7 +197,9 @@ class BayesianEstimator:
                 f"your_choices.shape={your_choices.shape} and your_rewards.shape={your_rewards.shape}"
             )
 
-        if (partner_rewards is not None) and (partner_choices.shape != partner_rewards.shape):
+        if (partner_rewards is not None) and (
+            partner_choices.shape != partner_rewards.shape
+        ):
             raise ValueError(
                 f"The shapes of partner_choices and partner_rewards must match. "
                 f"partner_rewards.shape={partner_choices.shape} and partner_rewards.shape={partner_rewards.shape}"
@@ -204,12 +213,12 @@ class BayesianEstimator:
 
     @abstractmethod
     def convert_stan_data(
-            self,
-            num_choices: int,
-            your_choices: NDArrayNumber,
-            your_rewards: NDArrayNumber | None,
-            partner_choices: NDArrayNumber,
-            partner_rewards: NDArrayNumber | None,
+        self,
+        num_choices: int,
+        your_choices: NDArrayNumber,
+        your_rewards: NDArrayNumber | None,
+        partner_choices: NDArrayNumber,
+        partner_rewards: NDArrayNumber | None,
     ) -> dict:
         pass
 
@@ -236,13 +245,13 @@ class HierarchicalEstimator:
         self.posterior_sample = None
 
     def fit(
-            self,
-            num_choices: int,
-            your_choices: Sequence[int | float],
-            your_rewards: Sequence[int | float] | None,
-            partner_choices: Sequence[int | float],
-            partner_rewards: Sequence[int | float] | None,
-            groups: Sequence[int],
+        self,
+        num_choices: int,
+        your_choices: Sequence[int | float],
+        your_rewards: Sequence[int | float] | None,
+        partner_choices: Sequence[int | float],
+        partner_rewards: Sequence[int | float] | None,
+        groups: Sequence[int],
     ) -> None:
         """
         Fit the hierarchical model to the provided data.
@@ -296,27 +305,34 @@ class HierarchicalEstimator:
                 f"your_choices.shape={your_choices.shape} and your_rewards.shape={your_rewards.shape}"
             )
 
-        if (partner_rewards is not None) and (partner_choices.shape != partner_rewards.shape):
+        if (partner_rewards is not None) and (
+            partner_choices.shape != partner_rewards.shape
+        ):
             raise ValueError(
                 f"The shapes of partner_choices and partner_rewards must match. "
                 f"partner_rewards.shape={partner_choices.shape} and partner_rewards.shape={partner_rewards.shape}"
             )
 
         stan_data = self.convert_stan_data(
-            num_choices, your_choices, your_rewards, partner_choices, partner_rewards, groups
+            num_choices,
+            your_choices,
+            your_rewards,
+            partner_choices,
+            partner_rewards,
+            groups,
         )
         model = CmdStanModel(stan_file=self.stan_file)
         self.posterior_sample = model.sample(data=stan_data)
 
     @abstractmethod
     def convert_stan_data(
-            self,
-            num_choices: int,
-            your_choices: NDArrayNumber,
-            your_rewards: NDArrayNumber | None,
-            partner_choices: NDArrayNumber,
-            partner_rewards: NDArrayNumber | None,
-            groups: NDArrayNumber,
+        self,
+        num_choices: int,
+        your_choices: NDArrayNumber,
+        your_rewards: NDArrayNumber | None,
+        partner_choices: NDArrayNumber,
+        partner_rewards: NDArrayNumber | None,
+        groups: NDArrayNumber,
     ) -> NDArrayNumber:
         pass
 
@@ -335,9 +351,11 @@ class HierarchicalEstimator:
     def estimate(self, variable_name, mode="mean"):
         if self.posterior_sample is None:
             raise Exception("Not fitted yet")
-    
+
         if mode == "mean":
-            return np.mean(self.posterior_sample.stan_variable(variable_name)), np.std(self.posterior_sample.stan_variable(variable_name))
+            return np.mean(self.posterior_sample.stan_variable(variable_name)), np.std(
+                self.posterior_sample.stan_variable(variable_name)
+            )
 
         if mode == "med":
             return np.mean(self.posterior_sample.stan_variable(variable_name))
