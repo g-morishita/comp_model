@@ -1550,10 +1550,17 @@ class StickyPartnerChoiceQSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         """
         super().__init__()
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
+    def session_neg_ll(
+        self,
+        params: Sequence[int | float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
         lr_own, lr_partner, beta, coef_info_bonus, stickiness_partner = params
 
-        n_trials = len(self.your_choices)
+        n_trials = len(your_choices)
         num_choices = self.num_choices
 
         # Initialize Q-values and n_chosen
@@ -1584,111 +1591,22 @@ class StickyPartnerChoiceQSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
             choice_prob[t] = probs
 
             # Update n_chosen
-            n_chosen[self.your_choices[t]] += 1
-            n_chosen[self.partner_choices[t]] += 1
+            n_chosen[your_choices[t]] += 1
+            n_chosen[partner_choices[t]] += 1
 
             # Update Q-values
-            delta_own = self.your_rewards[t] - Q[t, self.your_choices[t]]
+            delta_own = your_rewards[t] - Q[t, your_choices[t]]
             Q[t + 1] = Q[t]
-            Q[t + 1, self.your_choices[t]] += lr_own * delta_own
+            Q[t + 1, your_choices[t]] += lr_own * delta_own
 
-            delta_partner = self.partner_rewards[t] - Q[t + 1, self.partner_choices[t]]
-            Q[t + 1, self.partner_choices[t]] += lr_partner * delta_partner
+            delta_partner = partner_rewards[t] - Q[t + 1, partner_choices[t]]
+            Q[t + 1, partner_choices[t]] += lr_partner * delta_partner
 
             # Update previous choices
-            previous_own_choice = self.your_choices[t]
+            previous_own_choice = your_choices[t]
 
         # Calculate negative log-likelihood
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
-        nll = -np.log(chosen_prob + 1e-8).sum()
-
-        return nll
-
-    def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
-        init_beta = np.random.gamma(2, 0.333)
-        init_coef_bonus_info = np.random.beta(2, 2)
-        stickiness_partner = np.random.beta(2, 2)
-        return np.array(
-            [
-                init_lr_own,
-                init_lr_partner,
-                init_beta,
-                init_coef_bonus_info,
-                stickiness_partner,
-            ]
-        )
-
-    def constraints(self):
-        A = np.eye(5)
-        lb = np.array([0, 0, 0.001, 0, 0])
-        ub = [1, 1, 20, 1, 1]
-        return LinearConstraint(A, lb, ub)
-
-
-class MultipleSessionStickyPartnerChoiceQSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
-    # TODO: Information bonus term and stickiness term might have similar effects
-    #  so they might cause identifiability problem.
-    def __init__(self) -> None:
-        """
-        This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
-        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
-        Also, it has an information bonus term.
-        The free parameters are a learning rate `lr` and an inverse temperature `beta`.
-        """
-        super().__init__()
-
-    def neg_ll(self, params: Sequence[int | float]) -> float:
-        lr_own, lr_partner, beta, coef_info_bonus, stickiness_partner = params
-
-        n_trials = len(self.your_choices)
-        num_choices = self.num_choices
-
-        # Initialize Q-values and n_chosen
-        Q = np.ones((n_trials + 1, num_choices)) / 2
-        n_chosen = np.ones(num_choices)
-
-        # Initialize variables to store previous choices
-        previous_partner_choice = None
-
-        choice_prob = np.zeros((n_trials, num_choices))
-
-        for t in range(n_trials):
-            # Compute the information bonus
-            info_bonus = coef_info_bonus * (1 / np.sqrt(n_chosen))
-
-            # Calculate action values for softmax
-            values = Q[t] + info_bonus
-
-            # Add stickiness to the appropriate action values
-            if previous_partner_choice is not None:
-                values[previous_partner_choice] += stickiness_partner
-
-            # Scale by beta
-            values *= beta
-
-            # Compute choice probabilities
-            probs = softmax(values)
-            choice_prob[t] = probs
-
-            # Update n_chosen
-            n_chosen[self.your_choices[t]] += 1
-            n_chosen[self.partner_choices[t]] += 1
-
-            # Update Q-values
-            delta_own = self.your_rewards[t] - Q[t, self.your_choices[t]]
-            Q[t + 1] = Q[t]
-            Q[t + 1, self.your_choices[t]] += lr_own * delta_own
-
-            delta_partner = self.partner_rewards[t] - Q[t + 1, self.partner_choices[t]]
-            Q[t + 1, self.partner_choices[t]] += lr_partner * delta_partner
-
-            # Update previous choices
-            previous_own_choice = self.your_choices[t]
-
-        # Calculate negative log-likelihood
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
@@ -1720,7 +1638,14 @@ class StickyQSoftmaxInfoBonusMLEWithOwnReward(MLEstimator):
     def __init__(self) -> None:
         super().__init__()
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
+    def session_neg_ll(
+        self,
+        params: Sequence[int | float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
         (
             lr_own,
             lr_partner,
@@ -1730,7 +1655,7 @@ class StickyQSoftmaxInfoBonusMLEWithOwnReward(MLEstimator):
             stickiness_partner,
         ) = params
 
-        n_trials = len(self.your_choices)
+        n_trials = len(your_choices)
         num_choices = self.num_choices
 
         # Initialize Q-values and n_chosen
@@ -1764,32 +1689,32 @@ class StickyQSoftmaxInfoBonusMLEWithOwnReward(MLEstimator):
             choice_prob[t] = probs
 
             # Update n_chosen
-            n_chosen[self.your_choices[t]] += 1
-            n_chosen[self.partner_choices[t]] += 1
+            n_chosen[your_choices[t]] += 1
+            n_chosen[partner_choices[t]] += 1
 
             # Update Q-values
-            delta_own = self.your_rewards[t] - Q[t, self.your_choices[t]]
+            delta_own = your_rewards[t] - Q[t, your_choices[t]]
             Q[t + 1] = Q[t]
-            Q[t + 1, self.your_choices[t]] += lr_own * delta_own
+            Q[t + 1, your_choices[t]] += lr_own * delta_own
 
-            delta_partner = self.partner_rewards[t] - Q[t + 1, self.partner_choices[t]]
-            Q[t + 1, self.partner_choices[t]] += lr_partner * delta_partner
+            delta_partner = partner_rewards[t] - Q[t + 1, partner_choices[t]]
+            Q[t + 1, partner_choices[t]] += lr_partner * delta_partner
 
             # Update previous choices
-            previous_own_choice = self.your_choices[t]
-            previous_partner_choice = self.partner_choices[t]
+            previous_own_choice = your_choices[t]
+            previous_partner_choice = partner_choices[t]
 
         # Calculate negative log-likelihood
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
+        init_lr_own = np.random.normal(0, 1)
+        init_lr_partner = np.random.normal(0, 1)
         init_beta = np.random.gamma(2, 0.333)
-        init_coef_bonus_info = np.random.beta(2, 2)
+        init_coef_bonus_info = np.random.normal(0, 1)
         init_stickiness_own = np.random.normal(0, 1)
         init_stickiness_partner = np.random.normal(0, 1)
         return np.array(
@@ -1805,8 +1730,8 @@ class StickyQSoftmaxInfoBonusMLEWithOwnReward(MLEstimator):
 
     def constraints(self):
         A = np.eye(6)
-        lb = np.array([0, 0, 0, 0, -np.inf, -np.inf])
-        ub = [1, 1, np.inf, 1, np.inf, np.inf]
+        lb = np.array([0, 0, 0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1, 1, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -1814,10 +1739,17 @@ class ForgetfulQSoftmaxBonusMLEWithOwnReward(MLEstimator):
     def __init__(self) -> None:
         super().__init__()
 
-    def neg_ll(self, params: Sequence[float]) -> float:
+    def session_neg_ll(
+        self,
+        params: Sequence[int | float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
         lr_own, lr_partner, beta, coef_info_bonus, f_own, f_partner = params
 
-        n_trials = len(self.your_choices)
+        n_trials = len(your_choices)
         num_choices = self.num_choices
 
         # Initialize Q-values and initial values
@@ -1841,37 +1773,37 @@ class ForgetfulQSoftmaxBonusMLEWithOwnReward(MLEstimator):
             choice_prob[t] = probs
 
             # Update n_chosen
-            n_chosen[self.your_choices[t]] += 1
-            n_chosen[self.partner_choices[t]] += 1
+            n_chosen[your_choices[t]] += 1
+            n_chosen[partner_choices[t]] += 1
 
             # Copy previous Q-values for update
             Q[t + 1] = Q[t]
 
             # Learn from own choice
-            delta_own = self.your_rewards[t] - Q[t, self.your_choices[t]]
-            Q[t + 1, self.your_choices[t]] += lr_own * delta_own
+            delta_own = your_rewards[t] - Q[t, your_choices[t]]
+            Q[t + 1, your_choices[t]] += lr_own * delta_own
 
             # Apply forgetting to other actions after own choice
             for action in range(num_choices):
-                if action != self.your_choices[t]:
+                if action != your_choices[t]:
                     Q[t + 1, action] = (
                         f_own * initial_values[action] + (1 - f_own) * Q[t + 1, action]
                     )
 
             # Learn from partner's choice
-            delta_partner = self.partner_rewards[t] - Q[t + 1, self.partner_choices[t]]
-            Q[t + 1, self.partner_choices[t]] += lr_partner * delta_partner
+            delta_partner = partner_rewards[t] - Q[t + 1, partner_choices[t]]
+            Q[t + 1, partner_choices[t]] += lr_partner * delta_partner
 
             # Apply forgetting to other actions after partner's choice
             for action in range(num_choices):
-                if action != self.partner_choices[t]:
+                if action != partner_choices[t]:
                     Q[t + 1, action] = (
                         f_partner * initial_values[action]
                         + (1 - f_partner) * Q[t + 1, action]
                     )
 
         # Calculate negative log-likelihood
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
         nll = -np.sum(np.log(chosen_prob + 1e-8))
 
         return nll

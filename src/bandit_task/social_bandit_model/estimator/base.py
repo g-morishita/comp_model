@@ -4,9 +4,10 @@ from typing import Sequence
 import numpy as np
 from cmdstanpy import CmdStanModel
 
-# Custom imports from the parent directories
-from ...lib.utility import read_options, optimize_non_convex_obj
 from ...type import NDArrayNumber
+from ...lib.utility import optimize_non_convex_obj
+from typing import Sequence, Union
+from numpy.typing import NDArray
 
 
 class BaseEstimator(ABC):
@@ -54,80 +55,152 @@ class BaseEstimator(ABC):
 
 class MLEstimator(BaseEstimator):
     """
-    Maximum Likelihood Estimator class.
+    Maximum Likelihood Estimator class extended to handle both single-session and multiple sessions.
 
     This class is responsible for finding the parameters that maximize
-    the likelihood of the observed data.
+    the likelihood of the observed data across sessions.
     """
 
     def __init__(self):
         # Placeholder for the estimated parameters post-fitting
         self.estimated_params = None
         self.num_choices = None
-        self.your_choices = None
-        self.your_rewards = None
-        self.partner_choices = None
-        self.partner_rewards = None
+        self.your_choices = None  # List of arrays, one per session
+        self.your_rewards = None  # List of arrays, one per session
+        self.partner_choices = None  # List of arrays, one per session
+        self.partner_rewards = None  # List of arrays, one per session
 
     def fit(
         self,
         num_choices: int,
-        your_choices: Sequence[int | float],
-        your_rewards: Sequence[int | float] | None,
-        partner_choices: Sequence[int | float],
-        partner_rewards: Sequence[int | float] | None,
-        **kwargs: dict,
-    ) -> NDArrayNumber:
+        your_choices: Union[Sequence[int], Sequence[Sequence[int]]],
+        your_rewards: Union[Sequence[float], Sequence[Sequence[float]]],
+        partner_choices: Union[Sequence[int], Sequence[Sequence[int]]],
+        partner_rewards: Union[Sequence[float], Sequence[Sequence[float]]],
+        **kwargs,
+    ) -> NDArray[np.float64]:
         """
         Fit the model using Maximum Likelihood Estimation.
+
+        Parameters:
+            num_choices: int
+                The number of possible choices/actions.
+            your_choices: Sequence of ints or sequences of ints
+                Either a single array of your choices or a list of arrays for multiple sessions.
+            your_rewards: Sequence of floats or sequences of floats
+                Either a single array of your rewards or a list of arrays for multiple sessions.
+            partner_choices: Sequence of ints or sequences of ints
+                Either a single array of your partner's choices or a list of arrays for multiple sessions.
+            partner_rewards: Sequence of floats or sequences of floats
+                Either a single array of your partner's rewards or a list of arrays for multiple sessions.
+            **kwargs: dict
+                Additional keyword arguments for the optimizer.
         """
-        if len(your_choices) != len(your_rewards):
-            raise ValueError(
-                "The sizes of `your_choices` and `your_rewards` must be the same."
-            )
-        if len(partner_choices) != len(partner_rewards):
-            raise ValueError(
-                "The sizes of `partner_choices` and `partner_rewards` must be the same."
-            )
-        if max(your_choices) > num_choices:
-            raise ValueError("The range of `your_choices` exceeds `num_choices`.")
-        if max(partner_choices) > num_choices:
-            raise ValueError("The range of `your_choices` exceeds `num_choices`.")
+        # Check if inputs are single-session data (arrays) or multi-session data (lists)
+        if isinstance(your_choices[0], (list, np.ndarray)):
+            # Multi-session data
+            num_sessions = len(your_choices)
+            # Convert all inputs to lists of arrays
+            self.your_choices = np.array(your_choices)
+            self.your_rewards = np.array(your_rewards)
+            self.partner_choices = np.array(partner_choices)
+            self.partner_rewards = np.array(partner_rewards)
+        else:
+            # Single-session data
+            num_sessions = 1
+            # Wrap data in lists
+            self.your_choices = np.array(your_choices).reshape(1, -1)
+            self.your_rewards = np.array(your_rewards).reshape(1, -1)
+            self.partner_choices = np.array(partner_choices).reshape(1, -1)
+            self.partner_rewards = np.array(partner_rewards).reshape(1, -1)
+
+        # Now proceed with data validation as before
+        for i in range(num_sessions):
+            if len(self.your_choices[i]) != len(self.your_rewards[i]):
+                raise ValueError(
+                    f"In session {i}, the sizes of your_choices and your_rewards must be the same."
+                )
+            if len(self.partner_choices[i]) != len(self.partner_rewards[i]):
+                raise ValueError(
+                    f"In session {i}, the sizes of partner_choices and partner_rewards must be the same."
+                )
+            if np.max(self.your_choices[i]) >= num_choices:
+                raise ValueError(
+                    f"In session {i}, the values in your_choices exceed num_choices."
+                )
+            if np.max(self.partner_choices[i]) >= num_choices:
+                raise ValueError(
+                    f"In session {i}, the values in partner_choices exceed num_choices."
+                )
 
         self.num_choices = num_choices
-        self.your_choices = np.array(your_choices)
-        self.your_rewards = your_rewards
-        self.partner_choices = partner_choices
-        self.partner_rewards = partner_rewards
 
         # Extract optimization options from keyword arguments
-        options_for_min = read_options({"maxiter", "tol", "method", "n_trials"})
-        method = options_for_min.get("method")
+        options_for_min = kwargs.get("options", {})
+        method = options_for_min.get(
+            "method"
+        )  # Use an optimizer that supports constraints
         n_trials = options_for_min.get(
             "n_trials", 5
-        )  # The number of optimization to run to prevent local minima.
+        )  # Number of optimization runs to prevent local minima.
 
+        # Initialize parameters
+        initial_params = self.initialize_params()
+
+        # Perform optimization
         self.estimated_params = optimize_non_convex_obj(
-            self.neg_ll,
-            self.initialize_params(),
-            method=method,
+            obj=self.neg_ll,
+            init_param=initial_params,
             constraints=self.constraints(),
+            method=method,
             n_trials=n_trials,
             options=options_for_min,
         )
+
         return self.estimated_params
 
     @abstractmethod
-    def initialize_params(self) -> NDArrayNumber:
+    def initialize_params(self) -> NDArray[np.float64]:
         """
         Abstract method for initializing parameters for optimization.
         """
         pass
 
-    @abstractmethod
     def neg_ll(self, params: Sequence[int | float]) -> float:
         """
         Calculate the negative log-likelihood for the current parameters.
+        """
+        total_neg_log_likelihood = 0.0
+
+        # Loop over sessions
+        for session_idx in range(len(self.your_choices)):
+            your_choices = self.your_choices[session_idx]
+            your_rewards = self.your_rewards[session_idx]
+            partner_choices = self.partner_choices[session_idx]
+            partner_rewards = self.partner_rewards[session_idx]
+
+            total_neg_log_likelihood += self.session_neg_ll(
+                params, your_choices, your_rewards, partner_choices, partner_rewards
+            )
+
+        return total_neg_log_likelihood
+
+    @abstractmethod
+    def session_neg_ll(
+        self, params, your_choices, your_rewards, partner_choices, partner_rewards
+    ):
+        """Calculate per session negative log-likelihood.
+        Parameters
+        ----------
+        params
+        your_choices
+        your_rewards
+        partner_choices
+        partner_rewards
+
+        Returns
+        -------
+
         """
         pass
 
