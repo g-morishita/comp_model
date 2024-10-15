@@ -1,13 +1,13 @@
 data {
-  int<lower=1> N; // Number of participants
-  int<lower=1> S; // Number of sessions per participant
-  int<lower=1> T; // Number of trials per session
-  int<lower=1> NC; // Number of unique choices/actions
-  array[N, S, T] int<lower=1, upper=NC> C; // Your own choices
-  array[N, S, T] int R; // Your own rewards
-  array[N, S, T] int<lower=1, upper=NC> PC; // Partner's choices
-  array[N, S, T] int PR; // Partner's rewards
-  array[N, S] int<lower=1, upper=2> condition; // Condition indicator (1 = A, 2 = B)
+  int<lower=1> N;          // Number of participants
+  int<lower=1> S;          // Number of sessions per participant
+  int<lower=1> T;          // Number of trials per session
+  int<lower=1> NC;         // Number of unique choices/actions
+  int<lower=1, upper=NC> C[N, S, T];          // Your own choices
+  real R[N, S, T];         // Your own rewards
+  int<lower=1, upper=NC> PC[N, S, T];         // Partner's choices
+  real PR[N, S, T];        // Partner's rewards
+  int<lower=1, upper=2> condition[N, S];      // Condition indicator (1 = A, 2 = B)
 }
 
 parameters {
@@ -82,31 +82,31 @@ transformed parameters {
   s_partner_A = mu_s_partner + sigma_s_partner * s_partner_nd;
 
   // Compute transformed Condition A parameters
-  real[N] logit_alpha_own_A = log(alpha_own_A ./ (1 - alpha_own_A));
-  real[N] logit_alpha_partner_A = log(alpha_partner_A ./ (1 - alpha_partner_A));
-  real[N] log_beta_A = log(beta_A);
-  real[N] logit_forgetful_own_A = log(forgetful_own_A ./ (1 - forgetful_own_A));
-  real[N] logit_forgetful_partner_A = log(forgetful_partner_A ./ (1 - forgetful_partner_A));
+  vector[N] logit_alpha_own_A = log(alpha_own_A ./ (1 - alpha_own_A));
+  vector[N] logit_alpha_partner_A = log(alpha_partner_A ./ (1 - alpha_partner_A));
+  vector[N] log_beta_A = log(beta_A);
+  vector[N] logit_forgetful_own_A = log(forgetful_own_A ./ (1 - forgetful_own_A));
+  vector[N] logit_forgetful_partner_A = log(forgetful_partner_A ./ (1 - forgetful_partner_A));
 
   // Condition B Parameters: add deltas on transformed scales
-  real[N] logit_alpha_own_B = logit_alpha_own_A + delta_alpha_own;
-  alpha_own_B = inv_logit(logit_alpha_own_B);
+  vector[N] logit_alpha_own_B = logit_alpha_own_A + delta_alpha_own;
+  vector<lower=0, upper=1>[N] alpha_own_B = inv_logit(logit_alpha_own_B);
 
-  real[N] logit_alpha_partner_B = logit_alpha_partner_A + delta_alpha_partner;
-  alpha_partner_B = inv_logit(logit_alpha_partner_B);
+  vector[N] logit_alpha_partner_B = logit_alpha_partner_A + delta_alpha_partner;
+  vector<lower=0, upper=1>[N] alpha_partner_B = inv_logit(logit_alpha_partner_B);
 
-  real[N] log_beta_B = log_beta_A + delta_beta;
-  beta_B = exp(log_beta_B);
+  vector[N] log_beta_B = log_beta_A + delta_beta;
+  vector<lower=0>[N] beta_B = exp(log_beta_B);
 
-  real[N] logit_forgetful_own_B = logit_forgetful_own_A + delta_forgetful_own;
-  forgetful_own_B = inv_logit(logit_forgetful_own_B);
+  vector[N] logit_forgetful_own_B = logit_forgetful_own_A + delta_forgetful_own;
+  vector<lower=0, upper=1>[N] forgetful_own_B = inv_logit(logit_forgetful_own_B);
 
-  real[N] logit_forgetful_partner_B = logit_forgetful_partner_A + delta_forgetful_partner;
-  forgetful_partner_B = inv_logit(logit_forgetful_partner_B);
+  vector[N] logit_forgetful_partner_B = logit_forgetful_partner_A + delta_forgetful_partner;
+  vector<lower=0, upper=1>[N] forgetful_partner_B = inv_logit(logit_forgetful_partner_B);
 
   // For unbounded parameters, add deltas directly
-  s_own_B = s_own_A + delta_s_own;
-  s_partner_B = s_partner_A + delta_s_partner;
+  vector[N] s_own_B = s_own_A + delta_s_own;
+  vector[N] s_partner_B = s_partner_A + delta_s_partner;
 }
 
 model {
@@ -120,13 +120,13 @@ model {
   s_partner_nd ~ normal(0, 1);
 
   // Priors for delta parameters on transformed scales
-  delta_alpha_own ~ normal(0, sigma_delta_alpha_own);
-  delta_alpha_partner ~ normal(0, sigma_delta_alpha_partner);
-  delta_beta ~ normal(0, sigma_delta_beta);
-  delta_forgetful_own ~ normal(0, sigma_delta_forgetful_own);
-  delta_forgetful_partner ~ normal(0, sigma_delta_forgetful_partner);
-  delta_s_own ~ normal(0, sigma_delta_s_own);
-  delta_s_partner ~ normal(0, sigma_delta_s_partner);
+  delta_alpha_own ~ normal(mu_delta_alpha_own, sigma_delta_alpha_own);
+  delta_alpha_partner ~ normal(mu_delta_alpha_partner, sigma_delta_alpha_partner);
+  delta_beta ~ normal(mu_delta_beta, sigma_delta_beta);
+  delta_forgetful_own ~ normal(mu_delta_forgetful_own, sigma_delta_forgetful_own);
+  delta_forgetful_partner ~ normal(mu_delta_forgetful_partner, sigma_delta_forgetful_partner);
+  delta_s_own ~ normal(mu_delta_s_own, sigma_delta_s_own);
+  delta_s_partner ~ normal(mu_delta_s_partner, sigma_delta_s_partner);
 
   // Priors for group-level parameters
   mu_alpha_own_nd ~ normal(0, 1);
@@ -206,7 +206,6 @@ model {
 
         // Compute action values with information bonus
         // Adjust the bonus term as needed; here it's set to 1.0 for illustration
-        // You may have a specific coefficient to include
         action_values = Q + (1.0) ./ sqrt(rep_vector(1.0, NC)); // Example bonus term
 
         // Add stickiness effects if previous choices are available
