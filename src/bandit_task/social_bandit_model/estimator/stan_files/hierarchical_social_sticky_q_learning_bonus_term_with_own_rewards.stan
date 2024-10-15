@@ -26,26 +26,26 @@ parameters {
   real<lower=0> sigma_beta_nd;
   real mu_coef_info_bonus_nd;
   real<lower=0> sigma_coef_info_bonus_nd;
-  real mu_s_own;
-  real<lower=0> sigma_s_own;
-  real mu_s_partner;
-  real<lower=0> sigma_s_partner;
+  real mu_s_own_nd;
+  real<lower=0> sigma_s_own_nd;
+  real mu_s_partner_nd;
+  real<lower=0> sigma_s_partner_nd;
 }
 transformed parameters {
   vector<lower=0, upper=1>[N] alpha_own;
   vector<lower=0, upper=1>[N] alpha_partner;
   vector<lower=0>[N] beta;
-  vector<lower=0>[N] coef_info_bonus;
-  vector[N] s_own;
-  vector[N] s_partner;
+  vector<lower=0, upper=1>[N] coef_info_bonus;
+  vector<lower=0, upper=1>[N] s_own;
+  vector<lower=0, upper=1>[N] s_partner;
 
   // Transform individual-level parameters to appropriate scales
   alpha_own = inv_logit(mu_alpha_own_nd + sigma_alpha_own_nd * alpha_own_nd);
   alpha_partner = inv_logit(mu_alpha_partner_nd + sigma_alpha_partner_nd * alpha_partner_nd);
   beta = exp(mu_beta_nd + sigma_beta_nd * beta_nd);
-  coef_info_bonus = exp(mu_coef_info_bonus_nd + sigma_coef_info_bonus_nd * coef_info_bonus_nd);
-  s_own = mu_s_own + sigma_s_own * s_own_nd;
-  s_partner = mu_s_partner + sigma_s_partner * s_partner_nd;
+  coef_info_bonus = inv_logit(mu_coef_info_bonus_nd + sigma_coef_info_bonus_nd * coef_info_bonus_nd);
+  s_own = inv_logit(mu_s_own_nd + sigma_s_own_nd * s_own_nd);
+  s_partner = inv_logit(mu_s_partner_nd + sigma_s_partner_nd * s_partner_nd);
 }
 model {
   // Priors for individual-level latent parameters
@@ -65,10 +65,10 @@ model {
   sigma_beta_nd ~ cauchy(0, 2.5);
   mu_coef_info_bonus_nd ~ normal(0, 1);
   sigma_coef_info_bonus_nd ~ cauchy(0, 2.5);
-  mu_s_own ~ normal(0, 1);
-  sigma_s_own ~ cauchy(0, 2.5);
-  mu_s_partner ~ normal(0, 1);
-  sigma_s_partner ~ cauchy(0, 2.5);
+  mu_s_own_nd ~ normal(0, 1);
+  sigma_s_own_nd ~ cauchy(0, 2.5);
+  mu_s_partner_nd ~ normal(0, 1);
+  sigma_s_partner_nd ~ cauchy(0, 2.5);
 
   // Likelihood
   for (i in 1:N) { // Participant loop
@@ -129,7 +129,9 @@ generated quantities {
   real<lower=0, upper=1> mu_alpha_own = inv_logit(mu_alpha_own_nd);
   real<lower=0, upper=1> mu_alpha_partner = inv_logit(mu_alpha_partner_nd);
   real<lower=0> mu_beta = exp(mu_beta_nd);
-  real<lower=0> mu_coef_info_bonus = exp(mu_coef_info_bonus_nd);
+  real<lower=0, upper=1> mu_coef_info_bonus = inv_logit(mu_coef_info_bonus_nd);
+  real<lower=0, upper=1> mu_s_own = inv_logit(mu_s_own_nd);
+  real<lower=0, upper=1> mu_s_partner = inv_logit(mu_s_partner_nd);
 
   vector[N * S * T] log_lik; // Log-likelihood for each trial
   int trial_count = 0;
