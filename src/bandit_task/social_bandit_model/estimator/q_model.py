@@ -2310,3 +2310,16 @@ class HierarchicalBayesianStickyQSoftmaxInfoBonusWithOwnReward(
             "stan_files/hierarchical_social_sticky_q_learning_bonus_term_with_own_rewards.stan",
         )
         self.group2ind = None
+
+
+class HierarchicalBayesianStickyForgetfulQSoftmaxWithOwnReward(
+    HierarchicalBayesianQSoftmaxWithOwnReward
+):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path,
+            "stan_files/hierarchical_social_sticky_forgetful_q_learning_with_own_rewards.stan",
+        )
+        self.group2ind = None
