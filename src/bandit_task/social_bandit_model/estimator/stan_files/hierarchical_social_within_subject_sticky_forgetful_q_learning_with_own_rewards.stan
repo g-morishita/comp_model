@@ -177,31 +177,32 @@ model {
         vector[NC] action_values;
         vector[NC] log_probs;
 
-        // Select condition-specific parameters
-        vector<lower=0, upper=1>[N] alpha_own_cond;
-        vector<lower=0, upper=1>[N] alpha_partner_cond;
-        vector<lower=0>[N] beta_cond;
-        vector<lower=0, upper=1>[N] forgetful_own_cond;
-        vector<lower=0, upper=1>[N] forgetful_partner_cond;
-        vector[N] s_own_cond;
-        vector[N] s_partner_cond;
+        // Declare scalar variables for condition-specific parameters
+        real alpha_own_cond;
+        real alpha_partner_cond;
+        real beta_cond;
+        real forgetful_own_cond;
+        real forgetful_partner_cond;
+        real s_own_cond;
+        real s_partner_cond;
 
+        // Assign condition-specific parameters based on the current condition
         if (current_condition == 1) { // Condition A
-          alpha_own_cond = alpha_own_A;
-          alpha_partner_cond = alpha_partner_A;
-          beta_cond = beta_A;
-          forgetful_own_cond = forgetful_own_A;
-          forgetful_partner_cond = forgetful_partner_A;
-          s_own_cond = s_own_A;
-          s_partner_cond = s_partner_A;
+          alpha_own_cond = alpha_own_A[i];
+          alpha_partner_cond = alpha_partner_A[i];
+          beta_cond = beta_A[i];
+          forgetful_own_cond = forgetful_own_A[i];
+          forgetful_partner_cond = forgetful_partner_A[i];
+          s_own_cond = s_own_A[i];
+          s_partner_cond = s_partner_A[i];
         } else if (current_condition == 2) { // Condition B
-          alpha_own_cond = alpha_own_B;
-          alpha_partner_cond = alpha_partner_B;
-          beta_cond = beta_B;
-          forgetful_own_cond = forgetful_own_B;
-          forgetful_partner_cond = forgetful_partner_B;
-          s_own_cond = s_own_B;
-          s_partner_cond = s_partner_B;
+          alpha_own_cond = alpha_own_B[i];
+          alpha_partner_cond = alpha_partner_B[i];
+          beta_cond = beta_B[i];
+          forgetful_own_cond = forgetful_own_B[i];
+          forgetful_partner_cond = forgetful_partner_B[i];
+          s_own_cond = s_own_B[i];
+          s_partner_cond = s_partner_B[i];
         }
 
         // Compute action values with information bonus
@@ -210,14 +211,14 @@ model {
 
         // Add stickiness effects if previous choices are available
         if (prev_own_choice > 0) {
-          action_values[prev_own_choice] += s_own_cond[i];
+          action_values[prev_own_choice] += s_own_cond;
         }
         if (prev_partner_choice > 0) {
-          action_values[prev_partner_choice] += s_partner_cond[i];
+          action_values[prev_partner_choice] += s_partner_cond;
         }
 
         // Compute log probabilities using softmax
-        log_probs = log_softmax(beta_cond[i] * action_values);
+        log_probs = log_softmax(beta_cond * action_values);
 
         // Update the target log likelihood with own choice
         target += log_probs[C[i, j, t]];
@@ -230,22 +231,22 @@ model {
         vector[NC] Q_next = Q;
 
         // Update Q-values for own choice
-        Q_next[C[i, j, t]] += alpha_own_cond[i] * (R[i, j, t] - Q[C[i, j, t]]);
+        Q_next[C[i, j, t]] += alpha_own_cond * (R[i, j, t] - Q[C[i, j, t]]);
 
         // Apply forgetting to other actions after own choice
         for (k in 1:NC) {
           if (k != C[i, j, t]) {
-            Q_next[k] = forgetful_own_cond[i] * initial_values[k] + (1 - forgetful_own_cond[i]) * Q_next[k];
+            Q_next[k] = forgetful_own_cond * initial_values[k] + (1 - forgetful_own_cond) * Q_next[k];
           }
         }
 
         // Update Q-values for partner's choice
-        Q_next[PC[i, j, t]] += alpha_partner_cond[i] * (PR[i, j, t] - Q_next[PC[i, j, t]]);
+        Q_next[PC[i, j, t]] += alpha_partner_cond * (PR[i, j, t] - Q_next[PC[i, j, t]]);
 
         // Apply forgetting to other actions after partner's choice
         for (k in 1:NC) {
           if (k != PC[i, j, t]) {
-            Q_next[k] = forgetful_partner_cond[i] * initial_values[k] + (1 - forgetful_partner_cond[i]) * Q_next[k];
+            Q_next[k] = forgetful_partner_cond * initial_values[k] + (1 - forgetful_partner_cond) * Q_next[k];
           }
         }
 
