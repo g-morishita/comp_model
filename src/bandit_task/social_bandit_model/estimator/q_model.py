@@ -2461,6 +2461,7 @@ class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward:
 
     def fit(self, df):
         from cmdstanpy import CmdStanModel
+
         model = CmdStanModel(stan_file=self.stan_file)
         stan_data = self.convert_stan_data(df)
         self.posterior_sample = model.sample(data=stan_data)
