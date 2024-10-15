@@ -69,6 +69,7 @@ class MLEstimator(BaseEstimator):
         self.your_rewards = None  # List of arrays, one per session
         self.partner_choices = None  # List of arrays, one per session
         self.partner_rewards = None  # List of arrays, one per session
+        self.min_nll = None  # Minimized negative log-likelihood
 
     def fit(
         self,
@@ -148,7 +149,7 @@ class MLEstimator(BaseEstimator):
         initial_params = self.initialize_params()
 
         # Perform optimization
-        self.estimated_params = optimize_non_convex_obj(
+        self.min_nll, self.estimated_params = optimize_non_convex_obj(
             obj=self.neg_ll,
             init_param=initial_params,
             constraints=self.constraints(),

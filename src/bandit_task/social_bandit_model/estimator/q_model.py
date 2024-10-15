@@ -394,18 +394,25 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         """
         super().__init__()
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
+    def session_neg_ll(
+        self,
+        params: Sequence[int | float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
         lr_own, lr_partner, beta, coef_info_bonus = params
 
         # Initialize Q-values matrix with 1/2
-        Q = np.ones((len(self.your_choices), self.num_choices)) / 2
-        n_chosen = np.ones((len(self.your_choices), self.num_choices))
-        n_trials = len(self.your_choices)
+        Q = np.ones((len(your_choices), self.num_choices)) / 2
+        n_chosen = np.ones((len(your_choices), self.num_choices))
+        n_trials = len(your_choices)
 
         # For each trial, calculate delta and update Q-values
         for t in range(1, n_trials):
-            current_your_choice = self.your_choices[t - 1]
-            current_your_reward = self.your_rewards[t - 1]
+            current_your_choice = your_choices[t - 1]
+            current_your_reward = your_rewards[t - 1]
 
             delta_t = current_your_reward - Q[t - 1, current_your_choice]
             # Q-value update
@@ -419,12 +426,8 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
                     n_chosen[t, other_choice] = n_chosen[t - 1, other_choice]
                     Q[t, other_choice] = Q[t - 1, other_choice]
 
-            current_partner_choice = self.partner_choices[
-                t - 1
-            ]  # Choice made at time t
-            current_partner_reward = self.partner_rewards[
-                t - 1
-            ]  # Reward received at time t
+            current_partner_choice = partner_choices[t - 1]  # Choice made at time t
+            current_partner_reward = partner_rewards[t - 1]  # Reward received at time t
             delta_t = current_partner_reward - Q[t, current_partner_choice]
             # Q-value update
             Q[t, current_partner_choice] = (
@@ -440,7 +443,7 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         choice_prob = softmax(values, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(n_trials), self.your_choices]
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll

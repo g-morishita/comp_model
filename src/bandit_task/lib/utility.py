@@ -103,4 +103,4 @@ def optimize_non_convex_obj(obj, init_param, constraints, method, n_trials, opti
         warnings.warn("The estimation did not work. An empty array is returned.")
         return np.array([])
 
-    return opt_param
+    return min_nll, opt_param
