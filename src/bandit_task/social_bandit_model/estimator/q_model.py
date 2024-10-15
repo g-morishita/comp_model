@@ -2294,6 +2294,6 @@ class HierarchicalStickyBayesianQSoftmaxWithOwnReward(
         module_path = os.path.dirname(__file__)
         self.stan_file = os.path.join(
             module_path,
-            "stan_files/hierarchical_social_q_learning_bonus_term_with_own_rewards.stan.stan",
+            "stan_files/hierarchical_social_q_learning_bonus_term_with_own_rewards.stan",
         )
         self.group2ind = None
