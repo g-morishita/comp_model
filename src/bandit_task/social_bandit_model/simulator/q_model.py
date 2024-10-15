@@ -118,6 +118,30 @@ class QSoftmaxInfoBonusSimulator(QSoftmaxSimulator):
         self.n_chosen[choice] += 1
 
 
+class QSoftmaxInfoBonusSimulator2(QSoftmaxSimulator):
+    def __init__(self, lr_own, lr_partner, beta, coef_info_bonus, initial_values):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.n_chosen = np.ones(len(initial_values))
+        self.coef_info_bonus = coef_info_bonus
+
+    def make_choice(self) -> int:
+        # Calculate the probability of each action using the softmax function.
+        values = self.beta * (
+            self.q_values + 0.5 / self.n_chosen * self.coef_info_bonus
+        )
+        choice_prob = softmax(values)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
+
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        super().learn_from_own(choice, reward)
+        self.n_chosen[choice] += 1
+
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        super().learn_from_partner(choice, reward)
+        self.n_chosen[choice] += 1
+
+
 class QSoftmaxDecayingInfoBonusSimulator(QSoftmaxSimulator):
     def __init__(
         self,

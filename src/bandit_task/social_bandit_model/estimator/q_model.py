@@ -265,12 +265,8 @@ class QSotfmaxMLEWithOwnReward(MLEstimator):
                 if other_choice != current_your_choice:
                     Q[t, other_choice] = Q[t - 1, other_choice]
 
-            current_partner_choice = partner_choices[
-                t - 1
-            ]  # Choice made at time t
-            current_partner_reward = partner_rewards[
-                t - 1
-            ]  # Reward received at time t
+            current_partner_choice = partner_choices[t - 1]  # Choice made at time t
+            current_partner_reward = partner_rewards[t - 1]  # Reward received at time t
             delta_t = current_partner_reward - Q[t, current_partner_choice]
 
             # Q-value update with observed experience
@@ -456,16 +452,95 @@ class QSotfmaxInfoBonusMLEWithOwnReward(MLEstimator):
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
         init_beta = np.random.gamma(2, 0.333)
-        init_coef_bonus_info = np.random.gamma(2, 0.333)
+        init_coef_bonus_info = np.random.uniform(0, 1)
         return np.array([init_lr_own, init_lr_partner, init_beta, init_coef_bonus_info])
 
     def constraints(self):
         A = np.eye(4)
         lb = np.array([0, 0, 0, 0])
-        ub = [1, 1, np.inf, np.inf]
+        ub = [1, 1, np.inf, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class QSotfmaxInfoBonusMLEWithOwnReward2(MLEstimator):
+    def __init__(self) -> None:
+        """
+        This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
+        rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
+        Also, it has an information bonus term.
+        The free parameters are
+            - a learning rate `lr` and an inverse temperature `beta`.
+        """
+        super().__init__()
+
+    def session_neg_ll(
+        self,
+        params: Sequence[int | float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
+        lr_own, lr_partner, beta, coef_info_bonus = params
+
+        # Initialize Q-values matrix with 1/2
+        Q = np.ones((len(your_choices), self.num_choices)) / 2
+        n_chosen = np.ones((len(your_choices), self.num_choices))
+        n_trials = len(your_choices)
+
+        # For each trial, calculate delta and update Q-values
+        for t in range(1, n_trials):
+            current_your_choice = your_choices[t - 1]
+            current_your_reward = your_rewards[t - 1]
+
+            delta_t = current_your_reward - Q[t - 1, current_your_choice]
+            # Q-value update
+            Q[t, current_your_choice] = Q[t - 1, current_your_choice] + lr_own * delta_t
+
+            # increase the number of chosen choices
+            n_chosen[t, current_your_choice] = 1 + n_chosen[t - 1, current_your_choice]
+            # For actions not taken, n_chosen remain the same
+            for other_choice in range(self.num_choices):
+                if other_choice != current_your_choice:
+                    n_chosen[t, other_choice] = n_chosen[t - 1, other_choice]
+                    Q[t, other_choice] = Q[t - 1, other_choice]
+
+            current_partner_choice = partner_choices[t - 1]  # Choice made at time t
+            current_partner_reward = partner_rewards[t - 1]  # Reward received at time t
+            delta_t = current_partner_reward - Q[t, current_partner_choice]
+            # Q-value update
+            Q[t, current_partner_choice] = (
+                Q[t, current_partner_choice] + lr_partner * delta_t
+            )
+            # increase the number of chosen choices
+            n_chosen[t, current_partner_choice] = (
+                1 + n_chosen[t, current_partner_choice]
+            )
+
+        # Calculate choice probabilities using softmax function
+        values = beta * (Q + coef_info_bonus * 0.5 / n_chosen)
+        choice_prob = softmax(values, axis=1)
+
+        # Calculate negative log-likelihood using your own choices not partners!
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
+        nll = -np.log(chosen_prob + 1e-8).sum()
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
+        init_beta = np.random.gamma(2, 0.333)
+        init_coef_bonus_info = np.random.uniform(0, 1)
+        return np.array([init_lr_own, init_lr_partner, init_beta, init_coef_bonus_info])
+
+    def constraints(self):
+        A = np.eye(4)
+        lb = np.array([0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -678,11 +753,11 @@ class ForgetfulQSoftmaxMLEWithOwnReward(MLEstimator):
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
         init_beta = np.random.gamma(2, 0.333)
-        init_forgetfulness_own = np.random.beta(2, 2)
-        init_forgetfulness_partner = np.random.beta(2, 2)
+        init_forgetfulness_own = np.random.uniform(0, 1)
+        init_forgetfulness_partner = np.random.uniform(0, 1)
         return np.array(
             [
                 init_lr_own,
@@ -1211,10 +1286,10 @@ class StickyPartnerChoiceQSotfmaxMLEWithOwnReward(MLEstimator):
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
         init_beta = np.random.gamma(2, 0.333)
-        stickiness = np.random.beta(2, 2)
+        stickiness = np.random.uniform(0, 1)
         return np.array([init_lr_own, init_lr_partner, init_beta, stickiness])
 
     def constraints(self):
@@ -1369,11 +1444,11 @@ class StickyQSotfmaxMLEWithOwnReward(MLEstimator):
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
         init_beta = np.random.gamma(2, 0.333)
-        stickiness_own = np.random.gamma(2, 0.333)
-        stickiness_partner = np.random.gamma(2, 0.333)
+        stickiness_own = np.random.uniform(0, 1)
+        stickiness_partner = np.random.uniform(0, 1)
         return np.array(
             [
                 init_lr_own,
@@ -1386,8 +1461,8 @@ class StickyQSotfmaxMLEWithOwnReward(MLEstimator):
 
     def constraints(self):
         A = np.eye(5)
-        lb = np.array([0, 0, 0, -np.inf, -np.inf])
-        ub = [1, 1, np.inf, np.inf, np.inf]
+        lb = np.array([0, 0, 0, 0, 0])
+        ub = [1, 1, np.inf, 1, 1]
         return LinearConstraint(A, lb, ub)
 
 
@@ -1985,12 +2060,12 @@ class ForgetfulQSoftmaxBonusMLEWithOwnReward(MLEstimator):
 
     def initialize_params(self) -> np.ndarray:
         # Provide reasonable initial parameter guesses
-        init_lr_own = np.random.beta(2, 2)
-        init_lr_partner = np.random.beta(2, 2)
-        init_beta = np.random.uniform(1, 5)
-        init_coef_info_bonus = np.random.beta(2, 2)
-        init_f_own = np.random.beta(2, 2)
-        init_f_partner = np.random.beta(2, 2)
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(1e-3, 5)
+        init_coef_info_bonus = np.random.uniform(0, 1)
+        init_f_own = np.random.uniform(0, 1)
+        init_f_partner = np.random.uniform(0, 1)
         return np.array(
             [
                 init_lr_own,
@@ -2372,3 +2447,104 @@ class HierarchicalBayesianStickyForgetfulQSoftmaxInfoBonusWithOwnReward(
             "stan_files/hierarchical_social_sticky_forgetful_q_learning_bonus_term_with_own_rewards.stan",
         )
         self.group2ind = None
+
+
+class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward(
+    HierarchicalEstimator
+):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path,
+            "stan_files/hierarchical_social_within_subject_sticky_forgetful_q_learning_with_own_rewards.stan",
+        )
+        self.group2ind = None
+
+    def convert_stan_data(self, df):
+        from sklearn.preprocessing import LabelEncoder
+
+        # Step 2: Data Cleaning
+        df = df.dropna(
+            subset=[
+                "participant_id",
+                "session",
+                "trial",
+                "choice",
+                "reward",
+                "partner_choice",
+                "partner_reward",
+                "beta",
+            ]
+        )
+
+        # Step 3: Encode Choices
+        # If choices are categorical strings, use LabelEncoder
+        # Otherwise, if they are numeric but start at 0, increment by 1
+
+        df["choice_encoded"] = df["choice"] + 1
+        df["partner_choice_encoded"] = df["partner_choice"] + 1
+
+        # Alternatively, if choices are strings:
+        # choice_encoder = LabelEncoder()
+        # df['choice_encoded'] = choice_encoder.fit_transform(df['choice']) + 1
+        # df['partner_choice_encoded'] = choice_encoder.fit_transform(df['partner_choice']) + 1
+
+        # Step 4: Determine Dimensions
+        N = df["participant_id"].nunique()
+        S = df["session"].nunique()
+        T = df["trial"].nunique()
+        NC = max(df["choice_encoded"].max(), df["partner_choice_encoded"].max())
+
+        # Step 5: Initialize Arrays
+        C = np.zeros((N, S, T), dtype=int)  # Your own choices
+        R = np.zeros((N, S, T), dtype=float)  # Your own rewards
+        PC = np.zeros((N, S, T), dtype=int)  # Partner's choices
+        PR = np.zeros((N, S, T), dtype=float)  # Partner's rewards
+        condition = np.zeros((N, S), dtype=int)  # Condition indicator
+
+        # Step 6: Sort Data
+        df_sorted = df.sort_values(by=["participant_id", "session", "trial"])
+
+        # Step 7: Create Mappings
+        participant_ids = sorted(df_sorted["participant_id"].unique())
+        session_numbers = sorted(df_sorted["session"].unique())
+
+        participant_mapping = {pid: idx for idx, pid in enumerate(participant_ids)}
+        session_mapping = {s: idx for idx, s in enumerate(session_numbers)}
+
+        # Step 8: Populate Arrays
+        for _, row in df_sorted.iterrows():
+            p_idx = participant_mapping[row["participant_id"]]
+            s_idx = session_mapping[row["session"]]
+            t_idx = int(row["trial"]) - 1  # Adjust if trials start at 0
+
+            C[p_idx, s_idx, t_idx] = row["choice_encoded"]
+            R[p_idx, s_idx, t_idx] = row["reward"]
+            PC[p_idx, s_idx, t_idx] = row["partner_choice_encoded"]
+            PR[p_idx, s_idx, t_idx] = row["partner_reward"]
+
+            # Assuming condition is constant within a session
+            condition[p_idx, s_idx] = row["beta"]
+
+        # Step 9: Verify Shapes
+        print("C shape:", C.shape)  # (N, S, T)
+        print("R shape:", R.shape)  # (N, S, T)
+        print("PC shape:", PC.shape)  # (N, S, T)
+        print("PR shape:", PR.shape)  # (N, S, T)
+        print("condition shape:", condition.shape)  # (N, S)
+
+        # Step 10: Prepare Stan Data Dictionary
+        stan_data = {
+            "N": N,
+            "S": S,
+            "T": T,
+            "NC": NC,
+            "C": C,
+            "R": R,
+            "PC": PC,
+            "PR": PR,
+            "condition": condition,
+        }
+
+        return stan_data
