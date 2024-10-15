@@ -2449,9 +2449,7 @@ class HierarchicalBayesianStickyForgetfulQSoftmaxInfoBonusWithOwnReward(
         self.group2ind = None
 
 
-class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward(
-    HierarchicalEstimator
-):
+class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward:
     def __init__(self):
         super().__init__()
         module_path = os.path.dirname(__file__)
@@ -2460,6 +2458,12 @@ class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward(
             "stan_files/hierarchical_social_within_subject_sticky_forgetful_q_learning_with_own_rewards.stan",
         )
         self.group2ind = None
+
+    def fit(self, df):
+        from cmdstanpy import CmdStanModel
+        model = CmdStanModel(stan_file=self.stan_file)
+        stan_data = self.convert_stan_data(df)
+        self.posterior_sample = model.sample(data=stan_data)
 
     def convert_stan_data(self, df):
         from sklearn.preprocessing import LabelEncoder
