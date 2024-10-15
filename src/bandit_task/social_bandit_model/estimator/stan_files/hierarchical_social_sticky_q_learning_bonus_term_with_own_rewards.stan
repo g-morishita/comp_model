@@ -52,7 +52,7 @@ model {
   alpha_own_nd ~ normal(0, 1);
   alpha_partner_nd ~ normal(0, 1);
   beta_nd ~ normal(0, 1);
-  coef_info_bonus_nd ~ normal(0, 1);
+  coef_info_bonus_nd ~ normal(logit(0.5), 0.1);
   s_own_nd ~ normal(0, 1);
   s_partner_nd ~ normal(0, 1);
 
