@@ -2299,7 +2299,7 @@ class HierarchicalBayesianStickyQSoftmaxWithOwnReward(
         self.group2ind = None
 
 
-class HierarchicalBayesianStickyQSoftmaxInfoBonusWithOwnRewardSameLr(
+class HierarchicalBayesianStickyQSoftmaxInfoBonusWithOwnReward(
     HierarchicalBayesianQSoftmaxWithOwnReward
 ):
     def __init__(self):
