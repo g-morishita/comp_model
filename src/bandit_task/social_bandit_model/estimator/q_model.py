@@ -1711,12 +1711,12 @@ class StickyQSoftmaxInfoBonusMLEWithOwnReward(MLEstimator):
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr_own = np.random.normal(0, 1)
-        init_lr_partner = np.random.normal(0, 1)
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
         init_beta = np.random.gamma(2, 0.333)
-        init_coef_bonus_info = np.random.normal(0, 1)
-        init_stickiness_own = np.random.normal(0, 1)
-        init_stickiness_partner = np.random.normal(0, 1)
+        init_coef_bonus_info = np.random.uniform(0, 1)
+        init_stickiness_own = np.random.uniform(0, 1)
+        init_stickiness_partner = np.random.uniform(0, 1)
         return np.array(
             [
                 init_lr_own,
@@ -1732,6 +1732,158 @@ class StickyQSoftmaxInfoBonusMLEWithOwnReward(MLEstimator):
         A = np.eye(6)
         lb = np.array([0, 0, 0, 0, 0, 0])
         ub = [1, 1, np.inf, 1, 1, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class StickyForgetfulQSoftmaxMLEWithOwnReward(MLEstimator):
+    def __init__(self):
+        super().__init__()
+
+    def session_neg_ll(
+        self,
+        params: Sequence[float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
+        """
+        Calculate the negative log-likelihood for a single session.
+
+        Parameters:
+            params: Sequence[float]
+                A sequence of parameters to estimate:
+                [lr_own, lr_partner, beta, forgetful_own, forgetful_partner,
+                 stickiness_own, stickiness_partner]
+            your_choices: np.ndarray
+                Array of your choices.
+            your_rewards: np.ndarray
+                Array of your rewards.
+            partner_choices: np.ndarray
+                Array of your partner's choices.
+            partner_rewards: np.ndarray
+                Array of your partner's rewards.
+
+        Returns:
+            nll: float
+                The negative log-likelihood for the session.
+        """
+        # Unpack parameters
+        (
+            lr_own,
+            lr_partner,
+            beta,
+            forgetful_own,
+            forgetful_partner,
+            stickiness_own,
+            stickiness_partner,
+        ) = params
+
+        n_trials = len(your_choices)
+        num_choices = self.num_choices
+
+        # Initialize Q-values
+        initial_value = 0.5
+        Q = np.ones((n_trials + 1, num_choices)) * initial_value
+        initial_values = np.ones(num_choices) * initial_value
+
+        # Initialize variables to store previous choices
+        previous_own_choice = None
+        previous_partner_choice = None
+
+        # Initialize array to store choice probabilities
+        choice_prob = np.zeros((n_trials, num_choices))
+
+        for t in range(n_trials):
+            # Get current values
+            values = Q[t].copy()
+
+            # Add stickiness effects
+            if previous_own_choice is not None:
+                values[previous_own_choice] += stickiness_own
+            if previous_partner_choice is not None:
+                values[previous_partner_choice] += stickiness_partner
+
+            # Scale by beta and compute choice probabilities
+            values_scaled = beta * values
+            probs = softmax(values_scaled)
+            choice_prob[t] = probs
+
+            # Update previous choices
+            previous_own_choice = your_choices[t]
+            previous_partner_choice = partner_choices[t]
+
+            # Update Q-values for own choice
+            Q[t + 1] = Q[t]
+            delta_own = your_rewards[t] - Q[t, your_choices[t]]
+            Q[t + 1, your_choices[t]] += lr_own * delta_own
+
+            # Apply forgetting to other actions after own choice
+            for action in range(num_choices):
+                if action != your_choices[t]:
+                    Q[t + 1, action] = (
+                        forgetful_own * initial_values[action]
+                        + (1 - forgetful_own) * Q[t + 1, action]
+                    )
+
+            # Update Q-values for partner's choice
+            delta_partner = partner_rewards[t] - Q[t + 1, partner_choices[t]]
+            Q[t + 1, partner_choices[t]] += lr_partner * delta_partner
+
+            # Apply forgetting to other actions after partner's choice
+            for action in range(num_choices):
+                if action != partner_choices[t]:
+                    Q[t + 1, action] = (
+                        forgetful_partner * initial_values[action]
+                        + (1 - forgetful_partner) * Q[t + 1, action]
+                    )
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
+        nll = -np.sum(np.log(chosen_prob + 1e-8))
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        """
+        Provide reasonable initial guesses for the parameters.
+
+        Returns:
+            init_params: np.ndarray
+                Array of initial parameter guesses.
+        """
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(1e-3, 5)
+        init_forgetful_own = np.random.uniform(0, 1)
+        init_forgetful_partner = np.random.uniform(0, 1)
+        init_stickiness_own = np.random.uniform(-1, 1)
+        init_stickiness_partner = np.random.uniform(-1, 1)
+
+        return np.array(
+            [
+                init_lr_own,
+                init_lr_partner,
+                init_beta,
+                init_forgetful_own,
+                init_forgetful_partner,
+                init_stickiness_own,
+                init_stickiness_partner,
+            ]
+        )
+
+    def constraints(self):
+        """
+        Define constraints for the optimization problem.
+
+        Returns:
+            constraints: LinearConstraint
+                Constraints for the optimizer.
+        """
+        n_params = 7  # Number of parameters to estimate
+        A = np.eye(n_params)
+        lb = [0, 0, 1e-3, 0, 0, 0, 0]  # Lower bounds
+        ub = [1, 1, np.inf, 1, 1, 1, 1]  # Upper bounds
         return LinearConstraint(A, lb, ub)
 
 
@@ -1832,6 +1984,181 @@ class ForgetfulQSoftmaxBonusMLEWithOwnReward(MLEstimator):
         A = np.eye(6)
         lb = [0, 0, 0, 0, 0, 0]
         ub = [1, 1, np.inf, 1, 1, 1]
+        return LinearConstraint(A, lb, ub)
+
+
+class ForgetfulStickyQSoftmaxBonusMLEWithOwnReward(MLEstimator):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def session_neg_ll(
+        self,
+        params: Sequence[float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
+        """
+        Calculate the negative log-likelihood for a single session.
+
+        Parameters:
+            params: Sequence[float]
+                A sequence of parameters to estimate:
+                [lr_own, lr_partner, beta, coef_info_bonus, forgetful_own,
+                 forgetful_partner, stickiness_own, stickiness_partner]
+            your_choices: np.ndarray
+                Array of your choices.
+            your_rewards: np.ndarray
+                Array of your rewards.
+            partner_choices: np.ndarray
+                Array of your partner's choices.
+            partner_rewards: np.ndarray
+                Array of your partner's rewards.
+
+        Returns:
+            nll: float
+                The negative log-likelihood for the session.
+        """
+        # Unpack parameters
+        (
+            lr_own,
+            lr_partner,
+            beta,
+            coef_info_bonus,
+            forgetful_own,
+            forgetful_partner,
+            stickiness_own,
+            stickiness_partner,
+        ) = params
+
+        n_trials = len(your_choices)
+        num_choices = self.num_choices
+
+        # Initialize Q-values and other variables
+        initial_value = 0.5
+        Q = np.ones((n_trials + 1, num_choices)) * initial_value
+        initial_values = np.ones(num_choices) * initial_value
+        n_chosen = np.ones(num_choices)
+
+        # Initialize previous choices for stickiness
+        previous_own_choice = None
+        previous_partner_choice = None
+
+        # Initialize array to store choice probabilities
+        choice_prob = np.zeros((n_trials, num_choices))
+
+        for t in range(n_trials):
+            # Compute the information bonus
+            info_bonus = coef_info_bonus / np.sqrt(n_chosen)
+
+            # Calculate action values
+            values = Q[t] + info_bonus
+
+            # Add stickiness effects
+            if previous_own_choice is not None:
+                values[previous_own_choice] += stickiness_own
+            if previous_partner_choice is not None:
+                values[previous_partner_choice] += stickiness_partner
+
+            # Scale by beta and compute choice probabilities
+            probs = softmax(beta * values)
+            choice_prob[t] = probs
+
+            # Update n_chosen
+            n_chosen[your_choices[t]] += 1
+            n_chosen[partner_choices[t]] += 1
+
+            # Copy previous Q-values for update
+            Q[t + 1] = Q[t]
+
+            # Learn from own choice
+            delta_own = your_rewards[t] - Q[t, your_choices[t]]
+            Q[t + 1, your_choices[t]] += lr_own * delta_own
+
+            # Apply forgetting to other actions after own choice
+            for action in range(num_choices):
+                if action != your_choices[t]:
+                    Q[t + 1, action] = (
+                        forgetful_own * initial_values[action]
+                        + (1 - forgetful_own) * Q[t + 1, action]
+                    )
+
+            # Update previous own choice
+            previous_own_choice = your_choices[t]
+
+            # Learn from partner's choice
+            delta_partner = partner_rewards[t] - Q[t + 1, partner_choices[t]]
+            Q[t + 1, partner_choices[t]] += lr_partner * delta_partner
+
+            # Apply forgetting to other actions after partner's choice
+            for action in range(num_choices):
+                if action != partner_choices[t]:
+                    Q[t + 1, action] = (
+                        forgetful_partner * initial_values[action]
+                        + (1 - forgetful_partner) * Q[t + 1, action]
+                    )
+
+            # Update previous partner choice
+            previous_partner_choice = partner_choices[t]
+
+        # Calculate negative log-likelihood
+        chosen_prob = choice_prob[np.arange(n_trials), your_choices]
+        nll = -np.sum(np.log(chosen_prob + 1e-8))
+
+        return nll
+
+    def initialize_params(self) -> np.ndarray:
+        """
+        Provide reasonable initial guesses for the parameters.
+
+        Returns:
+            init_params: np.ndarray
+                Array of initial parameter guesses.
+        """
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(1, 5)
+        init_coef_info_bonus = np.random.uniform(0, 1)
+        init_forgetful_own = np.random.uniform(0, 1)
+        init_forgetful_partner = np.random.uniform(0, 1)
+        init_stickiness_own = np.random.uniform(0, 1)
+        init_stickiness_partner = np.random.uniform(0, 1)
+
+        return np.array(
+            [
+                init_lr_own,
+                init_lr_partner,
+                init_beta,
+                init_coef_info_bonus,
+                init_forgetful_own,
+                init_forgetful_partner,
+                init_stickiness_own,
+                init_stickiness_partner,
+            ]
+        )
+
+    def constraints(self):
+        """
+        Define constraints for the optimization problem.
+
+        Returns:
+            constraints: LinearConstraint
+                Constraints for the optimizer.
+        """
+        n_params = 8  # Number of parameters to estimate
+        A = np.eye(n_params)
+        lb = [0] * n_params  # Lower bounds for parameters
+        ub = [
+            1,  # lr_own
+            1,  # lr_partner
+            np.inf,  # beta
+            1,  # coef_info_bonus
+            1,  # forgetful_own
+            1,  # forgetful_partner
+            1,  # stickiness_own
+            1,  # stickiness_partner
+        ]
         return LinearConstraint(A, lb, ub)
 
 

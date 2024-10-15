@@ -188,7 +188,7 @@ class StickyQSoftmaxSimulator(QSoftmaxSimulator):
         super().learn_from_partner(choice, reward)
 
 
-class QSoftmaxBonusWithStickinessSimulator(QSoftmaxSimulator):
+class StickyQSoftmaxBonusSimulator(QSoftmaxSimulator):
     def __init__(
         self,
         lr_own,
@@ -281,4 +281,123 @@ class ForgetfulQSoftmaxBonusSimulator(QSoftmaxSimulator):
                 self.q_values[action] = (
                     self.f_partner * self.initial_values[action]
                     + (1 - self.f_partner) * self.q_values[action]
+                )
+
+
+class StickyForgetfulQSoftmaxSimulator(QSoftmaxSimulator):
+    def __init__(
+        self,
+        lr_own,
+        lr_partner,
+        beta,
+        forgetful_own,
+        forgetful_partner,
+        stickiness_own,
+        stickiness_partner,
+        initial_values,
+    ):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.stickiness_own = stickiness_own
+        self.stickiness_partner = stickiness_partner
+        self.forgetful_own = forgetful_own
+        self.forgetful_partner = forgetful_partner
+        self.initial_values = initial_values
+        self.previous_own_choice = None
+        self.previous_partner_choice = None
+
+    def make_choice(self) -> int:
+        # add stickiness
+        values = self.q_values.copy()
+        if self.previous_own_choice is not None:
+            values[self.previous_own_choice] += self.stickiness_own
+        if self.previous_partner_choice is not None:
+            values[self.previous_partner_choice] += self.stickiness_partner
+
+        choice_prob = softmax(self.beta * values)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
+
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        self.previous_own_choice = choice
+        super().learn_from_own(choice, reward)
+        # Forget
+        for action in range(len(self.q_values)):
+            if action != choice:
+                self.q_values[action] = (
+                    self.forgetful_own * self.initial_values[action]
+                    + (1 - self.forgetful_own) * self.q_values[action]
+                )
+
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        self.previous_partner_choice = choice
+        super().learn_from_partner(choice, reward)
+        # Forget
+        for action in range(len(self.q_values)):
+            if action != choice:
+                self.q_values[action] = (
+                    self.forgetful_partner * self.initial_values[action]
+                    + (1 - self.forgetful_partner) * self.q_values[action]
+                )
+
+
+class StickyForgetfulQSoftmaxBonusSimulator(QSoftmaxSimulator):
+    def __init__(
+        self,
+        lr_own,
+        lr_partner,
+        beta,
+        coef_info_bonus,
+        forgetful_own,
+        forgetful_partner,
+        stickiness_own,
+        stickiness_partner,
+        initial_values,
+    ):
+        super().__init__(lr_own, lr_partner, beta, initial_values)
+        self.n_chosen = np.ones(len(initial_values))
+        self.coef_info_bonus = coef_info_bonus
+        self.stickiness_own = stickiness_own
+        self.stickiness_partner = stickiness_partner
+        self.forgetful_own = forgetful_own
+        self.forgetful_partner = forgetful_partner
+        self.initial_values = initial_values
+        self.previous_own_choice = None
+        self.previous_partner_choice = None
+
+    def make_choice(self) -> int:
+        # add the information bonus
+        values = self.q_values + self.coef_info_bonus / np.sqrt(self.n_chosen)
+
+        # add stickiness
+        if self.previous_own_choice is not None:
+            values[self.previous_own_choice] += self.stickiness_own
+        if self.previous_partner_choice is not None:
+            values[self.previous_partner_choice] += self.stickiness_partner
+
+        choice_prob = softmax(self.beta * values)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.q_values), p=choice_prob)
+
+    def learn_from_own(self, choice: int, reward: float) -> None:
+        self.previous_own_choice = choice
+        super().learn_from_own(choice, reward)
+        self.n_chosen[choice] += 1
+        # Forget
+        for action in range(len(self.q_values)):
+            if action != choice:
+                self.q_values[action] = (
+                    self.forgetful_own * self.initial_values[action]
+                    + (1 - self.forgetful_own) * self.q_values[action]
+                )
+
+    def learn_from_partner(self, choice: int, reward: float) -> None:
+        self.previous_partner_choice = choice
+        super().learn_from_partner(choice, reward)
+        self.n_chosen[choice] += 1
+        # Forget
+        for action in range(len(self.q_values)):
+            if action != choice:
+                self.q_values[action] = (
+                    self.forgetful_partner * self.initial_values[action]
+                    + (1 - self.forgetful_partner) * self.q_values[action]
                 )
