@@ -64,11 +64,11 @@ parameters {
 
 transformed parameters {
   // Condition A Parameters
-  array[N] vector<lower=0, upper=1> alpha_own_A;
-  array[N] vector<lower=0, upper=1> alpha_partner_A;
+  array[N] real<lower=0, upper=1> alpha_own_A;
+  array[N] real<lower=0, upper=1> alpha_partner_A;
   array[N] real beta_A;
-  array[N] vector<lower=0, upper=1> forgetful_own_A;
-  array[N] vector<lower=0, upper=1> forgetful_partner_A;
+  array[N] real<lower=0, upper=1> forgetful_own_A;
+  array[N] real<lower=0, upper=1> forgetful_partner_A;
   array[N] real s_own_A;
   array[N] real s_partner_A;
 
@@ -100,14 +100,14 @@ transformed parameters {
 
   // Condition B Parameters: add deltas on transformed scales
   array[N] real logit_alpha_own_B;
-  array[N] vector<lower=0, upper=1> alpha_own_B;
+  array[N] real alpha_own_B;
   array[N] real logit_alpha_partner_B;
-  array[N] vector<lower=0, upper=1> alpha_partner_B;
+  array[N] real alpha_partner_B;
   array[N] real log_beta_B;
   array[N] real logit_forgetful_own_B;
-  array[N] vector<lower=0, upper=1> forgetful_own_B;
+  array[N] real forgetful_own_B;
   array[N] real logit_forgetful_partner_B;
-  array[N] vector<lower=0, upper=1> forgetful_partner_B;
+  array[N] real forgetful_partner_B;
   array[N] real s_own_B;
   array[N] real s_partner_B;
 
@@ -222,7 +222,7 @@ model {
         } else if (current_condition == 2) { // Condition B
           alpha_own_cond = alpha_own_B[i];
           alpha_partner_cond = alpha_partner_B[i];
-          beta_cond = beta_A[i]; // Note: Should this be beta_B[i]? It was previously beta_A[i]
+          beta_cond = beta_A[i]; // **Potential Typo:** Should this be beta_B[i]?
           forgetful_own_cond = forgetful_own_B[i];
           forgetful_partner_cond = forgetful_partner_B[i];
           s_own_cond = s_own_B[i];
