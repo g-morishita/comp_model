@@ -69,7 +69,7 @@ model {
       vector[NC] action_values; // Action values
       // Initialize Q-values and action values
       Q = rep_vector(0.5, NC);
-      action_values = rep_vector(0.5, NC);
+      action_values = rep_vector(1.0 / NC, NC);
 
       for (t in 1:T) { // Trial loop
         vector[NC] combined_values;
@@ -123,7 +123,7 @@ generated quantities {
       vector[NC] action_values; // Action values
       // Initialize Q-values and action values
       Q = rep_vector(0.5, NC);
-      action_values = rep_vector(0.5, NC);
+      action_values = rep_vector(1.0 / NC, NC);
 
       for (t in 1:T) {
         vector[NC] combined_values;
