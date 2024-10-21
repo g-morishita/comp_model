@@ -287,3 +287,120 @@ class RewardImmediateActionHybridSimulator:
 
         # Update the action value for the partner's choice
         self.previous_choice = partner_choice
+
+
+class RewardActionHybridSimulatorWithOwnReward:
+    """
+    Implements a reward and action hybrid learning simulator with a softmax action selection strategy.
+
+    Attributes
+    ----------
+    lr_for_own_reward : float
+        The learning rate used to update Q values with own outcome
+    lr_for_partner_reward : float
+         The learning rate used to update Q values with partner outcome
+    lr_for_partner_action : float
+        The learning rate used to update action values.
+    beta : float
+        A temperature parameter
+    weights_for_value: float
+        Weights for q values
+    q_values : Sequence[float]
+        A numpy array storing reward values for each action.
+    action_values : Sequence[float]
+        A numpy array storing action values for each action.
+    """
+
+    def __init__(
+        self,
+        lr_for_own_reward: float,
+        lr_for_partner_reward: float,
+        lr_for_partner_action: float,
+        beta: float,
+        weights_for_value: float,
+        initial_q_values: Sequence[float],
+        initial_action_values: Sequence[float],
+    ) -> None:
+        """
+        Initialize the ActionSoftmaxSimulator with learning rate, beta parameter, and initial action values.
+
+        Parameters
+        ----------
+        lr_for_own_reward : float
+            The learning rate used to update Q values.
+        lr_for_partner_action : float
+            The learning rate used to update action values.
+        beta : float
+            A temperature parameter
+        weights_for_value: float
+            Weights for q values
+        initial_q_values : ndarray
+            Initial values for q values.
+        initial_action_values : ndarray
+            Initial values for action values.
+        """
+        super().__init__()
+        self.lr_for_own_reward = lr_for_own_reward
+        self.lr_for_partner_reward = lr_for_partner_reward
+        self.lr_for_partner_action = lr_for_partner_action
+        self.beta = beta
+        self.weights_for_value = weights_for_value
+        self.q_values = np.array(initial_q_values)
+        self.action_values = np.array(initial_action_values)
+
+    def make_choice(self) -> int:
+        """
+        Make a choice (i.e., select an action) based on the action values and the softmax policy.
+
+        Returns
+        -------
+        int
+            The index of the selected action.
+        """
+        combined_values = (
+            self.weights_for_value * self.q_values
+            + (1 - self.weights_for_value) * self.action_values
+        )
+        # Calculate the probability of each action using the softmax function.
+        choice_prob = softmax(combined_values * self.beta)
+        # Randomly select an action based on its probability.
+        return np.random.choice(len(self.action_values), p=choice_prob)
+
+    def learn_from_own(self, choice: int, reward: int) -> None:
+        """
+        Update the action value for the partner's choice
+
+        Parameters
+        ----------
+        choice : int
+            The index of the partner's choice
+        """
+        # Update the q values for the partner's choice
+        self.q_values[choice] = self.q_values[choice] + self.lr_for_own_reward * (
+            reward - self.q_values[choice]
+        )
+
+    def learn_from_partner(self, choice: int, reward: int) -> None:
+        """
+        Update the action value for the partner's choice
+
+        Parameters
+        ----------
+        choice : int
+            The index of the partner's choice
+        """
+        # Update the q values for the partner's choice
+        self.q_values[choice] = self.q_values[choice] + self.lr_for_partner_reward * (
+            reward - self.q_values[choice]
+        )
+
+        # Update the action value for the partner's choice
+        self.action_values[choice] = self.action_values[
+            choice
+        ] + self.lr_for_partner_action * (1 - self.action_values[choice])
+
+        for unchosen in range(len(self.action_values)):
+            if unchosen != choice:
+                self.action_values[unchosen] = self.action_values[
+                    unchosen
+                ] + self.lr_for_partner_action * (0 - self.action_values[unchosen])

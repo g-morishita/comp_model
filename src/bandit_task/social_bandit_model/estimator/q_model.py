@@ -2466,10 +2466,9 @@ class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward:
         stan_data = self.convert_stan_data(df)
         self.posterior_sample = model.sample(data=stan_data)
 
-
-
     def convert_stan_data(self, df):
         from sklearn.preprocessing import LabelEncoder
+
         """
         Converts a pandas DataFrame into a Stan-compatible data dictionary.
     
@@ -2548,7 +2547,9 @@ class HierarchicalBayesianWithinSubjectStickyForgetfulQSoftmaxWithOwnReward:
                 df_sorted[df_sorted["participant_id"] == pid]["session"].unique()
             )
             if len(participant_sessions) != S:
-                raise ValueError(f"Participant {pid} does not have exactly {S} sessions.")
+                raise ValueError(
+                    f"Participant {pid} does not have exactly {S} sessions."
+                )
             # Assign session indices 0, 1, 2, 3 based on sorted order
             # Alternatively, map based on condition to ensure two sessions per condition
             # Here, we'll map based on sorted order
