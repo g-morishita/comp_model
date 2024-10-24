@@ -26,12 +26,21 @@ parameters {
   real mu_omega_nd_2;
   real<lower=0> sigma_omega_nd;
 
-  // Group-level deltas between conditions
+  // Group-level means of individual-level deltas
   real delta_mu_alpha_own_nd;
+  real<lower=0> sigma_delta_alpha_own_nd;
+
   real delta_mu_alpha_partner_reward_nd;
+  real<lower=0> sigma_delta_alpha_partner_reward_nd;
+
   real delta_mu_alpha_partner_action_nd;
+  real<lower=0> sigma_delta_alpha_partner_action_nd;
+
   real delta_mu_beta_nd;
+  real<lower=0> sigma_delta_beta_nd;
+
   real delta_mu_omega_nd;
+  real<lower=0> sigma_delta_omega_nd;
 
   // Individual-level parameters for condition 2
   vector[N] alpha_own_nd_2;
@@ -40,7 +49,7 @@ parameters {
   vector[N] beta_nd_2;
   vector[N] omega_nd_2;
 
-  // Individual-level deltas between conditions
+  // Individual-level deltas
   vector[N] delta_alpha_own_nd;
   vector[N] delta_alpha_partner_reward_nd;
   vector[N] delta_alpha_partner_action_nd;
@@ -48,13 +57,6 @@ parameters {
   vector[N] delta_omega_nd;
 }
 transformed parameters {
-  // Group-level parameters for condition 1
-  real mu_alpha_own_nd_1 = mu_alpha_own_nd_2 + delta_mu_alpha_own_nd;
-  real mu_alpha_partner_reward_nd_1 = mu_alpha_partner_reward_nd_2 + delta_mu_alpha_partner_reward_nd;
-  real mu_alpha_partner_action_nd_1 = mu_alpha_partner_action_nd_2 + delta_mu_alpha_partner_action_nd;
-  real mu_beta_nd_1 = mu_beta_nd_2 + delta_mu_beta_nd;
-  real mu_omega_nd_1 = mu_omega_nd_2 + delta_mu_omega_nd;
-
   // Individual-level parameters for condition 1
   vector[N] alpha_own_nd_1 = alpha_own_nd_2 + delta_alpha_own_nd;
   vector[N] alpha_partner_reward_nd_1 = alpha_partner_reward_nd_2 + delta_alpha_partner_reward_nd;
@@ -63,19 +65,19 @@ transformed parameters {
   vector[N] omega_nd_1 = omega_nd_2 + delta_omega_nd;
 
   // Transform to appropriate scales
-  array[N, 2] alpha_own;
-  array[N, 2] alpha_partner_reward;
-  array[N, 2] alpha_partner_action;
-  array[N, 2] beta;
-  array[N, 2] omega;
+  array[N, 2] real<lower=0.0, upper=1.0> alpha_own;
+  array[N, 2] real<lower=0.0, upper=1.0> alpha_partner_reward;
+  array[N, 2] real<lower=0.0, upper=1.0> alpha_partner_action;
+  array[N, 2] real<lower=0.0> beta;
+  array[N, 2] real<lower=0.0, upper=1.0> omega;
 
   for (i in 1:N) {
     // Condition 1
-    alpha_own[i, 1] = inv_logit(mu_alpha_own_nd_1 + sigma_alpha_own_nd * alpha_own_nd_1[i]);
-    alpha_partner_reward[i, 1] = inv_logit(mu_alpha_partner_reward_nd_1 + sigma_alpha_partner_reward_nd * alpha_partner_reward_nd_1[i]);
-    alpha_partner_action[i, 1] = inv_logit(mu_alpha_partner_action_nd_1 + sigma_alpha_partner_action_nd * alpha_partner_action_nd_1[i]);
-    beta[i, 1] = exp(mu_beta_nd_1 + sigma_beta_nd * beta_nd_1[i]);
-    omega[i, 1] = inv_logit(mu_omega_nd_1 + sigma_omega_nd * omega_nd_1[i]);
+    alpha_own[i, 1] = inv_logit(mu_alpha_own_nd_2 + sigma_alpha_own_nd * alpha_own_nd_1[i]);
+    alpha_partner_reward[i, 1] = inv_logit(mu_alpha_partner_reward_nd_2 + sigma_alpha_partner_reward_nd * alpha_partner_reward_nd_1[i]);
+    alpha_partner_action[i, 1] = inv_logit(mu_alpha_partner_action_nd_2 + sigma_alpha_partner_action_nd * alpha_partner_action_nd_1[i]);
+    beta[i, 1] = exp(mu_beta_nd_2 + sigma_beta_nd * beta_nd_1[i]);
+    omega[i, 1] = inv_logit(mu_omega_nd_2 + sigma_omega_nd * omega_nd_1[i]);
 
     // Condition 2
     alpha_own[i, 2] = inv_logit(mu_alpha_own_nd_2 + sigma_alpha_own_nd * alpha_own_nd_2[i]);
@@ -88,24 +90,27 @@ transformed parameters {
 model {
   // Priors for group-level parameters (Condition 2)
   mu_alpha_own_nd_2 ~ normal(0, 1);
-  mu_alpha_partner_reward_nd_2 ~ normal(0, 1);
-  mu_alpha_partner_action_nd_2 ~ normal(0, 1);
-  mu_beta_nd_2 ~ normal(0, 1);
-  mu_omega_nd_2 ~ normal(0, 1);
-
-  // Priors for group-level deltas
-  delta_mu_alpha_own_nd ~ normal(0, 1);
-  delta_mu_alpha_partner_reward_nd ~ normal(0, 1);
-  delta_mu_alpha_partner_action_nd ~ normal(0, 1);
-  delta_mu_beta_nd ~ normal(0, 1);
-  delta_mu_omega_nd ~ normal(0, 1);
-
-  // Priors for standard deviations
   sigma_alpha_own_nd ~ cauchy(0, 2.5);
+  mu_alpha_partner_reward_nd_2 ~ normal(0, 1);
   sigma_alpha_partner_reward_nd ~ cauchy(0, 2.5);
+  mu_alpha_partner_action_nd_2 ~ normal(0, 1);
   sigma_alpha_partner_action_nd ~ cauchy(0, 2.5);
+  mu_beta_nd_2 ~ normal(0, 1);
   sigma_beta_nd ~ cauchy(0, 2.5);
+  mu_omega_nd_2 ~ normal(0, 1);
   sigma_omega_nd ~ cauchy(0, 2.5);
+
+  // Priors for group-level means of individual-level deltas
+  delta_mu_alpha_own_nd ~ normal(0, 1);
+  sigma_delta_alpha_own_nd ~ cauchy(0, 2.5);
+  delta_mu_alpha_partner_reward_nd ~ normal(0, 1);
+  sigma_delta_alpha_partner_reward_nd ~ cauchy(0, 2.5);
+  delta_mu_alpha_partner_action_nd ~ normal(0, 1);
+  sigma_delta_alpha_partner_action_nd ~ cauchy(0, 2.5);
+  delta_mu_beta_nd ~ normal(0, 1);
+  sigma_delta_beta_nd ~ cauchy(0, 2.5);
+  delta_mu_omega_nd ~ normal(0, 1);
+  sigma_delta_omega_nd ~ cauchy(0, 2.5);
 
   // Priors for individual-level parameters (Condition 2)
   alpha_own_nd_2 ~ normal(0, 1);
@@ -115,11 +120,11 @@ model {
   omega_nd_2 ~ normal(0, 1);
 
   // Priors for individual-level deltas
-  delta_alpha_own_nd ~ normal(0, 1);
-  delta_alpha_partner_reward_nd ~ normal(0, 1);
-  delta_alpha_partner_action_nd ~ normal(0, 1);
-  delta_beta_nd ~ normal(0, 1);
-  delta_omega_nd ~ normal(0, 1);
+  delta_alpha_own_nd ~ normal(delta_mu_alpha_own_nd, sigma_delta_alpha_own_nd);
+  delta_alpha_partner_reward_nd ~ normal(delta_mu_alpha_partner_reward_nd, sigma_delta_alpha_partner_reward_nd);
+  delta_alpha_partner_action_nd ~ normal(delta_mu_alpha_partner_action_nd, sigma_delta_alpha_partner_action_nd);
+  delta_beta_nd ~ normal(delta_mu_beta_nd, sigma_delta_beta_nd);
+  delta_omega_nd ~ normal(delta_mu_omega_nd, sigma_delta_omega_nd);
 
   // Likelihood
   for (i in 1:N) { // Participant loop
@@ -169,16 +174,17 @@ model {
 }
 generated quantities {
   // Transformed group-level parameters for interpretation
-  real<lower=0, upper=1> mu_alpha_own_1 = inv_logit(mu_alpha_own_nd_1);
   real<lower=0, upper=1> mu_alpha_own_2 = inv_logit(mu_alpha_own_nd_2);
-  real<lower=0, upper=1> mu_alpha_partner_reward_1 = inv_logit(mu_alpha_partner_reward_nd_1);
   real<lower=0, upper=1> mu_alpha_partner_reward_2 = inv_logit(mu_alpha_partner_reward_nd_2);
-  real<lower=0, upper=1> mu_alpha_partner_action_1 = inv_logit(mu_alpha_partner_action_nd_1);
   real<lower=0, upper=1> mu_alpha_partner_action_2 = inv_logit(mu_alpha_partner_action_nd_2);
-  real<lower=0> mu_beta_1 = exp(mu_beta_nd_1);
   real<lower=0> mu_beta_2 = exp(mu_beta_nd_2);
-  real<lower=0, upper=1> mu_omega_1 = inv_logit(mu_omega_nd_1);
   real<lower=0, upper=1> mu_omega_2 = inv_logit(mu_omega_nd_2);
+
+  real<lower=0, upper=1> delta_mu_alpha_own = inv_logit(delta_mu_alpha_own_nd);
+  real<lower=0, upper=1> delta_mu_alpha_partner_reward = inv_logit(delta_mu_alpha_partner_reward_nd);
+  real<lower=0, upper=1> delta_mu_alpha_partner_action = inv_logit(delta_mu_alpha_partner_action_nd);
+  real<lower=0> delta_mu_beta = exp(delta_mu_beta_nd);
+  real<lower=0, upper=1> delta_mu_omega = inv_logit(delta_mu_omega_nd);
 
   // Compute log-likelihood for each trial
   vector[N * S * T] log_lik;
