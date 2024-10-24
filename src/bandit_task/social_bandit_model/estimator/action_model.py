@@ -14,18 +14,23 @@ class ActionSoftmaxMLEWithoutYourReward(MLEstimator):
     def __init__(self) -> None:
         super().__init__()
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
+    def session_neg_ll(
+        self,
+        params: Sequence[int | float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
         lr, beta = params
 
         # Initialize all the kind values matrix with 1/2s
-        action_values = np.ones((len(self.your_choices), self.num_choices)) / 3
-        n_trials = len(self.your_choices)
+        action_values = np.ones((len(your_choices), self.num_choices)) / 3
+        n_trials = len(your_choices)
 
         # For each trial, calculate delta and update Q-values
         for t in range(1, n_trials):
-            current_partner_choice = self.partner_choices[
-                t - 1
-            ]  # Choice made at time t
+            current_partner_choice = partner_choices[t - 1]  # Choice made at time t
             # Action value update
             action_values[t, current_partner_choice] = action_values[
                 t - 1, current_partner_choice
@@ -42,7 +47,7 @@ class ActionSoftmaxMLEWithoutYourReward(MLEstimator):
         choice_prob = softmax(action_values * beta, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
+        chosen_prob = choice_prob[np.arange(1, n_trials), your_choices[:-1]]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
