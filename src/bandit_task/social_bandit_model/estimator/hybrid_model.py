@@ -486,7 +486,7 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
         init_lr_own = np.random.uniform(0, 1)
         init_lr_partner_reward = np.random.uniform(0, 1)
         init_lr_partner_action = np.random.uniform(0, 1)
-        init_beta = np.random.gamma(2, 0.333)  # Mean ≈ 0.666
+        init_beta = np.random.uniform(0.01, 100)
         init_weights_for_value = np.random.uniform(0, 1)
         return np.array(
             [

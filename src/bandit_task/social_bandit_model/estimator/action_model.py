@@ -64,6 +64,69 @@ class ActionSoftmaxMLEWithoutYourReward(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
+class ActionSoftmaxMLEWithYourReward(MLEstimator):
+    def __init__(self, num_choices=3) -> None:
+        super().__init__()
+        self.num_choices = num_choices
+
+    def session_neg_ll(
+        self,
+        params: Sequence[float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
+        lr, beta = params
+        n_trials = len(your_choices)
+
+        # Initialize action values to 1/num_choices
+        action_values = np.ones(self.num_choices) / self.num_choices
+
+        total_neg_log_lik = 0.0
+
+        for t in range(n_trials):
+            # Compute choice probabilities using current action values
+            logits = beta * action_values
+            probs = softmax(logits)
+
+            # Get participant's choice for this trial
+            your_choice = your_choices[t]
+
+            # Compute log probability of the chosen action
+            prob_choice = probs[your_choice] + 1e-8  # Add epsilon to prevent log(0)
+            log_prob = np.log(prob_choice)
+
+            # Accumulate negative log-likelihood
+            total_neg_log_lik -= log_prob
+
+            # Update action values based on partner's choice at trial t
+            partner_choice = partner_choices[t]
+
+            # Update action values (only based on partner's choice)
+            action_values[partner_choice] += lr * (1 - action_values[partner_choice])
+
+            # Decay action values for unchosen actions
+            for unchosen_choice in range(self.num_choices):
+                if unchosen_choice != partner_choice:
+                    action_values[unchosen_choice] += lr * (
+                        0 - action_values[unchosen_choice]
+                    )
+
+        return total_neg_log_lik
+
+    def initialize_params(self) -> np.ndarray:
+        lr = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(0.01, 100)
+        return np.array([lr, init_beta])
+
+    def constraints(self):
+        A = np.eye(2)
+        lb = np.array([0, 0])
+        ub = np.array([1, np.inf])
+        return LinearConstraint(A, lb, ub)
+
+
 class HierarchicalActionSoftmaxWithoutYourReward(HierarchicalEstimator):
     """
     Implements a bayesian hierarchical action learning model.
