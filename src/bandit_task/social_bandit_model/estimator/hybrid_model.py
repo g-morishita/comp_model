@@ -377,7 +377,7 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
     Inherits methods from MLEstimator and implements session-specific negative log-likelihood.
     """
 
-    def __init__(self, num_choices=2) -> None:
+    def __init__(self, num_choices=2, priors=None) -> None:
         """
         Initialize the MLE estimator.
 
@@ -389,6 +389,7 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
         """
         super().__init__()
         self.num_choices = num_choices
+        self.priors = priors
 
     def session_neg_ll(
         self,

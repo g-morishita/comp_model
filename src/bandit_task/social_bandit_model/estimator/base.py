@@ -1,3 +1,4 @@
+import scipy.stats
 from abc import ABC, abstractmethod
 from typing import Sequence
 
@@ -70,6 +71,7 @@ class MLEstimator(BaseEstimator):
         self.partner_choices = None  # List of arrays, one per session
         self.partner_rewards = None  # List of arrays, one per session
         self.min_nll = None  # Minimized negative log-likelihood
+        self.priors = None  # Prior
 
     def fit(
         self,
@@ -183,6 +185,12 @@ class MLEstimator(BaseEstimator):
             total_neg_log_likelihood += self.session_neg_ll(
                 params, your_choices, your_rewards, partner_choices, partner_rewards
             )
+
+        # Add priors
+        if self.priors is not None:
+            for param, prior in zip(params, self.priors):
+                if (prior is not None) and (isinstance(prior, scipy.stats.rv_continuous)):
+                    total_neg_log_likelihood += prior.logpdf(param)
 
         return total_neg_log_likelihood
 
