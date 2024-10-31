@@ -11,13 +11,14 @@ from ...type import NDArrayNumber
 
 
 class QSotfmaxMLEWithoutOwnReward(MLEstimator):
-    def __init__(self) -> None:
+    def __init__(self, priors=None) -> None:
         """
         This class estimates free parameters of  a social Q learning model, which learns from partner's choices and
         rewards and makes a choice using softmax function using the maximum likelihood estimator (MLE).
         The free parameters are a learning rate `lr` and an inverse temperature `beta`.
         """
         super().__init__()
+        self.priors = priors
 
     def session_neg_ll(
         self,
