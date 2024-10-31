@@ -19,21 +19,24 @@ class QSotfmaxMLEWithoutOwnReward(MLEstimator):
         """
         super().__init__()
 
-    def neg_ll(self, params: Sequence[int | float]) -> float:
+    def session_neg_ll(
+        self,
+        params: Sequence[float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
         lr, beta = params
 
         # Initialize Q-values matrix with zeros
-        Q = np.zeros((len(self.your_choices), self.num_choices))
-        n_trials = len(self.your_choices)
+        Q = np.zeros((len(your_choices), self.num_choices))
+        n_trials = len(your_choices)
 
         # For each trial, calculate delta and update Q-values
         for t in range(1, n_trials):
-            current_partner_choice = self.partner_choices[
-                t - 1
-            ]  # Choice made at time t
-            current_partner_reward = self.partner_rewards[
-                t - 1
-            ]  # Reward received at time t
+            current_partner_choice = partner_choices[t - 1]  # Choice made at time t
+            current_partner_reward = partner_rewards[t - 1]  # Reward received at time t
             delta_t = current_partner_reward - Q[t - 1, current_partner_choice]
 
             # Q-value update
@@ -50,21 +53,18 @@ class QSotfmaxMLEWithoutOwnReward(MLEstimator):
         choice_prob = softmax(beta * Q, axis=1)
 
         # Calculate negative log-likelihood using your own choices not partners!
-        chosen_prob = choice_prob[np.arange(1, n_trials), self.your_choices[:-1]]
+        chosen_prob = choice_prob[np.arange(1, n_trials), your_choices[:-1]]
         nll = -np.log(chosen_prob + 1e-8).sum()
 
         return nll
 
     def initialize_params(self) -> np.ndarray:
-        init_lr = np.random.beta(2, 2)
-        init_beta = np.random.gamma(2, 0.333)
+        init_lr = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(0.01, 100)
         return np.array([init_lr, init_beta])
 
     def constraints(self):
-        A = np.eye(2)
-        lb = np.array([0, 0])
-        ub = [1, np.inf]
-        return LinearConstraint(A, lb, ub)
+        return (0, 1), (0.01, np.inf)
 
 
 class ForgetfulQSoftmaxMLEWithoutOwnReward(MLEstimator):
