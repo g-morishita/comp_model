@@ -86,7 +86,7 @@ def optimize_non_convex_obj(obj, init_param, constraints, method, n_trials, opti
             obj,
             init_param,
             method=method,
-            constraints=constraints,
+            bounds=constraints,
             options=options,
         )
 

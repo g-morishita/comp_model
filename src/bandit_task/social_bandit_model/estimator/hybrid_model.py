@@ -377,7 +377,7 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
     Inherits methods from MLEstimator and implements session-specific negative log-likelihood.
     """
 
-    def __init__(self, num_choices=2, priors=None) -> None:
+    def __init__(self, priors=None) -> None:
         """
         Initialize the MLE estimator.
 
@@ -388,7 +388,6 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
             Default is 2.
         """
         super().__init__()
-        self.num_choices = num_choices
         self.priors = priors
 
     def session_neg_ll(
@@ -508,10 +507,10 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
         LinearConstraint
             Constraint object for scipy.optimize.minimize.
         """
-        A = np.eye(5)
-        lb = np.array([0, 0, 0, 0, 0])
-        ub = np.array([1, 1, 1, np.inf, 1])
-        return LinearConstraint(A, lb, ub)
+        # A = np.eye(5)
+        # lb = np.array([0, 0, 0, 0, 0])
+        # ub = np.array([1, 1, 1, np.inf, 1])
+        return (0, 1), (0, 1), (0, 1), (0, np.inf), (0, 1)
 
     def get_param_names(self):
         """
@@ -543,6 +542,163 @@ class RewardActionHybridMLEWithOwnReward(MLEstimator):
         )
         print(
             f"  Learning Rate for Partner Reward   : {params_dict['lr_for_partner_reward']:.4f}"
+        )
+        print(
+            f"  Learning Rate for Partner Action   : {params_dict['lr_for_partner_action']:.4f}"
+        )
+        print(f"  Beta (Softmax Temperature)         : {params_dict['beta']:.4f}")
+        print(
+            f"  Weights for Value                  : {params_dict['weights_for_value']:.4f}"
+        )
+
+
+class RewardActionHybridMLEWithOwnRewardWithoutPartnerReward(MLEstimator):
+    """
+    Maximum Likelihood Estimation for the RewardActionHybridSimulatorWithOwnReward model.
+    Inherits methods from MLEstimator and implements session-specific negative log-likelihood.
+    """
+
+    def __init__(self, priors=None) -> None:
+        """
+        Initialize the MLE estimator.
+
+        Parameters
+        ----------
+        num_choices : int, optional
+            Number of possible choices/actions.
+            Default is 2.
+        """
+        super().__init__()
+        self.priors = priors
+
+    def session_neg_ll(
+        self,
+        params: Sequence[float],
+        your_choices,
+        your_rewards,
+        partner_choices,
+        partner_rewards,
+    ) -> float:
+        """
+        Compute the negative log-likelihood for a single session.
+
+        Parameters
+        ----------
+        params : Sequence[float]
+            Array of parameters [lr_own, lr_partner_reward, lr_partner_action, beta, weights_for_value]
+        your_choices : ndarray
+            Participant's own choices (0-based indexing).
+        your_rewards : ndarray
+            Participant's own rewards.
+        partner_choices : ndarray
+            Partner's choices (0-based indexing).
+        partner_rewards : ndarray
+            Partner's rewards.
+
+        Returns
+        -------
+        float
+            Negative log-likelihood for the session.
+        """
+        lr_own, lr_partner_action, beta, weights_for_value = params
+
+        n_trials = len(your_choices)
+
+        # Initialize Q-values and action values to 0.5 for all choices
+        Q = np.ones(self.num_choices) / 2.0
+        action_values = np.ones(self.num_choices) / self.num_choices
+
+        total_neg_log_lik = 0.0
+
+        for t in range(n_trials):
+            # Compute combined values
+            combined_values = (
+                weights_for_value * Q + (1 - weights_for_value) * action_values
+            )
+
+            # Compute choice probabilities using softmax
+            logits = beta * combined_values
+            probs = softmax(logits)
+
+            # Get participant's choice for this trial
+            your_choice = your_choices[t]
+
+            # Compute log probability of the chosen action
+            prob_choice = probs[your_choice] + 1e-8  # Add epsilon to prevent log(0)
+            log_prob = np.log(prob_choice)
+
+            # Accumulate negative log-likelihood
+            total_neg_log_lik -= log_prob
+
+            # Update Q-values based on own reward
+            your_reward = your_rewards[t]
+            Q[your_choice] += lr_own * (your_reward - Q[your_choice])
+
+            # Update action values based on partner's action
+            partner_choice = partner_choices[t]
+            action_values[partner_choice] += lr_partner_action * (
+                1 - action_values[partner_choice]
+            )
+
+            # Decay action values for unchosen actions
+            for a in range(self.num_choices):
+                if a != partner_choice:
+                    action_values[a] += lr_partner_action * (0 - action_values[a])
+
+        return total_neg_log_lik
+
+    def initialize_params(self) -> np.ndarray:
+        """
+        Initialize parameters with random starting values within bounds.
+
+        Returns
+        -------
+        ndarray
+            Array of initial parameter values.
+        """
+        init_lr_own = np.random.uniform(0, 1)
+        init_lr_partner_action = np.random.uniform(0, 1)
+        init_beta = np.random.uniform(0.01, 100)
+        init_weights_for_value = np.random.uniform(0, 1)
+        return np.array(
+            [
+                init_lr_own,
+                init_lr_partner_action,
+                init_beta,
+                init_weights_for_value,
+            ]
+        )
+
+    def constraints(self):
+        """Define parameter constraints."""
+        return (0, 1), (0, 1), (0, np.inf), (0, 1)
+
+    def get_param_names(self):
+        """
+        Get the names of the parameters.
+
+        Returns
+        -------
+        list of str
+            List of parameter names.
+        """
+        return [
+            "lr_for_own_reward",
+            "lr_for_partner_action",
+            "beta",
+            "weights_for_value",
+        ]
+
+    def print_results(self):
+        """
+        Print the estimated parameters in a readable format.
+        """
+        params_dict = {
+            name: val for name, val in zip(self.get_param_names(), self.params)
+        }
+        print("\nEstimated Parameters:")
+        print(
+            f"  Learning Rate for Own Reward       : {params_dict['lr_for_own_reward']:.4f}"
         )
         print(
             f"  Learning Rate for Partner Action   : {params_dict['lr_for_partner_action']:.4f}"
