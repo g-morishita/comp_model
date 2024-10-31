@@ -189,9 +189,7 @@ class MLEstimator(BaseEstimator):
         # Add priors
         if self.priors is not None:
             for param, prior in zip(params, self.priors):
-                if (prior is not None) and (
-                    isinstance(prior, scipy.stats.rv_continuous)
-                ):
+                if prior is not None
                     total_neg_log_likelihood -= prior.logpdf(param)
 
         return total_neg_log_likelihood
