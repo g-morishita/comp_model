@@ -292,10 +292,7 @@ class QSotfmaxMLEWithOwnReward(MLEstimator):
         return np.array([init_lr_own, init_lr_other, init_beta])
 
     def constraints(self):
-        A = np.eye(3)
-        lb = np.array([0, 0, 0])
-        ub = [1, 1, np.inf]
-        return LinearConstraint(A, lb, ub)
+        return (0, 1), (0, 1), (0.01, np.inf)
 
 
 class BayesianHierarchicalQSoftmaxWithOwnReward(BayesianEstimator):
