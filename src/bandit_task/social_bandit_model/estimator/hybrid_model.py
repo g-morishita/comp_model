@@ -774,7 +774,9 @@ class HierarchicalBayesianHybridSoftmaxWithOwnReward(HierarchicalEstimator):
         return stan_data
 
 
-class HierarchicalBayesianHybridSoftmaxWithOwnRewardWithoutPartnerReward(HierarchicalEstimator):
+class HierarchicalBayesianHybridSoftmaxWithOwnRewardWithoutPartnerReward(
+    HierarchicalEstimator
+):
     def __init__(
         self,
     ):
