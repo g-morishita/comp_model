@@ -110,7 +110,7 @@ model {
         real pr = PR[i, j, t]; // Partner's reward
 
         // Compute log probabilities using softmax
-        log_probs = beta[i, c] * combined_values - log_sum_exp(beta[i, c] * combined_values);
+        log_probs = beta[i, c] * Q - log_sum_exp(beta[i, c] * Q);
 
         // Update the target log likelihood with own choice
         target += log_probs[a];
@@ -153,7 +153,6 @@ generated quantities {
 
       // Initialize Q-values and action values
       Q = rep_vector(0.5, NC);
-      action_values = rep_vector(1.0 / NC, NC);
 
       int c = condition[i, j]; // Condition for participant i, session j
 
@@ -165,11 +164,8 @@ generated quantities {
         real r = R[i, j, t]; // Participant's reward
         real pr = PR[i, j, t]; // Partner's reward
 
-        // Compute combined values
-        combined_values = omega[i, c] * Q + (1 - omega[i, c]) * action_values;
-
         // Compute log probabilities using softmax
-        log_probs = beta[i, c] * combined_values - log_sum_exp(beta[i, c] * combined_values);
+        log_probs = beta[i, c] * Q - log_sum_exp(beta[i, c] * Q);
 
         // Store log-likelihood for each trial
         trial_count += 1;
