@@ -120,14 +120,6 @@ model {
 
         // Update Q-values based on partner's choice and reward
         Q[pa] += alpha_partner_reward[i, c] * (pr - Q[pa]);
-
-        // Update action values based on partner's action
-        action_values[pa] += alpha_partner_action[i, c] * (1 - action_values[pa]);
-        for (k in 1:NC) {
-          if (k != pa) {
-            action_values[k] += alpha_partner_action[i, c] * (0 - action_values[k]);
-          }
-        }
       }
     }
   }
