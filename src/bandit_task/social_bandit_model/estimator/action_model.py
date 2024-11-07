@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
 
-from .base import MLEstimator, HierarchicalEstimator
+from .base import MLEstimator, HierarchicalEstimator, HierarchicalWithinSubjectEstimator
 from typing import Sequence
 from ...type import NDArrayNumber
 
@@ -191,3 +191,12 @@ class HierarchicalActionSoftmaxWithoutYourReward(HierarchicalEstimator):
         }
         print(stan_data)
         return stan_data
+
+
+class HierarchicalWithinSubjectActionSoftmax(HierarchicalWithinSubjectEstimator):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path, "stan_files/within_subject_hierarchical_action_learning.stan"
+        )
