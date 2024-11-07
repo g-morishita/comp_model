@@ -4,7 +4,7 @@ import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
 
-from .base import MLEstimator, HierarchicalEstimator
+from .base import MLEstimator, HierarchicalEstimator, HierarchicalWithinSubjectEstimator
 from ...type import NDArrayNumber
 
 
@@ -200,3 +200,13 @@ class HierarchicalBayesianQSoftmax(HierarchicalEstimator):
             "R": reshaped_rewards.astype(int).tolist(),
         }
         return stan_data
+
+
+class HierarchicalBayesianWithinSubjectQSoftmax(HierarchicalWithinSubjectEstimator):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path, "stan_files/within_subject_hierarchical_q_learning.stan"
+        )
+        self.group2ind = None

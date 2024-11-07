@@ -2477,4 +2477,3 @@ class HierarchicalBayesianWithinSubjectQSotfmaxMLEWithOwnReward(
             module_path,
             "stan_files/hierarchical_social_within_subject_q_learning_with_own_rewards.stan",
         )
-        self.group2ind = None
