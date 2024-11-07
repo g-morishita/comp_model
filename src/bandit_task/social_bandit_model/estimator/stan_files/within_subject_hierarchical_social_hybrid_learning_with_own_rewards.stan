@@ -58,7 +58,7 @@ transformed parameters {
   for (i in 1:N) {
     // Condition 1
     alpha_own[i, 1] = inv_logit(mu_alpha_own_nd_2 + delta_mu_alpha_own_nd + sigma_alpha_own_nd * alpha_own_nd_1[i]);
-    alpha_partner_reward[i, 1] = inv_logit(mu_alpha_partner_reward_nd_2 + alpha_partner_reward_nd_2 + sigma_alpha_partner_reward_nd * alpha_partner_reward_nd_1[i]);
+    alpha_partner_reward[i, 1] = inv_logit(mu_alpha_partner_reward_nd_2 + delta_mu_alpha_partner_reward_nd + sigma_alpha_partner_reward_nd * alpha_partner_reward_nd_1[i]);
     alpha_partner_action[i, 1] = inv_logit(mu_alpha_partner_action_nd_2 + delta_mu_alpha_partner_action_nd + sigma_alpha_partner_action_nd * alpha_partner_action_nd_1[i]);
     beta[i, 1] = exp(mu_beta_nd_2 + delta_mu_beta_nd + sigma_beta_nd * beta_nd_1[i]);
     omega[i, 1] = inv_logit(mu_omega_nd_2 + delta_mu_omega_nd + sigma_omega_nd * omega_nd_1[i]);
