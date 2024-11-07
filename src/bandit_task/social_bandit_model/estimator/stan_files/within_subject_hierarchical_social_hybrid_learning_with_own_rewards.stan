@@ -163,7 +163,7 @@ generated quantities {
   real<lower=0, upper=1> mu_alpha_own_1 = inv_logit(mu_alpha_own_nd_2 + delta_mu_alpha_own_nd);
   real<lower=0, upper=1> mu_alpha_partner_reward_1 =  inv_logit(mu_alpha_partner_reward_nd_2 + delta_mu_alpha_partner_reward_nd);
   real<lower=0, upper=1> mu_alpha_partner_action_1 = inv_logit(mu_alpha_partner_action_nd_2 + delta_mu_alpha_partner_action_nd);
-  real<lower=0> mu_beta_2 = exp(mu_beta_nd_1 + delta_mu_beta_nd);
+  real<lower=0> mu_beta_1 = exp(mu_beta_nd_2 + delta_mu_beta_nd);
   real<lower=0, upper=1> mu_omega_1 = inv_logit(mu_omega_nd_2 + delta_mu_omega_nd);
 
   // Compute log-likelihood for each trial
