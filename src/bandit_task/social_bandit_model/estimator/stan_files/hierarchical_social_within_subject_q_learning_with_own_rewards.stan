@@ -73,6 +73,11 @@ model {
   alpha_partner_reward_nd_2 ~ normal(0, 1);
   beta_nd_2 ~ normal(0, 1);
 
+  // Priors for individual-level parameters (Condition 2)
+  alpha_own_nd_1 ~ normal(0, 1);
+  alpha_partner_reward_nd_1 ~ normal(0, 1);
+  beta_nd_1 ~ normal(0, 1);
+
   // Likelihood
   for (i in 1:N) { // Participant loop
     for (j in 1:S) { // Session loop
