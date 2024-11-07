@@ -74,8 +74,8 @@ model {
       int c = condition[i, j]; // Condition for participant i, session j
 
       for (t in 1:T) { // Trial loop
-        vector[NC] combined_values;
         vector[NC] log_probs;
+        int a = C[i, j, t]; // Participant's choice (1-based)
         int pa = PC[i, j, t]; // Partner's choice (1-based)
 
         // Compute log probabilities using softmax
@@ -119,6 +119,7 @@ generated quantities {
 
       for (t in 1:T) {
         vector[NC] log_probs;
+        int a = C[i, j, t]; // Participant's choice (1-based)
         int pa = PC[i, j, t]; // Partner's choice (1-based)
 
         // Compute log probabilities using softmax
