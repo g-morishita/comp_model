@@ -5,7 +5,7 @@ import numpy as np
 from scipy.optimize import LinearConstraint
 from scipy.special import softmax
 
-from .base import MLEstimator, HierarchicalEstimator, BayesianEstimator
+from .base import MLEstimator, HierarchicalEstimator, HierarchicalWithinSubjectEstimator
 from ...type import NDArrayNumber
 
 
@@ -839,6 +839,20 @@ class HierarchicalBayesianHybridSoftmaxWithOwnRewardWithoutPartnerReward(
         }
 
         return stan_data
+
+
+class WithinSubjectHierarchicalBayesianHybridSoftmaxWithOwnRewardOnly(
+    HierarchicalWithinSubjectEstimator
+):
+    def __init__(
+        self,
+    ):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path,
+            "stan_files/within_subject_hierarchical_social_hybrid_learning_with_own_rewards_only.stan",
+        )
 
 
 class WithinSubjectHierarchicalBayesianHybridSoftmaxWithOwnReward:
