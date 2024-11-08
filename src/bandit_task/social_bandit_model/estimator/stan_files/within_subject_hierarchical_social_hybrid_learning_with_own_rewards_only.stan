@@ -14,8 +14,8 @@ parameters {
   real mu_alpha_own_nd_2;
   real<lower=0> sigma_alpha_own_nd;
 
-  real mu_alpha_partner_reward_nd_2;
-  real<lower=0> sigma_alpha_partner_reward_nd;
+  real mu_alpha_partner_action_nd_2;
+  real<lower=0> sigma_alpha_partner_action_nd;
 
   real mu_beta_nd_2;
   real<lower=0> sigma_beta_nd;
