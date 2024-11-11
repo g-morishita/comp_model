@@ -65,13 +65,13 @@ transformed parameters {
 model {
   // Priors for group-level parameters (Condition 2)
   mu_alpha_own_nd_2 ~ normal(0, 1);
-  sigma_alpha_own_nd ~ cauchy(0, 2.5);
+  sigma_alpha_own_nd ~ cauchy(0, 0.6);
   mu_alpha_partner_action_nd_2 ~ normal(0, 1);
-  sigma_alpha_partner_action_nd ~ cauchy(0, 2.5);
-  mu_beta_nd_2 ~ normal(0, 1);
-  sigma_beta_nd ~ cauchy(0, 2.5);
+  sigma_alpha_partner_action_nd ~ cauchy(0, 0.6);
+  mu_beta_nd_2 ~ normal(4, 1);
+  sigma_beta_nd ~ cauchy(0, 0.6);
   mu_omega_nd_2 ~ normal(0, 1);
-  sigma_omega_nd ~ cauchy(0, 2.5);
+  sigma_omega_nd ~ cauchy(0, 0.1);
 
   // Priors for group-level means of individual-level deltas
   delta_mu_alpha_own_nd ~ normal(0, 1);
@@ -79,13 +79,13 @@ model {
   delta_mu_beta_nd ~ normal(0, 1);
   delta_mu_omega_nd ~ normal(0, 1);
 
-  // Priors for individual-level parameters (Condition 2)
+  // Priors for individual-level parameters (Condition 2) for non-centered
   alpha_own_nd_2 ~ normal(0, 1);
   alpha_partner_action_nd_2 ~ normal(0, 1);
   beta_nd_2 ~ normal(0, 1);
   omega_nd_2 ~ normal(0, 1);
 
-  // Priors for individual-level parameters (Condition 2)
+  // Priors for individual-level parameters (Condition 1) for non-centered
   alpha_own_nd_1 ~ normal(0, 1);
   alpha_partner_action_nd_1 ~ normal(0, 1);
   beta_nd_1 ~ normal(0, 1);
