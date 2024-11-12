@@ -392,3 +392,10 @@ class HierarchicalWithinSubjectEstimator:
         }
 
         return stan_data
+
+    def calculate_waic(self):
+        """Calculate WAIC"""
+        log_lik = self.posterior_sample.stan_variable("log_lik")
+        lppd = np.log(np.exp(log_lik).mean(axis=0)).sum()
+        penalty = np.sum(np.var(log_lik, axis=0))
+        return -2 * (lppd - penalty)
