@@ -96,6 +96,7 @@ class BayesianQSoftmaxWithoutOwnReward(BayesianEstimator):
             "PC": (partner_choices + 1).astype(int).tolist(),
             "PR": partner_rewards.astype(int).tolist(),
         }
+        return stan_data
 
 
 class ForgetfulQSoftmaxMLEWithoutOwnReward(MLEstimator):
