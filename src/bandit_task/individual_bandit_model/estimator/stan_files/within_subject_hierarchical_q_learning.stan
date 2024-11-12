@@ -68,7 +68,6 @@ model {
 
       // Initialize Q-values and action values
       Q = rep_vector(0.5, NC);
-      action_values = rep_vector(1.0 / NC, NC);
 
       int c = condition[i, j]; // Condition for participant i, session j
 
