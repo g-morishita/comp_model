@@ -855,7 +855,9 @@ class WithinSubjectHierarchicalBayesianHybridSoftmaxWithOwnRewardOnly(
         )
 
 
-class WithinSubjectHierarchicalBayesianHybridSoftmaxWithOwnReward(HierarchicalWithinSubjectEstimator):
+class WithinSubjectHierarchicalBayesianHybridSoftmaxWithOwnReward(
+    HierarchicalWithinSubjectEstimator
+):
     def __init__(
         self,
     ):
