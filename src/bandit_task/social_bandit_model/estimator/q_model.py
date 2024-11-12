@@ -67,6 +67,37 @@ class QSotfmaxMLEWithoutOwnReward(MLEstimator):
         return LinearConstraint(A, lb, ub)
 
 
+class BayesianQSoftmaxWithoutOwnReward(BayesianEstimator):
+    def __init__(self):
+        super().__init__()
+        module_path = os.path.dirname(__file__)
+        self.stan_file = os.path.join(
+            module_path, "stan_files/social_q_learning_without_own_rewards.stan"
+        )
+
+    def convert_stan_data(
+        self,
+        num_choices: int,
+        your_choices: Sequence[int | float],
+        your_rewards: Sequence[int | float] | None,
+        partner_choices: Sequence[int | float],
+        partner_rewards: Sequence[int | float] | None,
+    ) -> dict:
+        n_sessions, n_trials = np.array(your_choices).shape
+        your_choices = np.array(your_choices)
+        partner_choices = np.array(partner_choices)
+        partner_rewards = np.array(partner_rewards)
+
+        stan_data = {
+            "T": n_trials,
+            "S": n_sessions,
+            "NC": num_choices,
+            "C": (your_choices + 1).astype(int).tolist(),
+            "PC": (partner_choices + 1).astype(int).tolist(),
+            "PR": partner_rewards.astype(int).tolist(),
+        }
+
+
 class ForgetfulQSoftmaxMLEWithoutOwnReward(MLEstimator):
     def __init__(self):
         super().__init__()
