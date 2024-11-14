@@ -10,21 +10,6 @@ data {
 }
 parameters {
   // Individual-level latent parameters (standard normal)
-  vector[N] alpha_own_nd;
-  vector[N] alpha_partner_reward_nd;
-  vector[N] alpha_partner_action_nd;
-  vector[N] beta_nd;data
-  int<lower=1> N; // Number of participants
-  int<lower=1> S; // Number of sessions per participant
-  int<lower=1> T; // Number of trials per session
-  int<lower=1> NC; // Number of unique choices/actions
-  int<lower=1, upper=NC> C[N, S, T];   // Participant's own choices
-  real<lower=0, upper=1> R[N, S, T];    // Participant's own rewards
-  int<lower=1, upper=NC> PC[N, S, T];  // Partner's choices
-}
-
-parameters {
-  // Individual-level latent parameters (standard normal)
   vector[N] lr_own_nd;
   vector[N] lr_partner_action_nd;
   vector[N] beta_nd;
