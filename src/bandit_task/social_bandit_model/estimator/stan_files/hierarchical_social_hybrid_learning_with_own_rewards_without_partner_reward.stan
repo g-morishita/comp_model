@@ -13,7 +13,7 @@ parameters {
   vector[N] alpha_own_nd;
   vector[N] alpha_partner_reward_nd;
   vector[N] alpha_partner_action_nd;
-  vector[N] beta_nd;data {
+  vector[N] beta_nd;data
   int<lower=1> N; // Number of participants
   int<lower=1> S; // Number of sessions per participant
   int<lower=1> T; // Number of trials per session
