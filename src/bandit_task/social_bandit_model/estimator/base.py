@@ -81,11 +81,11 @@ class MLEstimator(BaseEstimator):
         """
         Fit the model using Maximum Likelihood Estimation.
         """
-        if len(your_choices) != len(your_rewards):
+        if (your_rewards is not None) and len(your_choices) != len(your_rewards):
             raise ValueError(
                 "The sizes of `your_choices` and `your_rewards` must be the same."
             )
-        if len(partner_choices) != len(partner_rewards):
+        if (your_rewards is not None) and len(partner_choices) != len(partner_rewards):
             raise ValueError(
                 "The sizes of `partner_choices` and `partner_rewards` must be the same."
             )
@@ -252,6 +252,7 @@ class HierarchicalEstimator:
         partner_choices: Sequence[int | float],
         partner_rewards: Sequence[int | float] | None,
         groups: Sequence[int],
+        seed=None,
     ) -> None:
         """
         Fit the hierarchical model to the provided data.
@@ -274,6 +275,8 @@ class HierarchicalEstimator:
             In this case, set this argument to None.
         groups : Sequence[int | float]
             Group identifiers for each observation. Used to determine which observations belong to which group.
+        seed:
+            Seed for MCMC
 
         Returns
         -------
@@ -322,7 +325,7 @@ class HierarchicalEstimator:
             groups,
         )
         model = CmdStanModel(stan_file=self.stan_file)
-        self.posterior_sample = model.sample(data=stan_data)
+        self.posterior_sample = model.sample(data=stan_data, seed=seed)
 
     @abstractmethod
     def convert_stan_data(
