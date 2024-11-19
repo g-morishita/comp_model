@@ -33,10 +33,10 @@ transformed parameters {
   vector<lower=0>[N] beta; // transformed inverse temperature [0, inf)
 
   // Transform the parameters
-  alpha_q = inv_logit(mu_alpha_q_nd + exp(sigma_alpha_q_nd) * alpha_q_nd);
-  alpha_action = inv_logit(mu_alpha_action_nd + exp(sigma_alpha_action_nd) * alpha_action_nd);
-  weight_for_q = inv_logit(mu_weight_q_nd + exp(sigma_weight_q_nd) * weight_q_nd); // fix typo
-  beta = exp(mu_beta_nd + exp(sigma_beta_nd) * beta_nd);
+  alpha_q = inv_logit(mu_alpha_q_nd + sigma_alpha_q_nd * alpha_q_nd);
+  alpha_action = inv_logit(mu_alpha_action_nd + sigma_alpha_action_nd * alpha_action_nd);
+  weight_for_q = inv_logit(mu_weight_q_nd + sigma_weight_q_nd * weight_q_nd); // fix typo
+  beta = exp(mu_beta_nd + sigma_beta_nd * beta_nd);
 }
 
 model {
@@ -50,13 +50,13 @@ model {
   weight_q_nd ~ normal(0, 1); // weight for q value (before transformation)
 
   mu_alpha_q_nd ~ normal(0, 1);
-  sigma_alpha_q_nd ~ normal(0, 1);
+  sigma_alpha_q_nd ~ cauchy(0, 3);
   mu_alpha_action_nd ~ normal(0, 1);
-  sigma_alpha_action_nd ~ normal(0, 1);
+  sigma_alpha_action_nd ~ cauchy(0, 3);
   mu_weight_q_nd ~ normal(0, 1);
-  sigma_weight_q_nd ~ normal(0, 1);
+  sigma_weight_q_nd ~ cauchy(0, 3);
   mu_beta_nd ~ normal(0, 1);
-  sigma_beta_nd ~ normal(0, 1);
+  sigma_beta_nd ~ cauchy(0, 3);
 
   for (i in 1:N) { // participant
     for (j in 1:S) { // session
