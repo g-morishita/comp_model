@@ -17,13 +17,13 @@ parameters {
   // Population level parameters of mean and variance of
   // learning rate and inverse temperature
   real mu_alpha_q_nd;
-  real sigma_alpha_q_nd;
+  real<lower=0> sigma_alpha_q_nd;
   real mu_alpha_action_nd;
-  real sigma_alpha_action_nd;
+  real<lower=0> sigma_alpha_action_nd;
   real mu_weight_q_nd;
-  real sigma_weight_q_nd;
+  real<lower=0> sigma_weight_q_nd;
   real mu_beta_nd;
-  real sigma_beta_nd;
+  real<lower=0> sigma_beta_nd;
 }
 
 transformed parameters {
