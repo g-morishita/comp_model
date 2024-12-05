@@ -444,12 +444,15 @@ class HierarchicalEstimator:
 
 
 class HierarchicalWithinSubjectEstimator:
+    def __init__(self, seed=None):
+        self.seed = seed
+
     def fit(self, df):
         from cmdstanpy import CmdStanModel
 
         model = CmdStanModel(stan_file=self.stan_file)
         stan_data = self.convert_stan_data(df)
-        self.posterior_sample = model.sample(data=stan_data)
+        self.posterior_sample = model.sample(data=stan_data, seed=self.seed)
 
     def convert_stan_data(self, df):
         from sklearn.preprocessing import LabelEncoder
@@ -549,7 +552,7 @@ class HierarchicalWithinSubjectEstimator:
             session_id = row["session"]
             # Get session index (0 to 3) for this participant
             s_idx = session_mapping[pid][session_id]
-            t_idx = int(row["trial"]) - 1  # Adjust if trials start at 1
+            t_idx = int(row["trial"])  # Adjust if trials start at 1
 
             # Safety check: Ensure trial index is within bounds
             if t_idx < 0 or t_idx >= T:
