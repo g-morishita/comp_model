@@ -860,8 +860,9 @@ class WithinSubjectHierarchicalBayesianHybridSoftmaxWithOwnReward(
 ):
     def __init__(
         self,
+        seed
     ):
-        super().__init__()
+        super().__init__(seed)
         module_path = os.path.dirname(__file__)
         self.stan_file = os.path.join(
             module_path,
