@@ -7,7 +7,7 @@ class DynamicValueShapeModel:
         self, lr: float, beta: float, rel_coef: float, rel_const: float, n_options: int
     ) -> None:
         self.n_options = n_options
-        self.values = np.zeros(n_options)
+        self.values = np.ones(n_options) / 2
         self.tracked_choices = np.ones(n_options)
 
         if (0 > lr) or (lr > 1):

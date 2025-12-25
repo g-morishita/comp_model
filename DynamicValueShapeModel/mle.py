@@ -57,7 +57,7 @@ class DynamicValueShapeMLE:
             )
 
         # ---- initialize per-session state ----
-        values = np.zeros(self.n_options, dtype=float)
+        values = np.full(self.n_options, 0.5, dtype=float)
         tracked_choices = np.ones(self.n_options, dtype=float)
 
         ll = 0.0
@@ -346,7 +346,7 @@ if __name__ == "__main__":
 
     # Manual forward pass
     lr, beta, rel_coef, rel_const = params
-    values = np.zeros(3, dtype=float)
+    values = np.full(3, 0.5, dtype=float)
     tracked = np.ones(3, dtype=float)
     ll_manual = 0.0
     eps = 1e-15
@@ -381,7 +381,7 @@ if __name__ == "__main__":
     orw2 = np.array([1.0, 0.0, 1.0])
 
     lr2, beta2, rel_coef2, rel_const2 = params2
-    values2 = np.zeros(3, dtype=float)
+    values2 = np.full(3, 0.5, dtype=float)
     tracked2 = np.ones(3, dtype=float)
     ll_manual2 = 0.0
 
