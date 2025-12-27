@@ -7,8 +7,7 @@ class DynamicValueShapeModel:
         self, lr: float, beta: float, rel_coef: float, rel_const: float, n_options: int
     ) -> None:
         self.n_options = n_options
-        self.values = np.ones(n_options) / 2
-        self.tracked_choices = np.ones(n_options)
+        self.reset()
 
         if (0 > lr) or (lr > 1):
             raise ValueError(
@@ -24,6 +23,10 @@ class DynamicValueShapeModel:
 
         self.rel_coef = rel_coef
         self.rel_const = rel_const
+    
+    def reset(self) -> None:
+        self.values = np.full(self.n_options, 0.5)
+        self.tracked_choices = np.ones(self.n_options)
 
     def learn_from_self(self, choice: int, reward: int) -> None:
         if choice >= self.n_options:
@@ -158,6 +161,10 @@ if __name__ == "__main__":
 
     assert_allclose(m.values[choice], v2)
     assert_allclose(m.tracked_choices, [2.0, 1.0, 1.0])  # incremented only at 'choice'
+
+    m.reset()
+    assert_allclose(m.values, [0.5, 0.5, 0.5])
+    assert_allclose(m.tracked_choices, [1.0, 1.0, 1.0])
 
     # ---- Test: choose returns valid index and uses softmax distribution ----
     # We’ll set the seed so the test is reproducible.
