@@ -88,11 +88,7 @@ class DynamicValueShapeMLE:
                 )
             probs = softmax(values * beta)
             ll += float(np.log(probs[sc] + eps))
-
-            # 3) Learn from SELF outcome
-            srw = float(self_rewards[t])
-            values[sc] = values[sc] + lr * (srw - values[sc])
-
+            
         return ll
 
     @staticmethod

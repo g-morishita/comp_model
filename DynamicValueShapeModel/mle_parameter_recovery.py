@@ -7,6 +7,7 @@ from generator import DynamicValueShapeModel
 from mle import DynamicValueShapeMLE
 from datetime import datetime
 from pathlib import Path
+from tqdm import tqdm
 
 
 class Other:
@@ -83,7 +84,7 @@ def simulate_exp(
     return data
 
 
-def run_experiment(path):
+def run_experiment(path, seed):
     with open(path, "r") as f:
         setting = json.load(f)
     self_lr = float(setting["self_lr"])
@@ -96,7 +97,6 @@ def run_experiment(path):
 
     n_trials = int(setting["n_trials"])
     n_sessions = int(setting["n_sessions"])
-    seed = int(setting["seed"])
 
     reward_probs = np.asarray(setting["reward_probs"], dtype=float)
     n_options = int(reward_probs.size)
@@ -132,8 +132,9 @@ def run_experiment(path):
 
     # Save setting to JSON
     setting_path = out_dir / "exp_setting.json"
+    setting["seed"] = seed
     with open(setting_path, "w") as f:
-        json.dump(setting, f, indet=2, sort_key=True, default=_json_default)
+        json.dump(setting, f, indent=2, sort_keys=True, default=_json_default)
 
     # Save results to JSON
     res_path = out_dir / "mle_result.json"
@@ -145,7 +146,10 @@ def run_experiment(path):
 
 def main():
     exp_setting_path = Path("./experiment_setting.json")
-    run_experiment(exp_setting_path)
+    for seed in tqdm(range(50)):
+        import time 
+        time.sleep(1)  # Prevent collision of the out_dir file name
+        run_experiment(exp_setting_path, seed=seed)
 
 
 if __name__ == "__main__":
