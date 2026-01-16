@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
 import numpy as np
@@ -33,7 +33,7 @@ class TrialByTrialGenerator:
         subject_block_plans: Mapping[str, Sequence[Mapping[str, Any]]],
         rng: np.random.Generator,
     ) -> StudyData:
-        subjects: list[SubjectData] = []
+        subjects: list[SubjectData] = field(default_factory=list) 
         task_spec = None  # set from first bandit
 
         for subject_id, plans in subject_block_plans.items():
