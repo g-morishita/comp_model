@@ -20,7 +20,7 @@ class DynamicValueShapeModel:
                 f"The inverse temperature `beta` should be positive.\n {beta} is given"
             )
         self.beta = beta
-
+    
         self.rel_coef = rel_coef
         self.rel_const = rel_const
     
