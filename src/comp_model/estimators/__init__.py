@@ -1,5 +1,4 @@
-from .mle_generic import SubjectwiseMLEEstimator
 from .box_opt import RandomRestartCoordinateAscentBox
+from .vs_mle import VSMLEEstimator
 
-__all__ = ["SubjectwiseMLEEstimator", "RandomRestartCoordinateAscentBox"]
-
+__all__ = ["RandomRestartCoordinateAscentBox", "VSMLEEstimator"]
