@@ -7,105 +7,96 @@ import numpy as np
 
 from ...interfaces.model import SocialComputationalModel
 from ...interfaces.bandit import SocialObservation
-from ...spec import TaskSpec, RewardType
+from ...spec import TaskSpec
 
 
 def _softmax(u: np.ndarray, beta: float) -> np.ndarray:
     z = beta * u
-    z = z - float(np.max(z))
+    z -= float(np.max(z))
     expz = np.exp(z)
     return expz / float(np.sum(expz))
 
 
-def _signed_reward(r: float, spec: TaskSpec) -> float:
+def _perseveration_bonus(last_choice: int | None, n_actions: int, kappa: float) -> np.ndarray:
     """
-    VS2 equations in Najar2020 use ±1 rewards and symmetric updates.
-    If the task provides binary rewards (0/1), map to -1/+1 by default.
-    Otherwise assume reward is already on a signed scale.
-    """
-    if spec.reward_type == RewardType.BINARY:
-        return 2.0 * float(r) - 1.0
-    return float(r)
-
-
-def _sym_update(q: np.ndarray, a: int, lr: float, target: float) -> None:
-    """
-    Symmetric update:
-      q[a]  += lr * ( target - q[a])
-      q[~a] += lr * (-target - q[~a])
-    """
-    b = 1 - a
-    q[a] += lr * (target - q[a])
-    q[b] += lr * ((-target) - q[b])
-
-
-def _kappa_bonus(last_choice: int | None, a: int, kappa: float) -> float:
-    """
-    Simple perseveration: +kappa if repeating last private choice, else -kappa.
+    K-armed perseveration: add +kappa to the last chosen action, 0 elsewhere.
     """
     if last_choice is None or kappa == 0.0:
-        return 0.0
-    return +kappa if a == last_choice else -kappa
+        return np.zeros(n_actions, dtype=float)
+    b = np.zeros(n_actions, dtype=float)
+    if 0 <= last_choice < n_actions:
+        b[last_choice] = float(kappa)
+    return b
+
+
+def _update_chosen_only(q: np.ndarray, a: int, lr: float, target: float) -> None:
+    q[a] += lr * (target - q[a])
 
 
 @dataclass(slots=True)
 class VS(SocialComputationalModel):
     """
-    Najar et al. (2020) Value Shaping (VS): demonstrations directly shape the learner’s values.
+    Value Shaping model generalized to K arms (chosen-only updates).
 
     Parameters
     ----------
     alpha_p : float
         Private outcome learning rate.
     alpha_i : float
-        Imitation/value-shaping rate used on observation trials.
+        Social value-shaping learning rate (pseudo-reward toward demonstrated action).
     beta : float
-        Inverse temperature for softmax.
+        Softmax inverse temperature.
     kappa : float
-        Choice autocorrelation / perseveration strength.
+        Perseveration strength: +kappa bonus to repeating last private choice.
+    pseudo_reward : float
+        Target used on demonstrations (default 1.0).
 
     Notes
     -----
-    - Assumes 2 actions (as in the paper task).
-    - Observation update uses a pseudo-reward target of +1 for demonstrated action (and -1 for the other),
-      implemented as a symmetric update on Q. 
-    - Private learning is RW2-style symmetric update using signed reward r (±1). 
+    - Works for any spec.n_actions >= 2.
+    - Private update: only chosen action is updated.
+    - Social update: only demonstrated action is updated.
+    - Latents reset per block via reset_block().
     """
     alpha_p: float = 0.2
     alpha_i: float = 0.2
     beta: float = 3.0
     kappa: float = 0.0
+    pseudo_reward: float = 1.0
 
     def __post_init__(self) -> None:
-        self._q: list[np.ndarray] = []          # per-state values, each shape (2,)
-        self._last_choice: list[int | None] = []  # per-state last private choice (for kappa)
+        self._q: list[np.ndarray] = []
+        self._last_choice: list[int | None] = []
 
     @property
     def param_names(self) -> Sequence[str]:
         return ("alpha_p", "alpha_i", "beta", "kappa")
 
     def supports(self, spec: TaskSpec) -> bool:
-        return spec.n_actions == 2 and spec.is_social
+        return spec.is_social and spec.n_actions >= 2
 
     def reset_block(self, *, spec: TaskSpec) -> None:
         self._q = []
         self._last_choice = []
 
-    def _ensure_state(self, s: int) -> None:
+    def _ensure_state(self, s: int, n_actions: int) -> None:
         while len(self._q) <= s:
-            self._q.append(np.zeros(2, dtype=float))
+            self._q.append(np.zeros(n_actions, dtype=float))
         while len(self._last_choice) <= s:
             self._last_choice.append(None)
 
+        # If action count differs across blocks (rare), reset that state's vector safely.
+        if self._q[s].shape[0] != n_actions:
+            self._q[s] = np.zeros(n_actions, dtype=float)
+            self._last_choice[s] = None
+
     def action_probs(self, *, state: Any, spec: TaskSpec) -> np.ndarray:
         s = int(state)
-        self._ensure_state(s)
-        q = self._q[s]
+        nA = int(spec.n_actions)
+        self._ensure_state(s, nA)
 
-        # add perseveration term
-        u = q.copy()
-        u[0] += _kappa_bonus(self._last_choice[s], 0, self.kappa)
-        u[1] += _kappa_bonus(self._last_choice[s], 1, self.kappa)
+        q = self._q[s]
+        u = q + _perseveration_bonus(self._last_choice[s], nA, self.kappa)
         return _softmax(u, self.beta)
 
     def social_update(
@@ -116,19 +107,16 @@ class VS(SocialComputationalModel):
         spec: TaskSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
-        """
-        Observation step: update learner Q values using the demonstrator action as pseudo-reward.
-        """
         if not social.others_choices:
             return
         d = int(social.others_choices[0])
 
         s = int(state)
-        self._ensure_state(s)
-        q = self._q[s]
+        nA = int(spec.n_actions)
+        self._ensure_state(s, nA)
 
-        # VS: directly shape Q with symmetric update toward demonstrated action (target=+1)
-        _sym_update(q, d, float(self.alpha_i), target=1.0)
+        if 0 <= d < nA:
+            _update_chosen_only(self._q[s], d, float(self.alpha_i), float(self.pseudo_reward))
 
     def update(
         self,
@@ -139,15 +127,11 @@ class VS(SocialComputationalModel):
         spec: TaskSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
-        """
-        Private outcome step: RW2 symmetric update.
-        """
         s = int(state)
-        self._ensure_state(s)
-        q = self._q[s]
+        nA = int(spec.n_actions)
+        self._ensure_state(s, nA)
 
-        r = _signed_reward(float(reward), spec)
-        _sym_update(q, int(action), float(self.alpha_p), target=r)
-
-        # update last private choice for perseveration
-        self._last_choice[s] = int(action)
+        a = int(action)
+        if 0 <= a < nA:
+            _update_chosen_only(self._q[s], a, float(self.alpha_p), float(reward))
+            self._last_choice[s] = a
