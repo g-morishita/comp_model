@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comp_model"
+version = "0.1.0"
+description = "Parameter and model recovery for computational modeling"
+requires-python = ">=3.13"
+dependencies = [
+  "numpy>=2.0", # TODO Add dependencies later
+]
+authors = [
+  {name = "Gota Morishita", email = "gota.morishita@gmail.com"},
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
