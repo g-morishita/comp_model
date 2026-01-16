@@ -1,4 +1,4 @@
-# compmod
+# comp_model
 
 A lightweight Python 3.13+ library skeleton for **parameter recovery** and **model recovery** in computational modeling (e.g., human reinforcement learning), with first-class support for:
 
@@ -11,26 +11,25 @@ This repository is intentionally “skeleton-first”: it provides clean interfa
 
 ---
 
-## Contents
+## Implemented computational models
 
-- [Quick start](#quick-start)
-- [Concepts](#concepts)
-  - [Study → Subject → Block → Trial](#study--subject--block--trial)
-  - [Fit-only Environment vs RecoveryRunner](#fit-only-environment-vs-recoveryrunner)
-  - [Hierarchical sampling for recovery](#hierarchical-sampling-for-recovery)
-  - [Model misspecification](#model-misspecification)
-- [Stan integration](#stan-integration)
-  - [Ragged block packing](#ragged-block-packing)
-  - [Estimator contract](#estimator-contract)
-- [Project structure](#project-structure)
-- [Extending the library](#extending-the-library)
-- [License](#license)
+### Value-Shaping (VS) — social reinforcement learning
+Imitation model where observing another agent’s action acts as a **pseudo-reward** that shapes the observer’s action values.
 
----
+**Features**
+- **K-armed** tasks (`n_actions >= 2`)
+- **Chosen-only updates** (private learning updates chosen action only; social shaping updates demonstrated action only)
+- **Softmax** choice with inverse temperature `beta`
+- Optional **perseveration** (`kappa`) as a repeat-choice bonus
+- Works with **multi-block** datasets (latent state resets per block; parameters shared across blocks)
 
-## Quick start
+**Parameters**
+- `alpha_p` — private learning rate
+- `alpha_i` — social/value-shaping learning rate
+- `beta` — inverse temperature
+- `kappa` — perseveration strength
 
-### Install (editable)
+**Reference**
+- Najar et al. (2020). *The actions of others act as a pseudo-reward to drive imitation in the context of social reinforcement learning.* PLOS Biology.
 
-```bash
-pip install -e .
+See [`src/comp_model/models/vs/`](src/comp_model/models/vs/) for implementation details and notes.
