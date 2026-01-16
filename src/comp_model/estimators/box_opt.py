@@ -7,11 +7,11 @@ import numpy as np
 @dataclass(slots=True)
 class RandomRestartCoordinateAscentBox:
     """
-    Box-constrained coordinate ascent (NumPy-only).
+    Box-constrained coordinate ascent with random restarts.
 
-    - random restarts from uniform-in-bounds
-    - coordinate search with step shrinking
-    - each proposal is clipped to bounds
+    - starts sampled uniformly within bounds
+    - coordinate steps are clipped to bounds
+    - step shrinks when no improvement
     """
     n_starts: int = 50
     n_iters: int = 200
@@ -20,11 +20,10 @@ class RandomRestartCoordinateAscentBox:
     min_step: float = 1e-4
 
     def maximize(self, f, rng: np.random.Generator, space) -> tuple[np.ndarray, float]:
-        dim = space.dim()
+        dim = space.dim
         best_x = None
         best_val = -float("inf")
 
-        # random starts
         for _ in range(self.n_starts):
             x = space.sample_init(rng)
             x = space.clip_vec(x)

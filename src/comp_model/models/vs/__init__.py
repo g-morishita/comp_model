@@ -1,3 +1,4 @@
 from .vs import VS
+from .bounds import vs_bounds_space
 
-__all__ = ["VS2"]
+__all__ = ["VS", "vs_bounds_space"]
