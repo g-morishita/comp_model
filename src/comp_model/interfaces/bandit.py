@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol, Sequence, runtime_checkable
+from typing import Any, Sequence
+from abc import ABC, abstractmethod
 
 import numpy as np
 
@@ -22,15 +23,21 @@ class SocialObservation:
     info: dict[str, Any] | None = None
 
 
-@runtime_checkable
-class Bandit(Protocol):
-    spec: TaskSpec
+class Bandit(ABC):
+    @property
+    @abstractmethod
+    def spec(self) -> TaskSpec: ...
 
+    @abstractmethod
     def reset(self, rng: np.random.Generator) -> Any: ...
+
+    @abstractmethod
     def step(self, action: int, rng: np.random.Generator) -> BanditStep: ...
+
+    @abstractmethod
     def get_state(self) -> Any: ...
 
 
-@runtime_checkable
-class SocialBandit(Bandit, Protocol):
+class SocialBandit(Bandit, ABC):
+    @abstractmethod
     def observe_others(self, rng: np.random.Generator) -> SocialObservation: ...
