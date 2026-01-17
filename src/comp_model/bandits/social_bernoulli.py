@@ -5,7 +5,7 @@ from typing import Sequence
 import numpy as np
 
 from ..interfaces.bandit import SocialObservation
-from ..spec import TaskSpec, RewardType
+from ..spec import TaskSpec, OutcomeType
 
 
 @dataclass(slots=True)
@@ -35,7 +35,7 @@ class SocialBernoulliBandit:
     def spec(self) -> TaskSpec:
         return TaskSpec(
             n_actions=len(self.probs),
-            reward_type=RewardType.BINARY,
+            outcome_type=OutcomeType.BINARY,
             is_social=True,
         )
 

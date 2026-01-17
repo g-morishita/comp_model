@@ -10,7 +10,7 @@ from ..spec import TaskSpec
 
 @dataclass(frozen=True, slots=True)
 class BanditStep:
-    reward: float
+    outcome: float
     done: bool = False
     info: dict[str, Any] | None = None
 

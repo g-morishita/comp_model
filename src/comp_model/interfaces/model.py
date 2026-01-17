@@ -41,7 +41,7 @@ class ComputationalModel(ABC):
         *,
         state: Any,
         action: int,
-        reward: float,
+        outcome: float,
         spec: TaskSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:

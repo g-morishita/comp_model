@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 import numpy as np
 
-from ..spec import TaskSpec, RewardType
+from ..spec import TaskSpec, OutcomeType
 
 
 @dataclass(slots=True)
 class BernoulliBandit:
     """
     K-armed Bernoulli bandit.
-    Rewards: r ~ Bernoulli(p[action]) returning float 0.0/1.0
+    Outcomes: o ~ Bernoulli(p[action]) returning float 0.0/1.0
     """
     probs: Sequence[float]
     state: int = 0  # constant state by default
@@ -27,7 +27,7 @@ class BernoulliBandit:
     def spec(self) -> TaskSpec:
         return TaskSpec(
             n_actions=len(self.probs),
-            reward_type=RewardType.BINARY,
+            outcome_type=OutcomeType.BINARY,
             is_social=False,
         )
 

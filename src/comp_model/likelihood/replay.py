@@ -44,7 +44,7 @@ def loglike_subject(
             if is_social_model and tr.others_choices:
                 social = SocialObservation(
                     others_choices=tr.others_choices,
-                    others_outcomes=tr.others_rewards,
+                    others_outcomes=tr.others_outcomes,
                     info=tr.social_info,
                 )
                 model.social_update(state=tr.state, social=social, spec=spec, info=None)
@@ -58,11 +58,11 @@ def loglike_subject(
             ll += float(np.log(max(p, _EPS)))
 
             # update from private outcome if present
-            if tr.reward is not None:
+            if tr.outcome is not None:
                 model.update(
                     state=tr.state,
                     action=int(tr.choice),
-                    reward=float(tr.reward),
+                    outcome=float(tr.outcome),
                     spec=spec,
                     info=tr.info,
                 )

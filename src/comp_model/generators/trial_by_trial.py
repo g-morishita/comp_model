@@ -18,7 +18,7 @@ class TrialByTrialGenerator:
     Simulate StudyData by replaying:
       (optional) social observation -> model.social_update
       model.action_probs -> sample action
-      bandit.step -> reward
+      bandit.step -> outcome
       model.update
 
     Resets model and bandit at the start of each block.
@@ -62,13 +62,13 @@ class TrialByTrialGenerator:
 
                     # observe others if both data+model support it
                     others_choices = None
-                    others_rewards = None
+                    others_outcomes = None
                     social_info = None
 
                     if isinstance(model, SocialComputationalModel) and getattr(spec, "is_social", False):
                         obs = bandit.observe_others(rng=rng)
                         others_choices = obs.others_choices
-                        others_rewards = obs.others_outcomes
+                        others_outcomes = obs.others_outcomes
                         social_info = obs.info
 
                         model.social_update(state=state, social=obs, spec=spec, info=None)
@@ -76,18 +76,18 @@ class TrialByTrialGenerator:
                     probs = model.action_probs(state=state, spec=spec)
                     action = int(rng.choice(spec.n_actions, p=probs))
 
-                    reward = float(bandit.step(action=action, rng=rng))
-                    model.update(state=state, action=action, reward=reward, spec=spec, info=None)
+                    outcome = float(bandit.step(action=action, rng=rng))
+                    model.update(state=state, action=action, outcome=outcome, spec=spec, info=None)
 
                     trials.append(
                         Trial(
                             t=t,
                             state=state,
                             choice=action,
-                            reward=reward,
+                            outcome=outcome,
                             info={},
                             others_choices=others_choices,
-                            others_rewards=others_rewards,
+                            others_outcomes=others_outcomes,
                             social_info=social_info,
                         )
                     )

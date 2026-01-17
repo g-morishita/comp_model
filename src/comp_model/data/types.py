@@ -17,12 +17,12 @@ class Trial:
     t: int
     state: int
     choice: int | None          # None for purely observational trials if you want
-    reward: float | None        # None for purely observational trials if you want
+    outcome: float | None        # None for purely observational trials if you want
     info: Json = field(default_factory=dict)
 
     # social (optional)
     others_choices: Sequence[int] | None = None
-    others_rewards: Sequence[float] | None = None
+    others_outcomes: Sequence[float] | None = None
     social_info: Json = field(default_factory=dict)
 
 

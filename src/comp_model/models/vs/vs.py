@@ -123,7 +123,7 @@ class VS(SocialComputationalModel):
         *,
         state: Any,
         action: int,
-        reward: float,
+        outcome: float,
         spec: TaskSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
@@ -133,5 +133,5 @@ class VS(SocialComputationalModel):
 
         a = int(action)
         if 0 <= a < nA:
-            _update_chosen_only(self._q[s], a, float(self.alpha_p), float(reward))
+            _update_chosen_only(self._q[s], a, float(self.alpha_p), float(outcome))
             self._last_choice[s] = a
