@@ -18,7 +18,7 @@ class BanditStep:
 @dataclass(frozen=True, slots=True)
 class SocialObservation:
     others_choices: Sequence[int] | None = None
-    others_rewards: Sequence[float] | None = None
+    others_outcomes: Sequence[float] | None = None
     info: dict[str, Any] | None = None
 
 

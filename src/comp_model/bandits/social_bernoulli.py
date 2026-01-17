@@ -61,4 +61,4 @@ class SocialBernoulliBandit:
             others = [a for a in range(k) if a != best]
             demo = int(rng.choice(others))
 
-        return SocialObservation(others_choices=[demo], others_rewards=None, info={"best_arm": best})
+        return SocialObservation(others_choices=[demo], others_outcomes=None, info={"best_arm": best})

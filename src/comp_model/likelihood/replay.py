@@ -44,7 +44,7 @@ def loglike_subject(
             if is_social_model and tr.others_choices:
                 social = SocialObservation(
                     others_choices=tr.others_choices,
-                    others_rewards=tr.others_rewards,
+                    others_outcomes=tr.others_rewards,
                     info=tr.social_info,
                 )
                 model.social_update(state=tr.state, social=social, spec=spec, info=None)
