@@ -7,13 +7,14 @@ import numpy as np
 
 from ..data.types import Trial, Block, SubjectData, StudyData
 from ..interfaces.model import ComputationalModel, SocialComputationalModel
-
+from ..interfaces.generator import Generator
+from ..plans.block import BlockPlan
 
 BanditFactory = Callable[[Mapping[str, Any]], Any]
 
 
 @dataclass(slots=True)
-class TrialByTrialGenerator:
+class TrialByTrialGenerator(Generator):
     """
     Simulate StudyData by replaying:
       (optional) social observation -> model.social_update
@@ -30,7 +31,7 @@ class TrialByTrialGenerator:
         bandit_factory: BanditFactory,
         model: ComputationalModel,
         subj_params: Mapping[str, Mapping[str, float]],
-        subject_block_plans: Mapping[str, Sequence[Mapping[str, Any]]],
+        subject_block_plans: Mapping[str, Sequence[BlockPlan]],
         rng: np.random.Generator,
     ) -> StudyData:
         subjects: list[SubjectData] = []
@@ -45,8 +46,8 @@ class TrialByTrialGenerator:
 
             blocks: list[Block] = []
             for plan in plans:
-                n_trials = int(plan["n_trials"])
-                bandit_cfg = dict(plan.get("bandit_cfg", {}))
+                n_trials = int(plan.n_trials)
+                bandit_cfg = dict(plan.bandit_config)
                 bandit = bandit_factory(bandit_cfg)
 
                 spec = bandit.spec
