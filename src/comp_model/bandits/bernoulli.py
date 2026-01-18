@@ -5,10 +5,10 @@ from typing import Any, Sequence
 import numpy as np
 
 from ..spec import TaskSpec, OutcomeType
-
+from ..interfaces import Bandit, BanditStep
 
 @dataclass(slots=True)
-class BernoulliBandit:
+class BernoulliBandit(Bandit):
     """
     K-armed Bernoulli bandit.
     Outcomes: o ~ Bernoulli(p[action]) returning float 0.0/1.0
@@ -31,15 +31,15 @@ class BernoulliBandit:
             is_social=False,
         )
 
-    def reset_block(self, *, rng: np.random.Generator) -> None:
+    def reset(self, *, rng: np.random.Generator) -> None:
         # if you later want random walk probs etc, do it here
         self.state = 0
 
-    def step(self, *, action: int, rng: np.random.Generator) -> float:
+    def step(self, action: int, rng: np.random.Generator) -> BanditStep:
         a = int(action)
-        if a < 0 or a >= len(self.probs):
-            raise ValueError("Action out of range.")
-        return 1.0 if float(rng.random()) < float(self.probs[a]) else 0.0
+        p = float(self.probs[a])
+        out = 1.0 if float(rng.random()) < p else 0.0
+        return BanditStep(outcome=out, done=False, info=None)
 
     def get_state(self) -> Any:
         return self.state

@@ -53,7 +53,7 @@ class TrialByTrialGenerator:
                 task_spec = spec if task_spec is None else task_spec
 
                 # reset for block
-                bandit.reset_block(rng=rng)
+                bandit.reset(rng=rng)
                 model.reset_block(spec=spec)
 
                 trials: list[Trial] = []
@@ -76,7 +76,7 @@ class TrialByTrialGenerator:
                     probs = model.action_probs(state=state, spec=spec)
                     action = int(rng.choice(spec.n_actions, p=probs))
 
-                    outcome = float(bandit.step(action=action, rng=rng))
+                    outcome = float(bandit.step(action=action, rng=rng).outcome)
                     model.update(state=state, action=action, outcome=outcome, spec=spec, info=None)
 
                     trials.append(
