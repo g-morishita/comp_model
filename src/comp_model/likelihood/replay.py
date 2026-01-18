@@ -12,7 +12,6 @@ _EPS = 1e-12
 
 def loglike_subject(
     *,
-    study: StudyData,
     subject: SubjectData,
     model: ComputationalModel,
     params: Mapping[str, float],
@@ -36,7 +35,7 @@ def loglike_subject(
     is_social_model = isinstance(model, SocialComputationalModel)
 
     for block in subject.blocks:
-        spec = study.task_for_block(block)
+        spec = block.task_spec
         model.reset_block(spec=spec)
 
         for tr in block.trials:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
 from ..spec import TaskSpec
 
@@ -46,8 +46,4 @@ class SubjectData:
 class StudyData:
     """Whole dataset for hierarchical inference."""
     subjects: Sequence[SubjectData]
-    task_spec: TaskSpec
     metadata: Json = field(default_factory=dict)
-
-    def task_for_block(self, block: Block) -> TaskSpec:
-        return block.task_spec or self.task_spec
