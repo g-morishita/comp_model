@@ -51,7 +51,6 @@ class VSMLEEstimator(Estimator):
             return FitResult(success=False, message="VSMLEEstimatorSciPy expects a VS model instance.")
 
         bounds = _as_scipy_bounds(self.space)
-        names = tuple(self.space.names)
 
         subj_hats: dict[str, dict[str, float]] = {}
         total_ll = 0.0

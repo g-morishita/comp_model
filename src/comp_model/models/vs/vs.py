@@ -29,10 +29,6 @@ def _perseveration_bonus(last_choice: int | None, n_actions: int, kappa: float) 
     return b
 
 
-def _update_chosen_only(q: np.ndarray, a: int, lr: float, target: float) -> None:
-    q[a] += lr * (target - q[a])
-
-
 @dataclass(slots=True)
 class VS(SocialComputationalModel):
     """
@@ -138,4 +134,3 @@ class VS(SocialComputationalModel):
             # chosen-only private learning toward realized outcome
             self._q[s][a] += float(self.alpha_p) * (float(outcome) - self._q[s][a])
             self._last_choice[s] = a
-
