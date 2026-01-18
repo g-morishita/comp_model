@@ -44,6 +44,7 @@ class Generator(ABC):
                 raise ValueError(f"Missing subj_params for {subject_id}")
 
             subj = self.simulate_subject(
+                subject_id=subject_id,
                 task_builder=task_builder,
                 model=model,
                 params=subj_params[subject_id],

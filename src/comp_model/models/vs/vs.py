@@ -109,6 +109,7 @@ class VS(SocialComputationalModel):
     ) -> None:
         if not social.others_choices:
             return
+
         d = int(social.others_choices[0])
 
         s = int(state)
@@ -116,7 +117,8 @@ class VS(SocialComputationalModel):
         self._ensure_state(s, nA)
 
         if 0 <= d < nA:
-            _update_chosen_only(self._q[s], d, float(self.alpha_i), float(self.pseudo_reward))
+            # chosen-only social shaping toward pseudo_reward
+            self._q[s][d] += float(self.alpha_i) * (float(self.pseudo_reward) - self._q[s][d])
 
     def update(
         self,
@@ -133,5 +135,7 @@ class VS(SocialComputationalModel):
 
         a = int(action)
         if 0 <= a < nA:
-            _update_chosen_only(self._q[s], a, float(self.alpha_p), float(outcome))
+            # chosen-only private learning toward realized outcome
+            self._q[s][a] += float(self.alpha_p) * (float(outcome) - self._q[s][a])
             self._last_choice[s] = a
+

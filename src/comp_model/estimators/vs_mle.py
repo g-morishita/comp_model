@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 import numpy as np
-from scipy.optimize import minimize, differential_evolution
+from scipy.optimize import minimize
 
 from ..data.types import StudyData
 from ..interfaces.estimator import Estimator, FitResult
@@ -43,12 +43,6 @@ class VSMLEEstimator(Estimator):
     method: str = "L-BFGS-B"
     maxiter: int = 300
 
-    # Optional global optimizer
-    use_differential_evolution: bool = False
-    de_maxiter: int = 50
-    de_popsize: int = 12
-    de_polish: bool = False  # we'll polish with L-BFGS-B ourselves
-
     def supports(self, study: StudyData, model: Any) -> bool:
         return isinstance(model, VS)
 
@@ -64,35 +58,18 @@ class VSMLEEstimator(Estimator):
         diags: dict[str, Any] = {
             "optimizer": self.method,
             "n_starts": self.n_starts,
-            "use_differential_evolution": self.use_differential_evolution,
         }
 
         for subj in study.subjects:
             # objective: minimize negative log-likelihood
             def nll(x: np.ndarray) -> float:
                 params = self.space.to_params(x)
-                ll = loglike_subject(study=study, subject=subj, model=model, params=params)
+                ll = loglike_subject(subject=subj, model=model, params=params)
                 return float(-ll)
 
             best_x: np.ndarray | None = None
             best_fun: float = float("inf")
             best_res = None
-
-            # Optional global init via DE
-            if self.use_differential_evolution:
-                de = differential_evolution(
-                    func=nll,
-                    bounds=bounds,
-                    maxiter=self.de_maxiter,
-                    popsize=self.de_popsize,
-                    polish=self.de_polish,
-                    seed=int(rng.integers(0, 2**31 - 1)),
-                    updating="deferred",
-                )
-                if float(de.fun) < best_fun:
-                    best_fun = float(de.fun)
-                    best_x = np.array(de.x, dtype=float)
-                    best_res = de
 
             # Multi-start local optimization
             for _ in range(self.n_starts):

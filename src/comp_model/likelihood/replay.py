@@ -17,17 +17,14 @@ def loglike_subject(
     params: Mapping[str, float],
 ) -> float:
     """
-    Generic trial replay:
-      - sets subject-level parameters once
-      - resets latent state per block
-      - applies optional social_update BEFORE choice likelihood if trial has others_choices
-      - adds log p(choice_t)
-      - applies update AFTER reward if reward exists
+    Trial replay for a single subject.
 
-    Works for:
-      - asocial models (ComputationalModel)
-      - social models (SocialComputationalModel)
-      - multi-block data (SubjectData.blocks)
+    Order per trial:
+      1) (optional) social_update BEFORE choice likelihood
+      2) add log p(choice)
+      3) (optional) update from private outcome AFTER reward
+
+    Assumes Block.task_spec is present (self-contained blocks).
     """
     model.set_params(params)
     ll = 0.0
@@ -81,7 +78,6 @@ def loglike_study_independent(
     ll = 0.0
     for subj in study.subjects:
         ll += loglike_subject(
-            study=study,
             subject=subj,
             model=model,
             params=subject_params[subj.subject_id],
