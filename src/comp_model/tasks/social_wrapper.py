@@ -14,7 +14,8 @@ from copy import deepcopy
 class SocialBanditWrapper(SocialBandit):
     """
     SocialBandit = Bandit + observe_others().
-    Bandit task is independent (deepcopy)
+    Bandit is deepcopied, so the state is not shared.
+
 
     This wrapper composes:
       - base: Bandit (outcome dynamics)
