@@ -14,6 +14,7 @@ from ..params.bounds import ParameterBoundsSpace
 from ..errors import CompatibilityError
 from ..utility import _as_scipy_bounds
 
+
 @dataclass(slots=True)
 class SubjectwiseMLEEstimator(Estimator):
     """
@@ -23,8 +24,8 @@ class SubjectwiseMLEEstimator(Estimator):
     - uses shared replay likelihood
     - optimizes directly in parameter space with bounds
     """
-    space: ParameterBoundsSpace
-
+    model: ComputationalModel
+    space: ParameterBoundsSpace 
     # Multi-start
     n_starts: int = 20
 
@@ -32,12 +33,30 @@ class SubjectwiseMLEEstimator(Estimator):
     method: str = "L-BFGS-B"
     maxiter: int = 300
 
-    def supports(self, study: StudyData, model: Any) -> bool:
-        return isinstance(model, ComputationalModel)
+    def __post_init__(self) -> None:
+        self.assert_param_space()
 
-    def fit(self, *, study: StudyData, model: Any, rng: np.random.Generator) -> FitResult:
-        if not self.supports(study, model):
-            raise CompatibilityError("Given `model` is not compatible with `SubjectwiseMLEEstimator`")
+    def assert_param_space(self) -> None:
+        model_params = set(self.model.param_names)       
+        space_params = set(self.space.names)     
+        missing = model_params - space_params
+        extra = space_params - model_params
+        if missing or extra:
+            raise ValueError(
+                f"Model/space param mismatch. Missing in space={sorted(missing)}; "
+                f"Extra in space={sorted(extra)}"
+            )
+
+    def supports(self, study: StudyData) -> bool:
+        for subj in study.subjects:
+            for blk in subj.blocks:
+                if not self.model.supports(blk.task_spec):
+                    return False
+        return True
+
+    def fit(self, *, study: StudyData, rng: np.random.Generator) -> FitResult:
+        if not self.supports(study):
+            raise CompatibilityError("Given data is not compatible with the computational model")
 
         bounds = _as_scipy_bounds(self.space)
 
@@ -52,7 +71,7 @@ class SubjectwiseMLEEstimator(Estimator):
             # objective: minimize negative log-likelihood
             def nll(x: np.ndarray) -> float:
                 params = self.space.to_params(x)
-                ll = loglike_subject(subject=subj, model=model, params=params)
+                ll = loglike_subject(subject=subj, model=self.model, params=params)
                 return float(-ll)
 
             best_x: np.ndarray | None = None

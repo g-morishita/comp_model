@@ -7,6 +7,8 @@ from typing import Any, Mapping
 import numpy as np
 
 from ..data.types import StudyData
+from ..params.bounds import ParameterBoundsSpace
+from ..interfaces.model import ComputationalModel
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,7 +23,15 @@ class FitResult:
 
 
 class Estimator(ABC):
-    def supports(self, study: StudyData, model: Any) -> bool:
+    model: ComputationalModel
+    space: ParameterBoundsSpace
+
+    @abstractmethod
+    def assert_param_space(self) -> bool:
+        return True
+
+    @abstractmethod
+    def supports(self, study: StudyData) -> bool:
         return True
 
     @abstractmethod
@@ -29,7 +39,6 @@ class Estimator(ABC):
         self,
         *,
         study: StudyData,
-        model: Any,
         rng: np.random.Generator,
     ) -> FitResult:
         ...
