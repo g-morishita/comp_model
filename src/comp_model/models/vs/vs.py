@@ -57,7 +57,7 @@ class VS(SocialComputationalModel):
     
     # config (not estimated)
     beta_max: float = 20.0
-    kappa_abs_max: float = 5.0
+    kappa_abs_max: float = 1.0
 
     def __post_init__(self) -> None:
         self._q: list[np.ndarray] = []
