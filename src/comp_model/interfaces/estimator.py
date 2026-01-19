@@ -24,11 +24,6 @@ class FitResult:
 
 class Estimator(ABC):
     model: ComputationalModel
-    space: ParameterBoundsSpace
-
-    @abstractmethod
-    def assert_param_space(self) -> bool:
-        return True
 
     @abstractmethod
     def supports(self, study: StudyData) -> bool:

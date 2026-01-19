@@ -1,3 +1,3 @@
-from .mle_generic import SubjectwiseMLEEstimator
+from .mle_generic import BoxMLESubjectwiseEstimator, TransformedMLESubjectwiseEstimator
 
-__all__ = ["SubjectwiseMLEEstimator"]
+__all__ = ["BoxMLESubjectwiseEstimator", "TransformedMLESubjectwiseEstimator"]

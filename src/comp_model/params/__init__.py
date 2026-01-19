@@ -1,4 +1,15 @@
 from .bounds import Bound, ParameterBoundsSpace
-from .schema import ParameterSchema, ParamDef
+from .schema import ParamDef, ParameterSchema
+from .transforms import Transform, Identity, Sigmoid, Softplus, BoundedTanh
 
-__all__ = ["Bound", "ParamDef", "ParameterSchema" "ParameterBoundsSpace"]
+__all__ = [
+    "Bound",
+    "ParameterBoundsSpace",
+    "ParamDef",
+    "ParameterSchema",
+    "Transform",
+    "Identity",
+    "Sigmoid",
+    "Softplus",
+    "BoundedTanh",
+]
