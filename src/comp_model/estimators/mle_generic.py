@@ -7,44 +7,53 @@ import numpy as np
 from scipy.optimize import minimize
 
 from ..data.types import StudyData
+from ..errors import CompatibilityError
 from ..interfaces.estimator import Estimator, FitResult
 from ..interfaces.model import ComputationalModel
 from ..likelihood.replay import loglike_subject
-from ..params.bounds import ParameterBoundsSpace
-from ..errors import CompatibilityError
+from ..params import ParameterBoundsSpace
 from ..utility import _as_scipy_bounds
 
 
 @dataclass(slots=True)
 class SubjectwiseMLEEstimator(Estimator):
     """
-    Generic subject-wise MLE with box constraints (no transforms).
+    Subject-wise MLE with multi-start box-constrained optimization.
 
-    - fits each subject independently
-    - uses shared replay likelihood
-    - optimizes directly in parameter space with bounds
+    If `space` is None, it is derived from `model.param_schema`.
     """
-    model: ComputationalModel
-    space: ParameterBoundsSpace 
-    # Multi-start
-    n_starts: int = 20
 
-    # Local optimizer options
+    model: ComputationalModel
+    space: ParameterBoundsSpace | None = None
+
+    n_starts: int = 20
     method: str = "L-BFGS-B"
     maxiter: int = 300
 
-    def __post_init__(self) -> None:
-        self.assert_param_space()
+    # safety: whether to validate bounds when setting params (usually False in MLE loop for speed)
+    validate_bounds_on_set: bool = False
 
-    def assert_param_space(self) -> None:
-        model_params = set(self.model.param_names)       
-        space_params = set(self.space.names)     
-        missing = model_params - space_params
-        extra = space_params - model_params
-        if missing or extra:
+    def __post_init__(self) -> None:
+        self._ensure_space()
+        self._assert_consistent()
+
+    def _ensure_space(self) -> None:
+        if self.space is not None:
+            return
+        # Derived from schema (single source of truth)
+        self.space = self.model.param_schema.bounds_space(
+            names=self.model.param_schema.names,
+            require_bounds=True,
+        )
+
+    def _assert_consistent(self) -> None:
+        assert self.space is not None
+        model_names = tuple(self.model.param_schema.names)
+        space_names = tuple(self.space.names)
+        if set(model_names) != set(space_names):
             raise ValueError(
-                f"Model/space param mismatch. Missing in space={sorted(missing)}; "
-                f"Extra in space={sorted(extra)}"
+                "Model/space parameter mismatch: "
+                f"model={model_names}, space={space_names}"
             )
 
     def supports(self, study: StudyData) -> bool:
@@ -58,19 +67,28 @@ class SubjectwiseMLEEstimator(Estimator):
         if not self.supports(study):
             raise CompatibilityError("Given data is not compatible with the computational model")
 
+        assert self.space is not None
         bounds = _as_scipy_bounds(self.space)
 
         subj_hats: dict[str, dict[str, float]] = {}
         total_ll = 0.0
+
         diags: dict[str, Any] = {
             "optimizer": self.method,
             "n_starts": self.n_starts,
+            "maxiter": self.maxiter,
+            "space_names": list(self.space.names),
         }
 
         for subj in study.subjects:
-            # objective: minimize negative log-likelihood
+
             def nll(x: np.ndarray) -> float:
                 params = self.space.to_params(x)
+
+                # For safety, you *can* validate schema here, but it’s slower.
+                # Most of the time, bounds already ensure validity.
+                if self.validate_bounds_on_set:
+                    self.model.set_params(params, strict=True, check_bounds=True)
                 ll = loglike_subject(subject=subj, model=self.model, params=params)
                 return float(-ll)
 
@@ -78,7 +96,6 @@ class SubjectwiseMLEEstimator(Estimator):
             best_fun: float = float("inf")
             best_res = None
 
-            # Multi-start local optimization
             for _ in range(self.n_starts):
                 x0 = self.space.sample_init(rng)
                 res = minimize(
@@ -95,10 +112,10 @@ class SubjectwiseMLEEstimator(Estimator):
 
             assert best_x is not None
             params_hat = self.space.to_params(best_x)
+
             subj_hats[subj.subject_id] = params_hat
             total_ll += float(-best_fun)
 
-            # per-subject diagnostics (lightweight)
             diags[f"subj_{subj.subject_id}"] = {
                 "fun": float(best_fun),
                 "success": bool(getattr(best_res, "success", True)),

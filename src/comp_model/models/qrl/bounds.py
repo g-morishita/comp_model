@@ -1,20 +1,8 @@
 from __future__ import annotations
 
-from ...params.bounds import Bound, ParameterBoundsSpace
+from ...params import ParameterBoundsSpace
+from .schema import qrl_schema
 
 
-def qrl_bounds_space(
-    *,
-    beta_max: float = 20.0,
-) -> ParameterBoundsSpace:
-    """
-    Q-RL parameter bounds.
-
-    You should tune beta_max range to your task scale.
-    """
-    names = ("alpha", "beta")
-    bounds = {
-        "alpha": Bound(0.0, 1.0),
-        "beta": Bound(1e-6, float(beta_max)),
-    }
-    return ParameterBoundsSpace(names=names, bounds=bounds)
+def qrl_bounds_space(*, beta_max: float = 20.0) -> ParameterBoundsSpace:
+    return qrl_schema(beta_max=float(beta_max)).bounds_space()

@@ -6,10 +6,11 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from ...interfaces.model import SocialComputationalModel
+from ...params import ParameterSchema
 from ...interfaces.bandit import SocialObservation
 from ...spec import TaskSpec
 from ...utility import _softmax
-
+from .schema import vs_schema
 
 def _perseveration_bonus(last_choice: int | None, n_actions: int, kappa: float) -> np.ndarray:
     """
@@ -52,15 +53,26 @@ class VS(SocialComputationalModel):
     alpha_i: float = 0.2
     beta: float = 3.0
     kappa: float = 0.0
-    pseudo_reward: float = 1.0
+    pseudo_reward: float = 1.0  # not estimated by default
+    
+    # config (not estimated)
+    beta_max: float = 20.0
+    kappa_abs_max: float = 5.0
 
     def __post_init__(self) -> None:
         self._q: list[np.ndarray] = []
         self._last_choice: list[int | None] = []
 
     @property
-    def param_names(self) -> Sequence[str]:
-        return ("alpha_p", "alpha_i", "beta", "kappa")
+    def param_schema(self) -> ParameterSchema:
+        return vs_schema(
+            alpha_p_default=float(self.alpha_p),
+            alpha_i_default=float(self.alpha_i),
+            beta_default=float(self.beta),
+            kappa_default=float(self.kappa),
+            beta_max=float(self.beta_max),
+            kappa_abs_max=float(self.kappa_abs_max),
+        )
 
     def supports(self, spec: TaskSpec) -> bool:
         return spec.is_social and spec.n_actions >= 2

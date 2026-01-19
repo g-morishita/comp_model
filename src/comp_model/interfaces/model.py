@@ -7,24 +7,51 @@ import numpy as np
 
 from ..spec import TaskSpec
 from .bandit import SocialObservation
-
+from ..params import ParameterSchema
 
 class ComputationalModel(ABC):
-    """Parameters are typically subject-level; latents reset per block."""
+    """
+    Base class for computational models.
+
+    Subclasses should implement:
+    - param_schema
+    - supports(spec)
+    - reset_block(spec=...)
+    - action_probs(...)
+    - update(...)
+    """
 
     @property
     @abstractmethod
-    def param_names(self) -> Sequence[str]:
+    def param_schema(self) -> ParameterSchema:
         ...
+
+    @property
+    def param_names(self) -> Sequence[str]:
+        return self.param_schema.names
+    
+    def get_params(self) -> dict[str, float]:
+        """Return current parameters (by schema names)."""
+        return {name: float(getattr(self, name)) for name in self.param_schema.names}
+
+    def set_params(
+        self,
+        params: Mapping[str, Any],
+        *,
+        strict: bool = True,
+        check_bounds: bool = False,
+    ) -> None:
+        """Safely set model parameters using the schema."""
+        validated = self.param_schema.validate(
+            params,
+            strict=strict,
+            check_bounds=check_bounds,
+        )
+        for k, v in validated.items():
+            setattr(self, k, float(v))
 
     def supports(self, spec: TaskSpec) -> bool:
         return True
-
-    def set_params(self, params: Mapping[str, float]) -> None:
-        """Default injection: set attributes if they exist."""
-        for k, v in params.items():
-            if hasattr(self, k):
-                setattr(self, k, v)
 
     @abstractmethod
     def reset_block(self, *, spec: TaskSpec) -> None:

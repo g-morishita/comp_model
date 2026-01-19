@@ -8,6 +8,8 @@ import numpy as np
 from ...interfaces.model import ComputationalModel
 from ...spec import TaskSpec
 from ...utility import _softmax
+from ...params import ParameterSchema
+from .schema import qrl_schema
 
 
 @dataclass(slots=True)
@@ -25,12 +27,20 @@ class QRL(ComputationalModel):
     alpha: float = 0.2
     beta: float = 5.0
 
+    # config (not estimated by default)
+    beta_max: float = 20.0
+
     def __post_init__(self) -> None:
         self._q: list[np.ndarray] = []
         
     @property
-    def param_names(self) -> Sequence[str]:
-        return ("alpha", "beta")
+    def param_schema(self) -> ParameterSchema:
+        # defaults reflect current object state
+        return qrl_schema(
+            alpha_default=float(self.alpha),
+            beta_default=float(self.beta),
+            beta_max=float(self.beta_max),
+        )
     
     def supports(self, spec: TaskSpec) -> bool:
         return not spec.is_social and spec.n_actions >= 2
