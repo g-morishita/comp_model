@@ -87,7 +87,7 @@ class TrialByTrialGenerator(Generator):
                 trials.append(
                     Trial(
                         t=t,
-                        state=int(state),
+                        state=state,
                         choice=action,
                         outcome=outcome,
                         info=step.info or {},

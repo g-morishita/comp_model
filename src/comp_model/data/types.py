@@ -15,9 +15,9 @@ class Trial:
     Supports asocial + social via optional fields.
     """
     t: int
-    state: int
+    state: Any                  # state can be structured states (tuples, dicts, feature vectors), partially observed states, continuous states.
     choice: int | None          # None for purely observational trials if you want
-    outcome: float | None        # None for purely observational trials if you want
+    outcome: float | None       # None for purely observational trials if you want
     info: Json = field(default_factory=dict)
 
     # social (optional)
