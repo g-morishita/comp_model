@@ -8,12 +8,13 @@ import numpy as np
 from ..interfaces.bandit import Bandit, SocialBandit, SocialObservation, BanditStep
 from ..interfaces.demonstrator import Demonstrator
 from ..spec import TaskSpec
-
+from copy import deepcopy
 
 @dataclass(slots=True)
 class SocialBanditWrapper(SocialBandit):
     """
     SocialBandit = Bandit + observe_others().
+    Bandit task is independent (deepcopy)
 
     This wrapper composes:
       - base: Bandit (outcome dynamics)
@@ -25,10 +26,19 @@ class SocialBanditWrapper(SocialBandit):
     demonstrator: Demonstrator
     reveal_demo_outcome: bool = False
 
+    def __post_init__(self):
+        self.base = deepcopy(self.base)
+
     @property
     def spec(self) -> TaskSpec:
         s = self.base.spec
-        return TaskSpec(n_actions=s.n_actions, outcome_type=s.outcome_type, is_social=True)
+        return TaskSpec(
+            n_actions=s.n_actions, 
+            outcome_type=s.outcome_type, 
+            outcome_range=s.outcome_range, 
+            outcome_is_bounded=s.outcome_is_bounded, 
+            has_state=s.has_state, is_social=True,
+            )
 
     def reset(self, rng: np.random.Generator) -> Any:
         st = self.base.reset(rng=rng)
@@ -44,7 +54,9 @@ class SocialBanditWrapper(SocialBandit):
     def observe_others(self, rng: np.random.Generator) -> SocialObservation:
         state = self.get_state()
         a = int(self.demonstrator.act(state=state, spec=self.spec, rng=rng))
+        
         out = float(self.base.step(action=a, rng=rng).outcome)
+
         self.demonstrator.observe_outcome(state=state, action=a, outcome=out, spec=self.spec, rng=rng)
 
         return SocialObservation(
