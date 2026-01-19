@@ -9,6 +9,10 @@ description = "Parameter and model recovery for computational modeling"
 requires-python = ">=3.13"
 dependencies = [
   "numpy>=2.0", # TODO Add dependencies later
+  "dash>=3.3",
+  "scipy>=1.16",
+  "pandas>-2.3.3",
+  "plotly>=6.5.2"
 ]
 authors = [
   {name = "Gota Morishita", email = "gota.morishita@gmail.com"},
