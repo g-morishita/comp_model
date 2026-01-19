@@ -32,7 +32,7 @@ class QRL(ComputationalModel):
     def param_names(self) -> Sequence[str]:
         return ("alpha", "beta")
     
-    def support(self, spec: TaskSpec) -> bool:
+    def supports(self, spec: TaskSpec) -> bool:
         return not spec.is_social and spec.n_actions >= 2
 
     def reset_block(self, *, spec: TaskSpec) -> None:
