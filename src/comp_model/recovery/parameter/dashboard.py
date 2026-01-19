@@ -312,4 +312,5 @@ def run_parameter_recovery_dashboard(
         lo, hi = float(true_range[0]), float(true_range[1])
         return _make_figure(g, param=param, color_mode=color_mode, range_lo=lo, range_hi=hi)
 
-    app.run_server(host=spec.host, port=spec.port, debug=spec.debug)
+    app.run(host=spec.host, port=spec.port, debug=spec.debug)
+

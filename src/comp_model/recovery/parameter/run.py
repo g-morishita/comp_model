@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from tqdm import tqdm
 
 import json
 import numpy as np
@@ -86,7 +87,7 @@ def run_parameter_recovery(
             reveal_demo_outcome=False,
         )
 
-    for rep in range(int(config.n_reps)):
+    for rep in tqdm(range(int(config.n_reps))):
         rep_rng = np.random.default_rng(rng.integers(0, 2**32 - 1, dtype=np.uint32))
 
         subj_params_true, pop_true = sample_subject_params(
@@ -165,12 +166,15 @@ def run_parameter_recovery(
         plot_dir = out_dir / "plots"
         plot_dir.mkdir(exist_ok=True)
 
-        plot_parameter_recovery_scatter(df=df, out_dir=plot_dir, alpha=..., max_points=...)
+        alpha = config.plots.scatter_alpha
+        max_points = config.plots.max_points
+
+        plot_parameter_recovery_scatter(df=df, out_dir=plot_dir, alpha=alpha, max_points=max_points)
 
         # New color versions
         for mode in ["true", "abs_error", "error"]:
             plot_parameter_recovery_scatter_color(
-                df=df, out_dir=plot_dir, color_by=mode, alpha=..., max_points=...
+                df=df, out_dir=plot_dir, color_by=mode, alpha=alpha, max_points=max_points
             )
 
         # Interactive HTML (optional)
