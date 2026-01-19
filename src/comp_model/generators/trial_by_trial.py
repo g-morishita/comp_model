@@ -10,7 +10,7 @@ from ..interfaces.bandit import Bandit, SocialBandit
 from ..interfaces.generator import Generator
 from ..interfaces.model import ComputationalModel, SocialComputationalModel
 from ..plans.block import BlockPlan
-
+from ..errors import CompatibilityError
 
 TaskBuilder = Callable[[BlockPlan], Bandit]
 
@@ -47,6 +47,9 @@ class TrialByTrialGenerator(Generator):
         for plan in block_plans:
             bandit = task_builder(plan)
             spec = bandit.spec
+
+            if not model.supports(spec=spec):
+                raise CompatibilityError("The computational model is not compatible with the current task.")
 
             # reset for block
             bandit.reset(rng=rng)

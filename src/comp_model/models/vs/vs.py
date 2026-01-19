@@ -8,13 +8,7 @@ import numpy as np
 from ...interfaces.model import SocialComputationalModel
 from ...interfaces.bandit import SocialObservation
 from ...spec import TaskSpec
-
-
-def _softmax(u: np.ndarray, beta: float) -> np.ndarray:
-    z = beta * u
-    z -= float(np.max(z))
-    expz = np.exp(z)
-    return expz / float(np.sum(expz))
+from ...utility import _softmax
 
 
 def _perseveration_bonus(last_choice: int | None, n_actions: int, kappa: float) -> np.ndarray:
