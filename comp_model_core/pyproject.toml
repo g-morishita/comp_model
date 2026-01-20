@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comp-model-core"
+version = "0.1.0"
+description = "Lightweight core interfaces for computational models, inference, and simulation pipelines."
+requires-python = ">=3.13"
+dependencies = [
+  "numpy>=2.0",
+]
+authors = [
+  {name = "Gota Morishita", email = "gota.morishita@gmail.com"},
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
