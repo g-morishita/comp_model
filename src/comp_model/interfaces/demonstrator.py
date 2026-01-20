@@ -16,7 +16,7 @@ class Demonstrator(ABC):
     def act(self, *, state: Any, spec: TaskSpec, rng: np.random.Generator) -> int: ...
 
     @abstractmethod
-    def observe_outcome(
+    def update(
         self,
         *,
         state: Any,

@@ -28,5 +28,5 @@ class NoisyBestArmDemonstrator(Demonstrator):
         others = [a for a in range(k) if a != best]
         return int(rng.choice(others))
 
-    def observe_outcome(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def update(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
         return

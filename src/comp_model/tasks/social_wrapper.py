@@ -58,7 +58,7 @@ class SocialBanditWrapper(SocialBandit):
         
         out = float(self.base.step(action=a, rng=rng).outcome)
 
-        self.demonstrator.observe_outcome(state=state, action=a, outcome=out, spec=self.spec, rng=rng)
+        self.demonstrator.update(state=state, action=a, outcome=out, spec=self.spec, rng=rng)
 
         return SocialObservation(
             others_choices=[a],

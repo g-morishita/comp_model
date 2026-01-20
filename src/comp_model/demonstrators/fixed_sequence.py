@@ -29,5 +29,5 @@ class FixedSequenceDemonstrator(Demonstrator):
         self._t += 1
         return a
 
-    def observe_outcome(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def update(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
         return

@@ -23,5 +23,5 @@ class RLDemonstrator(Demonstrator):
         probs = self.model.action_probs(state=state, spec=spec)
         return int(rng.choice(spec.n_actions, p=probs))
 
-    def observe_outcome(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def update(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
         self.model.update(state=state, action=int(action), outcome=float(outcome), spec=spec, info=None)
