@@ -9,6 +9,7 @@ description = "Lightweight core interfaces for computational models, inference, 
 requires-python = ">=3.13"
 dependencies = [
   "numpy>=2.0",
+  "scipy>=1.6.2",
 ]
 authors = [
   {name = "Gota Morishita", email = "gota.morishita@gmail.com"},
