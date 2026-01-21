@@ -69,7 +69,7 @@ class TrialByTrialGenerator(Generator):
                     and isinstance(model, SocialComputationalModel)
                     and getattr(spec, "is_social", False)
                 ):
-                    obs = bandit.observe_others(rng=rng)
+                    obs = bandit.update(rng=rng)
                     others_choices = obs.others_choices
                     others_outcomes = obs.others_outcomes
                     social_info = obs.info

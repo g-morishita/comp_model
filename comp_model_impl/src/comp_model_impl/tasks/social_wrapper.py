@@ -52,7 +52,7 @@ class SocialBanditWrapper(SocialBandit):
     def step(self, *, action: int, rng: np.random.Generator) -> BanditStep:
         return self.base.step(action, rng)
 
-    def observe_others(self, rng: np.random.Generator) -> SocialObservation:
+    def update(self, rng: np.random.Generator) -> SocialObservation:
         state = self.get_state()
         a = int(self.demonstrator.act(state=state, spec=self.spec, rng=rng))
         
