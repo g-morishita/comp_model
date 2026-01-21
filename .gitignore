@@ -2,3 +2,6 @@ src/comp_model.egg-info/*
 __pycache__
 run
 .DS_Store
+
+comp_model_core.egg-info
+comp_model_impl.egg-info
