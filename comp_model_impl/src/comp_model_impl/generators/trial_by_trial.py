@@ -78,16 +78,16 @@ class AsocialBanditGenerator(Generator):
                 action = int(rng.choice(spec.n_actions, p=probs))
 
                 step = bandit.step(action=action, rng=rng)
-                outcome = float(step.outcome)
 
-                model.update(state=state, action=action, outcome=outcome, spec=spec, info=step.info)
+                model.update(state=state, action=action, outcome=step.observed_outcome, spec=spec, info=step.info)
 
                 trials.append(
                     Trial(
                         t=t,
                         state=state,
                         choice=action,
-                        outcome=outcome,
+                        observed_outcome=step.observed_outcome,
+                        outcome=step.outcome,
                         info=step.info or {},
                         others_choices=None,
                         others_outcomes=None,
@@ -170,19 +170,21 @@ class SocialPreChoiceGenerator(Generator):
                 action = int(rng.choice(spec.n_actions, p=probs))
 
                 step = sb.step(action=action, rng=rng)
-                outcome = float(step.outcome)
+                observed_outcome = float(step.observed_outcome)
 
-                sm.update(state=state, action=action, outcome=outcome, spec=spec, info=step.info)
+                sm.update(state=state, action=action, outcome=observed_outcome, spec=spec, info=step.info)
 
                 trials.append(
                     Trial(
                         t=t,
                         state=state,
                         choice=action,
-                        outcome=outcome,
+                        outcome=step.outcome,
+                        observed_outcome=step.observed_outcome,
                         info=step.info or {},
                         others_choices=obs.others_choices,
                         others_outcomes=obs.others_outcomes,
+                        observed_others_outcomes=obs.observed_others_outcome,
                         social_info=obs.info or {},
                     )
                 )
@@ -256,9 +258,9 @@ class SocialPostOutcomeGenerator(Generator):
                 action = int(rng.choice(spec.n_actions, p=probs))
 
                 step = sb.step(action=action, rng=rng)
-                outcome = float(step.outcome)
+                observed_outcome = float(step.observed_outcome)
 
-                sm.update(state=state, action=action, outcome=outcome, spec=spec, info=step.info)
+                sm.update(state=state, action=action, outcome=observed_outcome, spec=spec, info=step.info)
 
                 obs = sb.observe_others(rng=rng)
                 sm.social_update(state=state, social=obs, spec=spec, info=None)
@@ -268,10 +270,12 @@ class SocialPostOutcomeGenerator(Generator):
                         t=t,
                         state=state,
                         choice=action,
-                        outcome=outcome,
+                        outcome=step.outcome,
+                        observed_outcome=step.observed_outcome,
                         info=step.info or {},
                         others_choices=obs.others_choices,
                         others_outcomes=obs.others_outcomes,
+                        observed_others_outcomes=obs.observed_others_outcome,
                         social_info=obs.info or {},
                     )
                 )

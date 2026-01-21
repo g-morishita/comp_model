@@ -86,6 +86,7 @@ def run_parameter_recovery(
             plan=block_plan,
             bandits=bandits,
             demonstrators=demonstrators,
+            reveal_self_outcome=True,
             reveal_demo_outcome=False,
         )
 

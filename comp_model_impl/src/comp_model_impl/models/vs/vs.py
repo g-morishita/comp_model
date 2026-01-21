@@ -128,10 +128,12 @@ class VS(SocialComputationalModel):
         *,
         state: Any,
         action: int,
-        outcome: float,
+        outcome: float | None,
         spec: TaskSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
+        if outcome is None:
+            return
         s = int(state)
         nA = int(spec.n_actions)
         self._ensure_state(s, nA)

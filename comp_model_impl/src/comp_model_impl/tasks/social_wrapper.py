@@ -15,6 +15,7 @@ class SocialBanditWrapper(SocialBandit):
     """
     SocialBandit = Bandit + observe_others().
     Bandit is deepcopied, so the state is not shared.
+    Outcome visibilities are globally controlled by arguments: `reveal_self_outcome` and `reveal_demo_outcome`
 
 
     This wrapper composes:
@@ -25,7 +26,8 @@ class SocialBanditWrapper(SocialBandit):
     """
     base: Bandit
     demonstrator: Demonstrator
-    reveal_demo_outcome: bool = False
+    reveal_demo_outcome: bool
+    reveal_self_outcome: bool
 
     def __post_init__(self):
         self.base = deepcopy(self.base)
@@ -50,9 +52,15 @@ class SocialBanditWrapper(SocialBandit):
         return self.base.get_state()
 
     def step(self, *, action: int, rng: np.random.Generator) -> BanditStep:
-        return self.base.step(action, rng)
+        step = self.base.step(action=action, rng=rng)
 
-    def observe_others(self, rng: np.random.Generator) -> SocialObservation:
+        return BanditStep(
+            outcome=step.outcome,
+            observed_outcome=step.outcome if self.reveal_self_outcome else None,
+            info={**(step.info or {}), "self_outcome_observed": self.reveal_self_outcome}
+        )
+
+    def observe_others(self, *, rng: np.random.Generator) -> SocialObservation:
         state = self.get_state()
         a = int(self.demonstrator.act(state=state, spec=self.spec, rng=rng))
         
@@ -63,5 +71,5 @@ class SocialBanditWrapper(SocialBandit):
         return SocialObservation(
             others_choices=[a],
             others_outcomes=[out] if self.reveal_demo_outcome else None,
-            info=None,
+            info={"demo_outcome_observed": self.reveal_demo_outcome},
         )

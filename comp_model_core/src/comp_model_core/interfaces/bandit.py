@@ -11,7 +11,8 @@ from ..spec import TaskSpec
 
 @dataclass(frozen=True, slots=True)
 class BanditStep:
-    outcome: float
+    outcome: float                    # true outcome
+    observed_outcome: float | None    # what agent sees (None if hidden)
     done: bool = False
     info: dict[str, Any] | None = None
 
@@ -19,7 +20,8 @@ class BanditStep:
 @dataclass(frozen=True, slots=True)
 class SocialObservation:
     others_choices: Sequence[int] | None = None
-    others_outcomes: Sequence[float] | None = None
+    others_outcomes: Sequence[float] | None = None # true outcome
+    observed_others_outcome: float | None = None   # what agent sees (None if hidden)
     info: dict[str, Any] | None = None
 
 

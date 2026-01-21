@@ -32,14 +32,13 @@ class BernoulliBandit(Bandit):
         )
 
     def reset(self, *, rng: np.random.Generator) -> None:
-        # if you later want random walk probs etc, do it here
         self.state = 0
 
-    def step(self, action: int, rng: np.random.Generator) -> BanditStep:
+    def step(self, *, action: int, rng: np.random.Generator) -> BanditStep:
         a = int(action)
         p = float(self.probs[a])
         out = 1.0 if float(rng.random()) < p else 0.0
-        return BanditStep(outcome=out, done=False, info=None)
+        return BanditStep(outcome=out, observed_outcome=out, done=False, info=None)
 
     def get_state(self) -> Any:
         return self.state

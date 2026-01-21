@@ -10,19 +10,18 @@ Json = dict[str, Any]
 
 @dataclass(frozen=True, slots=True)
 class Trial:
-    """One trial.
-
-    Supports asocial + social via optional fields.
-    """
     t: int
-    state: Any                  # state can be structured states (tuples, dicts, feature vectors), partially observed states, continuous states.
-    choice: int | None          # None for purely observational trials if you want
-    outcome: float | None       # None for purely observational trials if you want
+    state: Any
+    choice: int | None
+
+    observed_outcome: float | None  # observed outcome (what subject sees)
+    outcome: float | None           # environment outcome (always present if step happened)
+
     info: Json = field(default_factory=dict)
 
-    # social (optional)
     others_choices: Sequence[int] | None = None
-    others_outcomes: Sequence[float] | None = None
+    others_outcomes: Sequence[float] | None = None          # environment outcome (always present if step happened)
+    observed_others_outcomes: Sequence[float] | None = None # observed outcome (what subject sees)
     social_info: Json = field(default_factory=dict)
 
 

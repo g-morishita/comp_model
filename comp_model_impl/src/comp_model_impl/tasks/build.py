@@ -12,7 +12,8 @@ def build_bandit_for_plan(
     plan: BlockPlan,
     bandits: BanditRegistry,
     demonstrators: DemonstratorRegistry | None = None,
-    reveal_demo_outcome: bool = False,
+    reveal_demo_outcome: bool,
+    reveal_self_outcome: bool,
 ) -> Bandit:
     """
     Build a (possibly social) bandit for one block plan.
@@ -31,4 +32,4 @@ def build_bandit_for_plan(
         demo_cfg=plan.demonstrator_config or {},
     )
 
-    return SocialBanditWrapper(base=base, demonstrator=demo, reveal_demo_outcome=reveal_demo_outcome)
+    return SocialBanditWrapper(base=base, demonstrator=demo, reveal_self_outcome=reveal_self_outcome, reveal_demo_outcome=reveal_demo_outcome)

@@ -68,7 +68,7 @@ class ComputationalModel(ABC):
         *,
         state: Any,
         action: int,
-        outcome: float,
+        outcome: float | None,  # If outcome is not observable, None
         spec: TaskSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
