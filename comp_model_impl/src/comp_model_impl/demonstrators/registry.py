@@ -24,4 +24,4 @@ class DemonstratorRegistry:
             f = self.factories[demonstrator_type]
         except KeyError as e:
             raise KeyError(f"Unknown demonstrator_type: {demonstrator_type}") from e
-        return f(bandit_cfg, demo_cfg)
+        return f(bandit_cfg=bandit_cfg, demo_cfg=demo_cfg)
