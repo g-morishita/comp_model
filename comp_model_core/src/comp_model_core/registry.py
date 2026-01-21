@@ -33,4 +33,3 @@ class Registry:
     bandits: NamedRegistry[type] = field(default_factory=NamedRegistry)
     demonstrators: NamedRegistry[type] = field(default_factory=NamedRegistry)
     tasks: NamedRegistry[type] = field(default_factory=NamedRegistry)
-

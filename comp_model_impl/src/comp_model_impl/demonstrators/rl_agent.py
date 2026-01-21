@@ -13,10 +13,8 @@ from comp_model_core.spec import TaskSpec
 @dataclass(slots=True)
 class RLDemonstrator(Demonstrator):
     model: ComputationalModel
-    params: Mapping[str, float]
 
     def reset(self, *, spec: TaskSpec, rng: np.random.Generator) -> None:
-        self.model.set_params(self.params)
         self.model.reset_block(spec=spec)
 
     def act(self, *, state: Any, spec: TaskSpec, rng: np.random.Generator) -> int:

@@ -5,8 +5,10 @@ from typing import Any, Mapping
 from .noisy_best import NoisyBestArmDemonstrator
 from .fixed_sequence import FixedSequenceDemonstrator
 from .rl_agent import RLDemonstrator
+from ..models.registry import registry
+
 from comp_model_core.interfaces.demonstrator import Demonstrator
-from comp_model_core.interfaces.model import ComputationalModel
+
 
 
 def make_noisy_best(bandit_cfg: Mapping[str, Any], demo_cfg: Mapping[str, Any]) -> Demonstrator:
@@ -22,11 +24,12 @@ def make_fixed_sequence(bandit_cfg: Mapping[str, Any], demo_cfg: Mapping[str, An
 
 
 def make_rl_demonstrator(
-    model: ComputationalModel,
-    *,
     bandit_cfg: Mapping[str, Any],
     demo_cfg: Mapping[str, Any],
 ) -> Demonstrator:
-    # demo_cfg should include: {"params": {...}}
+    # demo_cfg should include: {"model", "params": {...}}
+    model = registry.models[demo_cfg["model"]]()
     params = demo_cfg["params"]
-    return RLDemonstrator(model=model, params=params)
+    model.set_params(params)
+
+    return RLDemonstrator(model=model)
