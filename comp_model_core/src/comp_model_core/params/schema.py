@@ -149,7 +149,6 @@ class ParameterSchema:
     def z_from_params(self, params: Mapping[str, Any]) -> np.ndarray:
         """Use transforms inverses to map a parameter dict -> unconstrained z vector."""
         validated = self.validate(params, strict=True, check_bounds=False)
-        by = self._by_name()
         z = np.empty((len(self.params),), dtype=float)
         for i, p in enumerate(self.params):
             t = p.transform_obj()
