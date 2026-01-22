@@ -21,7 +21,7 @@ class BanditStep:
 class SocialObservation:
     others_choices: Sequence[int] | None = None
     others_outcomes: Sequence[float] | None = None # true outcome
-    observed_others_outcome: float | None = None   # what agent sees (None if hidden)
+    observed_others_outcomes: Sequence[float] | None = None   # what agent sees (None if hidden)
     info: dict[str, Any] | None = None
 
 
