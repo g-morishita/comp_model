@@ -13,17 +13,16 @@ from comp_model_core.interfaces.model import ComputationalModel
 from comp_model_core.params import ParameterBoundsSpace
 from comp_model_core.utility import _as_scipy_bounds
 
-from ..likelihood.replay import loglike_subject
+# CHANGED: event-log replay is the only likelihood source
+from comp_model_impl.likelihood.event_log_replay import loglike_subject
 
 
 @dataclass(slots=True)
 class BoxMLESubjectwiseEstimator(Estimator):
     """
     Subject-wise MLE with multi-start box-constrained optimization.
-
-    If `space` is None, it is derived from `model.param_schema`.
+    Uses event-log likelihood replay (BLOCK_START controls reset timing).
     """
-
     model: ComputationalModel
     space: ParameterBoundsSpace | None = None
 
@@ -31,36 +30,24 @@ class BoxMLESubjectwiseEstimator(Estimator):
     method: str = "L-BFGS-B"
     maxiter: int = 300
 
-    # safety: whether to validate bounds when setting params (usually False in MLE loop for speed)
     validate_bounds_on_set: bool = False
 
     def __post_init__(self) -> None:
-        self._ensure_space()
-        self.assert_param_space()
-
-    def _ensure_space(self) -> None:
-        if self.space is not None:
-            return
-        # Derived from schema (single source of truth)
-        self.space = self.model.param_schema.bounds_space(
-            names=self.model.param_schema.names,
-            require_bounds=True,
-        )
-
-    def assert_param_space(self) -> None:
-        assert self.space is not None
-        model_names = tuple(self.model.param_schema.names)
-        space_names = tuple(self.space.names)
-        if set(model_names) != set(space_names):
-            raise ValueError(
-                "Model/space parameter mismatch: "
-                f"model={model_names}, space={space_names}"
+        if self.space is None:
+            self.space = self.model.param_schema.bounds_space(
+                names=self.model.param_schema.names,
+                require_bounds=True,
             )
+        # sanity
+        model_names = set(self.model.param_schema.names)
+        space_names = set(self.space.names)
+        if model_names != space_names:
+            raise ValueError(f"Model/space parameter mismatch: model={model_names}, space={space_names}")
 
     def supports(self, study: StudyData) -> bool:
         for subj in study.subjects:
             for blk in subj.blocks:
-                if not self.model.supports(blk.task_spec):
+                if blk.task_spec is None or not self.model.supports(blk.task_spec):
                     return False
         return True
 
@@ -75,6 +62,7 @@ class BoxMLESubjectwiseEstimator(Estimator):
         total_ll = 0.0
 
         diags: dict[str, Any] = {
+            "estimator": self.__class__.__name__,
             "optimizer": self.method,
             "n_starts": self.n_starts,
             "maxiter": self.maxiter,
@@ -85,9 +73,6 @@ class BoxMLESubjectwiseEstimator(Estimator):
 
             def nll(x: np.ndarray) -> float:
                 params = self.space.to_params(x)
-
-                # For safety, you *can* validate schema here, but it’s slower.
-                # Most of the time, bounds already ensure validity.
                 if self.validate_bounds_on_set:
                     self.model.set_params(params, strict=True, check_bounds=True)
                 ll = loglike_subject(subject=subj, model=self.model, params=params)
@@ -136,29 +121,20 @@ class BoxMLESubjectwiseEstimator(Estimator):
 @dataclass(slots=True)
 class TransformedMLESubjectwiseEstimator(Estimator):
     """
-    Subject-wise MLE with *transformed/unconstrained* optimization.
-
-    - Optimizes z in R^d, then maps to constrained params using model.param_schema.params_from_z(z).
-    - This is often more stable than box constraints for RL models.
+    Subject-wise MLE with unconstrained optimization in z-space.
+    Uses event-log likelihood replay.
     """
-
     model: ComputationalModel
 
-    # multi-start
     n_starts: int = 20
-
-    # optimizer
     method: str = "L-BFGS-B"
     maxiter: int = 300
-
-    # init in z-space: Gaussian around default z
     z_init_scale: float = 1.0
-    
 
     def supports(self, study: StudyData) -> bool:
         for subj in study.subjects:
             for blk in subj.blocks:
-                if not self.model.supports(blk.task_spec):
+                if blk.task_spec is None or not self.model.supports(blk.task_spec):
                     return False
         return True
 
@@ -196,27 +172,17 @@ class TransformedMLESubjectwiseEstimator(Estimator):
             best_z: np.ndarray | None = None
             best_res = None
 
-            # Start at default z
+            # start at default z
             z0 = schema.default_z()
-            res = minimize(
-                fun=nll_z,
-                x0=z0,
-                method=self.method,
-                options={"maxiter": self.maxiter},
-            )
+            res = minimize(fun=nll_z, x0=z0, method=self.method, options={"maxiter": self.maxiter})
             best_fun = float(res.fun)
             best_z = np.array(res.x, dtype=float)
             best_res = res
 
-            # Additional random starts
+            # random starts
             for _ in range(max(0, self.n_starts - 1)):
                 z0 = schema.sample_z_init(rng, center="default", scale=float(self.z_init_scale))
-                res = minimize(
-                    fun=nll_z,
-                    x0=z0,
-                    method=self.method,
-                    options={"maxiter": self.maxiter},
-                )
+                res = minimize(fun=nll_z, x0=z0, method=self.method, options={"maxiter": self.maxiter})
                 if float(res.fun) < best_fun:
                     best_fun = float(res.fun)
                     best_z = np.array(res.x, dtype=float)

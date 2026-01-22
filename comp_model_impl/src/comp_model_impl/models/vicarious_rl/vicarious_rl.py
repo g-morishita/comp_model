@@ -80,7 +80,7 @@ class Vicarious_RL(SocialComputationalModel):
             return
 
         co = int(social.others_choices[0])
-        oo = int(social.observed_others_outcomes[0])
+        oo = float(social.observed_others_outcomes[0])
 
         s = int(state)
         nA = int(spec.n_actions)
