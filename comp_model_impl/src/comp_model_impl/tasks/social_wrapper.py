@@ -64,12 +64,15 @@ class SocialBanditWrapper(SocialBandit):
         state = self.get_state()
         a = int(self.demonstrator.act(state=state, spec=self.spec, rng=rng))
         
-        out = float(self.base.step(action=a, rng=rng).outcome)
+        step = self.base.step(action=a, rng=rng)
+        observed_outcome = step.observed_outcome
+        true_outcome = step.outcome
 
-        self.demonstrator.update(state=state, action=a, outcome=out, spec=self.spec, rng=rng)
+        self.demonstrator.update(state=state, action=a, outcome=true_outcome, spec=self.spec, rng=rng)  # Demonstrator observed true outcome.
 
         return SocialObservation(
             others_choices=[a],
-            others_outcomes=[out] if self.reveal_demo_outcome else None,
+            others_outcomes=[true_outcome],
+            observed_others_outcomes=[observed_outcome] if self.reveal_demo_outcome else None,
             info={"demo_outcome_observed": self.reveal_demo_outcome},
         )

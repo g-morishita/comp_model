@@ -170,7 +170,7 @@ class SocialPreChoiceGenerator(Generator):
                 action = int(rng.choice(spec.n_actions, p=probs))
 
                 step = sb.step(action=action, rng=rng)
-                observed_outcome = float(step.observed_outcome)
+                observed_outcome = step.observed_outcome
 
                 sm.update(state=state, action=action, outcome=observed_outcome, spec=spec, info=step.info)
 
@@ -184,7 +184,7 @@ class SocialPreChoiceGenerator(Generator):
                         info=step.info or {},
                         others_choices=obs.others_choices,
                         others_outcomes=obs.others_outcomes,
-                        observed_others_outcomes=obs.observed_others_outcome,
+                        observed_others_outcomes=obs.observed_others_outcomes,
                         social_info=obs.info or {},
                     )
                 )
@@ -258,7 +258,7 @@ class SocialPostOutcomeGenerator(Generator):
                 action = int(rng.choice(spec.n_actions, p=probs))
 
                 step = sb.step(action=action, rng=rng)
-                observed_outcome = float(step.observed_outcome)
+                observed_outcome = step.observed_outcome
 
                 sm.update(state=state, action=action, outcome=observed_outcome, spec=spec, info=step.info)
 
@@ -275,7 +275,7 @@ class SocialPostOutcomeGenerator(Generator):
                         info=step.info or {},
                         others_choices=obs.others_choices,
                         others_outcomes=obs.others_outcomes,
-                        observed_others_outcomes=obs.observed_others_outcome,
+                        observed_others_outcomes=obs.observed_others_outcomes,
                         social_info=obs.info or {},
                     )
                 )

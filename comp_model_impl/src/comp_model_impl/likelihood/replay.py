@@ -40,6 +40,7 @@ def loglike_subject(
             if is_social_model and tr.others_choices:
                 social = SocialObservation(
                     others_choices=tr.others_choices,
+                    observed_others_outcomes=tr.observed_others_outcomes,
                     others_outcomes=tr.others_outcomes,
                     info=tr.social_info,
                 )
@@ -58,7 +59,7 @@ def loglike_subject(
                 model.update(
                     state=tr.state,
                     action=int(tr.choice),
-                    outcome=float(tr.outcome),
+                    outcome=tr.observed_outcome,
                     spec=spec,
                     info=tr.info,
                 )

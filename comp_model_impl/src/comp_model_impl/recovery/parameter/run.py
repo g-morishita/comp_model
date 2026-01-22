@@ -47,6 +47,8 @@ def run_parameter_recovery(
     generator: Generator,
     model: ComputationalModel,
     estimator: Estimator,
+    reveal_self_outcome,
+    reveal_demo_outcome,
 ) -> ParameterRecoveryOutputs:
     """
     Full parameter recovery experiment.
@@ -86,8 +88,8 @@ def run_parameter_recovery(
             plan=block_plan,
             bandits=bandits,
             demonstrators=demonstrators,
-            reveal_self_outcome=True,
-            reveal_demo_outcome=False,
+            reveal_self_outcome=reveal_self_outcome,
+            reveal_demo_outcome=reveal_demo_outcome,
         )
 
     for rep in tqdm(range(int(config.n_reps))):
