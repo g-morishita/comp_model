@@ -99,12 +99,3 @@ def validate_event_log(log: EventLog) -> None:
     for i, e in enumerate(log.events):
         if int(e.idx) != i:
             raise ValueError(f"Bad idx at position {i}: event.idx={e.idx}")
-
-        if e.type is EventType.CHOICE and "choice" not in e.payload:
-            raise ValueError(f"CHOICE event idx={i} missing payload['choice']")
-
-        if e.type is EventType.OUTCOME:
-            if "action" not in e.payload or "observed_outcome" not in e.payload:
-                raise ValueError(
-                    f"OUTCOME event idx={i} missing payload['action'] or payload['observed_outcome']"
-                )
