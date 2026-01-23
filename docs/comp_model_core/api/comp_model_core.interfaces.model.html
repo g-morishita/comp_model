@@ -1,0 +1,313 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.interfaces.model &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">comp_model_core.interfaces.model</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.interfaces.model.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.interfaces.model">
+<span id="comp-model-core-interfaces-model"></span><h1>comp_model_core.interfaces.model<a class="headerlink" href="#module-comp_model_core.interfaces.model" title="Link to this heading"></a></h1>
+<p>Computational model interfaces.</p>
+<p>A computational model defines how an agent chooses actions and updates latent state
+given observations from a task environment.</p>
+<p>This module defines:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a> for asocial tasks.</p></li>
+<li><p><a class="reference internal" href="#comp_model_core.interfaces.model.SocialComputationalModel" title="comp_model_core.interfaces.model.SocialComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">SocialComputationalModel</span></code></a> for tasks with social observations.</p></li>
+</ul>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a>()</p></td>
+<td><p>Abstract base class for computational models.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#comp_model_core.interfaces.model.SocialComputationalModel" title="comp_model_core.interfaces.model.SocialComputationalModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SocialComputationalModel</span></code></a>()</p></td>
+<td><p>Extension of <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a> that supports social observations.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.model.</span></span><span class="sig-name descname"><span class="pre">ComputationalModel</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for computational models.</p>
+<p>Subclasses should implement:
+- <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.param_schema" title="comp_model_core.interfaces.model.ComputationalModel.param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">param_schema</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.supports" title="comp_model_core.interfaces.model.ComputationalModel.supports"><code class="xref py py-meth docutils literal notranslate"><span class="pre">supports()</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.reset_block" title="comp_model_core.interfaces.model.ComputationalModel.reset_block"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset_block()</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.action_probs" title="comp_model_core.interfaces.model.ComputationalModel.action_probs"><code class="xref py py-meth docutils literal notranslate"><span class="pre">action_probs()</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.update" title="comp_model_core.interfaces.model.ComputationalModel.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update()</span></code></a></p>
+<p class="rubric">Notes</p>
+<p>Models are stateful: they hold latent variables (e.g., Q-values). Generators and
+estimators should reset state at each block boundary via <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.reset_block" title="comp_model_core.interfaces.model.ComputationalModel.reset_block"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset_block()</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.action_probs">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">action_probs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.action_probs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.action_probs" title="Link to this definition"></a></dt>
+<dd><p>Compute action probabilities for a state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context identifier.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Probability vector of shape <code class="docutils literal notranslate"><span class="pre">(spec.n_actions,)</span></code> that sums to 1.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.get_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.get_params" title="Link to this definition"></a></dt>
+<dd><p>Return current parameter values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping from parameter name to current value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.param_names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">param_names</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.param_names" title="Link to this definition"></a></dt>
+<dd><p>Return parameter names defined by <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel.param_schema" title="comp_model_core.interfaces.model.ComputationalModel.param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">param_schema</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Parameter names in schema order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sequence[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.param_schema">
+<span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">param_schema</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.schema.html#comp_model_core.params.schema.ParameterSchema" title="comp_model_core.params.schema.ParameterSchema"><span class="pre">ParameterSchema</span></a></span><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.param_schema" title="Link to this definition"></a></dt>
+<dd><p>Return the parameter schema for this model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Schema defining parameter names, defaults, bounds, and transforms.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.ParameterSchema" title="comp_model_core.params.ParameterSchema">ParameterSchema</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.reset_block">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">reset_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.reset_block"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.reset_block" title="Link to this definition"></a></dt>
+<dd><p>Reset latent state at the beginning of a block.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification for the block.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.set_params">
+<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.set_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.set_params" title="Link to this definition"></a></dt>
+<dd><p>Set model parameters using the schema for validation/coercion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Parameter values keyed by name.</p></li>
+<li><p><strong>strict</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, unknown keys raise an error. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, unknown keys are
+ignored.</p></li>
+<li><p><strong>check_bounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, validate values against declared bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>comp_model_core.errors.ParameterValidationError</strong></a> – If values cannot be coerced to finite floats.</p></li>
+<li><p><strong>ValueError</strong> – If unknown keys are present and <code class="docutils literal notranslate"><span class="pre">strict=True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.supports">
+<span class="sig-name descname"><span class="pre">supports</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.supports"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.supports" title="Link to this definition"></a></dt>
+<dd><p>Check whether the model supports a given task specification.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if supported.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The base implementation returns <code class="docutils literal notranslate"><span class="pre">True</span></code>. Override this to enforce constraints
+(e.g., require <code class="docutils literal notranslate"><span class="pre">spec.is_social</span></code> or a particular <code class="docutils literal notranslate"><span class="pre">outcome_type</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.ComputationalModel.update">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outcome</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.ComputationalModel.update" title="Link to this definition"></a></dt>
+<dd><p>Update latent state after observing an outcome.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context identifier for the trial.</p></li>
+<li><p><strong>action</strong> (<em>int</em>) – Action taken.</p></li>
+<li><p><strong>outcome</strong> (<em>float</em><em> or </em><em>None</em>) – Outcome observed by the agent/subject. <code class="docutils literal notranslate"><span class="pre">None</span></code> indicates hidden outcome.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>info</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Additional task-specific information.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Generators/estimators define the timing/order of calling this method.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.SocialComputationalModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.model.</span></span><span class="sig-name descname"><span class="pre">SocialComputationalModel</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#SocialComputationalModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.SocialComputationalModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a></p>
+<p>Extension of <a class="reference internal" href="#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a> that supports social observations.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.model.SocialComputationalModel.social_update">
+<span class="sig-name descname"><span class="pre">social_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">social</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#SocialComputationalModel.social_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.model.SocialComputationalModel.social_update" title="Link to this definition"></a></dt>
+<dd><p>Update latent state after observing social information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context identifier for the trial.</p></li>
+<li><p><strong>social</strong> (<a class="reference internal" href="comp_model_core.interfaces.html#comp_model_core.interfaces.SocialObservation" title="comp_model_core.interfaces.SocialObservation"><em>SocialObservation</em></a>) – Social observation payload (demonstrator actions/outcomes).</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>info</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Additional task-specific information.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The base implementation is a no-op. Social-learning models should override this.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

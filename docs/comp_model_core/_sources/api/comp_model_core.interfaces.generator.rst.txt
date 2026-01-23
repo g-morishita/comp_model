@@ -1,0 +1,18 @@
+comp\_model\_core.interfaces.generator
+======================================
+
+.. automodule:: comp_model_core.interfaces.generator
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      TaskBuilder
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Generator
+   

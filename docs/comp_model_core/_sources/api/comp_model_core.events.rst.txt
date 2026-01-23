@@ -1,0 +1,14 @@
+﻿comp\_model\_core.events
+========================
+
+.. automodule:: comp_model_core.events
+
+   
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   accessors
+   types

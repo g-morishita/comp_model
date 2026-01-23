@@ -1,0 +1,13 @@
+comp\_model\_core.interfaces.estimator
+======================================
+
+.. automodule:: comp_model_core.interfaces.estimator
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Estimator
+      FitResult
+   

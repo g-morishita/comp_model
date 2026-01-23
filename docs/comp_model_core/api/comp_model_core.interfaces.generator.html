@@ -1,0 +1,196 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.interfaces.generator &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">comp_model_core.interfaces.generator</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.interfaces.generator.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.interfaces.generator">
+<span id="comp-model-core-interfaces-generator"></span><h1>comp_model_core.interfaces.generator<a class="headerlink" href="#module-comp_model_core.interfaces.generator" title="Link to this heading"></a></h1>
+<p>Generator interface.</p>
+<p>A generator produces synthetic datasets by simulating a task environment and a
+computational model. The generator is responsible for enforcing the event/order
+of operations (e.g., when social observations happen relative to choice and update).</p>
+<p>The generator interface is defined at the level of <a class="reference internal" href="comp_model_core.data.types.html#comp_model_core.data.types.SubjectData" title="comp_model_core.data.types.SubjectData"><code class="xref py py-class docutils literal notranslate"><span class="pre">SubjectData</span></code></a>
+and <a class="reference internal" href="comp_model_core.data.types.html#comp_model_core.data.types.StudyData" title="comp_model_core.data.types.StudyData"><code class="xref py py-class docutils literal notranslate"><span class="pre">StudyData</span></code></a>.</p>
+<p class="rubric">Module Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.interfaces.generator.TaskBuilder" title="comp_model_core.interfaces.generator.TaskBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TaskBuilder</span></code></a></p></td>
+<td><p>Callable used by generators to build a bandit/task instance from a <code class="xref py py-class docutils literal notranslate"><span class="pre">BlockPlan</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.interfaces.generator.Generator" title="comp_model_core.interfaces.generator.Generator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Generator</span></code></a>()</p></td>
+<td><p>Abstract base class for dataset generators.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.generator.Generator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.generator.</span></span><span class="sig-name descname"><span class="pre">Generator</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/generator.html#Generator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.generator.Generator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for dataset generators.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.generator.Generator.simulate_study">
+<span class="sig-name descname"><span class="pre">simulate_study</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subj_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject_block_plans</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/generator.html#Generator.simulate_study"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.generator.Generator.simulate_study" title="Link to this definition"></a></dt>
+<dd><p>Simulate a full study (multiple subjects).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_builder</strong> (<a class="reference internal" href="#comp_model_core.interfaces.generator.TaskBuilder" title="comp_model_core.interfaces.generator.TaskBuilder"><em>TaskBuilder</em></a>) – Callable that constructs a bandit/task from a block plan.</p></li>
+<li><p><strong>model</strong> (<a class="reference internal" href="comp_model_core.interfaces.html#comp_model_core.interfaces.ComputationalModel" title="comp_model_core.interfaces.ComputationalModel"><em>ComputationalModel</em></a>) – Model instance used for all subjects.</p></li>
+<li><p><strong>subj_params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em><em>]</em>) – Mapping from subject id to parameter dict.</p></li>
+<li><p><strong>subject_block_plans</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Sequence</em><em>[</em><a class="reference internal" href="comp_model_core.plans.html#comp_model_core.plans.BlockPlan" title="comp_model_core.plans.BlockPlan"><em>BlockPlan</em></a><em>]</em><em>]</em>) – Mapping from subject id to a list of block plans.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for simulation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Simulated study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.StudyData" title="comp_model_core.data.StudyData">StudyData</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If required subject parameters are missing or if no subjects were simulated.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.generator.Generator.simulate_subject">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">simulate_subject</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_plans</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/generator.html#Generator.simulate_subject"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.generator.Generator.simulate_subject" title="Link to this definition"></a></dt>
+<dd><p>Simulate one subject across multiple blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subject_id</strong> (<em>str</em>) – Subject identifier.</p></li>
+<li><p><strong>task_builder</strong> (<a class="reference internal" href="#comp_model_core.interfaces.generator.TaskBuilder" title="comp_model_core.interfaces.generator.TaskBuilder"><em>TaskBuilder</em></a>) – Callable that constructs a bandit/task from a block plan.</p></li>
+<li><p><strong>model</strong> (<a class="reference internal" href="comp_model_core.interfaces.html#comp_model_core.interfaces.ComputationalModel" title="comp_model_core.interfaces.ComputationalModel"><em>ComputationalModel</em></a>) – Model instance to simulate.</p></li>
+<li><p><strong>params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em>) – Model parameters for this subject.</p></li>
+<li><p><strong>block_plans</strong> (<em>Sequence</em><em>[</em><a class="reference internal" href="comp_model_core.plans.html#comp_model_core.plans.BlockPlan" title="comp_model_core.plans.BlockPlan"><em>BlockPlan</em></a><em>]</em>) – Ordered block plans for this subject.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for stochastic simulation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Simulated subject dataset.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.SubjectData" title="comp_model_core.data.SubjectData">SubjectData</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Implementations should call <a class="reference internal" href="comp_model_core.interfaces.model.html#comp_model_core.interfaces.model.ComputationalModel.reset_block" title="comp_model_core.interfaces.model.ComputationalModel.reset_block"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset_block()</span></code></a>
+at the beginning of each block (or equivalently reset via an event log).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.generator.TaskBuilder">
+<span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.generator.</span></span><span class="sig-name descname"><span class="pre">TaskBuilder</span></span><a class="headerlink" href="#comp_model_core.interfaces.generator.TaskBuilder" title="Link to this definition"></a></dt>
+<dd><p>Callable used by generators to build a bandit/task instance from a <code class="xref py py-class docutils literal notranslate"><span class="pre">BlockPlan</span></code>.</p>
+<p>alias of <code class="xref py py-class docutils literal notranslate"><span class="pre">Callable</span></code>[[<a class="reference internal" href="comp_model_core.plans.block.html#comp_model_core.plans.block.BlockPlan" title="comp_model_core.plans.block.BlockPlan"><code class="xref py py-class docutils literal notranslate"><span class="pre">BlockPlan</span></code></a>], <a class="reference internal" href="comp_model_core.interfaces.bandit.html#comp_model_core.interfaces.bandit.Bandit" title="comp_model_core.interfaces.bandit.Bandit"><code class="xref py py-class docutils literal notranslate"><span class="pre">Bandit</span></code></a>]</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+comp\_model\_core.interfaces.bandit
+===================================
+
+.. automodule:: comp_model_core.interfaces.bandit
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Bandit
+      BanditStep
+      SocialBandit
+      SocialObservation
+   

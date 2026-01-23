@@ -1,0 +1,14 @@
+comp\_model\_core.plans.io
+==========================
+
+.. automodule:: comp_model_core.plans.io
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      load_study_plan_json
+      load_study_plan_yaml
+      study_plan_from_dict
+   

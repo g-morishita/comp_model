@@ -1,0 +1,16 @@
+comp\_model\_core.params.transforms
+===================================
+
+.. automodule:: comp_model_core.params.transforms
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      BoundedTanh
+      Identity
+      Sigmoid
+      Softplus
+      Transform
+   

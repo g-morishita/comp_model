@@ -1,0 +1,12 @@
+comp\_model\_core.rng
+=====================
+
+.. automodule:: comp_model_core.rng
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      RNG
+   

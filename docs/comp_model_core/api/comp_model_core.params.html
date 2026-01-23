@@ -1,0 +1,1022 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.params &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="comp_model_core.params.bounds" href="comp_model_core.params.bounds.html" />
+    <link rel="prev" title="comp_model_core.interfaces.model" href="comp_model_core.interfaces.model.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.html">comp_model_core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.data.html">comp_model_core.data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.data.types.html">comp_model_core.data.types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.events.html">comp_model_core.events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.events.types.html">comp_model_core.events.types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.events.accessors.html">comp_model_core.events.accessors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.interfaces.html">comp_model_core.interfaces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.interfaces.bandit.html">comp_model_core.interfaces.bandit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.interfaces.demonstrator.html">comp_model_core.interfaces.demonstrator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.interfaces.estimator.html">comp_model_core.interfaces.estimator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.interfaces.generator.html">comp_model_core.interfaces.generator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.interfaces.model.html">comp_model_core.interfaces.model</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">comp_model_core.params</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.Bound"><code class="docutils literal notranslate"><span class="pre">Bound</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Bound.lo"><code class="docutils literal notranslate"><span class="pre">Bound.lo</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Bound.hi"><code class="docutils literal notranslate"><span class="pre">Bound.hi</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Bound.clip"><code class="docutils literal notranslate"><span class="pre">Bound.clip()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">Bound.hi</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">Bound.lo</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.BoundedTanh"><code class="docutils literal notranslate"><span class="pre">BoundedTanh</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.BoundedTanh.eps"><code class="docutils literal notranslate"><span class="pre">BoundedTanh.eps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.BoundedTanh.forward"><code class="docutils literal notranslate"><span class="pre">BoundedTanh.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.BoundedTanh.hi"><code class="docutils literal notranslate"><span class="pre">BoundedTanh.hi</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.BoundedTanh.inverse"><code class="docutils literal notranslate"><span class="pre">BoundedTanh.inverse()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.BoundedTanh.lo"><code class="docutils literal notranslate"><span class="pre">BoundedTanh.lo</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.Identity"><code class="docutils literal notranslate"><span class="pre">Identity</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Identity.forward"><code class="docutils literal notranslate"><span class="pre">Identity.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Identity.inverse"><code class="docutils literal notranslate"><span class="pre">Identity.inverse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.ParamDef"><code class="docutils literal notranslate"><span class="pre">ParamDef</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.name"><code class="docutils literal notranslate"><span class="pre">ParamDef.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.default"><code class="docutils literal notranslate"><span class="pre">ParamDef.default</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.bound"><code class="docutils literal notranslate"><span class="pre">ParamDef.bound</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.transform"><code class="docutils literal notranslate"><span class="pre">ParamDef.transform</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">ParamDef.bound</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.coerce"><code class="docutils literal notranslate"><span class="pre">ParamDef.coerce()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">ParamDef.default</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">ParamDef.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">ParamDef.transform</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.transform_obj"><code class="docutils literal notranslate"><span class="pre">ParamDef.transform_obj()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParamDef.validate_bound"><code class="docutils literal notranslate"><span class="pre">ParamDef.validate_bound()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace.names"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.names</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace.bounds"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.bounds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.bounds</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace.clip_vec"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.clip_vec()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace.dim"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.dim</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.names</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace.sample_init"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.sample_init()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace.to_params"><code class="docutils literal notranslate"><span class="pre">ParameterBoundsSpace.to_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.ParameterSchema"><code class="docutils literal notranslate"><span class="pre">ParameterSchema</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.params"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.params</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.bounds_space"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.bounds_space()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.default_z"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.default_z()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.defaults"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.defaults()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.names"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.names</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.params</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.params_from_z"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.params_from_z()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.sample_z_init"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.sample_z_init()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.transforms"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.transforms()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.validate"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.validate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.ParameterSchema.z_from_params"><code class="docutils literal notranslate"><span class="pre">ParameterSchema.z_from_params()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.Sigmoid"><code class="docutils literal notranslate"><span class="pre">Sigmoid</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Sigmoid.eps"><code class="docutils literal notranslate"><span class="pre">Sigmoid.eps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Sigmoid.forward"><code class="docutils literal notranslate"><span class="pre">Sigmoid.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Sigmoid.inverse"><code class="docutils literal notranslate"><span class="pre">Sigmoid.inverse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.Softplus"><code class="docutils literal notranslate"><span class="pre">Softplus</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Softplus.eps"><code class="docutils literal notranslate"><span class="pre">Softplus.eps</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Softplus.forward"><code class="docutils literal notranslate"><span class="pre">Softplus.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Softplus.inverse"><code class="docutils literal notranslate"><span class="pre">Softplus.inverse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#comp_model_core.params.Transform"><code class="docutils literal notranslate"><span class="pre">Transform</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Transform.forward"><code class="docutils literal notranslate"><span class="pre">Transform.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.params.Transform.inverse"><code class="docutils literal notranslate"><span class="pre">Transform.inverse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.params.bounds.html">comp_model_core.params.bounds</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.params.schema.html">comp_model_core.params.schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.params.transforms.html">comp_model_core.params.transforms</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.params.bounds.html">comp_model_core.params.bounds</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.params.schema.html">comp_model_core.params.schema</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.params.transforms.html">comp_model_core.params.transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.plans.html">comp_model_core.plans</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.plans.block.html">comp_model_core.plans.block</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.plans.io.html">comp_model_core.plans.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.errors.html">comp_model_core.errors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.registry.html">comp_model_core.registry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.rng.html">comp_model_core.rng</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.spec.html">comp_model_core.spec</a></li>
+<li class="toctree-l2"><a class="reference internal" href="comp_model_core.utility.html">comp_model_core.utility</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API Reference</a></li>
+      <li class="breadcrumb-item active">comp_model_core.params</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.params.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.params">
+<span id="comp-model-core-params"></span><h1>comp_model_core.params<a class="headerlink" href="#module-comp_model_core.params" title="Link to this heading"></a></h1>
+<p>Parameter schemas, bounds, and transforms.</p>
+<p>This subpackage provides utilities for:</p>
+<ul class="simple">
+<li><p>Declaring model parameters with defaults and (optional) box bounds.</p></li>
+<li><p>Validating and coercing incoming parameter dictionaries.</p></li>
+<li><p>Mapping constrained parameters to/from an unconstrained optimization space.</p></li>
+</ul>
+<p>The central class is <a class="reference internal" href="comp_model_core.params.schema.html#comp_model_core.params.schema.ParameterSchema" title="comp_model_core.params.schema.ParameterSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">comp_model_core.params.schema.ParameterSchema</span></code></a>.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<dl class="simple">
+<dt><a class="reference internal" href="comp_model_core.params.schema.html#comp_model_core.params.schema.ParameterSchema" title="comp_model_core.params.schema.ParameterSchema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">comp_model_core.params.schema.ParameterSchema</span></code></a></dt><dd><p>Schema definition and validation utilities.</p>
+</dd>
+<dt><a class="reference internal" href="comp_model_core.params.transforms.html#module-comp_model_core.params.transforms" title="comp_model_core.params.transforms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">comp_model_core.params.transforms</span></code></a></dt><dd><p>Transform implementations for constrained parameters.</p>
+</dd>
+</dl>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.Bound">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">Bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/bounds.html#Bound"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Bound" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Closed interval bound <code class="docutils literal notranslate"><span class="pre">[lo,</span> <span class="pre">hi]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lo</strong> (<em>float</em>) – Lower bound.</p></li>
+<li><p><strong>hi</strong> (<em>float</em>) – Upper bound.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.Bound.lo">
+<span class="sig-name descname"><span class="pre">lo</span></span><a class="headerlink" href="#comp_model_core.params.Bound.lo" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.Bound.hi">
+<span class="sig-name descname"><span class="pre">hi</span></span><a class="headerlink" href="#comp_model_core.params.Bound.hi" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Bound.clip">
+<span class="sig-name descname"><span class="pre">clip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/bounds.html#Bound.clip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Bound.clip" title="Link to this definition"></a></dt>
+<dd><p>Clip a scalar into the bound interval.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Value to clip.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">x</span></code> clipped to <code class="docutils literal notranslate"><span class="pre">[lo,</span> <span class="pre">hi]</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">hi</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">lo</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.BoundedTanh">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">BoundedTanh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lo</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#BoundedTanh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.BoundedTanh" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Smooth transform mapping <span class="math notranslate nohighlight">\(\mathbb{R} \to (lo, hi)\)</span> using <code class="docutils literal notranslate"><span class="pre">tanh</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lo</strong> (<em>float</em>) – Lower bound.</p></li>
+<li><p><strong>hi</strong> (<em>float</em>) – Upper bound.</p></li>
+<li><p><strong>eps</strong> (<em>float</em><em>, </em><em>optional</em>) – Epsilon used for clipping in the inverse.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.BoundedTanh.eps">
+<span class="sig-name descname"><span class="pre">eps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#comp_model_core.params.BoundedTanh.eps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.BoundedTanh.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#BoundedTanh.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.BoundedTanh.forward" title="Link to this definition"></a></dt>
+<dd><p>Map <span class="math notranslate nohighlight">\(z \in \mathbb{R}\)</span> to <span class="math notranslate nohighlight">\(x \in (lo, hi)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>float</em>) – Unconstrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Value in (lo, hi).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.BoundedTanh.hi">
+<span class="sig-name descname"><span class="pre">hi</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#comp_model_core.params.BoundedTanh.hi" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.BoundedTanh.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#BoundedTanh.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.BoundedTanh.inverse" title="Link to this definition"></a></dt>
+<dd><p>Map <span class="math notranslate nohighlight">\(x \in (lo, hi)\)</span> to <span class="math notranslate nohighlight">\(z \in \mathbb{R}\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Value in (lo, hi).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unconstrained value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The input is clipped into <code class="docutils literal notranslate"><span class="pre">(lo+eps,</span> <span class="pre">hi-eps)</span></code> to keep <code class="docutils literal notranslate"><span class="pre">arctanh</span></code> finite.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.BoundedTanh.lo">
+<span class="sig-name descname"><span class="pre">lo</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#comp_model_core.params.BoundedTanh.lo" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.Identity">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">Identity</span></span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Identity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Identity" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Identity transform for unconstrained parameters.</p>
+<dl class="field-list simple">
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Identity.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Identity.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Identity.forward" title="Link to this definition"></a></dt>
+<dd><p>Forward map (identity).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>float</em>) – Unconstrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Same as <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Identity.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Identity.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Identity.inverse" title="Link to this definition"></a></dt>
+<dd><p>Inverse map (identity).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Constrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Same as <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">ParamDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParamDef" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Definition of a single model parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Parameter name.</p></li>
+<li><p><strong>default</strong> (<em>float</em>) – Default value used for initialization.</p></li>
+<li><p><strong>bound</strong> (<a class="reference internal" href="#comp_model_core.params.Bound" title="comp_model_core.params.Bound"><em>Bound</em></a><em> or </em><em>None</em><em>, </em><em>optional</em>) – Optional box bound. If provided, it is used for clipping/validation and for
+inferring a default transform.</p></li>
+<li><p><strong>transform</strong> (<a class="reference internal" href="#comp_model_core.params.Transform" title="comp_model_core.params.Transform"><em>Transform</em></a><em> or </em><em>None</em><em>, </em><em>optional</em>) – Optional explicit transform. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, a transform is inferred from
+<code class="docutils literal notranslate"><span class="pre">bound</span></code> (see <a class="reference internal" href="#comp_model_core.params.ParamDef.transform_obj" title="comp_model_core.params.ParamDef.transform_obj"><code class="xref py py-meth docutils literal notranslate"><span class="pre">transform_obj()</span></code></a>).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#comp_model_core.params.ParamDef.name" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.default">
+<span class="sig-name descname"><span class="pre">default</span></span><a class="headerlink" href="#comp_model_core.params.ParamDef.default" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.bound">
+<span class="sig-name descname"><span class="pre">bound</span></span><a class="headerlink" href="#comp_model_core.params.ParamDef.bound" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.params.Bound" title="comp_model_core.params.Bound">Bound</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><a class="headerlink" href="#comp_model_core.params.ParamDef.transform" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.params.Transform" title="comp_model_core.params.Transform">Transform</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">bound</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.bounds.html#comp_model_core.params.bounds.Bound" title="comp_model_core.params.bounds.Bound"><span class="pre">Bound</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.coerce">
+<span class="sig-name descname"><span class="pre">coerce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef.coerce"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParamDef.coerce" title="Link to this definition"></a></dt>
+<dd><p>Coerce an incoming value to a finite float.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> (<em>Any</em>) – Incoming value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Coerced finite float.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If the value cannot be converted to a finite float.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">default</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.transforms.html#comp_model_core.params.transforms.Transform" title="comp_model_core.params.transforms.Transform"><span class="pre">Transform</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.transform_obj">
+<span class="sig-name descname"><span class="pre">transform_obj</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef.transform_obj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParamDef.transform_obj" title="Link to this definition"></a></dt>
+<dd><p>Return the transform to be used for this parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Explicit transform if provided; otherwise an inferred transform.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#comp_model_core.params.Transform" title="comp_model_core.params.Transform">Transform</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParamDef.validate_bound">
+<span class="sig-name descname"><span class="pre">validate_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef.validate_bound"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParamDef.validate_bound" title="Link to this definition"></a></dt>
+<dd><p>Validate a value against this parameter’s bounds (if any).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Parameter value.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If bounds are present and <code class="docutils literal notranslate"><span class="pre">x</span></code> is outside <code class="docutils literal notranslate"><span class="pre">[lo,</span> <span class="pre">hi]</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">ParameterBoundsSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/bounds.html#ParameterBoundsSpace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Direct parameterization with box constraints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>names</strong> (<em>Sequence</em><em>[</em><em>str</em><em>]</em>) – Parameter names in the optimization vector order.</p></li>
+<li><p><strong>bounds</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><a class="reference internal" href="#comp_model_core.params.Bound" title="comp_model_core.params.Bound"><em>Bound</em></a><em>]</em>) – Mapping from parameter name to its bound.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace.names">
+<span class="sig-name descname"><span class="pre">names</span></span><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace.names" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sequence[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace.bounds">
+<span class="sig-name descname"><span class="pre">bounds</span></span><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace.bounds" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping[str, <a class="reference internal" href="#comp_model_core.params.Bound" title="comp_model_core.params.Bound">Bound</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">bounds</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.bounds.html#comp_model_core.params.bounds.Bound" title="comp_model_core.params.bounds.Bound"><span class="pre">Bound</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace.clip_vec">
+<span class="sig-name descname"><span class="pre">clip_vec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/bounds.html#ParameterBoundsSpace.clip_vec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace.clip_vec" title="Link to this definition"></a></dt>
+<dd><p>Clip a vector into the parameter bounds.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em>) – Vector of shape <code class="docutils literal notranslate"><span class="pre">(dim,)</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Clipped vector of shape <code class="docutils literal notranslate"><span class="pre">(dim,)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the shape of <code class="docutils literal notranslate"><span class="pre">x</span></code> is not <code class="docutils literal notranslate"><span class="pre">(dim,)</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace.dim">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dim</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace.dim" title="Link to this definition"></a></dt>
+<dd><p>Dimensionality of the optimization vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">names</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace.sample_init">
+<span class="sig-name descname"><span class="pre">sample_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/bounds.html#ParameterBoundsSpace.sample_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace.sample_init" title="Link to this definition"></a></dt>
+<dd><p>Sample a random initialization uniformly within bounds.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG used for sampling.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Random vector of shape <code class="docutils literal notranslate"><span class="pre">(dim,)</span></code> with each component sampled from
+<code class="docutils literal notranslate"><span class="pre">Uniform(lo,</span> <span class="pre">hi)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterBoundsSpace.to_params">
+<span class="sig-name descname"><span class="pre">to_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/bounds.html#ParameterBoundsSpace.to_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterBoundsSpace.to_params" title="Link to this definition"></a></dt>
+<dd><p>Convert a bounded vector to a parameter dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>numpy.ndarray</em>) – Vector of shape <code class="docutils literal notranslate"><span class="pre">(dim,)</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Mapping from parameter name to value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">ParameterSchema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Schema for a model’s parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>params</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#comp_model_core.params.ParamDef" title="comp_model_core.params.ParamDef"><em>ParamDef</em></a><em>, </em><em>...</em><em>]</em>) – Parameter definitions in a fixed order.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.params">
+<span class="sig-name descname"><span class="pre">params</span></span><a class="headerlink" href="#comp_model_core.params.ParameterSchema.params" title="Link to this definition"></a></dt>
+<dd><p>Parameter definitions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[<a class="reference internal" href="#comp_model_core.params.ParamDef" title="comp_model_core.params.ParamDef">ParamDef</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.bounds_space">
+<span class="sig-name descname"><span class="pre">bounds_space</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">require_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.bounds_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.bounds_space" title="Link to this definition"></a></dt>
+<dd><p>Build a <a class="reference internal" href="comp_model_core.params.bounds.html#comp_model_core.params.bounds.ParameterBoundsSpace" title="comp_model_core.params.bounds.ParameterBoundsSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterBoundsSpace</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>names</strong> (<em>Sequence</em><em>[</em><em>str</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Subset of parameters to include. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses all schema names.</p></li>
+<li><p><strong>require_bounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, raise an error if any requested parameters lack bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bounds space with vector order matching <code class="docutils literal notranslate"><span class="pre">names</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.params.ParameterBoundsSpace" title="comp_model_core.params.ParameterBoundsSpace">ParameterBoundsSpace</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If unknown parameter names are requested or bounds are missing.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.default_z">
+<span class="sig-name descname"><span class="pre">default_z</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.default_z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.default_z" title="Link to this definition"></a></dt>
+<dd><p>Unconstrained vector corresponding to <a class="reference internal" href="#comp_model_core.params.ParameterSchema.defaults" title="comp_model_core.params.ParameterSchema.defaults"><code class="xref py py-meth docutils literal notranslate"><span class="pre">defaults()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Unconstrained defaults in schema order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.defaults">
+<span class="sig-name descname"><span class="pre">defaults</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.defaults"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.defaults" title="Link to this definition"></a></dt>
+<dd><p>Default parameter values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping from parameter name to default value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">names</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#comp_model_core.params.ParameterSchema.names" title="Link to this definition"></a></dt>
+<dd><p>Parameter names in schema order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Names in fixed order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[str, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">params</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="comp_model_core.params.schema.html#comp_model_core.params.schema.ParamDef" title="comp_model_core.params.schema.ParamDef"><span class="pre">ParamDef</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.params_from_z">
+<span class="sig-name descname"><span class="pre">params_from_z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.params_from_z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.params_from_z" title="Link to this definition"></a></dt>
+<dd><p>Map an unconstrained vector <code class="docutils literal notranslate"><span class="pre">z</span></code> to a constrained parameter dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>numpy.ndarray</em>) – Vector of shape <code class="docutils literal notranslate"><span class="pre">(D,)</span></code> where <code class="docutils literal notranslate"><span class="pre">D=len(self.params)</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Constrained parameter values keyed by name.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">z</span></code> does not have the expected shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.sample_z_init">
+<span class="sig-name descname"><span class="pre">sample_z_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.sample_z_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.sample_z_init" title="Link to this definition"></a></dt>
+<dd><p>Sample a random initialization in <code class="docutils literal notranslate"><span class="pre">z</span></code>-space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG used for sampling.</p></li>
+<li><p><strong>center</strong> (<em>{&quot;default&quot;</em><em>, </em><em>&quot;zero&quot;}</em><em>, </em><em>optional</em>) – Center of the initialization distribution.</p></li>
+<li><p><strong>scale</strong> (<em>float</em><em>, </em><em>optional</em>) – Standard deviation of the Gaussian noise around <code class="docutils literal notranslate"><span class="pre">center</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Random vector in <code class="docutils literal notranslate"><span class="pre">z</span></code> space.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">center</span></code> is not one of <code class="docutils literal notranslate"><span class="pre">{&quot;default&quot;,</span> <span class="pre">&quot;zero&quot;}</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.transforms">
+<span class="sig-name descname"><span class="pre">transforms</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.transforms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.transforms" title="Link to this definition"></a></dt>
+<dd><p>Return transforms in schema order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transform objects, one per parameter.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[<a class="reference internal" href="#comp_model_core.params.Transform" title="comp_model_core.params.Transform">Transform</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">incoming</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.validate" title="Link to this definition"></a></dt>
+<dd><p>Validate an incoming parameter mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incoming</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Incoming values keyed by parameter name.</p></li>
+<li><p><strong>strict</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, unknown parameter names raise an error. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, unknown
+names are ignored.</p></li>
+<li><p><strong>check_bounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, validate values against declared bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Validated mapping containing only schema parameters present in <code class="docutils literal notranslate"><span class="pre">incoming</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If values cannot be coerced to finite floats or violate bounds.</p></li>
+<li><p><strong>ValueError</strong> – If unknown names are provided and <code class="docutils literal notranslate"><span class="pre">strict=True</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.ParameterSchema.z_from_params">
+<span class="sig-name descname"><span class="pre">z_from_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.z_from_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.ParameterSchema.z_from_params" title="Link to this definition"></a></dt>
+<dd><p>Map a constrained parameter dict to an unconstrained vector <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Parameter values keyed by name.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unconstrained vector of shape <code class="docutils literal notranslate"><span class="pre">(D,)</span></code> in schema order.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses each parameter’s transform inverse.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.Sigmoid">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">Sigmoid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Sigmoid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Sigmoid" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Logistic transform mapping <span class="math notranslate nohighlight">\(\mathbb{R} \to (0, 1)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<em>float</em><em>, </em><em>optional</em>) – Small epsilon used to clip values when computing the inverse.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.Sigmoid.eps">
+<span class="sig-name descname"><span class="pre">eps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#comp_model_core.params.Sigmoid.eps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Sigmoid.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Sigmoid.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Sigmoid.forward" title="Link to this definition"></a></dt>
+<dd><p>Map <span class="math notranslate nohighlight">\(z \in \mathbb{R}\)</span> to <span class="math notranslate nohighlight">\(x \in (0, 1)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>float</em>) – Unconstrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Value in (0, 1).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Sigmoid.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Sigmoid.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Sigmoid.inverse" title="Link to this definition"></a></dt>
+<dd><p>Map <span class="math notranslate nohighlight">\(x \in (0, 1)\)</span> to <span class="math notranslate nohighlight">\(z \in \mathbb{R}\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Value in (0, 1).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unconstrained value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The input is clipped into <code class="docutils literal notranslate"><span class="pre">[eps,</span> <span class="pre">1-eps]</span></code> to avoid infinities.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.Softplus">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">Softplus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-12</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Softplus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Softplus" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Softplus transform mapping <span class="math notranslate nohighlight">\(\mathbb{R} \to (0, \infty)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>eps</strong> (<em>float</em><em>, </em><em>optional</em>) – Small epsilon used in the inverse for stability.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.Softplus.eps">
+<span class="sig-name descname"><span class="pre">eps</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#comp_model_core.params.Softplus.eps" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Softplus.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Softplus.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Softplus.forward" title="Link to this definition"></a></dt>
+<dd><p>Map <span class="math notranslate nohighlight">\(z \in \mathbb{R}\)</span> to <span class="math notranslate nohighlight">\(x \in (0, \infty)\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>float</em>) – Unconstrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Positive value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Softplus.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Softplus.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Softplus.inverse" title="Link to this definition"></a></dt>
+<dd><p>Inverse of softplus.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Positive value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unconstrained value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">&lt;=</span> <span class="pre">0</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses a stable computation:</p>
+<ul class="simple">
+<li><p>For small <code class="docutils literal notranslate"><span class="pre">x</span></code>: <code class="docutils literal notranslate"><span class="pre">log(expm1(x))</span></code></p></li>
+<li><p>For large <code class="docutils literal notranslate"><span class="pre">x</span></code>: approximately <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></li>
+</ul>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.Transform">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.</span></span><span class="sig-name descname"><span class="pre">Transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Transform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Transform" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></p>
+<p>Protocol for parameter transforms.</p>
+<p>Any transform must define both a forward and inverse mapping.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Transform.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Transform.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Transform.forward" title="Link to this definition"></a></dt>
+<dd><p>Map an unconstrained real value to a constrained value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>float</em>) – Unconstrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Constrained value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.Transform.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/transforms.html#Transform.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.Transform.inverse" title="Link to this definition"></a></dt>
+<dd><p>Map a constrained value to an unconstrained real value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Constrained value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unconstrained value.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<p class="rubric">Modules</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="comp_model_core.params.bounds.html#module-comp_model_core.params.bounds" title="comp_model_core.params.bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bounds</span></code></a></p></td>
+<td><p>Box bounds and bounded parameter spaces.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="comp_model_core.params.schema.html#module-comp_model_core.params.schema" title="comp_model_core.params.schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">schema</span></code></a></p></td>
+<td><p>Parameter schema definitions.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="comp_model_core.params.transforms.html#module-comp_model_core.params.transforms" title="comp_model_core.params.transforms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transforms</span></code></a></p></td>
+<td><p>Transforms between constrained parameters and unconstrained real space.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="comp_model_core.interfaces.model.html" class="btn btn-neutral float-left" title="comp_model_core.interfaces.model" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="comp_model_core.params.bounds.html" class="btn btn-neutral float-right" title="comp_model_core.params.bounds" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,26 @@
+comp\_model\_core.events.types
+==============================
+
+.. automodule:: comp_model_core.events.types
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      EVENT_LOG_KEY
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      validate_event_log
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Event
+      EventLog
+      EventType
+   

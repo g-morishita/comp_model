@@ -1,0 +1,186 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.interfaces.demonstrator &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">comp_model_core.interfaces.demonstrator</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.interfaces.demonstrator.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.interfaces.demonstrator">
+<span id="comp-model-core-interfaces-demonstrator"></span><h1>comp_model_core.interfaces.demonstrator<a class="headerlink" href="#module-comp_model_core.interfaces.demonstrator" title="Link to this heading"></a></h1>
+<p>Demonstrator/policy interface for social tasks.</p>
+<p>A <a class="reference internal" href="#comp_model_core.interfaces.demonstrator.Demonstrator" title="comp_model_core.interfaces.demonstrator.Demonstrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Demonstrator</span></code></a> can be used by a generator to produce “other agent” choices
+and outcomes for social-learning paradigms.</p>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.interfaces.demonstrator.Demonstrator" title="comp_model_core.interfaces.demonstrator.Demonstrator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Demonstrator</span></code></a>()</p></td>
+<td><p>Abstract base class for demonstrators (other agents).</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.demonstrator.Demonstrator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.demonstrator.</span></span><span class="sig-name descname"><span class="pre">Demonstrator</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.demonstrator.Demonstrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for demonstrators (other agents).</p>
+<p class="rubric">Notes</p>
+<p>A demonstrator is conceptually similar to a model acting inside the environment,
+but this interface is intentionally smaller than <a class="reference internal" href="comp_model_core.interfaces.model.html#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.demonstrator.Demonstrator.act">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">act</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator.act"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.demonstrator.Demonstrator.act" title="Link to this definition"></a></dt>
+<dd><p>Choose an action.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – Current task state/context.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for stochastic policies.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Action index.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.demonstrator.Demonstrator.reset">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.demonstrator.Demonstrator.reset" title="Link to this definition"></a></dt>
+<dd><p>Reset demonstrator state for a new block.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification for the block.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG used for stochastic resets.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.demonstrator.Demonstrator.update">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outcome</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.demonstrator.Demonstrator.update" title="Link to this definition"></a></dt>
+<dd><p>Update internal demonstrator state after observing the outcome.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context on the trial.</p></li>
+<li><p><strong>action</strong> (<em>int</em>) – Action that was taken.</p></li>
+<li><p><strong>outcome</strong> (<em>float</em>) – True outcome resulting from the action.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for stochastic updates (if any).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

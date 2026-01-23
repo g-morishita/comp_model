@@ -1,0 +1,39 @@
+API Reference
+=============
+
+This section contains the full API reference for ``comp_model_core`` generated from
+NumPy-style docstrings.
+
+.. autosummary::
+   :toctree: api
+
+   comp_model_core
+
+   comp_model_core.data
+   comp_model_core.data.types
+
+   comp_model_core.events
+   comp_model_core.events.types
+   comp_model_core.events.accessors
+
+   comp_model_core.interfaces
+   comp_model_core.interfaces.bandit
+   comp_model_core.interfaces.demonstrator
+   comp_model_core.interfaces.estimator
+   comp_model_core.interfaces.generator
+   comp_model_core.interfaces.model
+
+   comp_model_core.params
+   comp_model_core.params.bounds
+   comp_model_core.params.schema
+   comp_model_core.params.transforms
+
+   comp_model_core.plans
+   comp_model_core.plans.block
+   comp_model_core.plans.io
+
+   comp_model_core.errors
+   comp_model_core.registry
+   comp_model_core.rng
+   comp_model_core.spec
+   comp_model_core.utility

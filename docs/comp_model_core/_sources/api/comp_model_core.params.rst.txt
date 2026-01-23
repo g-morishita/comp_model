@@ -1,0 +1,15 @@
+﻿comp\_model\_core.params
+========================
+
+.. automodule:: comp_model_core.params
+
+   
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   bounds
+   schema
+   transforms

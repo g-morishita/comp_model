@@ -1,0 +1,420 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.events.types &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">comp_model_core.events.types</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.events.types.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.events.types">
+<span id="comp-model-core-events-types"></span><h1>comp_model_core.events.types<a class="headerlink" href="#module-comp_model_core.events.types" title="Link to this heading"></a></h1>
+<p>Event log schema.</p>
+<p>This module defines the event types and data structures for representing an
+event-log “experience trace” that can be replayed by different estimators
+(e.g., MLE vs Stan) without re-implementing timing logic.</p>
+<p>The key idea is that <strong>the ordering of events is the source of truth</strong> for when
+social observation, choice, and outcome updates occur.</p>
+<p class="rubric">Notes</p>
+<p>Generators typically store serialized event logs inside <a class="reference internal" href="comp_model_core.data.types.html#id1" title="comp_model_core.data.types.Block.metadata"><code class="xref py py-attr docutils literal notranslate"><span class="pre">comp_model_core.data.types.Block.metadata</span></code></a>
+under the key <a class="reference internal" href="#comp_model_core.events.types.EVENT_LOG_KEY" title="comp_model_core.events.types.EVENT_LOG_KEY"><code class="xref py py-data docutils literal notranslate"><span class="pre">EVENT_LOG_KEY</span></code></a>.</p>
+<p class="rubric">Module Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.events.types.EVENT_LOG_KEY" title="comp_model_core.events.types.EVENT_LOG_KEY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EVENT_LOG_KEY</span></code></a></p></td>
+<td><p>Key under which generators store the block event log in <code class="docutils literal notranslate"><span class="pre">Block.metadata</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.events.types.validate_event_log" title="comp_model_core.events.types.validate_event_log"><code class="xref py py-obj docutils literal notranslate"><span class="pre">validate_event_log</span></code></a>(log)</p></td>
+<td><p>Validate minimal invariants of an event log.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.events.types.Event" title="comp_model_core.events.types.Event"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Event</span></code></a>(idx, type, t, state, payload)</p></td>
+<td><p>A single event in an event stream.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#comp_model_core.events.types.EventLog" title="comp_model_core.events.types.EventLog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EventLog</span></code></a>(events[, schema_version, metadata])</p></td>
+<td><p>Block-level event stream.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.events.types.EventType" title="comp_model_core.events.types.EventType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EventType</span></code></a>(value)</p></td>
+<td><p>Discrete event types for an event stream.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py data">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EVENT_LOG_KEY">
+<span class="sig-prename descclassname"><span class="pre">comp_model_core.events.types.</span></span><span class="sig-name descname"><span class="pre">EVENT_LOG_KEY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'event_log'</span></span><a class="headerlink" href="#comp_model_core.events.types.EVENT_LOG_KEY" title="Link to this definition"></a></dt>
+<dd><p>Key under which generators store the block event log in <code class="docutils literal notranslate"><span class="pre">Block.metadata</span></code>.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.events.types.</span></span><span class="sig-name descname"><span class="pre">Event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">payload</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#Event"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.Event" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A single event in an event stream.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>idx</strong> (<em>int</em>) – Zero-based index within the (block-level) event stream.</p></li>
+<li><p><strong>type</strong> (<a class="reference internal" href="#comp_model_core.events.types.EventType" title="comp_model_core.events.types.EventType"><em>EventType</em></a>) – Event type code.</p></li>
+<li><p><strong>t</strong> (<em>int</em><em> or </em><em>None</em>) – Trial index (typically 0-based) within the block, if applicable.</p></li>
+<li><p><strong>state</strong> (<em>Any</em><em> or </em><em>None</em>) – State/context identifier used for this event (often an <code class="docutils literal notranslate"><span class="pre">int</span></code>).</p></li>
+<li><p><strong>payload</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Event-specific fields in a JSON-friendly mapping.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The event log is designed to be serializable. <code class="docutils literal notranslate"><span class="pre">payload</span></code> should contain only
+JSON-compatible values (numbers, strings, lists, dicts, <code class="docutils literal notranslate"><span class="pre">None</span></code>).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.from_json">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#Event.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.Event.from_json" title="Link to this definition"></a></dt>
+<dd><p>Deserialize an event from a mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>d</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Mapping produced by <a class="reference internal" href="#comp_model_core.events.types.Event.to_json" title="comp_model_core.events.types.Event.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Parsed event.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.events.types.Event" title="comp_model_core.events.types.Event">Event</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>KeyError</strong> – If required keys are missing.</p></li>
+<li><p><strong>ValueError</strong> – If fields cannot be coerced to expected types.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.idx">
+<span class="sig-name descname"><span class="pre">idx</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#comp_model_core.events.types.Event.idx" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.payload">
+<span class="sig-name descname"><span class="pre">payload</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#comp_model_core.events.types.Event.payload" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.state">
+<span class="sig-name descname"><span class="pre">state</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#comp_model_core.events.types.Event.state" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.t">
+<span class="sig-name descname"><span class="pre">t</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#comp_model_core.events.types.Event.t" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#Event.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.Event.to_json" title="Link to this definition"></a></dt>
+<dd><p>Serialize the event to a JSON-friendly dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON-friendly representation of this event.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.Event.type">
+<span class="sig-name descname"><span class="pre">type</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#comp_model_core.events.types.EventType" title="comp_model_core.events.types.EventType"><span class="pre">EventType</span></a></span><a class="headerlink" href="#comp_model_core.events.types.Event.type" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventLog">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.events.types.</span></span><span class="sig-name descname"><span class="pre">EventLog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">events</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema_version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#EventLog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.EventLog" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Block-level event stream.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>events</strong> (<em>Sequence</em><em>[</em><a class="reference internal" href="#comp_model_core.events.types.Event" title="comp_model_core.events.types.Event"><em>Event</em></a><em>]</em>) – Ordered list of events for a block.</p></li>
+<li><p><strong>schema_version</strong> (<em>int</em><em>, </em><em>optional</em>) – Version of the event-log schema. Increment when a backward-incompatible
+change is made.</p></li>
+<li><p><strong>metadata</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Additional information about the log (e.g., generator settings).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventLog.events">
+<span class="sig-name descname"><span class="pre">events</span></span><a class="headerlink" href="#comp_model_core.events.types.EventLog.events" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sequence[<a class="reference internal" href="#comp_model_core.events.types.Event" title="comp_model_core.events.types.Event">Event</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventLog.schema_version">
+<span class="sig-name descname"><span class="pre">schema_version</span></span><a class="headerlink" href="#comp_model_core.events.types.EventLog.schema_version" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventLog.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#comp_model_core.events.types.EventLog.metadata" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping[str, Any] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">events</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#comp_model_core.events.types.Event" title="comp_model_core.events.types.Event"><span class="pre">Event</span></a><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventLog.from_json">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_json</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#EventLog.from_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.EventLog.from_json" title="Link to this definition"></a></dt>
+<dd><p>Deserialize an event log from a mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>d</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Mapping produced by <a class="reference internal" href="#comp_model_core.events.types.EventLog.to_json" title="comp_model_core.events.types.EventLog.to_json"><code class="xref py py-meth docutils literal notranslate"><span class="pre">to_json()</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Parsed event log.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.events.types.EventLog" title="comp_model_core.events.types.EventLog">EventLog</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">metadata</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">schema_version</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventLog.to_json">
+<span class="sig-name descname"><span class="pre">to_json</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#EventLog.to_json"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.EventLog.to_json" title="Link to this definition"></a></dt>
+<dd><p>Serialize the event log to a JSON-friendly dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>JSON-friendly representation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventType">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.events.types.</span></span><span class="sig-name descname"><span class="pre">EventType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#EventType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.EventType" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">IntEnum</span></code></p>
+<p>Discrete event types for an event stream.</p>
+<p>The integer codes are part of the event-log contract. If you change them, you
+must update any downstream code that relies on the codes (e.g., Stan programs).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventType.BLOCK_START">
+<span class="sig-name descname"><span class="pre">BLOCK_START</span></span><a class="headerlink" href="#comp_model_core.events.types.EventType.BLOCK_START" title="Link to this definition"></a></dt>
+<dd><p>Marks the beginning of a block. Estimators should reset latent state here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventType.SOCIAL_OBSERVED">
+<span class="sig-name descname"><span class="pre">SOCIAL_OBSERVED</span></span><a class="headerlink" href="#comp_model_core.events.types.EventType.SOCIAL_OBSERVED" title="Link to this definition"></a></dt>
+<dd><p>A social observation event (e.g., demonstrator choice/outcome).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventType.CHOICE">
+<span class="sig-name descname"><span class="pre">CHOICE</span></span><a class="headerlink" href="#comp_model_core.events.types.EventType.CHOICE" title="Link to this definition"></a></dt>
+<dd><p>A subject choice event.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.events.types.EventType.OUTCOME">
+<span class="sig-name descname"><span class="pre">OUTCOME</span></span><a class="headerlink" href="#comp_model_core.events.types.EventType.OUTCOME" title="Link to this definition"></a></dt>
+<dd><p>An outcome event for a subject choice.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">BLOCK_START</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">CHOICE</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">OUTCOME</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">SOCIAL_OBSERVED</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="comp_model_core.events.types.validate_event_log">
+<span class="sig-prename descclassname"><span class="pre">comp_model_core.events.types.</span></span><span class="sig-name descname"><span class="pre">validate_event_log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">log</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/events/types.html#validate_event_log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.events.types.validate_event_log" title="Link to this definition"></a></dt>
+<dd><p>Validate minimal invariants of an event log.</p>
+<p>This function performs lightweight checks intended to catch common data-shape
+errors early (e.g., corrupted logs or generator/estimator mismatches).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>log</strong> (<a class="reference internal" href="#comp_model_core.events.types.EventLog" title="comp_model_core.events.types.EventLog"><em>EventLog</em></a>) – Event log to validate.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the log violates required invariants.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

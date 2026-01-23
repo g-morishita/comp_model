@@ -1,0 +1,13 @@
+comp\_model\_core.registry
+==========================
+
+.. automodule:: comp_model_core.registry
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      NamedRegistry
+      Registry
+   

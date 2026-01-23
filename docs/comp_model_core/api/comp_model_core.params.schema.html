@@ -1,0 +1,452 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.params.schema &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">comp_model_core.params.schema</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.params.schema.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.params.schema">
+<span id="comp-model-core-params-schema"></span><h1>comp_model_core.params.schema<a class="headerlink" href="#module-comp_model_core.params.schema" title="Link to this heading"></a></h1>
+<p>Parameter schema definitions.</p>
+<p>A <a class="reference internal" href="#comp_model_core.params.schema.ParameterSchema" title="comp_model_core.params.schema.ParameterSchema"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterSchema</span></code></a> declares the parameters used by a model, including their
+defaults, optional bounds, and the transform used to map between constrained model
+space and an unconstrained optimization space.</p>
+<p>This module is designed to prevent common “human error” bugs by making parameter
+handling explicit and centralized.</p>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#comp_model_core.params.schema.ParamDef" title="comp_model_core.params.schema.ParamDef"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParamDef</span></code></a>(name, default[, bound, transform])</p></td>
+<td><p>Definition of a single model parameter.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#comp_model_core.params.schema.ParameterSchema" title="comp_model_core.params.schema.ParameterSchema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ParameterSchema</span></code></a>(params)</p></td>
+<td><p>Schema for a model's parameters.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.schema.</span></span><span class="sig-name descname"><span class="pre">ParamDef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bound</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParamDef" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Definition of a single model parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Parameter name.</p></li>
+<li><p><strong>default</strong> (<em>float</em>) – Default value used for initialization.</p></li>
+<li><p><strong>bound</strong> (<a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.Bound" title="comp_model_core.params.Bound"><em>Bound</em></a><em> or </em><em>None</em><em>, </em><em>optional</em>) – Optional box bound. If provided, it is used for clipping/validation and for
+inferring a default transform.</p></li>
+<li><p><strong>transform</strong> (<a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.Transform" title="comp_model_core.params.Transform"><em>Transform</em></a><em> or </em><em>None</em><em>, </em><em>optional</em>) – Optional explicit transform. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, a transform is inferred from
+<code class="docutils literal notranslate"><span class="pre">bound</span></code> (see <a class="reference internal" href="#comp_model_core.params.schema.ParamDef.transform_obj" title="comp_model_core.params.schema.ParamDef.transform_obj"><code class="xref py py-meth docutils literal notranslate"><span class="pre">transform_obj()</span></code></a>).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.name" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.default">
+<span class="sig-name descname"><span class="pre">default</span></span><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.default" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.bound">
+<span class="sig-name descname"><span class="pre">bound</span></span><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.bound" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.Bound" title="comp_model_core.params.Bound">Bound</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.transform" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.Transform" title="comp_model_core.params.Transform">Transform</a> or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">bound</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.bounds.html#comp_model_core.params.bounds.Bound" title="comp_model_core.params.bounds.Bound"><span class="pre">Bound</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.coerce">
+<span class="sig-name descname"><span class="pre">coerce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef.coerce"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.coerce" title="Link to this definition"></a></dt>
+<dd><p>Coerce an incoming value to a finite float.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> (<em>Any</em>) – Incoming value.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Coerced finite float.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If the value cannot be converted to a finite float.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">default</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.transforms.html#comp_model_core.params.transforms.Transform" title="comp_model_core.params.transforms.Transform"><span class="pre">Transform</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.transform_obj">
+<span class="sig-name descname"><span class="pre">transform_obj</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef.transform_obj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.transform_obj" title="Link to this definition"></a></dt>
+<dd><p>Return the transform to be used for this parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Explicit transform if provided; otherwise an inferred transform.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.Transform" title="comp_model_core.params.Transform">Transform</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParamDef.validate_bound">
+<span class="sig-name descname"><span class="pre">validate_bound</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParamDef.validate_bound"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParamDef.validate_bound" title="Link to this definition"></a></dt>
+<dd><p>Validate a value against this parameter’s bounds (if any).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>float</em>) – Parameter value.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If bounds are present and <code class="docutils literal notranslate"><span class="pre">x</span></code> is outside <code class="docutils literal notranslate"><span class="pre">[lo,</span> <span class="pre">hi]</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.params.schema.</span></span><span class="sig-name descname"><span class="pre">ParameterSchema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Schema for a model’s parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>params</strong> (<em>tuple</em><em>[</em><a class="reference internal" href="#comp_model_core.params.schema.ParamDef" title="comp_model_core.params.schema.ParamDef"><em>ParamDef</em></a><em>, </em><em>...</em><em>]</em>) – Parameter definitions in a fixed order.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.params">
+<span class="sig-name descname"><span class="pre">params</span></span><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.params" title="Link to this definition"></a></dt>
+<dd><p>Parameter definitions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple[<a class="reference internal" href="#comp_model_core.params.schema.ParamDef" title="comp_model_core.params.schema.ParamDef">ParamDef</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.bounds_space">
+<span class="sig-name descname"><span class="pre">bounds_space</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">require_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.bounds_space"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.bounds_space" title="Link to this definition"></a></dt>
+<dd><p>Build a <a class="reference internal" href="comp_model_core.params.bounds.html#comp_model_core.params.bounds.ParameterBoundsSpace" title="comp_model_core.params.bounds.ParameterBoundsSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterBoundsSpace</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>names</strong> (<em>Sequence</em><em>[</em><em>str</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Subset of parameters to include. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses all schema names.</p></li>
+<li><p><strong>require_bounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, raise an error if any requested parameters lack bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bounds space with vector order matching <code class="docutils literal notranslate"><span class="pre">names</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.ParameterBoundsSpace" title="comp_model_core.params.ParameterBoundsSpace">ParameterBoundsSpace</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If unknown parameter names are requested or bounds are missing.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.default_z">
+<span class="sig-name descname"><span class="pre">default_z</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.default_z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.default_z" title="Link to this definition"></a></dt>
+<dd><p>Unconstrained vector corresponding to <a class="reference internal" href="#comp_model_core.params.schema.ParameterSchema.defaults" title="comp_model_core.params.schema.ParameterSchema.defaults"><code class="xref py py-meth docutils literal notranslate"><span class="pre">defaults()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Unconstrained defaults in schema order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.defaults">
+<span class="sig-name descname"><span class="pre">defaults</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.defaults"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.defaults" title="Link to this definition"></a></dt>
+<dd><p>Default parameter values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping from parameter name to default value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">names</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.names" title="Link to this definition"></a></dt>
+<dd><p>Parameter names in schema order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Names in fixed order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[str, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">params</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#comp_model_core.params.schema.ParamDef" title="comp_model_core.params.schema.ParamDef"><span class="pre">ParamDef</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.params_from_z">
+<span class="sig-name descname"><span class="pre">params_from_z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.params_from_z"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.params_from_z" title="Link to this definition"></a></dt>
+<dd><p>Map an unconstrained vector <code class="docutils literal notranslate"><span class="pre">z</span></code> to a constrained parameter dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>numpy.ndarray</em>) – Vector of shape <code class="docutils literal notranslate"><span class="pre">(D,)</span></code> where <code class="docutils literal notranslate"><span class="pre">D=len(self.params)</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Constrained parameter values keyed by name.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">z</span></code> does not have the expected shape.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.sample_z_init">
+<span class="sig-name descname"><span class="pre">sample_z_init</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.sample_z_init"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.sample_z_init" title="Link to this definition"></a></dt>
+<dd><p>Sample a random initialization in <code class="docutils literal notranslate"><span class="pre">z</span></code>-space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG used for sampling.</p></li>
+<li><p><strong>center</strong> (<em>{&quot;default&quot;</em><em>, </em><em>&quot;zero&quot;}</em><em>, </em><em>optional</em>) – Center of the initialization distribution.</p></li>
+<li><p><strong>scale</strong> (<em>float</em><em>, </em><em>optional</em>) – Standard deviation of the Gaussian noise around <code class="docutils literal notranslate"><span class="pre">center</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Random vector in <code class="docutils literal notranslate"><span class="pre">z</span></code> space.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If <code class="docutils literal notranslate"><span class="pre">center</span></code> is not one of <code class="docutils literal notranslate"><span class="pre">{&quot;default&quot;,</span> <span class="pre">&quot;zero&quot;}</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.transforms">
+<span class="sig-name descname"><span class="pre">transforms</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.transforms"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.transforms" title="Link to this definition"></a></dt>
+<dd><p>Return transforms in schema order.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Transform objects, one per parameter.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[<a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.Transform" title="comp_model_core.params.Transform">Transform</a>, …]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.validate">
+<span class="sig-name descname"><span class="pre">validate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">incoming</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.validate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.validate" title="Link to this definition"></a></dt>
+<dd><p>Validate an incoming parameter mapping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>incoming</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Incoming values keyed by parameter name.</p></li>
+<li><p><strong>strict</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, unknown parameter names raise an error. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, unknown
+names are ignored.</p></li>
+<li><p><strong>check_bounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, validate values against declared bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Validated mapping containing only schema parameters present in <code class="docutils literal notranslate"><span class="pre">incoming</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>ParameterValidationError</strong></a> – If values cannot be coerced to finite floats or violate bounds.</p></li>
+<li><p><strong>ValueError</strong> – If unknown names are provided and <code class="docutils literal notranslate"><span class="pre">strict=True</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.params.schema.ParameterSchema.z_from_params">
+<span class="sig-name descname"><span class="pre">z_from_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/params/schema.html#ParameterSchema.z_from_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.params.schema.ParameterSchema.z_from_params" title="Link to this definition"></a></dt>
+<dd><p>Map a constrained parameter dict to an unconstrained vector <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Parameter values keyed by name.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unconstrained vector of shape <code class="docutils literal notranslate"><span class="pre">(D,)</span></code> in schema order.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Uses each parameter’s transform inverse.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,357 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.events.types &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">comp_model_core.events.types</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for comp_model_core.events.types</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Event log schema.</span>
+
+<span class="sd">This module defines the event types and data structures for representing an</span>
+<span class="sd">event-log &quot;experience trace&quot; that can be replayed by different estimators</span>
+<span class="sd">(e.g., MLE vs Stan) without re-implementing timing logic.</span>
+
+<span class="sd">The key idea is that **the ordering of events is the source of truth** for when</span>
+<span class="sd">social observation, choice, and outcome updates occur.</span>
+
+<span class="sd">Notes</span>
+<span class="sd">-----</span>
+<span class="sd">Generators typically store serialized event logs inside :attr:`comp_model_core.data.types.Block.metadata`</span>
+<span class="sd">under the key :data:`EVENT_LOG_KEY`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntEnum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Sequence</span>
+
+
+<span class="c1">#: Key under which generators store the block event log in ``Block.metadata``.</span>
+<span class="n">EVENT_LOG_KEY</span> <span class="o">=</span> <span class="s2">&quot;event_log&quot;</span>
+
+
+<div class="viewcode-block" id="EventType">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.EventType">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EventType</span><span class="p">(</span><span class="n">IntEnum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Discrete event types for an event stream.</span>
+
+<span class="sd">    The integer codes are part of the event-log contract. If you change them, you</span>
+<span class="sd">    must update any downstream code that relies on the codes (e.g., Stan programs).</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    BLOCK_START : int</span>
+<span class="sd">        Marks the beginning of a block. Estimators should reset latent state here.</span>
+<span class="sd">    SOCIAL_OBSERVED : int</span>
+<span class="sd">        A social observation event (e.g., demonstrator choice/outcome).</span>
+<span class="sd">    CHOICE : int</span>
+<span class="sd">        A subject choice event.</span>
+<span class="sd">    OUTCOME : int</span>
+<span class="sd">        An outcome event for a subject choice.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">BLOCK_START</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">SOCIAL_OBSERVED</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">CHOICE</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">OUTCOME</span> <span class="o">=</span> <span class="mi">4</span></div>
+
+
+
+<div class="viewcode-block" id="Event">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.Event">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Event</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A single event in an event stream.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    idx : int</span>
+<span class="sd">        Zero-based index within the (block-level) event stream.</span>
+<span class="sd">    type : EventType</span>
+<span class="sd">        Event type code.</span>
+<span class="sd">    t : int or None</span>
+<span class="sd">        Trial index (typically 0-based) within the block, if applicable.</span>
+<span class="sd">    state : Any or None</span>
+<span class="sd">        State/context identifier used for this event (often an ``int``).</span>
+<span class="sd">    payload : Mapping[str, Any]</span>
+<span class="sd">        Event-specific fields in a JSON-friendly mapping.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The event log is designed to be serializable. ``payload`` should contain only</span>
+<span class="sd">    JSON-compatible values (numbers, strings, lists, dicts, ``None``).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="n">EventType</span>
+    <span class="n">t</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">state</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">payload</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+
+<div class="viewcode-block" id="Event.to_json">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.Event.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serialize the event to a JSON-friendly dict.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict[str, Any]</span>
+<span class="sd">            JSON-friendly representation of this event.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;idx&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">idx</span><span class="p">),</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">),</span>
+            <span class="s2">&quot;t&quot;</span><span class="p">:</span> <span class="kc">None</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">),</span>
+            <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span>
+            <span class="s2">&quot;payload&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">payload</span><span class="p">),</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="Event.from_json">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.Event.from_json">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;Event&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deserialize an event from a mapping.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        d : Mapping[str, Any]</span>
+<span class="sd">            Mapping produced by :meth:`to_json`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Event</span>
+<span class="sd">            Parsed event.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        KeyError</span>
+<span class="sd">            If required keys are missing.</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If fields cannot be coerced to expected types.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Event</span><span class="p">(</span>
+            <span class="n">idx</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;idx&quot;</span><span class="p">]),</span>
+            <span class="nb">type</span><span class="o">=</span><span class="n">EventType</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">])),</span>
+            <span class="n">t</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="s2">&quot;t&quot;</span><span class="p">]),</span>
+            <span class="n">state</span><span class="o">=</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;state&quot;</span><span class="p">),</span>
+            <span class="n">payload</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;payload&quot;</span><span class="p">,</span> <span class="p">{})),</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="EventLog">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.EventLog">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EventLog</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Block-level event stream.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : Sequence[Event]</span>
+<span class="sd">        Ordered list of events for a block.</span>
+<span class="sd">    schema_version : int, optional</span>
+<span class="sd">        Version of the event-log schema. Increment when a backward-incompatible</span>
+<span class="sd">        change is made.</span>
+<span class="sd">    metadata : Mapping[str, Any] or None, optional</span>
+<span class="sd">        Additional information about the log (e.g., generator settings).</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    events : Sequence[Event]</span>
+<span class="sd">    schema_version : int</span>
+<span class="sd">    metadata : Mapping[str, Any] or None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">events</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Event</span><span class="p">]</span>
+    <span class="n">schema_version</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="EventLog.to_json">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.EventLog.to_json">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_json</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serialize the event log to a JSON-friendly dict.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict[str, Any]</span>
+<span class="sd">            JSON-friendly representation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;schema_version&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">schema_version</span><span class="p">),</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{}),</span>
+            <span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">events</span><span class="p">],</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="EventLog.from_json">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.EventLog.from_json">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_json</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">&quot;EventLog&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Deserialize an event log from a mapping.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        d : Mapping[str, Any]</span>
+<span class="sd">            Mapping produced by :meth:`to_json`.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        EventLog</span>
+<span class="sd">            Parsed event log.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">EventLog</span><span class="p">(</span>
+            <span class="n">schema_version</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_version&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})),</span>
+            <span class="n">events</span><span class="o">=</span><span class="p">[</span><span class="n">Event</span><span class="o">.</span><span class="n">from_json</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">d</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;events&quot;</span><span class="p">,</span> <span class="p">[])],</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="validate_event_log">
+<a class="viewcode-back" href="../../../api/comp_model_core.events.types.html#comp_model_core.events.validate_event_log">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_event_log</span><span class="p">(</span><span class="n">log</span><span class="p">:</span> <span class="n">EventLog</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate minimal invariants of an event log.</span>
+
+<span class="sd">    This function performs lightweight checks intended to catch common data-shape</span>
+<span class="sd">    errors early (e.g., corrupted logs or generator/estimator mismatches).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    log : EventLog</span>
+<span class="sd">        Event log to validate.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        If the log violates required invariants.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">log</span><span class="o">.</span><span class="n">events</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;EventLog.events is empty&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">log</span><span class="o">.</span><span class="n">events</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">EventType</span><span class="o">.</span><span class="n">BLOCK_START</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;First event must be BLOCK_START&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">log</span><span class="o">.</span><span class="n">events</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">idx</span><span class="p">)</span> <span class="o">!=</span> <span class="n">i</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Bad idx at position </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: event.idx=</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">idx</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Event-type specific minimum payload checks</span>
+        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="n">EventType</span><span class="o">.</span><span class="n">CHOICE</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;choice&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">e</span><span class="o">.</span><span class="n">payload</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CHOICE event at idx=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> missing payload[&#39;choice&#39;]&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">e</span><span class="o">.</span><span class="n">type</span> <span class="ow">is</span> <span class="n">EventType</span><span class="o">.</span><span class="n">OUTCOME</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;action&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">e</span><span class="o">.</span><span class="n">payload</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OUTCOME event at idx=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> missing payload[&#39;action&#39;]&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;observed_outcome&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">e</span><span class="o">.</span><span class="n">payload</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OUTCOME event at idx=</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> missing payload[&#39;observed_outcome&#39;]&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

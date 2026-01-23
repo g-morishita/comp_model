@@ -1,0 +1,12 @@
+comp\_model\_core.interfaces.demonstrator
+=========================================
+
+.. automodule:: comp_model_core.interfaces.demonstrator
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Demonstrator
+   

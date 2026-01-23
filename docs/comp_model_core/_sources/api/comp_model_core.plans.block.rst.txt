@@ -1,0 +1,13 @@
+comp\_model\_core.plans.block
+=============================
+
+.. automodule:: comp_model_core.plans.block
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      BlockPlan
+      StudyPlan
+   

@@ -1,0 +1,13 @@
+comp\_model\_core.params.schema
+===============================
+
+.. automodule:: comp_model_core.params.schema
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      ParamDef
+      ParameterSchema
+   

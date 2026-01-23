@@ -1,0 +1,13 @@
+﻿comp\_model\_core.data
+======================
+
+.. automodule:: comp_model_core.data
+
+   
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   types

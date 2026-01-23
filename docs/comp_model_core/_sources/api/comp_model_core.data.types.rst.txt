@@ -1,0 +1,15 @@
+comp\_model\_core.data.types
+============================
+
+.. automodule:: comp_model_core.data.types
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Block
+      StudyData
+      SubjectData
+      Trial
+   

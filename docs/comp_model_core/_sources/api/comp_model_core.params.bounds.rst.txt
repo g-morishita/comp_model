@@ -1,0 +1,13 @@
+comp\_model\_core.params.bounds
+===============================
+
+.. automodule:: comp_model_core.params.bounds
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Bound
+      ParameterBoundsSpace
+   

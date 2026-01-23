@@ -1,0 +1,12 @@
+comp\_model\_core.events.accessors
+==================================
+
+.. automodule:: comp_model_core.events.accessors
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      get_event_log
+   

@@ -1,0 +1,13 @@
+comp\_model\_core.interfaces.model
+==================================
+
+.. automodule:: comp_model_core.interfaces.model
+
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      ComputationalModel
+      SocialComputationalModel
+   
