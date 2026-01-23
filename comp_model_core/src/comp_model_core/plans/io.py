@@ -1,3 +1,11 @@
+"""
+I/O helpers for :mod:`comp_model_core.plans`.
+
+The functions in this module load plan files from disk and validate their basic shape
+before constructing :class:`~comp_model_core.plans.block.BlockPlan` and
+:class:`~comp_model_core.plans.block.StudyPlan` objects.
+"""
+
 from __future__ import annotations
 
 import json
@@ -8,13 +16,32 @@ from .block import BlockPlan, StudyPlan
 
 def study_plan_from_dict(raw: Mapping[str, Any]) -> StudyPlan:
     """
-    Construct StudyPlan from a Python mapping.
+    Construct a :class:`~comp_model_core.plans.block.StudyPlan` from a mapping.
 
-    Expected shape:
-    {
-      "subjects": { "s1": [ {...blockplan...}, ... ], "s2": [...] },
-      "metadata": {...}   # optional
-    }
+    Parameters
+    ----------
+    raw : Mapping[str, Any]
+        Mapping with keys ``"subjects"`` and (optionally) ``"metadata"``.
+
+        Expected structure::
+
+            {
+              "subjects": {
+                "s1": [ { ...blockplan... }, ... ],
+                "s2": [ ... ]
+              },
+              "metadata": { ... }  # optional
+            }
+
+    Returns
+    -------
+    StudyPlan
+        Parsed study plan.
+
+    Raises
+    ------
+    ValueError
+        If the structure is invalid or required keys are missing.
     """
     if "subjects" not in raw or not isinstance(raw["subjects"], dict):
         raise ValueError("Input must contain key 'subjects' as an object mapping subject_id -> block list.")
@@ -30,6 +57,26 @@ def study_plan_from_dict(raw: Mapping[str, Any]) -> StudyPlan:
 
 
 def load_study_plan_json(path: str) -> StudyPlan:
+    """
+    Load a study plan from a JSON file.
+
+    Parameters
+    ----------
+    path : str
+        Path to a JSON file.
+
+    Returns
+    -------
+    StudyPlan
+        Parsed plan.
+
+    Raises
+    ------
+    OSError
+        If the file cannot be read.
+    ValueError
+        If the file content is not valid JSON or does not match the expected structure.
+    """
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
     return study_plan_from_dict(raw)
@@ -37,10 +84,28 @@ def load_study_plan_json(path: str) -> StudyPlan:
 
 def load_study_plan_yaml(path: str) -> StudyPlan:
     """
-    Load StudyPlan from YAML.
+    Load a study plan from a YAML file.
 
-    Requires dependency: PyYAML (pip install pyyaml)
-    Uses safe_load to avoid executing arbitrary YAML tags.
+    This function uses ``yaml.safe_load`` to avoid executing arbitrary YAML tags.
+
+    Parameters
+    ----------
+    path : str
+        Path to a YAML file.
+
+    Returns
+    -------
+    StudyPlan
+        Parsed plan.
+
+    Raises
+    ------
+    ImportError
+        If PyYAML is not installed.
+    OSError
+        If the file cannot be read.
+    ValueError
+        If the YAML root is not a mapping or if the plan structure is invalid.
     """
     try:
         import yaml  # type: ignore

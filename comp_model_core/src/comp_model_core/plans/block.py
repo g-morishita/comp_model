@@ -1,3 +1,15 @@
+"""
+Plan schemas for simulation studies.
+
+Plans are typically loaded from JSON/YAML and then used to build tasks/bandits and
+(optional) demonstrators via registries in an implementation package.
+
+See Also
+--------
+comp_model_core.plans.io
+    Helpers for reading plans from JSON/YAML.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,16 +21,36 @@ Json = dict[str, Any]
 @dataclass(frozen=True, slots=True)
 class BlockPlan:
     """
-    Block simulation specification (schema).
+    Specification for simulating a single block.
 
-    bandit_type + bandit_config:
-      - bandit_type chooses which bandit constructor/validator to use (via registry)
-      - bandit_config is passed to that constructor (validated by registry)
+    A block plan is a declarative description of what to simulate. It is meant to be
+    JSON/YAML friendly.
 
-    demonstrator_type + demonstrator_config (optional):
-      - if omitted, block is asocial unless bandit itself is SocialBandit
-      - if present, generator can wrap base bandit with SocialBanditWrapper
+    Parameters
+    ----------
+    block_id : str
+        Identifier for the block (unique within a subject).
+    n_trials : int
+        Number of trials to simulate in this block.
+    bandit_type : str
+        Registry key selecting which bandit/task class to use.
+    bandit_config : Mapping[str, Any]
+        Configuration passed to the bandit/task constructor.
+    demonstrator_type : str or None, optional
+        Registry key selecting a demonstrator class for social tasks.
+        If both demonstrator fields are ``None``, the block is treated as asocial
+        unless the bandit itself is social.
+    demonstrator_config : Mapping[str, Any] or None, optional
+        Configuration passed to the demonstrator constructor.
+    metadata : dict[str, Any], optional
+        Arbitrary user metadata (e.g., condition labels).
+
+    Notes
+    -----
+    The plan does not construct any objects by itself. Construction is delegated to
+    an implementation package that owns the registries.
     """
+
     block_id: str
     n_trials: int
 
@@ -31,6 +63,14 @@ class BlockPlan:
     metadata: Json = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        """
+        Validate basic invariants.
+
+        Raises
+        ------
+        ValueError
+            If required fields are missing or inconsistent.
+        """
         if not isinstance(self.block_id, str) or not self.block_id:
             raise ValueError("BlockPlan.block_id must be a non-empty string.")
         if int(self.n_trials) <= 0:
@@ -52,11 +92,32 @@ class BlockPlan:
 @dataclass(frozen=True, slots=True)
 class StudyPlan:
     """
-    Plans per subject. This is what you typically load from JSON/YAML.
+    Simulation plans grouped by subject.
+
+    Parameters
+    ----------
+    subjects : Mapping[str, list[BlockPlan]]
+        Mapping from subject id to a list of block plans.
+    metadata : dict[str, Any], optional
+        Arbitrary metadata.
+
+    Attributes
+    ----------
+    subjects : Mapping[str, list[BlockPlan]]
+    metadata : dict[str, Any]
     """
+
     subjects: Mapping[str, list[BlockPlan]]
     metadata: Json = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        """
+        Validate basic invariants.
+
+        Raises
+        ------
+        ValueError
+            If the study plan has no subjects.
+        """
         if not self.subjects:
             raise ValueError("StudyPlan.subjects must be non-empty.")
