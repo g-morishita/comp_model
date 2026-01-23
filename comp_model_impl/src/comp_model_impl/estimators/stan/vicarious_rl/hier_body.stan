@@ -70,3 +70,15 @@ model {
     }
   }
 }
+
+generated quantities {
+  real alpha_o_pop = inv_logit(mu_ao);
+
+  real beta_pop =
+    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_b);
+
+  real mu_ao_hat = mu_ao;
+  real sd_ao_hat = sd_ao;
+  real mu_b_hat  = mu_b;
+  real sd_b_hat  = sd_b;
+}

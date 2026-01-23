@@ -185,4 +185,46 @@ class StanHierarchicalNUTSEstimator(Estimator):
             for i, sid in enumerate(subj_ids):
                 subj_hats.setdefault(sid, {})[p] = float(means[i])
 
-        return FitResult(subject_hats=subj_hats, success=True, message="OK", diagnostics={})
+        # population-level estimates from generated quantities + hyperparameters
+        pop_hat: dict[str, float] = {}
+
+        def _mean_var(name: str) -> None:
+            try:
+                pop_hat[name] = float(np.mean(fit.stan_variable(name)))
+            except KeyError:
+                pass
+
+        # common population outputs
+        for nm in ["beta_pop", "mu_b_hat", "sd_b_hat"]:
+            _mean_var(nm)
+
+        # VS-specific
+        if key == "vs":
+            for nm in [
+                "alpha_p_pop", "alpha_i_pop", "kappa_pop",
+                "mu_ap_hat", "sd_ap_hat",
+                "mu_ai_hat", "sd_ai_hat",
+                "mu_k_hat", "sd_k_hat",
+            ]:
+                _mean_var(nm)
+
+        # Vicarious RL-specific
+        if key == "vicarious_rl":
+            for nm in ["alpha_o_pop", "mu_ao_hat", "sd_ao_hat"]:
+                _mean_var(nm)
+
+        # optionally add sampling diagnostics
+        summ = fit.summary()
+        diags = {
+            "seed": seed,
+            "rhat_max": float(summ["R_hat"].max()),
+            "ess_bulk_min": float(summ["ESS_bulk"].min()),
+        }
+
+        return FitResult(
+            population_hat=pop_hat,          # <-- THIS is the missing part
+            subject_hats=subj_hats,
+            success=True,
+            message="OK",
+            diagnostics=diags,
+        )

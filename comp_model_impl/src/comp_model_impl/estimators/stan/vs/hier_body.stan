@@ -104,3 +104,25 @@ model {
     }
   }
 }
+
+generated quantities {
+  // "Population-level location" on natural parameter scale
+  real alpha_p_pop = inv_logit(mu_ap);
+  real alpha_i_pop = inv_logit(mu_ai);
+
+  real beta_pop =
+    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_b);
+
+  real kappa_pop =
+    kappa_abs_max * (2 * inv_logit(mu_k) - 1);
+
+  // You may also want to expose hyperparameters directly
+  real mu_ap_hat = mu_ap;
+  real sd_ap_hat = sd_ap;
+  real mu_ai_hat = mu_ai;
+  real sd_ai_hat = sd_ai;
+  real mu_b_hat  = mu_b;
+  real sd_b_hat  = sd_b;
+  real mu_k_hat  = mu_k;
+  real sd_k_hat  = sd_k;
+}
