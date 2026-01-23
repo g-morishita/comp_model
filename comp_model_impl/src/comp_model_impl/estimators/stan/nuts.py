@@ -222,7 +222,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
         }
 
         return FitResult(
-            population_hat=pop_hat,          # <-- THIS is the missing part
+            population_hat=pop_hat,       
             subject_hats=subj_hats,
             success=True,
             message="OK",
