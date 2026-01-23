@@ -1,6 +1,0 @@
-﻿comp\_model\_core
-=================
-
-.. automodule:: comp_model_core
-
-   

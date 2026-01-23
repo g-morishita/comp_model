@@ -1,0 +1,935 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>comp_model_core.interfaces &mdash; comp_model_core  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="comp_model_core.interfaces.bandit" href="comp_model_core.interfaces.bandit.html" />
+    <link rel="prev" title="comp_model_core.events.types" href="comp_model_core.events.types.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            comp_model_core
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="comp_model_core.html">comp_model_core</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.html#id1">comp_model_core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.data.html">comp_model_core.data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.errors.html">comp_model_core.errors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.events.html">comp_model_core.events</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">comp_model_core.interfaces</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.Bandit"><code class="docutils literal notranslate"><span class="pre">Bandit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.BanditStep"><code class="docutils literal notranslate"><span class="pre">BanditStep</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel"><code class="docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.Demonstrator"><code class="docutils literal notranslate"><span class="pre">Demonstrator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.Estimator"><code class="docutils literal notranslate"><span class="pre">Estimator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.FitResult"><code class="docutils literal notranslate"><span class="pre">FitResult</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.Generator"><code class="docutils literal notranslate"><span class="pre">Generator</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.SocialBandit"><code class="docutils literal notranslate"><span class="pre">SocialBandit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.SocialComputationalModel"><code class="docutils literal notranslate"><span class="pre">SocialComputationalModel</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#comp_model_core.interfaces.SocialObservation"><code class="docutils literal notranslate"><span class="pre">SocialObservation</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="comp_model_core.interfaces.bandit.html">comp_model_core.interfaces.bandit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comp_model_core.interfaces.demonstrator.html">comp_model_core.interfaces.demonstrator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comp_model_core.interfaces.estimator.html">comp_model_core.interfaces.estimator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comp_model_core.interfaces.generator.html">comp_model_core.interfaces.generator</a></li>
+<li class="toctree-l4"><a class="reference internal" href="comp_model_core.interfaces.model.html">comp_model_core.interfaces.model</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.params.html">comp_model_core.params</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.plans.html">comp_model_core.plans</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.registry.html">comp_model_core.registry</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.rng.html">comp_model_core.rng</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.spec.html">comp_model_core.spec</a></li>
+<li class="toctree-l3"><a class="reference internal" href="comp_model_core.utility.html">comp_model_core.utility</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">comp_model_core</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="comp_model_core.html">comp_model_core</a></li>
+      <li class="breadcrumb-item active">comp_model_core.interfaces</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/comp_model_core.interfaces.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-comp_model_core.interfaces">
+<span id="comp-model-core-interfaces"></span><h1>comp_model_core.interfaces<a class="headerlink" href="#module-comp_model_core.interfaces" title="Link to this heading"></a></h1>
+<p>Abstract interfaces (ABCs) for tasks, models, generators, and estimators.</p>
+<p>The <a class="reference internal" href="#module-comp_model_core.interfaces" title="comp_model_core.interfaces"><code class="xref py py-mod docutils literal notranslate"><span class="pre">comp_model_core.interfaces</span></code></a> subpackage defines the minimal contracts that
+implementations must satisfy in downstream packages (e.g., <code class="docutils literal notranslate"><span class="pre">comp_model_impl</span></code>).</p>
+<p class="rubric">Notes</p>
+<p>These interfaces are designed to be small, explicit, and easy to mock for testing.
+They intentionally avoid opinionated training frameworks or heavy dependencies.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Bandit">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">Bandit</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#Bandit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Bandit" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for a task environment.</p>
+<p>A bandit exposes a <a class="reference internal" href="comp_model_core.spec.html#comp_model_core.spec.TaskSpec" title="comp_model_core.spec.TaskSpec"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaskSpec</span></code></a>, provides an initial
+state via <a class="reference internal" href="#comp_model_core.interfaces.Bandit.reset" title="comp_model_core.interfaces.Bandit.reset"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset()</span></code></a>, and advances dynamics with <a class="reference internal" href="#comp_model_core.interfaces.Bandit.step" title="comp_model_core.interfaces.Bandit.step"><code class="xref py py-meth docutils literal notranslate"><span class="pre">step()</span></code></a>.</p>
+<p class="rubric">Notes</p>
+<p>The interface is intentionally minimal and does not prescribe episode semantics.
+Higher-level code (generators, wrappers) can decide how to structure blocks.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Bandit.get_state">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#Bandit.get_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Bandit.get_state" title="Link to this definition"></a></dt>
+<dd><p>Return the current observable state/context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Current state identifier.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Bandit.reset">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#Bandit.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Bandit.reset" title="Link to this definition"></a></dt>
+<dd><p>Reset the environment to the start of a block/episode.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG to use for stochastic resets.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Initial state identifier. Implementations may also store state internally.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Any</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Bandit.spec">
+<span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">spec</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.spec.html#comp_model_core.spec.TaskSpec" title="comp_model_core.spec.TaskSpec"><span class="pre">TaskSpec</span></a></span><a class="headerlink" href="#comp_model_core.interfaces.Bandit.spec" title="Link to this definition"></a></dt>
+<dd><p>Return this task’s specification.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Contract defining action space and outcome semantics.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec">TaskSpec</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Bandit.step">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">step</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#Bandit.step"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Bandit.step" title="Link to this definition"></a></dt>
+<dd><p>Advance the environment by taking an action.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>action</strong> (<em>int</em>) – Discrete action index in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">spec.n_actions)</span></code>.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG to use for stochastic dynamics.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result of the environment transition.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.interfaces.BanditStep" title="comp_model_core.interfaces.BanditStep">BanditStep</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.BanditStep">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">BanditStep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outcome</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observed_outcome</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">done</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#BanditStep"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.BanditStep" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Result of a task step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outcome</strong> (<em>float</em>) – True environment outcome.</p></li>
+<li><p><strong>observed_outcome</strong> (<em>float</em><em> or </em><em>None</em>) – Outcome observed by the agent/subject. <code class="docutils literal notranslate"><span class="pre">None</span></code> indicates the outcome was
+hidden from the agent.</p></li>
+<li><p><strong>done</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether the episode/block should terminate.</p></li>
+<li><p><strong>info</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Additional task-specific information.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.BanditStep.outcome">
+<span class="sig-name descname"><span class="pre">outcome</span></span><a class="headerlink" href="#comp_model_core.interfaces.BanditStep.outcome" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.BanditStep.observed_outcome">
+<span class="sig-name descname"><span class="pre">observed_outcome</span></span><a class="headerlink" href="#comp_model_core.interfaces.BanditStep.observed_outcome" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.BanditStep.done">
+<span class="sig-name descname"><span class="pre">done</span></span><a class="headerlink" href="#comp_model_core.interfaces.BanditStep.done" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.BanditStep.info">
+<span class="sig-name descname"><span class="pre">info</span></span><a class="headerlink" href="#comp_model_core.interfaces.BanditStep.info" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, Any] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">done</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">observed_outcome</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">outcome</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">ComputationalModel</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for computational models.</p>
+<p>Subclasses should implement:
+- <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.param_schema" title="comp_model_core.interfaces.ComputationalModel.param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">param_schema</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.supports" title="comp_model_core.interfaces.ComputationalModel.supports"><code class="xref py py-meth docutils literal notranslate"><span class="pre">supports()</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.reset_block" title="comp_model_core.interfaces.ComputationalModel.reset_block"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset_block()</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.action_probs" title="comp_model_core.interfaces.ComputationalModel.action_probs"><code class="xref py py-meth docutils literal notranslate"><span class="pre">action_probs()</span></code></a>
+- <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.update" title="comp_model_core.interfaces.ComputationalModel.update"><code class="xref py py-meth docutils literal notranslate"><span class="pre">update()</span></code></a></p>
+<p class="rubric">Notes</p>
+<p>Models are stateful: they hold latent variables (e.g., Q-values). Generators and
+estimators should reset state at each block boundary via <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.reset_block" title="comp_model_core.interfaces.ComputationalModel.reset_block"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset_block()</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.action_probs">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">action_probs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.action_probs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.action_probs" title="Link to this definition"></a></dt>
+<dd><p>Compute action probabilities for a state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context identifier.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Probability vector of shape <code class="docutils literal notranslate"><span class="pre">(spec.n_actions,)</span></code> that sums to 1.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.get_params">
+<span class="sig-name descname"><span class="pre">get_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.get_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.get_params" title="Link to this definition"></a></dt>
+<dd><p>Return current parameter values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping from parameter name to current value.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.param_names">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">param_names</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.param_names" title="Link to this definition"></a></dt>
+<dd><p>Return parameter names defined by <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel.param_schema" title="comp_model_core.interfaces.ComputationalModel.param_schema"><code class="xref py py-attr docutils literal notranslate"><span class="pre">param_schema</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Parameter names in schema order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sequence[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.param_schema">
+<span class="property"><span class="k"><span class="pre">abstract</span></span><span class="w"> </span><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">param_schema</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.params.schema.html#comp_model_core.params.schema.ParameterSchema" title="comp_model_core.params.schema.ParameterSchema"><span class="pre">ParameterSchema</span></a></span><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.param_schema" title="Link to this definition"></a></dt>
+<dd><p>Return the parameter schema for this model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Schema defining parameter names, defaults, bounds, and transforms.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="comp_model_core.params.html#comp_model_core.params.ParameterSchema" title="comp_model_core.params.ParameterSchema">ParameterSchema</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.reset_block">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">reset_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.reset_block"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.reset_block" title="Link to this definition"></a></dt>
+<dd><p>Reset latent state at the beginning of a block.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification for the block.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.set_params">
+<span class="sig-name descname"><span class="pre">set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">check_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.set_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.set_params" title="Link to this definition"></a></dt>
+<dd><p>Set model parameters using the schema for validation/coercion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – Parameter values keyed by name.</p></li>
+<li><p><strong>strict</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, unknown keys raise an error. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, unknown keys are
+ignored.</p></li>
+<li><p><strong>check_bounds</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, validate values against declared bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference internal" href="comp_model_core.errors.html#comp_model_core.errors.ParameterValidationError" title="comp_model_core.errors.ParameterValidationError"><strong>comp_model_core.errors.ParameterValidationError</strong></a> – If values cannot be coerced to finite floats.</p></li>
+<li><p><strong>ValueError</strong> – If unknown keys are present and <code class="docutils literal notranslate"><span class="pre">strict=True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.supports">
+<span class="sig-name descname"><span class="pre">supports</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.supports"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.supports" title="Link to this definition"></a></dt>
+<dd><p>Check whether the model supports a given task specification.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification to check.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if supported.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The base implementation returns <code class="docutils literal notranslate"><span class="pre">True</span></code>. Override this to enforce constraints
+(e.g., require <code class="docutils literal notranslate"><span class="pre">spec.is_social</span></code> or a particular <code class="docutils literal notranslate"><span class="pre">outcome_type</span></code>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.ComputationalModel.update">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outcome</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#ComputationalModel.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.ComputationalModel.update" title="Link to this definition"></a></dt>
+<dd><p>Update latent state after observing an outcome.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context identifier for the trial.</p></li>
+<li><p><strong>action</strong> (<em>int</em>) – Action taken.</p></li>
+<li><p><strong>outcome</strong> (<em>float</em><em> or </em><em>None</em>) – Outcome observed by the agent/subject. <code class="docutils literal notranslate"><span class="pre">None</span></code> indicates hidden outcome.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>info</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Additional task-specific information.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Generators/estimators define the timing/order of calling this method.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Demonstrator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">Demonstrator</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Demonstrator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for demonstrators (other agents).</p>
+<p class="rubric">Notes</p>
+<p>A demonstrator is conceptually similar to a model acting inside the environment,
+but this interface is intentionally smaller than <a class="reference internal" href="comp_model_core.interfaces.model.html#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a>.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Demonstrator.act">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">act</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator.act"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Demonstrator.act" title="Link to this definition"></a></dt>
+<dd><p>Choose an action.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – Current task state/context.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for stochastic policies.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Action index.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Demonstrator.reset">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator.reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Demonstrator.reset" title="Link to this definition"></a></dt>
+<dd><p>Reset demonstrator state for a new block.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification for the block.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG used for stochastic resets.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Demonstrator.update">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outcome</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/demonstrator.html#Demonstrator.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Demonstrator.update" title="Link to this definition"></a></dt>
+<dd><p>Update internal demonstrator state after observing the outcome.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context on the trial.</p></li>
+<li><p><strong>action</strong> (<em>int</em>) – Action that was taken.</p></li>
+<li><p><strong>outcome</strong> (<em>float</em>) – True outcome resulting from the action.</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for stochastic updates (if any).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Estimator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">Estimator</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/estimator.html#Estimator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Estimator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for parameter estimators.</p>
+<p>Implementations may use deterministic optimization (MLE/MAP), MCMC, variational
+inference, or any other approach.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Estimator.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#comp_model_core.interfaces.Estimator.model" title="Link to this definition"></a></dt>
+<dd><p>Model instance associated with the estimator (when applicable).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel" title="comp_model_core.interfaces.ComputationalModel">ComputationalModel</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Estimator.fit">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">study</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/estimator.html#Estimator.fit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Estimator.fit" title="Link to this definition"></a></dt>
+<dd><p>Fit the estimator to a dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>study</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.StudyData" title="comp_model_core.data.StudyData"><em>StudyData</em></a>) – Dataset to fit.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG used for stochastic estimators or random initializations.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Fitted parameters and diagnostics.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.interfaces.FitResult" title="comp_model_core.interfaces.FitResult">FitResult</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">model</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="comp_model_core.interfaces.model.html#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><span class="pre">ComputationalModel</span></a></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Estimator.supports">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">supports</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">study</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/estimator.html#Estimator.supports"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Estimator.supports" title="Link to this definition"></a></dt>
+<dd><p>Check whether this estimator can fit the provided dataset.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>study</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.StudyData" title="comp_model_core.data.StudyData"><em>StudyData</em></a>) – Dataset to be fitted.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the estimator supports this dataset.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">FitResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">params_hat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">population_hat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject_hats</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">success</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagnostics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/estimator.html#FitResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.FitResult" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Result returned by <a class="reference internal" href="#comp_model_core.interfaces.Estimator.fit" title="comp_model_core.interfaces.Estimator.fit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Estimator.fit()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params_hat</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Fitted parameters for a single-subject/single-block problem.</p></li>
+<li><p><strong>population_hat</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Population-level parameters for hierarchical models.</p></li>
+<li><p><strong>subject_hats</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Subject-level parameter estimates keyed by subject id.</p></li>
+<li><p><strong>value</strong> (<em>float</em><em> or </em><em>None</em><em>, </em><em>optional</em>) – Objective value (e.g., negative log-likelihood) at the fitted parameters.</p></li>
+<li><p><strong>success</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether the fit procedure completed successfully.</p></li>
+<li><p><strong>message</strong> (<em>str</em><em>, </em><em>optional</em>) – Human-readable message describing the outcome.</p></li>
+<li><p><strong>diagnostics</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>, </em><em>optional</em>) – Optional diagnostic information (optimizer traces, posterior summaries, etc.).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.params_hat">
+<span class="sig-name descname"><span class="pre">params_hat</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.params_hat" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping[str, float] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.population_hat">
+<span class="sig-name descname"><span class="pre">population_hat</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.population_hat" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping[str, float] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.subject_hats">
+<span class="sig-name descname"><span class="pre">subject_hats</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.subject_hats" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Mapping[str, Mapping[str, float]] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.value">
+<span class="sig-name descname"><span class="pre">value</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.value" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.success">
+<span class="sig-name descname"><span class="pre">success</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.success" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.message">
+<span class="sig-name descname"><span class="pre">message</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.message" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.FitResult.diagnostics">
+<span class="sig-name descname"><span class="pre">diagnostics</span></span><a class="headerlink" href="#comp_model_core.interfaces.FitResult.diagnostics" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">diagnostics</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">message</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">params_hat</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">population_hat</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">subject_hats</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">success</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></span><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">value</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id11" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Generator">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">Generator</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/generator.html#Generator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Generator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Abstract base class for dataset generators.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Generator.simulate_study">
+<span class="sig-name descname"><span class="pre">simulate_study</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subj_params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject_block_plans</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/generator.html#Generator.simulate_study"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Generator.simulate_study" title="Link to this definition"></a></dt>
+<dd><p>Simulate a full study (multiple subjects).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task_builder</strong> (<a class="reference internal" href="comp_model_core.interfaces.generator.html#comp_model_core.interfaces.generator.TaskBuilder" title="comp_model_core.interfaces.generator.TaskBuilder"><em>TaskBuilder</em></a>) – Callable that constructs a bandit/task from a block plan.</p></li>
+<li><p><strong>model</strong> (<a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel" title="comp_model_core.interfaces.ComputationalModel"><em>ComputationalModel</em></a>) – Model instance used for all subjects.</p></li>
+<li><p><strong>subj_params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em><em>]</em>) – Mapping from subject id to parameter dict.</p></li>
+<li><p><strong>subject_block_plans</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Sequence</em><em>[</em><a class="reference internal" href="comp_model_core.plans.html#comp_model_core.plans.BlockPlan" title="comp_model_core.plans.BlockPlan"><em>BlockPlan</em></a><em>]</em><em>]</em>) – Mapping from subject id to a list of block plans.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for simulation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Simulated study.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.StudyData" title="comp_model_core.data.StudyData">StudyData</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If required subject parameters are missing or if no subjects were simulated.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.Generator.simulate_subject">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">simulate_subject</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_plans</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/generator.html#Generator.simulate_subject"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.Generator.simulate_subject" title="Link to this definition"></a></dt>
+<dd><p>Simulate one subject across multiple blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>subject_id</strong> (<em>str</em>) – Subject identifier.</p></li>
+<li><p><strong>task_builder</strong> (<a class="reference internal" href="comp_model_core.interfaces.generator.html#comp_model_core.interfaces.generator.TaskBuilder" title="comp_model_core.interfaces.generator.TaskBuilder"><em>TaskBuilder</em></a>) – Callable that constructs a bandit/task from a block plan.</p></li>
+<li><p><strong>model</strong> (<a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel" title="comp_model_core.interfaces.ComputationalModel"><em>ComputationalModel</em></a>) – Model instance to simulate.</p></li>
+<li><p><strong>params</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>float</em><em>]</em>) – Model parameters for this subject.</p></li>
+<li><p><strong>block_plans</strong> (<em>Sequence</em><em>[</em><a class="reference internal" href="comp_model_core.plans.html#comp_model_core.plans.BlockPlan" title="comp_model_core.plans.BlockPlan"><em>BlockPlan</em></a><em>]</em>) – Ordered block plans for this subject.</p></li>
+<li><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG for stochastic simulation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Simulated subject dataset.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.SubjectData" title="comp_model_core.data.SubjectData">SubjectData</a></p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Implementations should call <a class="reference internal" href="comp_model_core.interfaces.model.html#comp_model_core.interfaces.model.ComputationalModel.reset_block" title="comp_model_core.interfaces.model.ComputationalModel.reset_block"><code class="xref py py-meth docutils literal notranslate"><span class="pre">reset_block()</span></code></a>
+at the beginning of each block (or equivalently reset via an event log).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialBandit">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">SocialBandit</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#SocialBandit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.SocialBandit" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="comp_model_core.interfaces.bandit.html#comp_model_core.interfaces.bandit.Bandit" title="comp_model_core.interfaces.bandit.Bandit"><code class="xref py py-class docutils literal notranslate"><span class="pre">Bandit</span></code></a>, <code class="xref py py-class docutils literal notranslate"><span class="pre">ABC</span></code></p>
+<p>Extension of <a class="reference internal" href="#comp_model_core.interfaces.Bandit" title="comp_model_core.interfaces.Bandit"><code class="xref py py-class docutils literal notranslate"><span class="pre">Bandit</span></code></a> that supports social observations.</p>
+<p>Social bandits provide an <a class="reference internal" href="#comp_model_core.interfaces.SocialBandit.observe_others" title="comp_model_core.interfaces.SocialBandit.observe_others"><code class="xref py py-meth docutils literal notranslate"><span class="pre">observe_others()</span></code></a> method that returns information
+about a demonstrator/other agent. The timing of when this observation occurs is
+defined by the generator (e.g., pre-choice vs post-outcome).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialBandit.observe_others">
+<span class="property"><span class="k"><span class="pre">abstractmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">observe_others</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rng</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#SocialBandit.observe_others"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.SocialBandit.observe_others" title="Link to this definition"></a></dt>
+<dd><p>Observe another agent/demonstrator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>rng</strong> (<em>numpy.random.Generator</em>) – RNG to use for stochastic demonstrator behavior.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The social observation payload.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#comp_model_core.interfaces.SocialObservation" title="comp_model_core.interfaces.SocialObservation">SocialObservation</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialComputationalModel">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">SocialComputationalModel</span></span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#SocialComputationalModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.SocialComputationalModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="comp_model_core.interfaces.model.html#comp_model_core.interfaces.model.ComputationalModel" title="comp_model_core.interfaces.model.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a></p>
+<p>Extension of <a class="reference internal" href="#comp_model_core.interfaces.ComputationalModel" title="comp_model_core.interfaces.ComputationalModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">ComputationalModel</span></code></a> that supports social observations.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialComputationalModel.social_update">
+<span class="sig-name descname"><span class="pre">social_update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">social</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/model.html#SocialComputationalModel.social_update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.SocialComputationalModel.social_update" title="Link to this definition"></a></dt>
+<dd><p>Update latent state after observing social information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>Any</em>) – State/context identifier for the trial.</p></li>
+<li><p><strong>social</strong> (<a class="reference internal" href="#comp_model_core.interfaces.SocialObservation" title="comp_model_core.interfaces.SocialObservation"><em>SocialObservation</em></a>) – Social observation payload (demonstrator actions/outcomes).</p></li>
+<li><p><strong>spec</strong> (<a class="reference internal" href="comp_model_core.data.html#comp_model_core.data.TaskSpec" title="comp_model_core.data.TaskSpec"><em>TaskSpec</em></a>) – Task specification.</p></li>
+<li><p><strong>info</strong> (<em>Mapping</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Additional task-specific information.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>The base implementation is a no-op. Social-learning models should override this.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialObservation">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">comp_model_core.interfaces.</span></span><span class="sig-name descname"><span class="pre">SocialObservation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">others_choices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">others_outcomes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observed_others_outcomes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/comp_model_core/interfaces/bandit.html#SocialObservation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#comp_model_core.interfaces.SocialObservation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Social observation about another agent/demonstrator.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>others_choices</strong> (<em>Sequence</em><em>[</em><em>int</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Demonstrator action(s), typically length 1 in simple paradigms.</p></li>
+<li><p><strong>others_outcomes</strong> (<em>Sequence</em><em>[</em><em>float</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – True demonstrator outcome(s) from the environment.</p></li>
+<li><p><strong>observed_others_outcomes</strong> (<em>Sequence</em><em>[</em><em>float</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Demonstrator outcome(s) as observed by the subject. <code class="docutils literal notranslate"><span class="pre">None</span></code> indicates the
+subject did not observe demonstrator outcomes.</p></li>
+<li><p><strong>info</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>] or </em><em>None</em><em>, </em><em>optional</em>) – Arbitrary metadata (e.g., whether the outcome was revealed).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialObservation.others_choices">
+<span class="sig-name descname"><span class="pre">others_choices</span></span><a class="headerlink" href="#comp_model_core.interfaces.SocialObservation.others_choices" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sequence[int] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialObservation.others_outcomes">
+<span class="sig-name descname"><span class="pre">others_outcomes</span></span><a class="headerlink" href="#comp_model_core.interfaces.SocialObservation.others_outcomes" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sequence[float] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialObservation.observed_others_outcomes">
+<span class="sig-name descname"><span class="pre">observed_others_outcomes</span></span><a class="headerlink" href="#comp_model_core.interfaces.SocialObservation.observed_others_outcomes" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Sequence[float] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="comp_model_core.interfaces.SocialObservation.info">
+<span class="sig-name descname"><span class="pre">info</span></span><a class="headerlink" href="#comp_model_core.interfaces.SocialObservation.info" title="Link to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, Any] or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id12" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">observed_others_outcomes</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id13" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id14">
+<span class="sig-name descname"><span class="pre">others_choices</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id14" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id15">
+<span class="sig-name descname"><span class="pre">others_outcomes</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#id15" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p class="rubric">Modules</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="comp_model_core.interfaces.bandit.html#module-comp_model_core.interfaces.bandit" title="comp_model_core.interfaces.bandit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bandit</span></code></a></p></td>
+<td><p>Bandit/task interfaces.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="comp_model_core.interfaces.demonstrator.html#module-comp_model_core.interfaces.demonstrator" title="comp_model_core.interfaces.demonstrator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">demonstrator</span></code></a></p></td>
+<td><p>Demonstrator/policy interface for social tasks.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="comp_model_core.interfaces.estimator.html#module-comp_model_core.interfaces.estimator" title="comp_model_core.interfaces.estimator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">estimator</span></code></a></p></td>
+<td><p>Estimator interface.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="comp_model_core.interfaces.generator.html#module-comp_model_core.interfaces.generator" title="comp_model_core.interfaces.generator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">generator</span></code></a></p></td>
+<td><p>Generator interface.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="comp_model_core.interfaces.model.html#module-comp_model_core.interfaces.model" title="comp_model_core.interfaces.model"><code class="xref py py-obj docutils literal notranslate"><span class="pre">model</span></code></a></p></td>
+<td><p>Computational model interfaces.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="comp_model_core.events.types.html" class="btn btn-neutral float-left" title="comp_model_core.events.types" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="comp_model_core.interfaces.bandit.html" class="btn btn-neutral float-right" title="comp_model_core.interfaces.bandit" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Gota Morishita.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

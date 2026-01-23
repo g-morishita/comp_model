@@ -1,0 +1,8 @@
+Welcome to comp_model_core's documentation!
+===========================================
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   api

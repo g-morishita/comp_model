@@ -1,0 +1,17 @@
+comp\_model\_core.interfaces
+============================
+
+.. automodule:: comp_model_core.interfaces
+
+   
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   bandit
+   demonstrator
+   estimator
+   generator
+   model
