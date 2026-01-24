@@ -12,7 +12,8 @@ def load_stan_code(kind: str, model_name: str) -> str:
     kind: "indiv" or "hier"
     model_name: "vs" or "vicarious_rl"
     """
-    base = Path(__file__).resolve().parents[2] / "stan"
+    breakpoint()
+    base = Path(__file__).resolve().parents[0]
     common = _read_text(base / "common" / "prior_functions.stan")
     body = _read_text(base / model_name / f"{kind}_body.stan")
     return common + "\n\n" + body
