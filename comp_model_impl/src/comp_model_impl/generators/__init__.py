@@ -5,16 +5,8 @@ from .event_log import (
     EventLogSocialPostOutcomeGenerator,
     EventLogSocialPreChoiceGenerator,
 )
-from .trial_by_trial import (
-    AsocialBanditGenerator,
-    SocialPostOutcomeGenerator,
-    SocialPreChoiceGenerator,
-)
 
 __all__ = [
-    "AsocialBanditGenerator",
-    "SocialPreChoiceGenerator",
-    "SocialPostOutcomeGenerator",
     "EventLogAsocialGenerator",
     "EventLogSocialPreChoiceGenerator",
     "EventLogSocialPostOutcomeGenerator",
