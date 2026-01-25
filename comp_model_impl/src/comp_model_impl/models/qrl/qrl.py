@@ -44,7 +44,7 @@ class QRL(ComputationalModel):
         )
     
     def supports(self, spec: TaskSpec) -> bool:
-        return not spec.is_social and spec.n_actions >= 2
+        return not spec.is_social and spec.max_n_actions >= 2
 
     def reset_block(self, *, spec: TaskSpec) -> None:
         self._q = []
@@ -59,7 +59,7 @@ class QRL(ComputationalModel):
 
     def action_probs(self, *, state: Any, spec: TaskSpec) -> np.ndarray:
         s = int(state)
-        nA = int(spec.n_actions)
+        nA = int(spec.max_n_actions)
         self._ensure_state(s, nA)
 
         q = self._q[s]
@@ -77,7 +77,7 @@ class QRL(ComputationalModel):
         if outcome is None:
             return
         s = int(state)
-        nA = int(spec.n_actions)
+        nA = int(spec.max_n_actions)
         self._ensure_state(s, nA)
 
         a = int(action)

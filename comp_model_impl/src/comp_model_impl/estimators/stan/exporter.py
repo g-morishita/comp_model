@@ -19,7 +19,7 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
     _ensure_int_states(subject)
 
     # assume constant A across blocks for a subject
-    As = [int(blk.task_spec.n_actions) for blk in subject.blocks if blk.task_spec is not None]
+    As = [int(blk.task_spec.max_n_actions) for blk in subject.blocks if blk.task_spec is not None]
     if len(set(As)) != 1:
         raise ValueError("Stan export expects constant n_actions across blocks for a subject.")
     A = As[0]

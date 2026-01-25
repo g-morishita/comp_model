@@ -19,7 +19,7 @@ class RLDemonstrator(Demonstrator):
 
     def act(self, *, state: Any, spec: TaskSpec, rng: np.random.Generator) -> int:
         probs = self.model.action_probs(state=state, spec=spec)
-        return int(rng.choice(spec.n_actions, p=probs))
+        return int(rng.choice(spec.max_n_actions, p=probs))
 
     def update(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
         self.model.update(state=state, action=int(action), outcome=float(outcome), spec=spec, info=None)

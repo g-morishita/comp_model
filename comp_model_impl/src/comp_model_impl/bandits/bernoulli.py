@@ -26,7 +26,7 @@ class BernoulliBandit(Bandit):
     @property
     def spec(self) -> TaskSpec:
         return TaskSpec(
-            n_actions=len(self.probs),
+            max_n_actions=len(self.probs),
             outcome_type=OutcomeType.BINARY,
             is_social=False,
         )

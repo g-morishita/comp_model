@@ -44,7 +44,7 @@ class Vicarious_RL(SocialComputationalModel):
         )
 
     def supports(self, spec: TaskSpec) -> bool:
-        return spec.is_social and spec.n_actions >= 2
+        return spec.is_social and spec.max_n_actions >= 2
 
     def reset_block(self, *, spec: TaskSpec) -> None:
         self._q = []
@@ -59,7 +59,7 @@ class Vicarious_RL(SocialComputationalModel):
 
     def action_probs(self, *, state: Any, spec: TaskSpec) -> np.ndarray:
         s = int(state)
-        nA = int(spec.n_actions)
+        nA = int(spec.max_n_actions)
         self._ensure_state(s, nA)
 
         q = self._q[s]
@@ -83,7 +83,7 @@ class Vicarious_RL(SocialComputationalModel):
         oo = float(social.observed_others_outcomes[0])
 
         s = int(state)
-        nA = int(spec.n_actions)
+        nA = int(spec.max_n_actions)
         self._ensure_state(s, nA)
 
         if 0 <= co < nA:

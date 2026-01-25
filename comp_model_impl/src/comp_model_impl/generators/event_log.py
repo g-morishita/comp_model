@@ -78,7 +78,7 @@ class EventLogAsocialGenerator(Generator):
                 state = bandit.get_state()
 
                 probs = model.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                action = int(rng.choice(spec.max_n_actions, p=probs))
 
                 events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action}))
                 idx += 1
@@ -204,7 +204,7 @@ class EventLogSocialPreChoiceGenerator(Generator):
                 sm.social_update(state=state, social=obs, spec=spec, info=None)
 
                 probs = sm.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                action = int(rng.choice(spec.max_n_actions, p=probs))
                 events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action}))
                 idx += 1
 
@@ -310,7 +310,7 @@ class EventLogSocialPostOutcomeGenerator(Generator):
                 state = sb.get_state()
 
                 probs = sm.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                action = int(rng.choice(spec.max_n_actions, p=probs))
                 events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action}))
                 idx += 1
 

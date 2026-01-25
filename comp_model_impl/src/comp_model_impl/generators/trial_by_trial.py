@@ -75,7 +75,7 @@ class AsocialBanditGenerator(Generator):
                 state = bandit.get_state()
 
                 probs = model.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                action = int(rng.choice(spec.max_n_actions, p=probs))
 
                 step = bandit.step(action=action, rng=rng)
 
@@ -167,7 +167,7 @@ class SocialPreChoiceGenerator(Generator):
                 sm.social_update(state=state, social=obs, spec=spec, info=None)
 
                 probs = sm.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                action = int(rng.choice(spec.max_n_actions, p=probs))
 
                 step = sb.step(action=action, rng=rng)
                 observed_outcome = step.observed_outcome
@@ -255,7 +255,7 @@ class SocialPostOutcomeGenerator(Generator):
                 state = sb.get_state()
 
                 probs = sm.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                action = int(rng.choice(spec.max_n_actions, p=probs))
 
                 step = sb.step(action=action, rng=rng)
                 observed_outcome = step.observed_outcome

@@ -35,8 +35,9 @@ class TaskSpec:
 
     Parameters
     ----------
-    n_actions : int
-        Number of available discrete actions.
+    max_n_actions : int
+        Maximum number of available discrete actions. 
+        Some actions might no be available, which is specified by TrialSpec.
     outcome_type : OutcomeType
         Semantic type of the outcome (binary vs continuous).
     outcome_range : tuple[float, float] or None, optional
@@ -58,7 +59,7 @@ class TaskSpec:
     has_state : bool
     """
 
-    n_actions: int
+    max_n_actions: int
     outcome_type: OutcomeType
     outcome_range: Optional[Tuple[float, float]] = None
     outcome_is_bounded: bool = False

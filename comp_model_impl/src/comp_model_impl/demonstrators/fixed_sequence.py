@@ -25,7 +25,7 @@ class FixedSequenceDemonstrator(Demonstrator):
             if self.fallback == "repeat_last" and len(self.actions) > 0:
                 a = int(self.actions[-1])
             else:
-                a = int(rng.integers(0, spec.n_actions))
+                a = int(rng.integers(0, spec.max_n_actions))
         self._t += 1
         return a
 

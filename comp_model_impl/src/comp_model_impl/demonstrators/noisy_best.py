@@ -21,7 +21,7 @@ class NoisyBestArmDemonstrator(Demonstrator):
         return
 
     def act(self, *, state: Any, spec: TaskSpec, rng: np.random.Generator) -> int:
-        k = spec.n_actions
+        k = spec.max_n_actions
         best = int(np.argmax(np.asarray(self.reward_probs, dtype=float)))
         if float(rng.random()) < float(self.p_best):
             return best

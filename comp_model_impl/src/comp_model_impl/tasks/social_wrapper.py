@@ -36,7 +36,7 @@ class SocialBanditWrapper(SocialBandit):
     def spec(self) -> TaskSpec:
         s = self.base.spec
         return TaskSpec(
-            n_actions=s.n_actions, 
+            max_n_actions=s.max_n_actions, 
             outcome_type=s.outcome_type, 
             outcome_range=s.outcome_range, 
             outcome_is_bounded=s.outcome_is_bounded, 
