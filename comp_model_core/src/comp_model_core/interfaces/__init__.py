@@ -1,29 +1,38 @@
+"""comp_model_core.interfaces
+
+Abstract interfaces for environments, runners, models, generators, demonstrators,
+and estimators.
+
+This package contains the stable interfaces that concrete implementations should
+conform to.
+
+See Also
+--------
+comp_model_core.interfaces.bandit
+comp_model_core.interfaces.block_runner
+comp_model_core.interfaces.model
+comp_model_core.interfaces.generator
 """
-Abstract interfaces (ABCs) for tasks, models, generators, and estimators.
 
-The :mod:`comp_model_core.interfaces` subpackage defines the minimal contracts that
-implementations must satisfy in downstream packages (e.g., ``comp_model_impl``).
-
-Notes
------
-These interfaces are designed to be small, explicit, and easy to mock for testing.
-They intentionally avoid opinionated training frameworks or heavy dependencies.
-"""
-
-from .bandit import Bandit, SocialBandit, BanditStep, SocialObservation
+from .bandit import BanditEnv, SocialBanditEnv, EnvStep
+from .block_runner import BlockRunner, SocialBlockRunner, StepResult, SocialObservation
 from .model import ComputationalModel, SocialComputationalModel
-from .generator import Generator
+from .generator import Generator, RunnerBuilder
 from .estimator import Estimator, FitResult
 from .demonstrator import Demonstrator
 
 __all__ = [
-    "Bandit",
-    "SocialBandit",
-    "BanditStep",
+    "BanditEnv",
+    "SocialBanditEnv",
+    "EnvStep",
+    "BlockRunner",
+    "SocialBlockRunner",
+    "StepResult",
     "SocialObservation",
     "ComputationalModel",
     "SocialComputationalModel",
     "Generator",
+    "RunnerBuilder",
     "Estimator",
     "FitResult",
     "Demonstrator",

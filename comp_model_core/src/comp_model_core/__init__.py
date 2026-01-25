@@ -1,20 +1,19 @@
-"""
-comp_model_core
-==============
+"""comp_model_core
 
 Core interfaces and data structures for computational behavior modeling.
 
 This package is intentionally lightweight and dependency-minimal. It defines:
 
-- **Data containers** for trials, blocks, subjects, and studies.
-- **Interfaces** (ABCs) for tasks/bandits, models, generators, estimators, and demonstrators.
-- **Parameter schemas** and transforms to standardize parameter handling and validation.
-- **Planning utilities** for specifying simulation studies via JSON/YAML.
+- Data containers for trials, blocks, subjects, and studies.
+- Interfaces (ABCs) for environments (bandits), block runners, models, generators,
+  estimators, and demonstrators.
+- Parameter schemas and transforms to standardize parameter handling and validation.
+- Planning utilities for specifying simulation studies via JSON/YAML.
 
 Notes
 -----
-The top-level package lazily imports submodules listed in ``__all__`` to keep
-import times fast and to avoid importing optional dependencies unless needed.
+The top-level package lazily imports submodules listed in ``__all__`` to keep import
+times fast and to avoid importing optional dependencies unless needed.
 """
 
 from __future__ import annotations
@@ -36,11 +35,12 @@ __all__ = [
 
 
 def __getattr__(name: str) -> Any:
-    """
-    Lazily import a top-level submodule.
+    """Lazily import a top-level submodule.
 
-    This enables ``import comp_model_core; comp_model_core.params`` without
-    importing all subpackages at import time.
+    This enables patterns like::
+
+        import comp_model_core
+        comp_model_core.params  # triggers lazy import
 
     Parameters
     ----------
@@ -63,8 +63,7 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> List[str]:
-    """
-    Return the list of available attributes for interactive completion.
+    """Return available attributes for interactive completion.
 
     Returns
     -------
