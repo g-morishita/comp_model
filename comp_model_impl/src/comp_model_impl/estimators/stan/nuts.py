@@ -69,7 +69,7 @@ class StanNUTSSubjectwiseEstimator(Estimator):
             for blk in subj.blocks:
                 if blk.task_spec is None or not self.model.supports(blk.task_spec):
                     return False
-                if "event_log" not in (blk.metadata or {}):
+                if blk.event_log is None:
                     return False
         return True
 
@@ -138,7 +138,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
             for blk in subj.blocks:
                 if blk.task_spec is None or not self.model.supports(blk.task_spec):
                     return False
-                if "event_log" not in (blk.metadata or {}):
+                if blk.event_log is None:
                     return False
         return True
 

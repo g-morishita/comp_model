@@ -11,7 +11,7 @@ from comp_model_core.interfaces.bandit import Bandit, SocialBandit
 from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel, SocialComputationalModel
 from comp_model_core.plans.block import BlockPlan
-from comp_model_core.events.types import EVENT_LOG_KEY, Event, EventLog, EventType
+from comp_model_core.events.types import Event, EventLog, EventType
 
 TaskBuilder = Callable[[BlockPlan], Bandit]
 
@@ -26,8 +26,8 @@ def _reset_block(model: ComputationalModel, bandit: Bandit, rng: np.random.Gener
     model.reset_block(spec=bandit.spec)
 
 
-def _events_to_json(events: list[Event], *, metadata: dict) -> dict:
-    return EventLog(events=events, metadata=metadata).to_json()
+def _build_event_log(events: list[Event], *, metadata: dict) -> EventLog:
+    return EventLog(events=events, metadata=metadata)
 
 
 @dataclass(slots=True)
@@ -40,7 +40,7 @@ class EventLogAsocialGenerator(Generator):
       For each trial:
         CHOICE -> OUTCOME
 
-    The event log is stored in Block.metadata[EVENT_LOG_KEY].
+    The event log is stored in Block.event_log.
     """
 
     def simulate_subject(
@@ -123,9 +123,9 @@ class EventLogAsocialGenerator(Generator):
                     block_id=plan.block_id,
                     trials=trials,
                     task_spec=spec,
+                    event_log=_build_event_log(events, metadata={"timing": "asocial"}),
                     metadata={
                         "plan": dict(plan.metadata),
-                        EVENT_LOG_KEY: _events_to_json(events, metadata={"timing": "asocial"}),
                     },
                 )
             )
@@ -247,9 +247,9 @@ class EventLogSocialPreChoiceGenerator(Generator):
                     block_id=plan.block_id,
                     trials=trials,
                     task_spec=spec,
+                    event_log=_build_event_log(events, metadata={"timing": "pre_choice"}),
                     metadata={
                         "plan": dict(plan.metadata),
-                        EVENT_LOG_KEY: _events_to_json(events, metadata={"timing": "pre_choice"}),
                     },
                 )
             )
@@ -372,9 +372,9 @@ class EventLogSocialPostOutcomeGenerator(Generator):
                     block_id=plan.block_id,
                     trials=trials,
                     task_spec=spec,
+                    event_log=_build_event_log(events, metadata={"timing": "post_outcome"}),
                     metadata={
                         "plan": dict(plan.metadata),
-                        EVENT_LOG_KEY: _events_to_json(events, metadata={"timing": "post_outcome"}),
                     },
                 )
             )

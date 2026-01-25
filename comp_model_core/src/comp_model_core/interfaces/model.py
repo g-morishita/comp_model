@@ -15,6 +15,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Mapping, Sequence
 
+from dataclasses import is_dataclass, fields as dataclass_fields
+
 import numpy as np
 
 from ..spec import TaskSpec
@@ -107,8 +109,46 @@ class ComputationalModel(ABC):
             strict=strict,
             check_bounds=check_bounds,
         )
+        
         for k, v in validated.items():
             setattr(self, k, float(v))
+
+    def clone(self) -> "ComputationalModel":
+        """
+        Create a fresh model instance with the same configuration and parameter values,
+        but with **latent state cleared**.
+
+        This method exists to make likelihood evaluation safe under repeated calls,
+        multi-start optimization, and parallelism. Estimators should treat models as
+        *templates* and call ``clone()`` to obtain an isolated instance to mutate.
+
+        Returns
+        -------
+        ComputationalModel
+            A new instance of ``type(self)`` with identical init/config fields and
+            current parameter values.
+        """
+        cls = type(self)
+
+        # Preferred path: dataclass-based models (all built-in models are dataclasses).
+        if is_dataclass(self):
+            kwargs = {f.name: getattr(self, f.name) for f in dataclass_fields(self) if f.init}
+            m = cls(**kwargs)  # type: ignore[call-arg]
+            # Ensure schema parameters match current values (in case schema defaults differ).
+            m.set_params(self.get_params(), strict=False, check_bounds=False)
+            return m
+
+        # Fallback: try a no-arg constructor, then set schema parameters.
+        try:
+            m = cls()  # type: ignore[call-arg]
+        except Exception as e:  # pragma: no cover
+            raise TypeError(
+                f"{cls.__name__}.clone() is not supported for non-dataclass models. "
+                "Override clone() in your model class."
+            ) from e
+
+        m.set_params(self.get_params(), strict=False, check_bounds=False)
+        return m
 
     def supports(self, spec: TaskSpec) -> bool:
         """

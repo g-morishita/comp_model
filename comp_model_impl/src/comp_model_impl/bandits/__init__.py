@@ -1,4 +1,4 @@
-"""Bandit task implementations and a simple registry."""
+"""Bandit task implementations and registry."""
 
 from .bernoulli import BernoulliBandit
 from .registry import BanditFactory, BanditRegistry

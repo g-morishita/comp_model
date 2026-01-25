@@ -1,34 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from typing import Mapping
 
 import numpy as np
 
-from comp_model_core.data.types import StudyData, SubjectData, Block
-from comp_model_core.events.types import EVENT_LOG_KEY, EventLog, EventType, validate_event_log
+from comp_model_core.data.types import StudyData, SubjectData
+from comp_model_core.events.accessors import get_event_log
+from comp_model_core.events.types import EventType
 from comp_model_core.interfaces.bandit import SocialObservation
 from comp_model_core.interfaces.model import ComputationalModel, SocialComputationalModel
 
 _EPS = 1e-12
-
-
-def _get_block_event_log(block: Block) -> EventLog:
-    md = block.metadata or {}
-    if EVENT_LOG_KEY not in md:
-        raise ValueError(
-            f"Block {block.block_id!r} is missing metadata[{EVENT_LOG_KEY!r}]. "
-            "Use an EventLog*Generator (or add an event log exporter)."
-        )
-    raw = md[EVENT_LOG_KEY]
-    if isinstance(raw, EventLog):
-        log = raw
-    elif isinstance(raw, dict):
-        log = EventLog.from_json(raw)
-    else:
-        raise TypeError(f"metadata[{EVENT_LOG_KEY!r}] must be dict or EventLog, got {type(raw)}")
-
-    validate_event_log(log)
-    return log
 
 
 def loglike_subject(
@@ -40,23 +22,30 @@ def loglike_subject(
     """
     Event-log replay for a single subject.
 
-    Semantics are fully determined by the event stream.
-    In particular, BLOCK_START events indicate when the model must reset.
+    Semantics are fully determined by the event stream. In particular, BLOCK_START
+    events indicate when the model must reset.
+
+    Notes
+    -----
+    This function never mutates the passed-in ``model``. It evaluates likelihood
+    using a fresh ``model.clone()`` instance so it is safe under repeated calls,
+    multi-start optimization, and parallelism.
     """
-    model.set_params(params)
+    m = model.clone()
+    m.set_params(params)
     ll = 0.0
-    is_social_model = isinstance(model, SocialComputationalModel)
+    is_social_model = isinstance(m, SocialComputationalModel)
 
     for block in subject.blocks:
         spec = block.task_spec
         if spec is None:
             raise ValueError("Block.task_spec is None; required for replay.")
 
-        log = _get_block_event_log(block)
+        log = get_event_log(block)
 
         for e in log.events:
             if e.type is EventType.BLOCK_START:
-                model.reset_block(spec=spec)
+                m.reset_block(spec=spec)
                 continue
 
             if e.type is EventType.SOCIAL_OBSERVED:
@@ -70,14 +59,14 @@ def loglike_subject(
                     observed_others_outcomes=p.get("observed_others_outcomes"),
                     info=p.get("social_info"),
                 )
-                model.social_update(state=e.state, social=social, spec=spec, info=None)
+                m.social_update(state=e.state, social=social, spec=spec, info=None)
                 continue
 
             if e.type is EventType.CHOICE:
-                choice = e.payload.get("choice", None)
-                if choice is None:
+                choice = p_choice = e.payload.get("choice", None)
+                if p_choice is None:
                     continue
-                probs = model.action_probs(state=e.state, spec=spec)
+                probs = m.action_probs(state=e.state, spec=spec)
                 p = float(probs[int(choice)])
                 ll += float(np.log(max(p, _EPS)))
                 continue
@@ -86,7 +75,7 @@ def loglike_subject(
                 action = int(e.payload["action"])
                 observed_outcome = e.payload.get("observed_outcome", None)
                 info = e.payload.get("info", None)
-                model.update(
+                m.update(
                     state=e.state,
                     action=action,
                     outcome=observed_outcome,

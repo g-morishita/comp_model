@@ -1,7 +1,6 @@
-"""Stan-based estimators and helpers.
+"""Stan-based estimators and helper utilities.
 
-Note: to ship the bundled ``*.stan`` templates in wheels/sdists, ensure your
-packaging configuration includes them as package data.
+Note: The Stan program templates (``*.stan``) are distributed as package data.
 """
 
 from .nuts import StanHierarchicalNUTSEstimator, StanNUTSSubjectwiseEstimator

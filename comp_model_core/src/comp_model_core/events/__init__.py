@@ -18,11 +18,10 @@ comp_model_core.events.types.EventLog
 comp_model_core.events.accessors.get_event_log
 """
 
-from .types import EVENT_LOG_KEY, EventType, Event, EventLog, validate_event_log
+from .types import EventType, Event, EventLog, validate_event_log
 from .accessors import get_event_log
 
 __all__ = [
-    "EVENT_LOG_KEY",
     "EventType",
     "Event",
     "EventLog",

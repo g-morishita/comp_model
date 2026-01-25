@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any, Sequence
 
 from ..spec import TaskSpec
+from ..events.types import EventLog
 
 Json = dict[str, Any]
 
@@ -91,8 +92,9 @@ class Block:
     A contiguous run of trials.
 
     In many experimental paradigms, latent variables (e.g., Q-values) reset at the
-    beginning of each block. Blocks can also carry task specifications and metadata
-    such as an event log.
+    beginning of each block. Blocks also carry an optional :class:`~comp_model_core.events.types.EventLog`
+    which is the canonical source of truth for event timing (e.g., when social
+    observations occur relative to choices and outcomes).
 
     Parameters
     ----------
@@ -102,20 +104,25 @@ class Block:
         Sequence of trials in this block.
     task_spec : TaskSpec or None, optional
         Task specification describing action space and outcome semantics.
+    event_log : EventLog or None, optional
+        Block-level event stream. Estimators should prefer this over ad-hoc timing
+        inferred from trials.
     metadata : dict[str, Any], optional
-        Arbitrary metadata (e.g., generator settings, event logs).
+        Arbitrary metadata (e.g., generator settings).
 
     Attributes
     ----------
     block_id : str
     trials : Sequence[Trial]
-    task_spec : TaskSpec or None
+    task_spec : TaskSpec | None
+    event_log : EventLog | None
     metadata : dict[str, Any]
     """
 
     block_id: str
     trials: Sequence[Trial]
     task_spec: TaskSpec | None = None
+    event_log: EventLog | None = None
     metadata: Json = field(default_factory=dict)
 
 

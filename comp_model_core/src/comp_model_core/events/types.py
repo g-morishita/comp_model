@@ -10,8 +10,8 @@ social observation, choice, and outcome updates occur.
 
 Notes
 -----
-Generators typically store serialized event logs inside :attr:`comp_model_core.data.types.Block.metadata`
-under the key :data:`EVENT_LOG_KEY`.
+Generators typically attach event logs to :attr:`comp_model_core.data.types.Block.event_log`.
+
 """
 
 from __future__ import annotations
@@ -20,9 +20,6 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Mapping, Sequence
 
-
-#: Key under which generators store the block event log in ``Block.metadata``.
-EVENT_LOG_KEY = "event_log"
 
 
 class EventType(IntEnum):

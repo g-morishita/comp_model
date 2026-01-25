@@ -1,4 +1,4 @@
-"""Task/bandit construction utilities."""
+"""Task / bandit construction utilities."""
 
 from .build import build_bandit_for_plan
 from .social_wrapper import SocialBanditWrapper

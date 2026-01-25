@@ -1,11 +1,9 @@
-"""
-comp_model_impl
+"""comp_model_impl
 
 Concrete implementations (models, tasks, generators, estimators) that conform to
 interfaces defined in :mod:`comp_model_core`.
 
-This top-level module intentionally keeps imports light to avoid import-time
-side effects.
+The top-level import is intentionally lightweight. Subpackages are loaded lazily.
 """
 
 from __future__ import annotations
@@ -30,8 +28,6 @@ __all__ = [
 ]
 
 
-# Lazily import subpackages so `import comp_model_impl` stays cheap.
-# This also avoids importing optional/heavy dependencies unless needed.
 def __getattr__(name: str):
     if name in {
         "bandits",

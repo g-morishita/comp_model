@@ -74,7 +74,7 @@ class BoxMLESubjectwiseEstimator(Estimator):
             def nll(x: np.ndarray) -> float:
                 params = self.space.to_params(x)
                 if self.validate_bounds_on_set:
-                    self.model.set_params(params, strict=True, check_bounds=True)
+                    params = self.model.param_schema.validate(params, strict=True, check_bounds=True)
                 ll = loglike_subject(subject=subj, model=self.model, params=params)
                 return float(-ll)
 
