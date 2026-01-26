@@ -1,4 +1,4 @@
-"""
+r"""
 Transforms between constrained parameters and unconstrained real space.
 
 Optimization and some inference methods (e.g., unconstrained optimizers, HMC)
@@ -108,7 +108,7 @@ class Identity:
 
 @dataclass(frozen=True, slots=True)
 class Sigmoid:
-    """
+    r"""
     Logistic transform mapping :math:`\mathbb{R} \to (0, 1)`.
 
     Parameters
@@ -120,7 +120,7 @@ class Sigmoid:
     eps: float = 1e-12
 
     def forward(self, z: float) -> float:
-        """
+        r"""
         Map :math:`z \in \mathbb{R}` to :math:`x \in (0, 1)`.
 
         Parameters
@@ -136,7 +136,7 @@ class Sigmoid:
         return float(expit(float(z)))
 
     def inverse(self, x: float) -> float:
-        """
+        r"""
         Map :math:`x \in (0, 1)` to :math:`z \in \mathbb{R}`.
 
         Parameters
@@ -160,7 +160,7 @@ class Sigmoid:
 
 @dataclass(frozen=True, slots=True)
 class Softplus:
-    """
+    r"""
     Softplus transform mapping :math:`\mathbb{R} \to (0, \infty)`.
 
     Parameters
@@ -172,7 +172,7 @@ class Softplus:
     eps: float = 1e-12
 
     def forward(self, z: float) -> float:
-        """
+        r"""
         Map :math:`z \in \mathbb{R}` to :math:`x \in (0, \infty)`.
 
         Parameters
@@ -225,7 +225,7 @@ class Softplus:
 
 @dataclass(frozen=True, slots=True)
 class BoundedTanh:
-    """
+    r"""
     Smooth transform mapping :math:`\mathbb{R} \to (lo, hi)` using ``tanh``.
 
     Parameters
@@ -243,7 +243,7 @@ class BoundedTanh:
     eps: float = 1e-12
 
     def forward(self, z: float) -> float:
-        """
+        r"""
         Map :math:`z \in \mathbb{R}` to :math:`x \in (lo, hi)`.
 
         Parameters
@@ -261,7 +261,7 @@ class BoundedTanh:
         return float(self.lo + (self.hi - self.lo) * (t + 1.0) * 0.5)
 
     def inverse(self, x: float) -> float:
-        """
+        r"""
         Map :math:`x \in (lo, hi)` to :math:`z \in \mathbb{R}`.
 
         Parameters
