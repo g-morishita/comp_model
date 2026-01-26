@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Mapping, Sequence
 
 import numpy as np
+import copy
 
 from comp_model_core.data.types import StudyData, SubjectData
 from comp_model_core.events.accessors import get_event_log
@@ -44,13 +45,13 @@ def loglike_subject(
     using a fresh ``model.clone()`` instance so it is safe under repeated calls,
     multi-start optimization, and parallelism.
     """
-    m = model.clone()
+    m = copy.deepcopy(model)
     m.set_params(params)
     ll = 0.0
     is_social_model = isinstance(m, SocialComputationalModel)
 
     for block in subject.blocks:
-        spec = block.task_spec
+        spec = block.env_spec
         if spec is None:
             raise ValueError("Block.task_spec is None; required for replay.")
 

@@ -149,7 +149,7 @@ class EventLogAsocialGenerator(Generator):
                 Block(
                     block_id=plan.block_id,
                     trials=trials,
-                    task_spec=spec,
+                    env_spec=spec,
                     event_log=_build_event_log(events, metadata={"timing": "asocial"}),
                     metadata={
                         "plan": dict(plan.metadata),

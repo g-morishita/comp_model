@@ -47,7 +47,7 @@ class BoxMLESubjectwiseEstimator(Estimator):
     def supports(self, study: StudyData) -> bool:
         for subj in study.subjects:
             for blk in subj.blocks:
-                if blk.task_spec is None or not self.model.supports(blk.task_spec):
+                if blk.env_spec is None or not self.model.supports(blk.env_spec):
                     return False
         return True
 
@@ -134,7 +134,7 @@ class TransformedMLESubjectwiseEstimator(Estimator):
     def supports(self, study: StudyData) -> bool:
         for subj in study.subjects:
             for blk in subj.blocks:
-                if blk.task_spec is None or not self.model.supports(blk.task_spec):
+                if blk.env_spec is None or not self.model.supports(blk.env_spec):
                     return False
         return True
 
