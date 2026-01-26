@@ -6,9 +6,10 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from comp_model_core.interfaces.model import SocialComputationalModel
+from comp_model_core.requirements import RequireAllDemoOutcomesHidden, RequireSocialBlock, RequireAnySelfOutcomeObservable, Requirement
 from comp_model_core.params import ParameterSchema
 from comp_model_core.interfaces.bandit import SocialObservation
-from comp_model_core.spec import TaskSpec
+from comp_model_core.spec import EnvironmentSpec
 from comp_model_core.utility import _softmax
 
 from .schema import vs_schema
@@ -64,6 +65,14 @@ class VS(SocialComputationalModel):
         self._q: list[np.ndarray] = []
         self._last_choice: list[int | None] = []
 
+    @classmethod
+    def requirements(cls) -> tuple[Requirement, ...]:
+        return (
+            RequireSocialBlock(),
+            RequireAllDemoOutcomesHidden(),
+            RequireAnySelfOutcomeObservable(),
+        )
+
     @property
     def param_schema(self) -> ParameterSchema:
         return vs_schema(
@@ -75,10 +84,10 @@ class VS(SocialComputationalModel):
             kappa_abs_max=float(self.kappa_abs_max),
         )
 
-    def supports(self, spec: TaskSpec) -> bool:
+    def supports(self, spec: EnvironmentSpec) -> bool:
         return spec.is_social and spec.n_actions >= 2
 
-    def reset_block(self, *, spec: TaskSpec) -> None:
+    def reset_block(self, *, spec: EnvironmentSpec) -> None:
         self._q = []
         self._last_choice = []
 
@@ -93,7 +102,7 @@ class VS(SocialComputationalModel):
             self._q[s] = np.zeros(n_actions, dtype=float)
             self._last_choice[s] = None
 
-    def action_probs(self, *, state: Any, spec: TaskSpec) -> np.ndarray:
+    def action_probs(self, *, state: Any, spec: EnvironmentSpec) -> np.ndarray:
         s = int(state)
         nA = int(spec.n_actions)
         self._ensure_state(s, nA)
@@ -107,7 +116,7 @@ class VS(SocialComputationalModel):
         *,
         state: Any,
         social: SocialObservation,
-        spec: TaskSpec,
+        spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
         if not social.others_choices:
@@ -129,7 +138,7 @@ class VS(SocialComputationalModel):
         state: Any,
         action: int,
         outcome: float | None,
-        spec: TaskSpec,
+        spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
         if outcome is None:

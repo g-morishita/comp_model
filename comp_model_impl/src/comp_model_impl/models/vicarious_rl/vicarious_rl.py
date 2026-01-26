@@ -38,8 +38,6 @@ class Vicarious_RL(SocialComputationalModel):
 
     @classmethod
     def requirements(cls) -> tuple[Requirement, ...]:
-        # QRL requires an asocial task and at least one trial with self outcome
-        # observable (possibly noisy).
         return (
             RequireSocialBlock(),
             RequireAnyDemoOutcomeObservable(),

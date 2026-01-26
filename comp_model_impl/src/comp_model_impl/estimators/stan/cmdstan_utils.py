@@ -2,7 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 import hashlib
 import tempfile
-import os
+
 
 def _read_text(p: Path) -> str:
     return p.read_text(encoding="utf-8")
