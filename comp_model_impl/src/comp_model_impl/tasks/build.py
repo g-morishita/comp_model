@@ -18,8 +18,9 @@ from __future__ import annotations
 from comp_model_core.interfaces.block_runner import BlockRunner
 from comp_model_core.plans.block import BlockPlan
 from comp_model_core.spec import parse_trial_specs_schedule
+from comp_model_core.registry import NamedRegistry
+from comp_model_core.interfaces.bandit import BanditEnv
 
-from ..bandits.registry import BanditRegistry
 from ..demonstrators.registry import DemonstratorRegistry
 from .block_runner_wrappers import BanditBlockRunner, SocialBanditBlockRunner
 
@@ -27,12 +28,12 @@ from .block_runner_wrappers import BanditBlockRunner, SocialBanditBlockRunner
 def build_runner_for_plan(
     *,
     plan: BlockPlan,
-    bandits: BanditRegistry,
+    bandits: NamedRegistry[BanditEnv],
     demonstrators: DemonstratorRegistry | None = None,
 ) -> BlockRunner:
     """Build a runtime block runner for one block plan."""
 
-    env = bandits.make(plan.bandit_type, plan.bandit_config)
+    env = bandits[plan.bandit_type].from_config(plan.bandit_config)
 
     if plan.demonstrator_type is None:
         trial_specs = parse_trial_specs_schedule(

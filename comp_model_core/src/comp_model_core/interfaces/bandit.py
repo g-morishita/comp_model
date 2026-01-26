@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -94,6 +94,11 @@ class BanditEnv(ABC):
     comp_model_core.spec.EnvironmentSpec
         Specification describing the environment's action/outcome interface.
     """
+
+    @classmethod
+    @abstractmethod
+    def from_config(cls, cfg: Mapping[str, Any]) -> "BanditEnv":
+        ...
 
     @property
     @abstractmethod

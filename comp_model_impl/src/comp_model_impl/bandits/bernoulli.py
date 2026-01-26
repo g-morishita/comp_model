@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Sequence, Mapping
 
 import numpy as np
 
@@ -28,6 +28,10 @@ class BernoulliBanditEnv(BanditEnv):
         for p in self.probs:
             if not (0.0 <= float(p) <= 1.0):
                 raise ValueError(f"Invalid prob {p}; must be in [0,1].")
+
+    @classmethod
+    def from_config(cls, cfg):
+        return cls(probs=cfg["probs"])
 
     @property
     def spec(self) -> EnvironmentSpec:
