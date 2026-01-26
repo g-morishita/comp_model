@@ -20,8 +20,8 @@ from comp_model_core.plans.block import BlockPlan
 from comp_model_core.spec import parse_trial_specs_schedule
 from comp_model_core.registry import NamedRegistry
 from comp_model_core.interfaces.bandit import BanditEnv
+from comp_model_core.interfaces.demonstrator import Demonstrator
 
-from ..demonstrators.registry import DemonstratorRegistry
 from .block_runner_wrappers import BanditBlockRunner, SocialBanditBlockRunner
 
 
@@ -29,7 +29,7 @@ def build_runner_for_plan(
     *,
     plan: BlockPlan,
     bandits: NamedRegistry[BanditEnv],
-    demonstrators: DemonstratorRegistry | None = None,
+    demonstrators: NamedRegistry[Demonstrator] | None = None,
 ) -> BlockRunner:
     """Build a runtime block runner for one block plan."""
 
@@ -46,11 +46,7 @@ def build_runner_for_plan(
     if demonstrators is None:
         raise ValueError("Plan requests demonstrator_type, but no DemonstratorRegistry was provided.")
 
-    demo = demonstrators.make(
-        plan.demonstrator_type,
-        bandit_cfg=plan.bandit_config,
-        demo_cfg=plan.demonstrator_config or {},
-    )
+    demo = demonstrators[plan.demonstrator_type].from_config(bandit_cfg=plan.bandit_config, demo_cfg=plan.demonstrator_config)
 
     trial_specs = parse_trial_specs_schedule(
         n_trials=int(plan.n_trials),

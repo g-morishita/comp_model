@@ -8,7 +8,7 @@ import numpy as np
 from comp_model_core.interfaces.model import SocialComputationalModel
 from comp_model_core.requirements import RequireAnyDemoOutcomeObservable, RequireSocialBlock, Requirement
 from comp_model_core.params import ParameterSchema
-from comp_model_core.interfaces.bandit import SocialObservation
+from comp_model_core.interfaces.block_runner import SocialObservation
 from comp_model_core.spec import EnvironmentSpec
 from comp_model_core.utility import _softmax
 
@@ -82,6 +82,7 @@ class Vicarious_RL(SocialComputationalModel):
         social: SocialObservation,
         spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
+        rng: np.random.Generator | None = None,
     ) -> None:
         if not social.others_choices:
             return
@@ -108,5 +109,6 @@ class Vicarious_RL(SocialComputationalModel):
         outcome: float | None,
         spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
+        rng: np.random.Generator | None = None,
     ) -> None:
         return

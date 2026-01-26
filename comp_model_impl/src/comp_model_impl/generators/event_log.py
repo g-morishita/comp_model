@@ -294,7 +294,7 @@ class EventLogSocialPreChoiceGenerator(Generator):
                 Block(
                     block_id=plan.block_id,
                     trials=trials,
-                    task_spec=spec,
+                    env_spec=spec,
                     event_log=_build_event_log(events, metadata={"timing": "pre_choice"}),
                     metadata={
                         "plan": dict(plan.metadata),
@@ -424,7 +424,7 @@ class EventLogSocialPostOutcomeGenerator(Generator):
                 Block(
                     block_id=plan.block_id,
                     trials=trials,
-                    task_spec=spec,
+                    env_spec=spec,
                     event_log=_build_event_log(events, metadata={"timing": "post_outcome"}),
                     metadata={
                         "plan": dict(plan.metadata),

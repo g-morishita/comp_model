@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Sequence, Mapping
 
 import numpy as np
 
@@ -15,7 +15,11 @@ class NoisyBestArmDemonstrator(Demonstrator):
     Chooses argmax(reward_probs) with prob p_best else random among others.
     """
     reward_probs: Sequence[float]
-    p_best: float = 0.8
+    p_best: float
+
+    @classmethod
+    def from_config(cls, bandit_cfg: Mapping[str, Any], demo_cfg: Mapping[str, Any]) -> "NoisyBestArmDemonstrator":
+        return cls(reward_probs=bandit_cfg["probs"], p_best=demo_cfg["p_best"])
 
     def reset(self, *, spec: EnvironmentSpec, rng: np.random.Generator) -> None:
         return
