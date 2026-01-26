@@ -17,6 +17,8 @@ from comp_model_core.validation import validate_block_plan
 
 BlockRunnerBuilder = Callable[[BlockPlan], BlockRunner]
 
+_EPS = 1e-12
+
 
 def _ensure_model_supports(model: ComputationalModel, bandit: BanditEnv) -> None:
     if not model.supports(spec=bandit.spec):
@@ -35,10 +37,14 @@ def _build_event_log(events: list[Event], *, metadata: dict) -> EventLog:
 def _mask_and_renorm(probs: np.ndarray, available_actions: Sequence[int] | None) -> np.ndarray:
     p = np.asarray(probs, dtype=float).copy()
     if available_actions is None:
-        s = float(p.sum())
-        if s <= 0:
-            raise ValueError("Model returned non-positive probability mass.")
-        return p / s
+        return p
+
+    mask = np.zeros_like(p, dtype=bool)
+    for a in available_actions:
+        mask[int(a)] = True
+    p[~mask] = 0.0
+    s = float(p.sum())
+    return p / max(s, _EPS)
 
 
 @dataclass(slots=True)
