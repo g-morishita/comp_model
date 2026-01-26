@@ -6,7 +6,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from comp_model_core.interfaces.demonstrator import Demonstrator
-from comp_model_core.spec import TaskSpec
+from comp_model_core.spec import EnvironmentSpec
 
 
 @dataclass(slots=True)
@@ -17,10 +17,10 @@ class NoisyBestArmDemonstrator(Demonstrator):
     reward_probs: Sequence[float]
     p_best: float = 0.8
 
-    def reset(self, *, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def reset(self, *, spec: EnvironmentSpec, rng: np.random.Generator) -> None:
         return
 
-    def act(self, *, state: Any, spec: TaskSpec, rng: np.random.Generator) -> int:
+    def act(self, *, state: Any, spec: EnvironmentSpec, rng: np.random.Generator) -> int:
         k = spec.n_actions
         best = int(np.argmax(np.asarray(self.reward_probs, dtype=float)))
         if float(rng.random()) < float(self.p_best):
@@ -28,5 +28,5 @@ class NoisyBestArmDemonstrator(Demonstrator):
         others = [a for a in range(k) if a != best]
         return int(rng.choice(others))
 
-    def update(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def update(self, *, state: Any, action: int, outcome: float, spec: EnvironmentSpec, rng: np.random.Generator) -> None:
         return

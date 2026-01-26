@@ -6,7 +6,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from comp_model_core.interfaces.demonstrator import Demonstrator
-from comp_model_core.spec import TaskSpec
+from comp_model_core.spec import EnvironmentSpec
 
 
 @dataclass(slots=True)
@@ -15,10 +15,10 @@ class FixedSequenceDemonstrator(Demonstrator):
     fallback: str = "repeat_last"  # "repeat_last" or "random"
     _t: int = 0
 
-    def reset(self, *, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def reset(self, *, spec: EnvironmentSpec, rng: np.random.Generator) -> None:
         self._t = 0
 
-    def act(self, *, state: Any, spec: TaskSpec, rng: np.random.Generator) -> int:
+    def act(self, *, state: Any, spec: EnvironmentSpec, rng: np.random.Generator) -> int:
         if self._t < len(self.actions):
             a = int(self.actions[self._t])
         else:
@@ -29,5 +29,5 @@ class FixedSequenceDemonstrator(Demonstrator):
         self._t += 1
         return a
 
-    def update(self, *, state: Any, action: int, outcome: float, spec: TaskSpec, rng: np.random.Generator) -> None:
+    def update(self, *, state: Any, action: int, outcome: float, spec: EnvironmentSpec, rng: np.random.Generator) -> None:
         return

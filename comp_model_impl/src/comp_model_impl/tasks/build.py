@@ -1,27 +1,46 @@
+"""comp_model_impl.tasks.build
+
+Block-runner construction from blueprint plans.
+
+This module provides :func:`build_runner_for_plan`, the default adapter between
+serializable :class:`comp_model_core.plans.block.BlockPlan` objects and runtime
+execution objects (:class:`comp_model_core.interfaces.block_runner.BlockRunner`).
+
+In this repo version, trial interface schedules are **fully explicit**:
+
+- Each block plan must specify a complete per-trial ``trial_specs`` schedule
+  (or a template + overrides expanded at load time).
+- Outcome visibility/noise is a property of the trial interface, not the environment.
+"""
+
 from __future__ import annotations
+
+from comp_model_core.interfaces.block_runner import BlockRunner
+from comp_model_core.plans.block import BlockPlan
+from comp_model_core.spec import parse_trial_specs_schedule
 
 from ..bandits.registry import BanditRegistry
 from ..demonstrators.registry import DemonstratorRegistry
-from comp_model_core.interfaces.bandit import Bandit
-from comp_model_core.plans.block import BlockPlan
-from .social_wrapper import SocialBanditWrapper
+from .block_runner_wrappers import BanditBlockRunner, SocialBanditBlockRunner
 
 
-def build_bandit_for_plan(
+def build_runner_for_plan(
     *,
     plan: BlockPlan,
     bandits: BanditRegistry,
     demonstrators: DemonstratorRegistry | None = None,
-    reveal_demo_outcome: bool,
-    reveal_self_outcome: bool,
-) -> Bandit:
-    """
-    Build a (possibly social) bandit for one block plan.
-    """
-    base = bandits.make(plan.bandit_type, plan.bandit_config)
+) -> BlockRunner:
+    """Build a runtime block runner for one block plan."""
+
+    env = bandits.make(plan.bandit_type, plan.bandit_config)
 
     if plan.demonstrator_type is None:
-        return base
+        trial_specs = parse_trial_specs_schedule(
+            n_trials=int(plan.n_trials),
+            raw_trial_specs=plan.trial_specs,
+            is_social=False,
+        )
+        return BanditBlockRunner(env=env, trial_specs=trial_specs)
 
     if demonstrators is None:
         raise ValueError("Plan requests demonstrator_type, but no DemonstratorRegistry was provided.")
@@ -32,4 +51,10 @@ def build_bandit_for_plan(
         demo_cfg=plan.demonstrator_config or {},
     )
 
-    return SocialBanditWrapper(base=base, demonstrator=demo, reveal_self_outcome=reveal_self_outcome, reveal_demo_outcome=reveal_demo_outcome)
+    trial_specs = parse_trial_specs_schedule(
+        n_trials=int(plan.n_trials),
+        raw_trial_specs=plan.trial_specs,
+        is_social=True,
+    )
+
+    return SocialBanditBlockRunner(env=env, demonstrator=demo, trial_specs=trial_specs)

@@ -1,10 +1,10 @@
 """Bandit task implementations and registry."""
 
-from .bernoulli import BernoulliBandit
+from .bernoulli import BernoulliBanditEnv
 from .registry import BanditFactory, BanditRegistry
 
 __all__ = [
     "BanditFactory",
     "BanditRegistry",
-    "BernoulliBandit",
+    "BernoulliBanditEnv",
 ]

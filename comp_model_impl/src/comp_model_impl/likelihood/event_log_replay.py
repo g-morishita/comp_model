@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Mapping, Sequence
 
 import numpy as np
 
@@ -11,6 +11,19 @@ from comp_model_core.interfaces.bandit import SocialObservation
 from comp_model_core.interfaces.model import ComputationalModel, SocialComputationalModel
 
 _EPS = 1e-12
+
+
+def _mask_and_renorm(probs: np.ndarray, available_actions: Sequence[int] | None) -> np.ndarray:
+    p = np.asarray(probs, dtype=float).copy()
+    if available_actions is None:
+        return p
+
+    mask = np.zeros_like(p, dtype=bool)
+    for a in available_actions:
+        mask[int(a)] = True
+    p[~mask] = 0.0
+    s = float(p.sum())
+    return p / max(s, _EPS)
 
 
 def loglike_subject(
@@ -66,7 +79,12 @@ def loglike_subject(
                 choice = p_choice = e.payload.get("choice", None)
                 if p_choice is None:
                     continue
+
+                aa = e.payload.get("available_actions", None)
+
                 probs = m.action_probs(state=e.state, spec=spec)
+                probs = _mask_and_renorm(probs, aa)
+                
                 p = float(probs[int(choice)])
                 ll += float(np.log(max(p, _EPS)))
                 continue

@@ -2,43 +2,54 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Sequence
+
 import numpy as np
 
-from comp_model_core.spec import TaskSpec, OutcomeType
-from comp_model_core.interfaces.bandit import Bandit, BanditStep
+from comp_model_core.interfaces.bandit import BanditEnv, EnvStep
+from comp_model_core.spec import EnvironmentSpec, OutcomeType, StateKind
+
 
 @dataclass(slots=True)
-class BernoulliBandit(Bandit):
+class BernoulliBanditEnv(BanditEnv):
+    """K-armed Bernoulli bandit environment.
+
+    Notes
+    -----
+    - Environment returns *true* outcomes only.
+    - Outcome visibility / noisy feedback is handled by a BlockRunner wrapper.
     """
-    K-armed Bernoulli bandit.
-    Outcomes: o ~ Bernoulli(p[action]) returning float 0.0/1.0
-    """
+
     probs: Sequence[float]
-    state: int = 0  # constant state by default
+    state: int = 0  # single context by default
 
     def __post_init__(self) -> None:
         if len(self.probs) < 2:
-            raise ValueError("BernoulliBandit requires at least 2 arms.")
+            raise ValueError("BernoulliBanditEnv requires at least 2 arms.")
         for p in self.probs:
             if not (0.0 <= float(p) <= 1.0):
                 raise ValueError(f"Invalid prob {p}; must be in [0,1].")
 
     @property
-    def spec(self) -> TaskSpec:
-        return TaskSpec(
+    def spec(self) -> EnvironmentSpec:
+        return EnvironmentSpec(
             n_actions=len(self.probs),
             outcome_type=OutcomeType.BINARY,
+            outcome_range=(0.0, 1.0),
+            outcome_is_bounded=True,
             is_social=False,
+            state_kind=StateKind.DISCRETE,
+            n_states=1,
         )
 
-    def reset(self, *, rng: np.random.Generator) -> None:
+    def reset(self, *, rng: np.random.Generator) -> Any:
         self.state = 0
+        return self.state
 
-    def step(self, *, action: int, rng: np.random.Generator) -> BanditStep:
+    def step(self, *, action: int, rng: np.random.Generator) -> EnvStep:
         a = int(action)
         p = float(self.probs[a])
         out = 1.0 if float(rng.random()) < p else 0.0
-        return BanditStep(outcome=out, observed_outcome=out, done=False, info=None)
+        return EnvStep(outcome=out, done=False, info=None)
 
     def get_state(self) -> Any:
         return self.state

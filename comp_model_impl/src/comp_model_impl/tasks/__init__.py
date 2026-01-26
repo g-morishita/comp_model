@@ -1,9 +1,10 @@
 """Task / bandit construction utilities."""
 
-from .build import build_bandit_for_plan
-from .social_wrapper import SocialBanditWrapper
+from .build import build_runner_for_plan
+from .block_runner_wrappers import BanditBlockRunner, SocialBanditBlockRunner
 
 __all__ = [
-    "build_bandit_for_plan",
-    "SocialBanditWrapper",
+    "build_runner_for_plan"
+    "BanditBlockRunner",
+    "SocialBanditBlockRunner",
 ]

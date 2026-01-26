@@ -7,27 +7,38 @@ import numpy as np
 
 from comp_model_core.data.types import Trial, Block, SubjectData
 from comp_model_core.errors import CompatibilityError
-from comp_model_core.interfaces.bandit import Bandit, SocialBandit
+from comp_model_core.interfaces.bandit import BanditEnv, SocialBanditEnv
 from comp_model_core.interfaces.generator import Generator
+from comp_model_core.interfaces.block_runner import BlockRunner, SocialBlockRunner
 from comp_model_core.interfaces.model import ComputationalModel, SocialComputationalModel
 from comp_model_core.plans.block import BlockPlan
 from comp_model_core.events.types import Event, EventLog, EventType
+from comp_model_core.validation import validate_block_plan
 
-TaskBuilder = Callable[[BlockPlan], Bandit]
+BlockRunnerBuilder = Callable[[BlockPlan], BlockRunner]
 
 
-def _ensure_model_supports(model: ComputationalModel, bandit: Bandit) -> None:
+def _ensure_model_supports(model: ComputationalModel, bandit: BanditEnv) -> None:
     if not model.supports(spec=bandit.spec):
         raise CompatibilityError("The computational model is not compatible with the current task.")
 
 
-def _reset_block(model: ComputationalModel, bandit: Bandit, rng: np.random.Generator) -> None:
+def _reset_block(model: ComputationalModel, bandit: BanditEnv, rng: np.random.Generator) -> None:
     bandit.reset(rng=rng)
     model.reset_block(spec=bandit.spec)
 
 
 def _build_event_log(events: list[Event], *, metadata: dict) -> EventLog:
     return EventLog(events=events, metadata=metadata)
+
+
+def _mask_and_renorm(probs: np.ndarray, available_actions: Sequence[int] | None) -> np.ndarray:
+    p = np.asarray(probs, dtype=float).copy()
+    if available_actions is None:
+        s = float(p.sum())
+        if s <= 0:
+            raise ValueError("Model returned non-positive probability mass.")
+        return p / s
 
 
 @dataclass(slots=True)
@@ -47,7 +58,7 @@ class EventLogAsocialGenerator(Generator):
         self,
         *,
         subject_id: str,
-        task_builder: TaskBuilder,
+        block_runner_builder: BlockRunnerBuilder,
         model: ComputationalModel,
         params: Mapping[str, float],
         block_plans: Sequence[BlockPlan],
@@ -58,14 +69,15 @@ class EventLogAsocialGenerator(Generator):
         blocks: list[Block] = []
 
         for plan in block_plans:
-            bandit = task_builder(plan)
-            spec = bandit.spec
+            runner = block_runner_builder(plan)
+            spec = runner.spec
 
             if getattr(spec, "is_social", False):
                 raise CompatibilityError("EventLogAsocialGenerator cannot run a social task (spec.is_social=True).")
 
-            _ensure_model_supports(model, bandit)
-            _reset_block(model, bandit, rng)
+            _ensure_model_supports(model, runner)
+            validate_block_plan(plan=plan, env_spec=spec, requirements=model.requirements())
+            _reset_block(model, runner, rng)
 
             trials: list[Trial] = []
             events: list[Event] = []
@@ -75,15 +87,29 @@ class EventLogAsocialGenerator(Generator):
             idx = 1
 
             for t in range(int(plan.n_trials)):
-                state = bandit.get_state()
+                state = runner.get_state()
+                ts = runner.trial_spec(t=t)
+                aa = ts.available_actions
 
                 probs = model.action_probs(state=state, spec=spec)
-                action = int(rng.choice(spec.n_actions, p=probs))
+                probs = _mask_and_renorm(probs, aa)
 
-                events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action}))
+                action = int(rng.choice(spec.n_actions, p=probs))
+                events.append(
+                    Event(
+                        idx=idx,
+                        type=EventType.CHOICE,
+                        t=t,
+                        state=state,
+                        payload={
+                            "choice": action,
+                            "available_actions": None if aa is None else list(aa),
+                        },
+                    )
+                )
                 idx += 1
 
-                step = bandit.step(action=action, rng=rng)
+                step = runner.step(t=t, action=action, rng=rng)
 
                 events.append(
                     Event(
@@ -110,6 +136,7 @@ class EventLogAsocialGenerator(Generator):
                         choice=action,
                         observed_outcome=step.observed_outcome,
                         outcome=step.outcome,
+                        available_actions=None if aa is None else list(aa),
                         info=step.info or {},
                         others_choices=None,
                         others_outcomes=None,
@@ -148,7 +175,7 @@ class EventLogSocialPreChoiceGenerator(Generator):
         self,
         *,
         subject_id: str,
-        task_builder: TaskBuilder,
+        block_runner_builder: BlockRunnerBuilder,
         model: ComputationalModel,
         params: Mapping[str, float],
         block_plans: Sequence[BlockPlan],
@@ -159,21 +186,22 @@ class EventLogSocialPreChoiceGenerator(Generator):
         blocks: list[Block] = []
 
         for plan in block_plans:
-            bandit = task_builder(plan)
-            spec = bandit.spec
+            runner = block_runner_builder(plan)
+            spec = runner.spec
 
-            if not getattr(spec, "is_social", False):
-                raise CompatibilityError("EventLogSocialPreChoiceGenerator requires a social task (spec.is_social=True).")
-
-            if not isinstance(bandit, SocialBandit):
-                raise CompatibilityError("Social task requires a SocialBandit task object.")
+            if not spec.is_social:
+                raise CompatibilityError("EventLogSocialPreChoiceGenerator requires spec.is_social=True.")
+            if not isinstance(runner, SocialBlockRunner):
+                raise CompatibilityError("Social blocks require a SocialBlockRunner runtime object.")
             if not isinstance(model, SocialComputationalModel):
                 raise CompatibilityError("Social task requires a SocialComputationalModel.")
 
-            _ensure_model_supports(model, bandit)
-            _reset_block(model, bandit, rng)
 
-            sb = cast(SocialBandit, bandit)
+            _ensure_model_supports(model, runner)
+            validate_block_plan(plan=plan, env_spec=spec, requirements=model.requirements())
+            _reset_block(model, runner, rng)
+
+            sb = cast(SocialBlockRunner, runner)
             sm = cast(SocialComputationalModel, model)
 
             trials: list[Trial] = []
@@ -185,7 +213,7 @@ class EventLogSocialPreChoiceGenerator(Generator):
             for t in range(int(plan.n_trials)):
                 state = sb.get_state()
 
-                obs = sb.observe_others(rng=rng)
+                obs = sb.observe_others(t=t, rng=rng)
                 events.append(
                     Event(
                         idx=idx,
@@ -203,12 +231,25 @@ class EventLogSocialPreChoiceGenerator(Generator):
                 idx += 1
                 sm.social_update(state=state, social=obs, spec=spec, info=None)
 
+                ts = sb.trial_spec(t=t)
+                aa = ts.available_actions
+
                 probs = sm.action_probs(state=state, spec=spec)
+                probs = _mask_and_renorm(probs, aa)
+
                 action = int(rng.choice(spec.n_actions, p=probs))
-                events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action}))
+                events.append(
+                    Event(
+                        idx=idx,
+                        type=EventType.CHOICE,
+                        t=t,
+                        state=state,
+                        payload={"choice": action, "available_actions": None if aa is None else list(aa)},
+                    )
+                )
                 idx += 1
 
-                step = sb.step(action=action, rng=rng)
+                step = sb.step(t=t, action=action, rng=rng)
                 events.append(
                     Event(
                         idx=idx,
@@ -234,6 +275,7 @@ class EventLogSocialPreChoiceGenerator(Generator):
                         choice=action,
                         observed_outcome=step.observed_outcome,
                         outcome=step.outcome,
+                        available_actions=None if aa is None else list(aa),
                         info=step.info or {},
                         others_choices=obs.others_choices,
                         others_outcomes=obs.others_outcomes,
@@ -272,7 +314,7 @@ class EventLogSocialPostOutcomeGenerator(Generator):
         self,
         *,
         subject_id: str,
-        task_builder: TaskBuilder,
+        block_runner_builder: BlockRunnerBuilder,
         model: ComputationalModel,
         params: Mapping[str, float],
         block_plans: Sequence[BlockPlan],
@@ -283,21 +325,21 @@ class EventLogSocialPostOutcomeGenerator(Generator):
         blocks: list[Block] = []
 
         for plan in block_plans:
-            bandit = task_builder(plan)
-            spec = bandit.spec
+            runner = block_runner_builder(plan)
+            spec = runner.spec
 
-            if not getattr(spec, "is_social", False):
-                raise CompatibilityError("EventLogSocialPostOutcomeGenerator requires a social task (spec.is_social=True).")
-
-            if not isinstance(bandit, SocialBandit):
-                raise CompatibilityError("Social task requires a SocialBandit task object.")
+            if not spec.is_social:
+                raise CompatibilityError("EventLogSocialPostOutcomeGenerator requires spec.is_social=True.")
+            if not isinstance(runner, SocialBlockRunner):
+                raise CompatibilityError("Social blocks require a SocialBlockRunner runtime object.")
             if not isinstance(model, SocialComputationalModel):
                 raise CompatibilityError("Social task requires a SocialComputationalModel.")
 
-            _ensure_model_supports(model, bandit)
-            _reset_block(model, bandit, rng)
+            _ensure_model_supports(model, runner)
+            validate_block_plan(plan=plan, env_spec=spec, requirements=model.requirements())
+            _reset_block(model, runner, rng)
 
-            sb = cast(SocialBandit, bandit)
+            sb = cast(SocialBlockRunner, runner)
             sm = cast(SocialComputationalModel, model)
 
             trials: list[Trial] = []
@@ -308,13 +350,17 @@ class EventLogSocialPostOutcomeGenerator(Generator):
 
             for t in range(int(plan.n_trials)):
                 state = sb.get_state()
+                ts = sb.trial_spec(t=t)
+                aa = ts.available_actions
 
                 probs = sm.action_probs(state=state, spec=spec)
+                probs = _mask_and_renorm(probs, aa)
+
                 action = int(rng.choice(spec.n_actions, p=probs))
-                events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action}))
+                events.append(Event(idx=idx, type=EventType.CHOICE, t=t, state=state, payload={"choice": action, "available_actions": None if aa is None else list(aa)}))
                 idx += 1
 
-                step = sb.step(action=action, rng=rng)
+                step = sb.step(t=t, action=action, rng=rng)
                 events.append(
                     Event(
                         idx=idx,
@@ -333,13 +379,13 @@ class EventLogSocialPostOutcomeGenerator(Generator):
 
                 sm.update(state=state, action=action, outcome=step.observed_outcome, spec=spec, info=step.info)
 
-                obs = sb.observe_others(rng=rng)
+                obs = sb.observe_others(t=t, rng=rng)
                 events.append(
                     Event(
                         idx=idx,
                         type=EventType.SOCIAL_OBSERVED,
                         t=t,
-                        state=state,  # keep same trial's state semantics as your current code
+                        state=state,
                         payload={
                             "others_choices": list(obs.others_choices or []),
                             "others_outcomes": list(obs.others_outcomes or []),
@@ -359,6 +405,7 @@ class EventLogSocialPostOutcomeGenerator(Generator):
                         choice=action,
                         observed_outcome=step.observed_outcome,
                         outcome=step.outcome,
+                        available_actions=None if aa is None else list(aa),
                         info=step.info or {},
                         others_choices=obs.others_choices,
                         others_outcomes=obs.others_outcomes,
