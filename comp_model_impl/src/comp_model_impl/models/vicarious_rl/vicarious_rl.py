@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping
 
 import numpy as np
 
 from comp_model_core.interfaces.model import SocialComputationalModel
+from comp_model_core.requirements import RequireAnyDemoOutcomeObservable, RequireSocialBlock, Requirement
 from comp_model_core.params import ParameterSchema
 from comp_model_core.interfaces.bandit import SocialObservation
-from comp_model_core.spec import TaskSpec
+from comp_model_core.spec import EnvironmentSpec
 from comp_model_core.utility import _softmax
 
 from .schema import vicarious_rl_schema
@@ -35,6 +36,15 @@ class Vicarious_RL(SocialComputationalModel):
     def __post_init__(self) -> None:
         self._q: list[np.ndarray] = []
 
+    @classmethod
+    def requirements(cls) -> tuple[Requirement, ...]:
+        # QRL requires an asocial task and at least one trial with self outcome
+        # observable (possibly noisy).
+        return (
+            RequireSocialBlock(),
+            RequireAnyDemoOutcomeObservable(),
+        )
+
     @property
     def param_schema(self) -> ParameterSchema:
         return vicarious_rl_schema(
@@ -43,10 +53,10 @@ class Vicarious_RL(SocialComputationalModel):
             beta_max=float(self.beta_max),
         )
 
-    def supports(self, spec: TaskSpec) -> bool:
+    def supports(self, spec: EnvironmentSpec) -> bool:
         return spec.is_social and spec.n_actions >= 2
 
-    def reset_block(self, *, spec: TaskSpec) -> None:
+    def reset_block(self, *, spec: EnvironmentSpec) -> None:
         self._q = []
 
     def _ensure_state(self, s: int, n_actions: int) -> None:
@@ -57,7 +67,7 @@ class Vicarious_RL(SocialComputationalModel):
         if self._q[s].shape[0] != n_actions:
             self._q[s] = np.zeros(n_actions, dtype=float)
 
-    def action_probs(self, *, state: Any, spec: TaskSpec) -> np.ndarray:
+    def action_probs(self, *, state: Any, spec: EnvironmentSpec) -> np.ndarray:
         s = int(state)
         nA = int(spec.n_actions)
         self._ensure_state(s, nA)
@@ -70,7 +80,7 @@ class Vicarious_RL(SocialComputationalModel):
         *,
         state: Any,
         social: SocialObservation,
-        spec: TaskSpec,
+        spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
         if not social.others_choices:
@@ -96,7 +106,7 @@ class Vicarious_RL(SocialComputationalModel):
         state: Any,
         action: int,
         outcome: float | None,
-        spec: TaskSpec,
+        spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
         return
