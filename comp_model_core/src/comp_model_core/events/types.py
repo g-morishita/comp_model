@@ -219,6 +219,11 @@ def validate_event_log(log: EventLog) -> None:
         if e.type is EventType.CHOICE:
             if "choice" not in e.payload:
                 raise ValueError(f"CHOICE event at idx={i} missing payload['choice']")
+            # Optional but recommended for correct replay under constrained action sets.
+            if "available_actions" in e.payload and e.payload["available_actions"] is not None:
+                aa = e.payload["available_actions"]
+                if not isinstance(aa, list) or len(aa) == 0:
+                    raise ValueError(f"CHOICE event at idx={i} has invalid available_actions")
         elif e.type is EventType.OUTCOME:
             if "action" not in e.payload:
                 raise ValueError(f"OUTCOME event at idx={i} missing payload['action']")

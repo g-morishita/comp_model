@@ -133,6 +133,8 @@ class Block:
     env_spec
         Optional :class:`~comp_model_core.spec.EnvironmentSpec` describing the
         environment used to generate the block.
+    event_log
+        Optional :class:`~comp_model_core.events.types.EventLog` records.
     metadata
         Arbitrary JSON-serializable metadata for bookkeeping.
 
@@ -147,6 +149,7 @@ class Block:
     block_id: str
     trials: Sequence[Trial]
     env_spec: EnvironmentSpec | None = None
+    event_log: "EventLog | None" = None  # Prevent circular import
     metadata: Json = field(default_factory=dict)
 
 
