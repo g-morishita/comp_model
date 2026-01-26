@@ -10,12 +10,10 @@ from __future__ import annotations
 from typing import Mapping, TYPE_CHECKING
 
 from comp_model_core.events.types import EventLog, validate_event_log
-
-if TYPE_CHECKING:  # pragma: no cover
-    from comp_model_core.data.types import Block
+from comp_model_core.data.types import Block
 
 
-def get_event_log(block: "Block") -> EventLog:
+def get_event_log(block: Block) -> EventLog:
     """
     Retrieve and validate the event log stored in :attr:`~comp_model_core.data.types.Block.event_log`.
 

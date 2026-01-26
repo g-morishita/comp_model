@@ -10,16 +10,16 @@ These interfaces are designed to be small, explicit, and easy to mock for testin
 They intentionally avoid opinionated training frameworks or heavy dependencies.
 """
 
-from .bandit import Bandit, SocialBandit, BanditStep, SocialObservation
+from .bandit import BanditEnv, SocialBanditEnv, EnvStep, SocialObservation
 from .model import ComputationalModel, SocialComputationalModel
 from .generator import Generator
 from .estimator import Estimator, FitResult
 from .demonstrator import Demonstrator
 
 __all__ = [
-    "Bandit",
-    "SocialBandit",
-    "BanditStep",
+    "BanditEnv",
+    "SocialBanditEnv",
+    "EnvStep",
     "SocialObservation",
     "ComputationalModel",
     "SocialComputationalModel",

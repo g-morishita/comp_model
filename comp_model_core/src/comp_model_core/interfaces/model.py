@@ -1,13 +1,35 @@
 """
+comp_model_core.interfaces.model
+
 Computational model interfaces.
 
-A computational model defines how an agent chooses actions and updates latent state
-given observations from a task environment.
+A computational model defines:
 
-This module defines:
+- how an agent chooses actions (choice rule),
+- how it updates latent variables given observations.
 
-- :class:`ComputationalModel` for asocial tasks.
-- :class:`SocialComputationalModel` for tasks with social observations.
+Models interact with a :class:`~comp_model_core.interfaces.block_runner.BlockRunner`
+through the environment contract (:class:`~comp_model_core.spec.EnvironmentSpec`).
+
+Trial-level interface constraints (e.g., action availability) are handled by the
+generator/replayer (masking/renormalization), not by the model itself.
+
+Notes
+-----
+- Models declare plan/data compatibility constraints via
+  :meth:`~ComputationalModel.requirements`.
+- Parameters are validated and managed via :class:`~comp_model_core.params.ParameterSchema`.
+- Social models may optionally implement :meth:`~SocialComputationalModel.social_update`
+  to update from demonstrator observations.
+
+See Also
+--------
+comp_model_core.spec.EnvironmentSpec
+    Environment contract (number of actions, etc.).
+comp_model_core.interfaces.block_runner.SocialObservation
+    Social observation container for demonstrator choices/outcomes.
+comp_model_core.requirements.Requirement
+    Plan-based requirement protocol used for compatibility validation.
 """
 
 from __future__ import annotations
@@ -15,65 +37,99 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Mapping, Sequence
 
-from dataclasses import is_dataclass, fields as dataclass_fields
-
 import numpy as np
 
-from ..spec import TaskSpec
-from .bandit import SocialObservation
 from ..params import ParameterSchema
+from ..requirements import Requirement
+from ..spec import EnvironmentSpec
+from .block_runner import SocialObservation
 
 
 class ComputationalModel(ABC):
     """
-    Abstract base class for computational models.
+    Base interface for computational models.
 
-    Subclasses should implement:
-    - :attr:`param_schema`
-    - :meth:`supports`
-    - :meth:`reset_block`
-    - :meth:`action_probs`
-    - :meth:`update`
+    A computational model encapsulates:
+
+    - a **policy**: mapping from state/context to action probabilities, and
+    - a **learning rule**: updating internal latent variables based on
+      observations (e.g., outcomes, feedback).
+
+    Parameters are stored as attributes on the instance and validated using the
+    :class:`~comp_model_core.params.ParameterSchema` returned by
+    :attr:`~ComputationalModel.param_schema`.
 
     Notes
     -----
-    Models are stateful: they hold latent variables (e.g., Q-values). Generators and
-    estimators should reset state at each block boundary via :meth:`reset_block`.
+    - Models operate against an :class:`~comp_model_core.spec.EnvironmentSpec`
+      contract rather than concrete environment instances.
+    - Trial-level action availability (forced-choice sets) should be handled by
+      the generator/replayer by masking the probabilities returned by
+      :meth:`~ComputationalModel.action_probs`.
+    - Compatibility constraints about the task/data (e.g., needing outcome
+      visibility) should be expressed via :meth:`~ComputationalModel.requirements`.
+
+    See Also
+    --------
+    SocialComputationalModel
+        Extension class for models that also update from social observations.
+    comp_model_core.params.ParameterSchema
+        Parameter validation/management.
+    comp_model_core.requirements.Requirement
+        Plan-based compatibility constraints.
     """
+
+    @classmethod
+    def requirements(cls) -> Sequence[Requirement]:
+        """
+        Declare plan/data requirements for compatibility validation.
+
+        Returns
+        -------
+        Sequence[Requirement]
+            Requirements that must be satisfied by a plan/environment for this
+            model to be applicable. The default is an empty tuple (no additional
+            requirements).
+
+        Notes
+        -----
+        These are typically enforced by plan-based validation, not at runtime.
+        """
+        return ()
 
     @property
     @abstractmethod
     def param_schema(self) -> ParameterSchema:
         """
-        Return the parameter schema for this model.
+        Parameter schema for this model.
 
         Returns
         -------
         ParameterSchema
-            Schema defining parameter names, defaults, bounds, and transforms.
+            Schema defining parameter names, types, and bounds.
         """
         ...
 
     @property
     def param_names(self) -> Sequence[str]:
         """
-        Return parameter names defined by :attr:`param_schema`.
+        Convenience accessor for parameter names.
 
         Returns
         -------
         Sequence[str]
-            Parameter names in schema order.
+            Names of parameters defined by :attr:`~ComputationalModel.param_schema`.
         """
         return self.param_schema.names
 
     def get_params(self) -> dict[str, float]:
         """
-        Return current parameter values.
+        Return current parameters as a plain dictionary.
 
         Returns
         -------
         dict[str, float]
-            Mapping from parameter name to current value.
+            Mapping from parameter name to current float value.
         """
         return {name: float(getattr(self, name)) for name in self.param_schema.names}
 
@@ -85,120 +141,83 @@ class ComputationalModel(ABC):
         check_bounds: bool = False,
     ) -> None:
         """
-        Set model parameters using the schema for validation/coercion.
+        Validate and set model parameters from a mapping.
 
         Parameters
         ----------
-        params : Mapping[str, Any]
-            Parameter values keyed by name.
-        strict : bool, optional
-            If ``True``, unknown keys raise an error. If ``False``, unknown keys are
+        params
+            Mapping from parameter names to values.
+        strict
+            If True, unknown keys raise an error. If False, unknown keys are
             ignored.
-        check_bounds : bool, optional
-            If ``True``, validate values against declared bounds.
+        check_bounds
+            If True, enforce declared parameter bounds during validation.
 
         Raises
         ------
-        comp_model_core.errors.ParameterValidationError
-            If values cannot be coerced to finite floats.
         ValueError
-            If unknown keys are present and ``strict=True``.
+            If validation fails (e.g., missing required keys, out-of-bounds
+            values when ``check_bounds=True``).
         """
-        validated = self.param_schema.validate(
-            params,
-            strict=strict,
-            check_bounds=check_bounds,
-        )
-        
+        validated = self.param_schema.validate(params, strict=strict, check_bounds=check_bounds)
         for k, v in validated.items():
             setattr(self, k, float(v))
 
-    def clone(self) -> "ComputationalModel":
+    def supports(self, spec: EnvironmentSpec) -> bool:
         """
-        Create a fresh model instance with the same configuration and parameter values,
-        but with **latent state cleared**.
-
-        This method exists to make likelihood evaluation safe under repeated calls,
-        multi-start optimization, and parallelism. Estimators should treat models as
-        *templates* and call ``clone()`` to obtain an isolated instance to mutate.
-
-        Returns
-        -------
-        ComputationalModel
-            A new instance of ``type(self)`` with identical init/config fields and
-            current parameter values.
-        """
-        cls = type(self)
-
-        # Preferred path: dataclass-based models (all built-in models are dataclasses).
-        if is_dataclass(self):
-            kwargs = {f.name: getattr(self, f.name) for f in dataclass_fields(self) if f.init}
-            m = cls(**kwargs)  # type: ignore[call-arg]
-            # Ensure schema parameters match current values (in case schema defaults differ).
-            m.set_params(self.get_params(), strict=False, check_bounds=False)
-            return m
-
-        # Fallback: try a no-arg constructor, then set schema parameters.
-        try:
-            m = cls()  # type: ignore[call-arg]
-        except Exception as e:  # pragma: no cover
-            raise TypeError(
-                f"{cls.__name__}.clone() is not supported for non-dataclass models. "
-                "Override clone() in your model class."
-            ) from e
-
-        m.set_params(self.get_params(), strict=False, check_bounds=False)
-        return m
-
-    def supports(self, spec: TaskSpec) -> bool:
-        """
-        Check whether the model supports a given task specification.
+        Return True if the model can be applied to the given environment spec.
 
         Parameters
         ----------
-        spec : TaskSpec
-            Task specification to check.
+        spec
+            Environment contract.
 
         Returns
         -------
         bool
-            ``True`` if supported.
+            True if the model supports the environment contract.
 
         Notes
         -----
-        The base implementation returns ``True``. Override this to enforce constraints
-        (e.g., require ``spec.is_social`` or a particular ``outcome_type``).
+        Subclasses may override to enforce constraints such as outcome type,
+        number of actions, or state shape requirements.
         """
         return True
 
     @abstractmethod
-    def reset_block(self, *, spec: TaskSpec) -> None:
+    def reset_block(self, *, spec: EnvironmentSpec) -> None:
         """
-        Reset latent state at the beginning of a block.
+        Reset model state at the start of a block.
 
         Parameters
         ----------
-        spec : TaskSpec
-            Task specification for the block.
+        spec
+            Environment contract for the upcoming block.
         """
         ...
 
     @abstractmethod
-    def action_probs(self, *, state: Any, spec: TaskSpec) -> np.ndarray:
+    def action_probs(self, *, state: Any, spec: EnvironmentSpec) -> np.ndarray:
         """
-        Compute action probabilities for a state.
+        Compute action probabilities for the current trial.
 
         Parameters
         ----------
-        state : Any
-            State/context identifier.
-        spec : TaskSpec
-            Task specification.
+        state
+            Current environment state/context identifier (opaque to the core API).
+        spec
+            Environment contract.
 
         Returns
         -------
         numpy.ndarray
-            Probability vector of shape ``(spec.n_actions,)`` that sums to 1.
+            1D array of action probabilities with length ``spec.n_actions``.
+            The probabilities should sum to 1 (before any generator masking).
+
+        Notes
+        -----
+        Forced-choice action sets should be handled outside the model by masking
+        and renormalizing these probabilities.
         """
         ...
 
@@ -209,35 +228,51 @@ class ComputationalModel(ABC):
         state: Any,
         action: int,
         outcome: float | None,
-        spec: TaskSpec,
+        spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
+        rng: np.random.Generator | None = None,
     ) -> None:
         """
-        Update latent state after observing an outcome.
+        Update model latent state from an action and (possibly hidden) outcome.
 
         Parameters
         ----------
-        state : Any
-            State/context identifier for the trial.
-        action : int
-            Action taken.
-        outcome : float or None
-            Outcome observed by the agent/subject. ``None`` indicates hidden outcome.
-        spec : TaskSpec
-            Task specification.
-        info : Mapping[str, Any] or None, optional
-            Additional task-specific information.
+        state
+            Current environment state/context identifier.
+        action
+            Action index that was taken.
+        outcome
+            Outcome as observed by the subject/model. May be ``None`` if feedback
+            is hidden.
+        spec
+            Environment contract.
+        info
+            Optional metadata associated with the step (e.g., runner/environment
+            info dict).
+        rng
+            Optional RNG for stochastic model updates.
 
         Notes
         -----
-        Generators/estimators define the timing/order of calling this method.
+        This method should interpret ``outcome`` as the *observed* outcome (i.e.,
+        after any visibility/noise transformations), not the true environment
+        outcome.
         """
         ...
 
 
 class SocialComputationalModel(ComputationalModel):
     """
-    Extension of :class:`ComputationalModel` that supports social observations.
+    Extension that supports social observations.
+
+    Social models may update their latent state from demonstrator information in
+    addition to private outcomes.
+
+    Notes
+    -----
+    The default implementation is a no-op. Subclasses can override
+    :meth:`~SocialComputationalModel.social_update` to implement vicarious or
+    imitation-based learning rules.
     """
 
     def social_update(
@@ -245,25 +280,28 @@ class SocialComputationalModel(ComputationalModel):
         *,
         state: Any,
         social: SocialObservation,
-        spec: TaskSpec,
+        spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
+        rng: np.random.Generator | None = None,
     ) -> None:
         """
-        Update latent state after observing social information.
+        Update model latent state from a social observation.
 
         Parameters
         ----------
-        state : Any
-            State/context identifier for the trial.
-        social : SocialObservation
-            Social observation payload (demonstrator actions/outcomes).
-        spec : TaskSpec
-            Task specification.
-        info : Mapping[str, Any] or None, optional
-            Additional task-specific information.
+        state
+            Current environment state/context identifier.
+        social
+            Social observation container (demonstrator choices/outcomes).
+        spec
+            Environment contract.
+        info
+            Optional metadata associated with the social observation.
+        rng
+            Optional RNG for stochastic model updates.
 
         Notes
         -----
-        The base implementation is a no-op. Social-learning models should override this.
+        The default implementation performs no update.
         """
         return

@@ -1,17 +1,23 @@
 """
+comp_model_core.data.types
+
 Core dataset dataclasses.
 
-The classes in this module are immutable containers used throughout the library:
-
-- :class:`Trial` represents one time step.
-- :class:`Block` groups trials into a contiguous segment where model latents often reset.
-- :class:`SubjectData` groups blocks for a single participant/session.
-- :class:`StudyData` groups subjects for fitting hierarchical models.
+These containers are intentionally logic-free and serializable.
+They are designed to store simulated or observed data in a consistent format
+that can be written to/read from JSON-like structures.
 
 Notes
 -----
-These objects intentionally avoid modeling logic; they are meant to be easy to
-construct, serialize, and inspect.
+- All classes are frozen dataclasses with slots enabled to encourage immutability
+  and reduce memory overhead.
+- The structures are intentionally minimal: validation and computation live
+  elsewhere (e.g., generators, likelihood code).
+
+See Also
+--------
+comp_model_core.spec.EnvironmentSpec
+    Specification of the environment used to generate a block.
 """
 
 from __future__ import annotations
@@ -19,8 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from ..spec import TaskSpec
-from ..events.types import EventLog
+from ..spec import EnvironmentSpec
 
 Json = dict[str, Any]
 
@@ -28,33 +33,44 @@ Json = dict[str, Any]
 @dataclass(frozen=True, slots=True)
 class Trial:
     """
-    Container for one trial/time step.
+    One trial/time-step.
+
+    This dataclass stores both the *true* outcome produced by the environment and
+    the *observed* outcome made available to the subject, which may be hidden or
+    corrupted by noise.
 
     Parameters
     ----------
-    t : int
-        Trial index (typically 0-based within the block).
-    state : Any
-        State identifier presented on this trial. This may be an integer, a tuple,
-        or a richer object depending on the task.
-    choice : int or None
-        Chosen action. ``None`` indicates no choice was made (e.g., missing data).
-    observed_outcome : float or None
-        Outcome observed by the agent/subject. This may differ from ``outcome`` when
-        outcomes are partially observed or censored.
-    outcome : float or None
-        True environment outcome (if defined by the environment). This is often
-        present whenever a step happened, even if ``observed_outcome`` is hidden.
-    info : dict[str, Any], optional
-        Arbitrary task-specific information for this trial.
-    others_choices : Sequence[int] or None, optional
-        Demonstrator/other agent actions for social tasks.
-    others_outcomes : Sequence[float] or None, optional
-        True demonstrator outcomes (environment outcomes).
-    observed_others_outcomes : Sequence[float] or None, optional
-        Outcomes *as observed by the subject*; may be ``None`` when hidden.
-    social_info : dict[str, Any], optional
-        Arbitrary social-task-specific metadata.
+    t
+        Trial index (typically 0-based within a block).
+    state
+        Environment state representation at the time of the trial. The concrete
+        type depends on the environment implementation.
+    choice
+        Chosen action index, or ``None`` if no choice was made/recorded.
+    observed_outcome
+        Outcome value as observed by the subject, or ``None`` if hidden or not
+        recorded.
+    outcome
+        True outcome value emitted by the environment, or ``None`` if not
+        recorded.
+    available_actions
+        Optional forced-choice action set for this trial. If provided, it
+        indicates the only actions that were legal/available on this trial.
+    info
+        Arbitrary JSON-serializable per-trial metadata.
+
+    others_choices
+        (Social tasks) Actions taken by other agent(s) on this trial, or ``None``
+        if not applicable/not recorded.
+    others_outcomes
+        (Social tasks) True outcomes for other agent(s), or ``None`` if not
+        applicable/not recorded.
+    observed_others_outcomes
+        (Social tasks) Outcomes for other agent(s) as observed by the subject, or
+        ``None`` if hidden or not applicable.
+    social_info
+        (Social tasks) Arbitrary JSON-serializable social metadata.
 
     Attributes
     ----------
@@ -63,26 +79,43 @@ class Trial:
     choice : int or None
     observed_outcome : float or None
     outcome : float or None
-    info : dict[str, Any]
+    available_actions : Sequence[int] or None
+    info : Json
     others_choices : Sequence[int] or None
     others_outcomes : Sequence[float] or None
     observed_others_outcomes : Sequence[float] or None
-    social_info : dict[str, Any]
+    social_info : Json
+
+    Notes
+    -----
+    - ``available_actions`` enables correct likelihood computation under
+      trial-varying action sets (forced-choice / missing actions).
+    - Both true and observed outcomes are stored. Observed outcomes may be
+      ``None`` even when a true outcome exists (e.g., hidden feedback).
+    - Social fields are optional and may be unused in asocial tasks.
+
+    See Also
+    --------
+    comp_model_core.spec.TrialSpec
+        Declarative per-trial interface constraints used during simulation.
     """
 
     t: int
     state: Any
     choice: int | None
 
-    observed_outcome: float | None  # observed outcome (what subject sees)
-    outcome: float | None           # environment outcome (true)
+    observed_outcome: float | None  # what subject sees
+    outcome: float | None  # true outcome
+
+    # NEW: if not None, these are the only actions that were legal on this trial.
+    available_actions: Sequence[int] | None = None
 
     info: Json = field(default_factory=dict)
 
     # Social-task fields (optional)
     others_choices: Sequence[int] | None = None
-    others_outcomes: Sequence[float] | None = None           # true outcome(s)
-    observed_others_outcomes: Sequence[float] | None = None  # observed outcome(s)
+    others_outcomes: Sequence[float] | None = None
+    observed_others_outcomes: Sequence[float] | None = None
     social_info: Json = field(default_factory=dict)
 
 
@@ -91,60 +124,52 @@ class Block:
     """
     A contiguous run of trials.
 
-    In many experimental paradigms, latent variables (e.g., Q-values) reset at the
-    beginning of each block. Blocks also carry an optional :class:`~comp_model_core.events.types.EventLog`
-    which is the canonical source of truth for event timing (e.g., when social
-    observations occur relative to choices and outcomes).
-
     Parameters
     ----------
-    block_id : str
-        Identifier for the block (unique within a subject).
-    trials : Sequence[Trial]
-        Sequence of trials in this block.
-    task_spec : TaskSpec or None, optional
-        Task specification describing action space and outcome semantics.
-    event_log : EventLog or None, optional
-        Block-level event stream. Estimators should prefer this over ad-hoc timing
-        inferred from trials.
-    metadata : dict[str, Any], optional
-        Arbitrary metadata (e.g., generator settings).
+    block_id
+        Identifier for this block (often corresponds to the plan's ``block_id``).
+    trials
+        Sequence of :class:`~comp_model_core.data.dataset.Trial` records.
+    env_spec
+        Optional :class:`~comp_model_core.spec.EnvironmentSpec` describing the
+        environment used to generate the block.
+    metadata
+        Arbitrary JSON-serializable metadata for bookkeeping.
 
     Attributes
     ----------
     block_id : str
     trials : Sequence[Trial]
-    task_spec : TaskSpec | None
-    event_log : EventLog | None
-    metadata : dict[str, Any]
+    env_spec : EnvironmentSpec or None
+    metadata : Json
     """
 
     block_id: str
     trials: Sequence[Trial]
-    task_spec: TaskSpec | None = None
-    event_log: EventLog | None = None
+    env_spec: EnvironmentSpec | None = None
     metadata: Json = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
 class SubjectData:
     """
-    Dataset for a single subject/session.
+    Dataset for a single subject.
 
     Parameters
     ----------
-    subject_id : str
+    subject_id
         Subject identifier.
-    blocks : Sequence[Block]
-        Blocks belonging to this subject.
-    metadata : dict[str, Any], optional
-        Arbitrary metadata such as demographics or preprocessing info.
+    blocks
+        Sequence of :class:`~comp_model_core.data.dataset.Block` objects for this
+        subject (in order).
+    metadata
+        Arbitrary JSON-serializable metadata for bookkeeping.
 
     Attributes
     ----------
     subject_id : str
     blocks : Sequence[Block]
-    metadata : dict[str, Any]
+    metadata : Json
     """
 
     subject_id: str
@@ -155,19 +180,19 @@ class SubjectData:
 @dataclass(frozen=True, slots=True)
 class StudyData:
     """
-    Whole dataset for (potentially hierarchical) inference.
+    Dataset for a full study (multiple subjects).
 
     Parameters
     ----------
-    subjects : Sequence[SubjectData]
-        Subject-level datasets.
-    metadata : dict[str, Any], optional
-        Arbitrary metadata for the dataset.
+    subjects
+        Sequence of :class:`~comp_model_core.data.dataset.SubjectData` records.
+    metadata
+        Arbitrary JSON-serializable metadata for bookkeeping.
 
     Attributes
     ----------
     subjects : Sequence[SubjectData]
-    metadata : dict[str, Any]
+    metadata : Json
     """
 
     subjects: Sequence[SubjectData]

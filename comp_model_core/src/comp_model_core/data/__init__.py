@@ -20,13 +20,14 @@ comp_model_core.data.types
 
 from __future__ import annotations
 
-from ..spec import TaskSpec, OutcomeType
+from ..spec import EnvironmentSpec, OutcomeType, StateKind
 from ..errors import CompatibilityError
 from .types import Trial, Block, SubjectData, StudyData
 
 __all__ = [
-    "TaskSpec",
+    "EnvironmentSpec",
     "OutcomeType",
+    "StateKind",
     "CompatibilityError",
     "Trial",
     "Block",
