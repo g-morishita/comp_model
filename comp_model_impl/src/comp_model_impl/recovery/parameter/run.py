@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
 from tqdm import tqdm
 
 import json
+import subprocess
+import secrets
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 
@@ -21,15 +25,35 @@ from comp_model_core.interfaces.model import ComputationalModel
 from comp_model_core.interfaces.estimator import Estimator, FitResult
 from comp_model_core.data.types import StudyData
 
-from ...tasks.build import build_bandit_for_plan
-from ...bandits.registry import BanditRegistry
-from ...demonstrators.registry import DemonstratorRegistry
+from ...tasks.build import build_runner_for_plan
+from ...register import make_registry
 
 from .plots import (
     plot_parameter_recovery_scatter,
     plot_parameter_recovery_scatter_color,
     plot_parameter_recovery_interactive,
 )
+
+def _sanitize(s: str) -> str:
+    return "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in s)
+
+
+def make_unique_run_dir(base_out_dir: str | Path, *, git_commit: str | None = None) -> Path:
+    """
+    Creates a unique run directory under base_out_dir and returns it.
+    Example name: 2026-01-26_143012__a1b2c3d__7f9c
+    """
+    base = Path(base_out_dir)
+    base.mkdir(parents=True, exist_ok=True)
+
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    short = (git_commit or "nogit")[:7]
+    suffix = secrets.token_hex(2)  # 4 hex chars
+
+    run_id = _sanitize(f"{ts}__{short}__{suffix}")
+    out_dir = base / run_id
+    out_dir.mkdir(parents=False, exist_ok=False)
+    return out_dir
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,16 +63,71 @@ class ParameterRecoveryOutputs:
     out_dir: str
 
 
+def _find_git_root(start: Path) -> Path | None:
+    """Walk upward until we find a .git directory."""
+    p = start.resolve()
+    for parent in [p, *p.parents]:
+        if (parent / ".git").exists():
+            return parent
+    return None
+
+
+def _get_git_commit_info(repo_root: Path | None) -> dict[str, Any]:
+    """
+    Returns {"git_commit": str|None, "git_branch": str|None, "git_dirty": bool|None}.
+    Never raises.
+    """
+    if repo_root is None:
+        return {"git_commit": None, "git_branch": None, "git_dirty": None}
+
+    def _run(args: list[str]) -> str | None:
+        try:
+            out = subprocess.check_output(args, cwd=str(repo_root), text=True, stderr=subprocess.DEVNULL)
+            return out.strip()
+        except Exception:
+            return None
+
+    commit = _run(["git", "rev-parse", "HEAD"])
+    branch = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+    status = _run(["git", "status", "--porcelain"])
+    dirty = None if status is None else (len(status) > 0)
+
+    return {"git_commit": commit, "git_branch": branch, "git_dirty": dirty}
+
+
+def write_run_manifest(
+    out_dir: Path,
+    *,
+    config_obj: Any,
+    generator: Any,
+    model: Any,
+    estimator: Any,
+) -> None:
+    repo_root = _find_git_root(Path(__file__).resolve().parent)
+    git_info = _get_git_commit_info(repo_root)
+
+    manifest = {
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "repo_root": str(repo_root) if repo_root is not None else None,
+        **git_info,
+        "generator": f"{generator.__class__.__module__}.{generator.__class__.__name__}",
+        "model": f"{model.__class__.__module__}.{model.__class__.__name__}",
+        "estimator": f"{estimator.__class__.__module__}.{estimator.__class__.__name__}",
+        "config_dict": asdict(config_obj) if hasattr(config_obj, "__dataclass_fields__") else None,
+    }
+
+    (out_dir / "run_manifest.json").write_text(
+        json.dumps(manifest, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+
 def run_parameter_recovery(
     *,
     config: ParameterRecoveryConfig,
-    bandits: BanditRegistry,
-    demonstrators: DemonstratorRegistry | None,
     generator: Generator,
     model: ComputationalModel,
     estimator: Estimator,
-    reveal_self_outcome,
-    reveal_demo_outcome,
 ) -> ParameterRecoveryOutputs:
     """
     Full parameter recovery experiment.
@@ -61,11 +140,25 @@ def run_parameter_recovery(
         * store true vs estimated per subject/param
     - saves tidy tables + optional diagnostics + plots
     """
-    out_dir = Path(config.output.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # Create a unique per-run output directory
+    repo_root = _find_git_root(Path(__file__).resolve().parent)
+    git_info = _get_git_commit_info(repo_root)
+    out_dir = make_unique_run_dir(config.output.out_dir, git_commit=git_info["git_commit"])
+
+    # Save run metadata (includes git commit hash if available)
+    write_run_manifest(
+        out_dir,
+        config_obj=config,
+        generator=generator,
+        model=model,
+        estimator=estimator,
+    )
 
     if config.output.save_config:
-        (out_dir / "parameter_recovery_config.json").write_text(config_to_json(config), encoding="utf-8")
+        (out_dir / "parameter_recovery_config.json").write_text(
+            config_to_json(config),
+            encoding="utf-8",
+        )
 
     # Load study plan
     plan_path = Path(config.plan_path)
@@ -77,22 +170,20 @@ def run_parameter_recovery(
         raise ValueError("plan_path must be .yaml/.yml or .json")
 
     subject_ids = list(plan.subjects.keys())
-
     rng = np.random.default_rng(int(config.seed))
 
     records: list[dict[str, Any]] = []
     fit_diags: list[dict[str, Any]] = []
 
-    def task_builder(block_plan: BlockPlan):
-        return build_bandit_for_plan(
+    r = make_registry()
+
+    def block_runner_builder(block_plan: BlockPlan):
+        return build_runner_for_plan(
             plan=block_plan,
-            bandits=bandits,
-            demonstrators=demonstrators,
-            reveal_self_outcome=reveal_self_outcome,
-            reveal_demo_outcome=reveal_demo_outcome,
+            registries=r,
         )
 
-    for rep in tqdm(range(int(config.n_reps))):
+    for rep in tqdm(range(int(config.n_reps)), desc="Parameter recovery"):
         rep_rng = np.random.default_rng(rng.integers(0, 2**32 - 1, dtype=np.uint32))
 
         subj_params_true, pop_true = sample_subject_params(
@@ -103,7 +194,7 @@ def run_parameter_recovery(
         )
 
         study: StudyData = generator.simulate_study(
-            task_builder=task_builder,
+            block_runner_builder=block_runner_builder,
             model=model,
             subj_params=subj_params_true,
             subject_block_plans=plan.subjects,
@@ -176,13 +267,11 @@ def run_parameter_recovery(
 
         plot_parameter_recovery_scatter(df=df, out_dir=plot_dir, alpha=alpha, max_points=max_points)
 
-        # New color versions
         for mode in ["true", "abs_error", "error"]:
             plot_parameter_recovery_scatter_color(
                 df=df, out_dir=plot_dir, color_by=mode, alpha=alpha, max_points=max_points
             )
 
-        # Interactive HTML (optional)
         try:
             plot_parameter_recovery_interactive(df=df, out_path=plot_dir / "recovery_interactive.html")
         except ImportError:

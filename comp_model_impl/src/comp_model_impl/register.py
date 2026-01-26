@@ -4,6 +4,7 @@ from comp_model_core.registry import Registry
 from .bandits.bernoulli import BernoulliBanditEnv
 from .models.qrl.qrl import QRL
 from .demonstrators.noisy_best import NoisyBestArmDemonstrator
+from .demonstrators.rl_agent import RLDemonstrator
 
 def make_registry() -> Registry:
     r = Registry()
@@ -16,5 +17,6 @@ def make_registry() -> Registry:
 
     # Demonstrators
     r.demonstrators.register("NoisyBestArmDemonstrator", NoisyBestArmDemonstrator)
+    r.demonstrators.register("RLDemonstrator", RLDemonstrator)
 
     return r

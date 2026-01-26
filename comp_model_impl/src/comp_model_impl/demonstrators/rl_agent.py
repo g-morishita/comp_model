@@ -16,9 +16,9 @@ class RLDemonstrator(Demonstrator):
 
     @classmethod
     def from_config(cls, bandit_cfg: Mapping[str, Any], demo_cfg: Mapping[str, Any]) -> "RLDemonstrator":
-        model = demo_cfg["model"]
+        model = demo_cfg["model"]()
         params = demo_cfg["params"]
-        model.set_params(params)
+        model.set_params(params=params)
         return cls(model=model)
 
     def reset(self, *, spec: EnvironmentSpec, rng: np.random.Generator) -> None:

@@ -69,8 +69,7 @@ class BoxMLESubjectwiseEstimator(Estimator):
             "space_names": list(self.space.names),
         }
 
-        from tqdm import tqdm
-        for subj in tqdm(study.subjects):
+        for subj in study.subjects:
 
             def nll(x: np.ndarray) -> float:
                 params = self.space.to_params(x)
