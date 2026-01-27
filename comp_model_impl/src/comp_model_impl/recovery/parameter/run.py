@@ -4,37 +4,35 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-from tqdm import tqdm
 
+import importlib
 import json
 import secrets
 import shutil
 import subprocess
-import importlib
 
 import numpy as np
 import pandas as pd
-
-from .config import ParameterRecoveryConfig, config_to_json
-from .sampling import sample_subject_params
-from .analysis import compute_parameter_recovery_metrics
+from tqdm import tqdm
 
 from comp_model_core.plans.io import load_study_plan_yaml, load_study_plan_json
 from comp_model_core.plans.block import StudyPlan, BlockPlan
-
+from comp_model_core.data.types import StudyData
+from comp_model_core.interfaces.estimator import Estimator, FitResult
 from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
-from comp_model_core.interfaces.estimator import Estimator, FitResult
-from comp_model_core.data.types import StudyData
 
-from ...tasks.build import build_runner_for_plan
-from ...register import make_registry
+from comp_model_impl.register import make_registry
+from comp_model_impl.tasks.build import build_runner_for_plan
 
-from .plots import (
+from comp_model_impl.recovery.parameter.analysis import compute_parameter_recovery_metrics
+from comp_model_impl.recovery.parameter.config import ParameterRecoveryConfig, config_to_json
+from comp_model_impl.recovery.parameter.plots import (
+    plot_parameter_recovery_interactive,
     plot_parameter_recovery_scatter,
     plot_parameter_recovery_scatter_color,
-    plot_parameter_recovery_interactive,
 )
+from comp_model_impl.recovery.parameter.sampling import sample_subject_params
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,10 +43,11 @@ class ParameterRecoveryOutputs:
 
 
 def _find_git_root(start: Path) -> Path | None:
+    """Walk upward until we find a .git entry (dir OR file)."""
     p = start.resolve()
     for parent in [p, *p.parents]:
         git_entry = parent / ".git"
-        if git_entry.exists():  # dir or file (submodules often use a file)
+        if git_entry.exists():
             return parent
     return None
 
@@ -67,6 +66,10 @@ def _run_git(repo_root: Path, args: list[str]) -> str | None:
 
 
 def git_info_for_module(module_name: str) -> dict[str, Any]:
+    """
+    Returns commit/branch/dirty for the git repo that contains `module_name`.
+    Never raises; returns Nones if not in a git checkout.
+    """
     try:
         mod = importlib.import_module(module_name)
         mod_path = Path(mod.__file__).resolve()
@@ -101,6 +104,10 @@ def git_info_for_module(module_name: str) -> dict[str, Any]:
 
 
 def make_unique_run_dir(base_out_dir: str | Path, *, git_commit: str | None = None) -> Path:
+    """
+    Creates a unique run directory under base_out_dir and returns it.
+    Example name: 2026-01-26_143012__a1b2c3d__7f9c
+    """
     base = Path(base_out_dir)
     base.mkdir(parents=True, exist_ok=True)
 
@@ -115,33 +122,74 @@ def make_unique_run_dir(base_out_dir: str | Path, *, git_commit: str | None = No
 
 
 def _plan_summary(plan: StudyPlan) -> dict[str, Any]:
-    n_subjects = len(plan.subjects)
-    n_blocks = len(plan.blocks)
+    """
+    Robust summary for StudyPlan where structure is:
+      StudyPlan.subjects: Mapping[str, list[BlockPlan]]
+    """
+    n_subjects = int(len(plan.subjects))
 
-    trials_by_block = []
-    for b in plan.blocks:
-        trials_by_block.append(int(getattr(b, "n_trials", 0)))
+    blocks_per_subject: list[int] = []
+    trials_per_subject: list[int] = []
 
-    # total trials per subject (robust to list/dict)
-    totals: list[int] = []
-    for sid, bps in plan.subjects.items():
-        if isinstance(bps, dict):
-            blocks = list(bps.values())
-        else:
-            blocks = list(bps)
-        totals.append(int(sum(getattr(bp, "n_trials", 0) for bp in blocks)))
+    block_trials_by_id: dict[str, list[int]] = {}
+    block_seen_by_subject: dict[str, set[str]] = {}
 
-    total_trials_min = int(min(totals)) if totals else 0
-    total_trials_max = int(max(totals)) if totals else 0
-    total_trials_mean = float(np.mean(totals)) if totals else 0.0
+    # Canonical view: derive block order + trials from first subject
+    canonical_subject_id = next(iter(plan.subjects.keys()))
+    canonical_blocks = list(plan.subjects[canonical_subject_id])
+    canonical_block_ids = [bp.block_id for bp in canonical_blocks]
+    canonical_trials_by_block = [int(bp.n_trials) for bp in canonical_blocks]
+
+    for sid, block_plans in plan.subjects.items():
+        block_plans = list(block_plans)
+        blocks_per_subject.append(int(len(block_plans)))
+
+        tot = 0
+        for bp in block_plans:
+            ntr = int(bp.n_trials)
+            tot += ntr
+
+            block_trials_by_id.setdefault(bp.block_id, []).append(ntr)
+            block_seen_by_subject.setdefault(bp.block_id, set()).add(sid)
+
+        trials_per_subject.append(int(tot))
+
+    n_blocks_unique = int(len(block_trials_by_id))
+
+    bmin = int(min(blocks_per_subject)) if blocks_per_subject else 0
+    bmax = int(max(blocks_per_subject)) if blocks_per_subject else 0
+    bmean = float(np.mean(blocks_per_subject)) if blocks_per_subject else 0.0
+
+    tmin = int(min(trials_per_subject)) if trials_per_subject else 0
+    tmax = int(max(trials_per_subject)) if trials_per_subject else 0
+    tmean = float(np.mean(trials_per_subject)) if trials_per_subject else 0.0
+
+    blocks_table = []
+    for block_id, trials_list in sorted(block_trials_by_id.items(), key=lambda kv: kv[0]):
+        blocks_table.append(
+            {
+                "block_id": block_id,
+                "n_trials_min": int(min(trials_list)),
+                "n_trials_max": int(max(trials_list)),
+                "n_trials_mean": float(np.mean(trials_list)),
+                "n_subjects_with_block": int(len(block_seen_by_subject.get(block_id, set()))),
+            }
+        )
 
     return {
-        "n_subjects": int(n_subjects),
-        "n_blocks": int(n_blocks),
-        "trials_by_block": trials_by_block,
-        "total_trials_per_subject_min": total_trials_min,
-        "total_trials_per_subject_mean": total_trials_mean,
-        "total_trials_per_subject_max": total_trials_max,
+        "n_subjects": n_subjects,
+        "n_blocks_unique": n_blocks_unique,
+        "blocks_per_subject_min": bmin,
+        "blocks_per_subject_mean": bmean,
+        "blocks_per_subject_max": bmax,
+        "total_trials_per_subject_min": tmin,
+        "total_trials_per_subject_mean": tmean,
+        "total_trials_per_subject_max": tmax,
+        "total_trials_all_subjects": int(sum(trials_per_subject)),
+        "canonical_subject_id": canonical_subject_id,
+        "canonical_block_ids": canonical_block_ids,
+        "canonical_trials_by_block": canonical_trials_by_block,
+        "blocks_table": blocks_table,
     }
 
 
@@ -182,7 +230,20 @@ def run_parameter_recovery(
     model: ComputationalModel,
     estimator: Estimator,
 ) -> ParameterRecoveryOutputs:
-    # ---- Load study plan first (so we can compute summary + copy the plan) ----
+    """
+    Full parameter recovery experiment.
+
+    - loads study plan
+    - creates a unique output directory for this run
+    - writes config + manifest (git + plan summary + copied plan file)
+    - for each replication:
+        * sample true subject parameters
+        * simulate data
+        * fit estimator
+        * store true vs estimated per subject/param
+    - saves records + metrics + optional diagnostics + plots
+    """
+    # Load study plan FIRST (so we can compute plan summary + copy plan into out_dir)
     plan_path = Path(config.plan_path)
     if plan_path.suffix.lower() in (".yaml", ".yml"):
         plan: StudyPlan = load_study_plan_yaml(str(plan_path))
@@ -193,17 +254,20 @@ def run_parameter_recovery(
 
     subject_ids = list(plan.subjects.keys())
 
-    # ---- Unique output folder (include comp_model_impl commit in folder name) ----
+    # Unique output directory (use comp_model_impl git commit if available)
     git_impl = git_info_for_module("comp_model_impl")
     git_commit = git_impl.get("comp_model_impl_git_commit")
     out_dir = make_unique_run_dir(config.output.out_dir, git_commit=git_commit)
 
-    # ---- Save config ----
+    # Save config
     if config.output.save_config:
-        (out_dir / "parameter_recovery_config.json").write_text(config_to_json(config), encoding="utf-8")
+        (out_dir / "parameter_recovery_config.json").write_text(
+            config_to_json(config),
+            encoding="utf-8",
+        )
 
-    # ---- Copy plan file into out_dir for reproducibility ----
-    plan_copied_name = None
+    # Copy plan file into out_dir for reproducibility
+    plan_copied_name: str | None = None
     try:
         if plan_path.exists() and plan_path.is_file():
             dest = out_dir / plan_path.name
@@ -212,7 +276,7 @@ def run_parameter_recovery(
     except Exception:
         plan_copied_name = None
 
-    # ---- Manifest with summary (blocks/subjects/trials) + git commit ----
+    # Manifest: git + plan summary + copied plan path
     plan_summary = _plan_summary(plan)
     write_run_manifest(
         out_dir,
@@ -225,6 +289,7 @@ def run_parameter_recovery(
     )
 
     rng = np.random.default_rng(int(config.seed))
+
     records: list[dict[str, Any]] = []
     fit_diags: list[dict[str, Any]] = []
 
@@ -234,7 +299,9 @@ def run_parameter_recovery(
         return build_runner_for_plan(plan=block_plan, registries=r)
 
     for rep in tqdm(range(int(config.n_reps)), desc="Parameter recovery"):
-        rep_rng = np.random.default_rng(rng.integers(0, 2**32 - 1, dtype=np.uint32))
+        rep_rng = np.random.default_rng(
+            rng.integers(0, 2**32 - 1, dtype=np.uint32)
+        )
 
         subj_params_true, pop_true = sample_subject_params(
             cfg=config.sampling,
@@ -290,6 +357,7 @@ def run_parameter_recovery(
     df = pd.DataFrame.from_records(records)
     df.sort_values(["param", "rep", "subject_id"], inplace=True)
 
+    # Save records
     fmt = config.output.save_format.lower()
     if fmt == "csv":
         df.to_csv(out_dir / "parameter_recovery_records.csv", index=False)
@@ -298,6 +366,7 @@ def run_parameter_recovery(
     else:
         raise ValueError("output.save_format must be 'csv' or 'parquet'")
 
+    # Save diagnostics
     if config.output.save_fit_diagnostics:
         with (out_dir / "parameter_recovery_fit_diagnostics.jsonl").open("w", encoding="utf-8") as f:
             for row in fit_diags:
@@ -306,6 +375,7 @@ def run_parameter_recovery(
     metrics = compute_parameter_recovery_metrics(df)
     metrics.to_csv(out_dir / "parameter_recovery_metrics.csv", index=False)
 
+    # Plots
     if config.plots.make_plots:
         plot_dir = out_dir / "plots"
         plot_dir.mkdir(exist_ok=True)
@@ -315,7 +385,10 @@ def run_parameter_recovery(
 
         plot_parameter_recovery_scatter(df=df, out_dir=plot_dir, alpha=alpha, max_points=max_points)
         for mode in ["true", "abs_error", "error"]:
-            plot_parameter_recovery_scatter_color(df=df, out_dir=plot_dir, color_by=mode, alpha=alpha, max_points=max_points)
+            plot_parameter_recovery_scatter_color(
+                df=df, out_dir=plot_dir, color_by=mode, alpha=alpha, max_points=max_points
+            )
+
         try:
             plot_parameter_recovery_interactive(df=df, out_path=plot_dir / "recovery_interactive.html")
         except ImportError:
