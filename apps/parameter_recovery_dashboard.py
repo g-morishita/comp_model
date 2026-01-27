@@ -263,7 +263,11 @@ def main() -> None:
     st.title("Parameter Recovery Dashboard")
 
     # ---- Sidebar: root + search ----
-    root = Path(st.sidebar.text_input("Output root folder", value=os.environ.get("PR_OUTPUT_ROOT", "outputs"))).expanduser()
+    root = Path(
+        st.sidebar.text_input(
+            "Output root folder", value=os.environ.get("PR_OUTPUT_ROOT", "outputs")
+        )
+    ).expanduser()
     st.sidebar.caption("This folder should contain unique run subfolders.")
 
     runs = _find_runs(root)
@@ -462,7 +466,9 @@ def main() -> None:
     alpha = ctrl4.slider("Opacity", min_value=0.05, max_value=1.0, value=0.35, step=0.05)
 
     plot_size = ctrl5.slider("Plot size (square)", min_value=350, max_value=900, value=600, step=50)
-    max_points = int(ctrl6.number_input("Max points", min_value=1000, max_value=2_000_000, value=200_000, step=10_000))
+    max_points = int(
+        ctrl6.number_input("Max points", min_value=1000, max_value=2_000_000, value=200_000, step=10_000)
+    )
 
     df = records.copy().dropna(subset=["true", "hat"])
 
@@ -519,6 +525,181 @@ def main() -> None:
 
     st.altair_chart(alt.vconcat(summary, scatter), use_container_width=False)
 
+    # =============================
+    # Parameter correlations (NEW)
+    # =============================
+    st.divider()
+    st.header("Parameter correlations")
+
+    df_corr = records.copy()
+    df_corr = df_corr.dropna(subset=["rep", "subject_id", "param", "true", "hat"])
+    if df_corr.empty:
+        st.warning("Not enough data to compute correlations.")
+    else:
+        df_corr["error"] = df_corr["hat"] - df_corr["true"]
+        df_corr["abs_error"] = df_corr["error"].abs()
+
+        cA, cB, cC, cD, cE = st.columns([1.4, 1.0, 1.4, 1.1, 1.1])
+
+        value_choice = cA.selectbox(
+            "Values to correlate",
+            options=["hat (estimated)", "true", "error (hat-true)", "abs_error"],
+            index=0,
+        )
+        method_choice = cB.selectbox("Method", options=["spearman", "pearson"], index=0)
+
+        rep_mode = cC.selectbox(
+            "Rep aggregation",
+            options=[
+                "Use selected rep (if any; else pool all)",
+                "Pool all reps (rep × subject rows)",
+                "Average across reps per subject",
+            ],
+            index=0,
+        )
+
+        min_obs = int(
+            cD.number_input("Min paired obs", min_value=2, max_value=10_000, value=5, step=1)
+        )
+
+        heatmap_size = int(cE.slider("Heatmap size", min_value=350, max_value=900, value=550, step=50))
+
+        value_col = {
+            "hat (estimated)": "hat",
+            "true": "true",
+            "error (hat-true)": "error",
+            "abs_error": "abs_error",
+        }[value_choice]
+
+        # Wide table: rows = (rep, subject_id), cols = param
+        wide = df_corr.pivot_table(
+            index=["rep", "subject_id"],
+            columns="param",
+            values=value_col,
+            aggfunc="mean",
+        )
+
+        # Apply rep handling
+        if rep_mode == "Use selected rep (if any; else pool all)":
+            if rep_sel != "(all)":
+                try:
+                    wide = wide.xs(int(rep_sel), level="rep", drop_level=True)
+                except Exception:
+                    pass  # fallback to pooled
+        elif rep_mode == "Average across reps per subject":
+            wide = wide.groupby(level="subject_id").mean()
+
+        # Drop all-NaN + constants
+        wide = wide.dropna(axis=1, how="all")
+        const_cols = [c for c in wide.columns if wide[c].nunique(dropna=True) <= 1]
+        if const_cols:
+            st.caption(f"Dropped constant params: {', '.join(map(str, const_cols))}")
+            wide = wide.drop(columns=const_cols, errors="ignore")
+
+        if wide.shape[1] < 2:
+            st.warning("Need at least 2 varying parameters to compute correlations.")
+        else:
+            corr = wide.corr(method=method_choice, min_periods=min_obs)
+
+            # --- FIX: ensure distinct names so reset_index doesn't create duplicate columns
+            corr = corr.copy()
+            corr.index = corr.index.astype(str)
+            corr.columns = corr.columns.astype(str)
+            corr.index.name = "param_x"
+            corr.columns.name = "param_y"
+
+            corr_long = (
+                corr.stack()
+                .rename("corr")
+                .reset_index()   # now produces columns: param_x, param_y, corr
+                .dropna(subset=["corr"])
+            )
+
+            heat = (
+                alt.Chart(corr_long)
+                .mark_rect()
+                .encode(
+                    x=alt.X("param_x:N", sort=list(corr.columns), title=""),
+                    y=alt.Y("param_y:N", sort=list(corr.columns), title=""),
+                    color=alt.Color("corr:Q", scale=alt.Scale(domain=[-1, 1]), title=f"{method_choice} r"),
+                    tooltip=[
+                        alt.Tooltip("param_x:N"),
+                        alt.Tooltip("param_y:N"),
+                        alt.Tooltip("corr:Q", format=".3f"),
+                    ],
+                )
+                .properties(width=heatmap_size, height=heatmap_size)
+            )
+
+            txt = (
+                alt.Chart(corr_long)
+                .mark_text(baseline="middle", fontSize=10)
+                .encode(
+                    x=alt.X("param_x:N", sort=list(corr.columns)),
+                    y=alt.Y("param_y:N", sort=list(corr.columns)),
+                    text=alt.Text("corr:Q", format=".2f"),
+                )
+            )
+
+            st.altair_chart(heat + txt, use_container_width=False)
+
+            st.download_button(
+                "Download correlation matrix (csv)",
+                data=corr.to_csv().encode("utf-8"),
+                file_name=f"param_corr_{value_col}_{method_choice}.csv",
+                mime="text/csv",
+            )
+
+            tri_mask = np.triu(np.ones_like(corr.to_numpy(), dtype=bool), k=1)
+            pairs = (
+                corr.where(tri_mask)
+                .stack()
+                .rename("corr")
+                .reset_index()  # columns: param_x, param_y, corr
+            )
+
+            if not pairs.empty:
+                pairs["abs_corr"] = pairs["corr"].abs()
+                pairs = pairs.sort_values("abs_corr", ascending=False)
+                st.subheader("Top correlated parameter pairs")
+                st.dataframe(pairs.head(30), use_container_width=True)
+
+            st.subheader("Pair scatter (optional)")
+            p1c, p2c, p3c = st.columns([1.0, 1.0, 1.0])
+            cols = list(corr.columns)
+
+            x_param = p1c.selectbox("X", options=cols, index=0)
+            y_param = p2c.selectbox("Y", options=cols, index=(1 if len(cols) > 1 else 0))
+            point_alpha = p3c.slider("Opacity (pair)", min_value=0.05, max_value=1.0, value=0.35, step=0.05)
+
+            df_pair = wide[[x_param, y_param]].dropna().reset_index()
+
+            tooltips = []
+            if "rep" in df_pair.columns:
+                tooltips.append(alt.Tooltip("rep:Q"))
+            if "subject_id" in df_pair.columns:
+                tooltips.append(alt.Tooltip("subject_id:N"))
+            tooltips += [
+                alt.Tooltip(f"{x_param}:Q", format=".6g"),
+                alt.Tooltip(f"{y_param}:Q", format=".6g"),
+            ]
+
+            pair_chart = (
+                alt.Chart(df_pair)
+                .mark_circle(opacity=point_alpha)
+                .encode(
+                    x=alt.X(f"{x_param}:Q", title=x_param),
+                    y=alt.Y(f"{y_param}:Q", title=y_param),
+                    tooltip=tooltips,
+                )
+                .properties(
+                    width=min(800, heatmap_size + 150),
+                    height=min(600, heatmap_size),
+                )
+            )
+            st.altair_chart(pair_chart, use_container_width=False)
+
+    # ---- Records preview ----
     st.subheader("Records (preview)")
     st.dataframe(df.head(5000), use_container_width=True)
 
