@@ -15,6 +15,7 @@ def test_data_types_constructible():
 
     assert study.subjects[0].subject_id == "S1"
     assert study.subjects[0].blocks[0].block_id == "b1"
+    assert study.subjects[0].blocks[0].condition == "c"
     assert int(study.subjects[0].blocks[0].env_spec.n_actions) == 2
 
 
