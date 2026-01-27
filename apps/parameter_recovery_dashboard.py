@@ -154,39 +154,48 @@ def _get_any(d: dict[str, Any] | None, keys: list[str]) -> Any:
     return None
 
 
+def _plan_fields_from_manifest(man: dict[str, Any]) -> dict[str, Any]:
+    ps = (man.get("plan_summary") or {}) if isinstance(man, dict) else {}
+    return {
+        "n_subjects": ps.get("n_subjects"),
+        "n_blocks_unique": ps.get("n_blocks_unique"),
+        "trials_per_subject_mean": ps.get("total_trials_per_subject_mean"),
+        "trials_per_subject_min": ps.get("total_trials_per_subject_min"),
+        "trials_per_subject_max": ps.get("total_trials_per_subject_max"),
+    }
+
+
 def build_run_index(runs: list[RunEntry]) -> pd.DataFrame:
-    """
-    Create a searchable "index" table of runs with relevant fields.
-    """
     rows: list[dict[str, Any]] = []
     for r in runs:
         cfg = load_config(str(r.out_dir)) or {}
         man = load_manifest(str(r.out_dir)) or {}
 
-        # tolerate either "comp_model_impl_git_commit" (module-specific) or generic "git_commit"
         git_commit = _get_any(man, ["comp_model_impl_git_commit", "git_commit"])
         git_branch = _get_any(man, ["comp_model_impl_git_branch", "git_branch"])
         git_dirty = _get_any(man, ["comp_model_impl_git_dirty", "git_dirty"])
+
+        plan_fields = _plan_fields_from_manifest(man)
 
         rows.append(
             {
                 "run_id": r.run_id,
                 "time": format_time(r.mtime),
-                "out_dir": str(r.out_dir),
-                "git_commit": git_commit,
+                "git_commit": (git_commit[:12] if isinstance(git_commit, str) else git_commit),
                 "git_branch": git_branch,
                 "git_dirty": git_dirty,
                 "model": man.get("model"),
                 "estimator": man.get("estimator"),
                 "generator": man.get("generator"),
-                "plan_path": cfg.get("plan_path"),
                 "n_reps": cfg.get("n_reps"),
                 "seed": cfg.get("seed"),
+                "plan_path": cfg.get("plan_path"),
+                **plan_fields,
+                "out_dir": str(r.out_dir),
             }
         )
 
     df = pd.DataFrame(rows)
-    # keep stable column order
     cols = [
         "run_id",
         "time",
@@ -198,6 +207,9 @@ def build_run_index(runs: list[RunEntry]) -> pd.DataFrame:
         "generator",
         "n_reps",
         "seed",
+        "n_subjects",
+        "n_blocks_unique",
+        "trials_per_subject_mean",
         "plan_path",
         "out_dir",
     ]
@@ -208,14 +220,22 @@ def build_run_index(runs: list[RunEntry]) -> pd.DataFrame:
 
 
 def apply_search_filter(df: pd.DataFrame, query: str) -> pd.DataFrame:
-    """
-    Very simple search: case-insensitive substring across key columns.
-    """
     q = (query or "").strip().lower()
     if not q:
         return df
 
-    hay_cols = ["run_id", "git_commit", "git_branch", "model", "estimator", "generator", "plan_path", "out_dir"]
+    hay_cols = [
+        "run_id",
+        "git_commit",
+        "git_branch",
+        "model",
+        "estimator",
+        "generator",
+        "plan_path",
+        "out_dir",
+        "n_subjects",
+        "n_blocks_unique",
+    ]
     mask = pd.Series(False, index=df.index)
     for c in hay_cols:
         s = df[c].astype(str).str.lower()
@@ -243,8 +263,8 @@ def main() -> None:
     st.title("Parameter Recovery Dashboard")
 
     # ---- Sidebar: root + search ----
-    root = Path(st.sidebar.text_input("Output root folder", value=DEFAULT_ROOT)).expanduser()
-    st.sidebar.caption("This folder should contain run subfolders (unique per run).")
+    root = Path(st.sidebar.text_input("Output root folder", value=os.environ.get("PR_OUTPUT_ROOT", "outputs"))).expanduser()
+    st.sidebar.caption("This folder should contain unique run subfolders.")
 
     runs = _find_runs(root)
     if not runs:
@@ -259,25 +279,22 @@ def main() -> None:
     st.sidebar.subheader("Search runs")
     query = st.sidebar.text_input("Search (substring)", value="")
     filtered = apply_search_filter(run_index, query)
-
     st.sidebar.caption(f"Runs: {len(filtered)} / {len(run_index)}")
 
-    # ---- Main: table of runs ----
+    # ---- Main: run table ----
     st.subheader("Runs")
     st.dataframe(filtered, use_container_width=True, height=320)
 
-    # Select a run from filtered results
     if filtered.empty:
         st.warning("No runs match your search.")
         return
 
     run_ids = filtered["run_id"].tolist()
-    default_run = run_ids[0]
     selected_run_id = st.selectbox("Select a run", options=run_ids, index=0)
     selected = next(r for r in runs if r.run_id == selected_run_id)
     out_dir = selected.out_dir
 
-    # ---- Load selected run artifacts ----
+    # ---- Load run artifacts ----
     cfg = load_config(str(out_dir))
     manifest = load_manifest(str(out_dir))
     metrics = load_metrics(str(out_dir))
@@ -286,20 +303,33 @@ def main() -> None:
 
     # ---- Header / downloads ----
     st.divider()
-    c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
+
     c1.subheader(f"Selected run: {selected.run_id}")
     c1.caption(f"{format_time(selected.mtime)} · {out_dir}")
 
+    plan_file = _get_any(manifest, ["plan_file_copied"]) if manifest else None
+    plan_local = (out_dir / plan_file) if plan_file else None
+    if plan_local and plan_local.exists() and plan_local.is_file():
+        c5.download_button(
+            "Download plan",
+            data=plan_local.read_bytes(),
+            file_name=plan_local.name,
+            mime="text/yaml" if plan_local.suffix.lower() in (".yml", ".yaml") else "application/json",
+        )
+    else:
+        c5.caption("Plan: (not copied)")
+
     if (out_dir / RECORDS_PARQUET).exists():
         c2.download_button(
-            "Download records (parquet)",
+            "Records (parquet)",
             data=(out_dir / RECORDS_PARQUET).read_bytes(),
             file_name=RECORDS_PARQUET,
             mime="application/octet-stream",
         )
     elif (out_dir / RECORDS_CSV).exists():
         c2.download_button(
-            "Download records (csv)",
+            "Records (csv)",
             data=(out_dir / RECORDS_CSV).read_bytes(),
             file_name=RECORDS_CSV,
             mime="text/csv",
@@ -307,7 +337,7 @@ def main() -> None:
 
     if (out_dir / METRICS_NAME).exists():
         c3.download_button(
-            "Download metrics (csv)",
+            "Metrics (csv)",
             data=(out_dir / METRICS_NAME).read_bytes(),
             file_name=METRICS_NAME,
             mime="text/csv",
@@ -315,28 +345,87 @@ def main() -> None:
 
     if (out_dir / DIAGS_NAME).exists():
         c4.download_button(
-            "Download diagnostics (jsonl)",
+            "Diagnostics (jsonl)",
             data=(out_dir / DIAGS_NAME).read_bytes(),
             file_name=DIAGS_NAME,
             mime="application/json",
         )
 
-    # ---- Settings ----
+    # ---- Settings: key facts up front ----
     st.divider()
-    st.header("Settings")
-    s1, s2 = st.columns(2)
-    with s1:
-        st.subheader("Config")
-        if cfg is None:
-            st.warning(f"Missing {CONFIG_NAME}")
-        else:
-            st.json(cfg)
-    with s2:
-        st.subheader("Manifest")
-        if manifest is None:
-            st.info(f"Missing {MANIFEST_NAME} (optional)")
-        else:
-            st.json(manifest)
+    st.header("Settings (important)")
+
+    created_at = _get_any(manifest, ["created_at"]) if manifest else None
+    model_name = _get_any(manifest, ["model"]) if manifest else None
+    estimator_name = _get_any(manifest, ["estimator"]) if manifest else None
+    generator_name = _get_any(manifest, ["generator"]) if manifest else None
+    git_commit = _get_any(manifest, ["comp_model_impl_git_commit", "git_commit"]) if manifest else None
+    git_branch = _get_any(manifest, ["comp_model_impl_git_branch", "git_branch"]) if manifest else None
+    git_dirty = _get_any(manifest, ["comp_model_impl_git_dirty", "git_dirty"]) if manifest else None
+
+    plan_path = (cfg or {}).get("plan_path") if cfg else None
+    n_reps = (cfg or {}).get("n_reps") if cfg else None
+    seed = (cfg or {}).get("seed") if cfg else None
+
+    save_format = None
+    try:
+        save_format = (cfg or {}).get("output", {}).get("save_format")
+    except Exception:
+        save_format = None
+
+    ps = (manifest or {}).get("plan_summary", {}) if manifest else {}
+    n_subjects = ps.get("n_subjects")
+    n_blocks_unique = ps.get("n_blocks_unique")
+    tmin = ps.get("total_trials_per_subject_min")
+    tmean = ps.get("total_trials_per_subject_mean")
+    tmax = ps.get("total_trials_per_subject_max")
+    canonical_blocks = ps.get("canonical_block_ids") or []
+    canonical_trials = ps.get("canonical_trials_by_block") or []
+
+    p1, p2, p3, p4 = st.columns(4)
+    p1.metric("Subjects", str(n_subjects) if n_subjects is not None else "—")
+    p2.metric("Unique blocks", str(n_blocks_unique) if n_blocks_unique is not None else "—")
+    p3.metric("Trials / subject (mean)", f"{tmean:.2f}" if isinstance(tmean, (int, float)) else "—")
+    p4.metric("Trials / subject (min–max)", f"{tmin}–{tmax}" if (tmin is not None and tmax is not None) else "—")
+
+    if canonical_blocks and canonical_trials and len(canonical_blocks) == len(canonical_trials):
+        with st.expander("Canonical block schedule (from first subject)"):
+            st.dataframe(
+                pd.DataFrame({"block_id": canonical_blocks, "n_trials": canonical_trials}),
+                use_container_width=True,
+            )
+
+    blocks_table = ps.get("blocks_table") or []
+    if blocks_table:
+        with st.expander("Plan audit: per-block n_trials across subjects"):
+            st.dataframe(pd.DataFrame(blocks_table), use_container_width=True)
+
+    sA, sB, sC, sD = st.columns(4)
+    sA.metric("Created", created_at or "—")
+    sB.metric("Git commit", (git_commit[:12] if isinstance(git_commit, str) else (git_commit or "—")))
+    sC.metric("Branch", git_branch or "—")
+    sD.metric("Dirty", str(git_dirty) if git_dirty is not None else "—")
+
+    st.markdown(
+        f"""
+**Model:** `{model_name or "—"}`  
+**Estimator:** `{estimator_name or "—"}`  
+**Generator:** `{generator_name or "—"}`  
+**Plan path in config:** `{plan_path or "—"}`  
+**n_reps / seed / format:** `{n_reps or "—"}` / `{seed or "—"}` / `{save_format or "—"}`
+"""
+    )
+
+    if plan_local and plan_local.exists() and plan_local.is_file():
+        with st.expander("Show copied plan file"):
+            lang = "yaml" if plan_local.suffix.lower() in (".yml", ".yaml") else "json"
+            st.code(plan_local.read_text(encoding="utf-8"), language=lang)
+
+    with st.expander("Show full manifest JSON"):
+        st.json(manifest or {})
+
+    with st.expander("Show full config JSON"):
+        st.json(cfg or {})
 
     # ---- Metrics ----
     st.divider()
@@ -346,9 +435,10 @@ def main() -> None:
     else:
         st.dataframe(metrics, use_container_width=True)
 
-    # ---- Records & plots ----
+    # ---- Records & Plot ----
     st.divider()
-    st.header("Records & Plot")
+    st.header("Scatter Plot")
+
     if records.empty:
         st.warning("Records file is missing or empty.")
         return
@@ -358,24 +448,23 @@ def main() -> None:
         st.error(f"Records missing required columns: {sorted(required_cols - set(records.columns))}")
         return
 
-    # Filters for selected run only
-    sidebar = st.sidebar
-    sidebar.subheader("Filters (selected run)")
+    # ---- Selection controls at the TOP of the plot ----
+    st.subheader("Selection")
+    ctrl1, ctrl2, ctrl3, ctrl4, ctrl5, ctrl6 = st.columns([1.2, 1.0, 1.0, 1.0, 1.1, 1.2])
 
     params = sorted(records["param"].dropna().unique().tolist())
-    param_sel = sidebar.selectbox("Param", options=["(all)"] + params)
+    param_sel = ctrl1.selectbox("Param", options=["(all)"] + params)
 
     reps = sorted(records["rep"].dropna().unique().tolist())
-    rep_sel = sidebar.selectbox("Rep", options=["(all)"] + [str(r) for r in reps])
+    rep_sel = ctrl2.selectbox("Rep", options=["(all)"] + [str(r) for r in reps])
 
-    color_by = sidebar.selectbox("Color by", options=["error", "abs_error", "true", "hat"])
-    alpha = sidebar.slider("Point opacity", min_value=0.05, max_value=1.0, value=0.35, step=0.05)
-    max_points = int(
-        sidebar.number_input("Max points (subsample)", min_value=1000, max_value=2_000_000, value=200_000, step=10_000)
-    )
+    color_by = ctrl3.selectbox("Color by", options=["error", "abs_error", "true", "hat"])
+    alpha = ctrl4.slider("Opacity", min_value=0.05, max_value=1.0, value=0.35, step=0.05)
 
-    df = records.copy()
-    df = df.dropna(subset=["true", "hat"])
+    plot_size = ctrl5.slider("Plot size (square)", min_value=350, max_value=900, value=600, step=50)
+    max_points = int(ctrl6.number_input("Max points", min_value=1000, max_value=2_000_000, value=200_000, step=10_000))
+
+    df = records.copy().dropna(subset=["true", "hat"])
 
     if param_sel != "(all)":
         df = df[df["param"] == param_sel]
@@ -397,8 +486,18 @@ def main() -> None:
     k3.metric("MAE", f"{stats['mae']:.4g}" if np.isfinite(stats["mae"]) else "NA")
     k4.metric("Corr", f"{stats['corr']:.4g}" if np.isfinite(stats["corr"]) else "NA")
 
-    st.subheader("True vs Estimated")
-    chart = (
+    brush = alt.selection_interval(name="select_zone")
+
+    summary = (
+        alt.Chart(df_plot)
+        .transform_filter(brush)
+        .transform_aggregate(n="count()")
+        .mark_text(align="left", baseline="middle", fontSize=14)
+        .encode(text=alt.Text("n:Q", format=".0f"))
+        .properties(width=plot_size, height=30, title="Selected points (drag a box on the scatter plot)")
+    )
+
+    scatter = (
         alt.Chart(df_plot)
         .mark_circle(opacity=alpha)
         .encode(
@@ -414,14 +513,15 @@ def main() -> None:
                 alt.Tooltip("error:Q", format=".6g"),
             ],
         )
-        .interactive()
+        .add_params(brush)
+        .properties(width=plot_size, height=plot_size)
     )
-    st.altair_chart(chart, use_container_width=True)
+
+    st.altair_chart(alt.vconcat(summary, scatter), use_container_width=False)
 
     st.subheader("Records (preview)")
     st.dataframe(df.head(5000), use_container_width=True)
 
-    # ---- Diagnostics (optional) ----
     st.divider()
     st.header("Fit Diagnostics (optional)")
     if diags.empty:
