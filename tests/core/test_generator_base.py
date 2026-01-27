@@ -22,6 +22,7 @@ class DummyGenerator(Generator):
             blocks.append(
                 Block(
                     block_id=bp.block_id,
+                    condition="c",
                     trials=[Trial(t=0, state=None, choice=None, observed_outcome=None, outcome=None)],
                     env_spec=None,
                 )
@@ -39,8 +40,8 @@ def test_simulate_study_happy_path():
     ts = [{"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]}]
 
     plans = {
-        "S1": [BlockPlan(block_id="b1", n_trials=1, bandit_type="x", bandit_config={}, trial_specs=ts)],
-        "S2": [BlockPlan(block_id="b2", n_trials=1, bandit_type="x", bandit_config={}, trial_specs=ts)],
+        "S1": [BlockPlan(block_id="b1", condition="c", n_trials=1, bandit_type="x", bandit_config={}, trial_specs=ts)],
+        "S2": [BlockPlan(block_id="b2", condition="c", n_trials=1, bandit_type="x", bandit_config={}, trial_specs=ts)],
     }
     subj_params = {
         "S1": {"a": 1.0},
@@ -65,7 +66,7 @@ def test_simulate_study_missing_subj_params_raises():
 
     ts = [{"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]}]
 
-    plans = {"S1": [BlockPlan(block_id="b1", n_trials=1, bandit_type="x", bandit_config={}, trial_specs=ts)]}
+    plans = {"S1": [BlockPlan(block_id="b1", condition="c", n_trials=1, bandit_type="x", bandit_config={}, trial_specs=ts)]}
     subj_params = {}  # missing
 
     with pytest.raises(ValueError):

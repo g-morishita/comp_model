@@ -128,6 +128,8 @@ class Block:
     ----------
     block_id
         Identifier for this block (often corresponds to the plan's ``block_id``).
+    condition
+        Experimental condition label for this block.
     trials
         Sequence of :class:`~comp_model_core.data.dataset.Trial` records.
     env_spec
@@ -141,12 +143,14 @@ class Block:
     Attributes
     ----------
     block_id : str
+    condition : str
     trials : Sequence[Trial]
     env_spec : EnvironmentSpec or None
     metadata : Json
     """
 
     block_id: str
+    condition: str
     trials: Sequence[Trial]
     env_spec: EnvironmentSpec | None = None
     event_log: "EventLog | None" = None  # Prevent circular import

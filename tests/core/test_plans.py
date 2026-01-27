@@ -12,6 +12,7 @@ def test_blockplan_validation_demonstrator_pairing():
     with pytest.raises(ValueError):
         BlockPlan(
             block_id="b1",
+            condition="c",
             n_trials=10,
             bandit_type="bernoulli",
             bandit_config={"probs": [0.2, 0.8]},
@@ -25,6 +26,7 @@ def test_blockplan_validation_basic_fields():
     with pytest.raises(ValueError):
         BlockPlan(
             block_id="",
+            condition="c",
             n_trials=10,
             bandit_type="bernoulli",
             bandit_config={"probs": [0.2, 0.8]},
@@ -34,6 +36,7 @@ def test_blockplan_validation_basic_fields():
     with pytest.raises(ValueError):
         BlockPlan(
             block_id="b1",
+            condition="c",
             n_trials=0,
             bandit_type="bernoulli",
             bandit_config={"probs": [0.2, 0.8]},
@@ -48,6 +51,7 @@ def test_study_plan_from_dict_minimal():
                 {
                     "block_id": "b1",
                     "n_trials": 3,
+                    "condition": "c",
                     "bandit_type": "bernoulli",
                     "bandit_config": {"probs": [0.2, 0.8]},
                     "trial_spec_template": {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
@@ -67,6 +71,7 @@ def test_load_study_plan_json(tmp_path: Path):
             "S1": [
                 {
                     "block_id": "b1",
+                    "condition": "c",
                     "n_trials": 3,
                     "bandit_type": "bernoulli",
                     "bandit_config": {"probs": [0.2, 0.8]},
@@ -91,6 +96,7 @@ def test_load_study_plan_yaml_optional(tmp_path: Path):
             "S1": [
                 {
                     "block_id": "b1",
+                    "condition": "c",
                     "n_trials": 3,
                     "bandit_type": "bernoulli",
                     "bandit_config": {"probs": [0.2, 0.8]},

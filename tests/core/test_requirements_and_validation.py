@@ -16,9 +16,10 @@ from comp_model_core.spec import EnvironmentSpec, OutcomeType
 from comp_model_core.validation import validate_action_sets, validate_block_plan
 
 
-def _mk_plan(*, block_id: str, n_trials: int, trial_specs: list[dict]) -> BlockPlan:
+def _mk_plan(*, block_id: str, condition: str, n_trials: int, trial_specs: list[dict]) -> BlockPlan:
     return BlockPlan(
         block_id=block_id,
+        condition=condition,
         n_trials=n_trials,
         bandit_type="x",
         bandit_config={},
@@ -32,6 +33,7 @@ def test_validate_action_sets_in_range():
     # so we call validate_block_plan which parses and validates.
     plan = _mk_plan(
         block_id="b1",
+        condition="c",
         n_trials=2,
         trial_specs=[
             {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
@@ -42,6 +44,7 @@ def test_validate_action_sets_in_range():
 
     bad = _mk_plan(
         block_id="b2",
+        condition="c",
         n_trials=1,
         trial_specs=[{"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [2]}],
     )
@@ -56,8 +59,8 @@ def test_requirements_social_asocial_and_visibility():
     asocial_specs = [{"self_outcome": {"kind": "VERIDICAL"}}]
     social_specs = [{"self_outcome": {"kind": "VERIDICAL"}, "demo_outcome": {"kind": "HIDDEN"}}]
 
-    plan_a = _mk_plan(block_id="a", n_trials=1, trial_specs=asocial_specs)
-    plan_s = _mk_plan(block_id="s", n_trials=1, trial_specs=social_specs)
+    plan_a = _mk_plan(block_id="a", condition="c", n_trials=1, trial_specs=asocial_specs)
+    plan_s = _mk_plan(block_id="s", condition="c", n_trials=1, trial_specs=social_specs)
 
     # Social/asocial requirements
     validate_block_plan(plan=plan_a, env_spec=env_asocial, requirements=(RequireAsocialBlock(),))
@@ -68,7 +71,7 @@ def test_requirements_social_asocial_and_visibility():
         validate_block_plan(plan=plan_s, env_spec=env_social, requirements=(RequireAsocialBlock(),))
 
     # Any-self-observable fails if all hidden
-    plan_hidden = _mk_plan(block_id="h", n_trials=2, trial_specs=[{"self_outcome": {"kind": "HIDDEN"}}] * 2)
+    plan_hidden = _mk_plan(block_id="h", condition="c", n_trials=2, trial_specs=[{"self_outcome": {"kind": "HIDDEN"}}] * 2)
     with pytest.raises(CompatibilityError):
         validate_block_plan(plan=plan_hidden, env_spec=env_asocial, requirements=(RequireAnySelfOutcomeObservable(),))
 
@@ -88,6 +91,7 @@ def test_requirements_social_asocial_and_visibility():
     # If any demo observable -> all-demo-hidden fails, any-demo-observable passes
     plan_demo_vis = _mk_plan(
         block_id="dv",
+        condition="c",
         n_trials=2,
         trial_specs=[
             {"self_outcome": {"kind": "VERIDICAL"}, "demo_outcome": {"kind": "HIDDEN"}},
@@ -101,7 +105,7 @@ def test_requirements_social_asocial_and_visibility():
 
 def test_predicate_requirement_error_wrapped():
     env = EnvironmentSpec(n_actions=2, outcome_type=OutcomeType.BINARY)
-    plan = _mk_plan(block_id="b", n_trials=1, trial_specs=[{"self_outcome": {"kind": "VERIDICAL"}}])
+    plan = _mk_plan(block_id="b", condition="c", n_trials=1, trial_specs=[{"self_outcome": {"kind": "VERIDICAL"}}])
 
     def boom(_plan, _env, _ts):
         raise RuntimeError("boom")

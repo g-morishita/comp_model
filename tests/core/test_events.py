@@ -95,18 +95,18 @@ def test_get_event_log_from_block_metadata():
             Event(idx=2, type=EventType.OUTCOME, t=0, state=None, payload={"action": 0, "observed_outcome": 1.0}),
         ]
     )
-    block = Block(block_id="b", trials=[Trial(t=0, state=None, choice=None, observed_outcome=None, outcome=None)], event_log=log)
+    block = Block(block_id="b", condition="c", trials=[Trial(t=0, state=None, choice=None, observed_outcome=None, outcome=None)], event_log=log)
     out = get_event_log(block)
     assert isinstance(out, EventLog)
     assert out.events[0].type is EventType.BLOCK_START
 
     # Wrong type
-    block4 = Block(block_id="b4", trials=[], event_log=123)
+    block4 = Block(block_id="b4", condition="c", trials=[], event_log=123)
     with pytest.raises(TypeError):
         get_event_log(block4)
 
     # Invalid log should raise
     bad_log = EventLog(events=[Event(idx=0, type=EventType.CHOICE, t=0, state=None, payload={"choice": 0})])
-    block5 = Block(block_id="b5", trials=[], event_log=bad_log)
+    block5 = Block(block_id="b5", condition="c", trials=[], event_log=bad_log)
     with pytest.raises(ValueError):
         get_event_log(block5)

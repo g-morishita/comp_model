@@ -21,6 +21,7 @@ A minimal asocial block with explicit trial specifications:
 >>> plan = BlockPlan(
 ...     block_id="b1",
 ...     n_trials=3,
+...     condition="c1",
 ...     bandit_type="BernoulliBanditEnv",
 ...     bandit_config={"probs": [0.2, 0.8]},
 ...     trial_specs=[
@@ -54,6 +55,8 @@ class BlockPlan:
         Identifier for the block (non-empty string).
     n_trials
         Number of trials in the block. Must be > 0.
+    condition
+        Experimental condition label for this block. Must be a non-empty string.
     bandit_type
         String key identifying which bandit/environment implementation to use.
     bandit_config
@@ -87,6 +90,7 @@ class BlockPlan:
     ----------
     block_id : str
     n_trials : int
+    condition : str
     bandit_type : str
     bandit_config : Mapping[str, Any]
     trial_specs : Sequence[Json]
@@ -113,6 +117,10 @@ class BlockPlan:
     block_id: str
     n_trials: int
 
+    # Within-subject designs: each block belongs to an experimental condition.
+    # No defaults are assumed; plans must specify this explicitly.
+    condition: str
+
     bandit_type: str
     bandit_config: Mapping[str, Any]
 
@@ -130,6 +138,8 @@ class BlockPlan:
             raise ValueError("BlockPlan.block_id must be a non-empty string.")
         if int(self.n_trials) <= 0:
             raise ValueError("BlockPlan.n_trials must be > 0.")
+        if not isinstance(self.condition, str) or not self.condition:
+            raise ValueError("BlockPlan.condition must be a non-empty string.")
         if not isinstance(self.bandit_type, str) or not self.bandit_type:
             raise ValueError("BlockPlan.bandit_type must be a non-empty string.")
         if self.bandit_config is None:
