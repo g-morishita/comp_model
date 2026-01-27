@@ -1,4 +1,16 @@
+"""Stan-based NUTS estimators.
+
+This module provides two concrete estimators built on CmdStanPy:
+
+* :class:`StanNUTSSubjectwiseEstimator` - fits each subject independently.
+* :class:`StanHierarchicalNUTSEstimator` - fits a hierarchical model across subjects.
+
+Both estimators rely on an event-log representation stored on blocks and on Stan
+program templates distributed with this package.
+"""
+
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
@@ -9,52 +21,50 @@ from comp_model_core.errors import CompatibilityError
 from comp_model_core.interfaces.estimator import Estimator, FitResult
 from comp_model_core.interfaces.model import ComputationalModel
 
-from comp_model_impl.estimators.stan.exporter import subject_to_stan_data, study_to_stan_data
-from comp_model_impl.estimators.stan.priors import Prior, priors_to_stan_data
-from comp_model_impl.estimators.stan.cmdstan_utils import load_stan_code, compile_cmdstan
+from .adapters.registry import resolve_stan_adapter
+from .cmdstan_utils import compile_cmdstan, load_stan_code
+from .exporter import subject_to_stan_data, study_to_stan_data
+from .priors import priors_to_stan_data
 
-# defaults you can override via config
-DEFAULTS_VS_INDIV = {
-    "alpha_p": Prior("beta", 1.0, 1.0),
-    "alpha_i": Prior("beta", 1.0, 1.0),
-    "beta":    Prior("lognormal", 0.0, 1.0),
-    "kappa":   Prior("normal", 0.0, 1.0),
-}
-DEFAULTS_VIC_INDIV = {
-    "alpha_o": Prior("beta", 1.0, 1.0),
-    "beta":    Prior("lognormal", 0.0, 1.0),
-}
 
-# hyper defaults (hierarchical)
-DEFAULTS_VS_HYPER = {
-    "mu_ap": Prior("normal", 0.0, 1.5),
-    "sd_ap": Prior("exponential", 1.0),
-    "mu_ai": Prior("normal", 0.0, 1.5),
-    "sd_ai": Prior("exponential", 1.0),
-    "mu_b":  Prior("normal", 0.0, 1.5),
-    "sd_b":  Prior("exponential", 1.0),
-    "mu_k":  Prior("normal", 0.0, 1.5),
-    "sd_k":  Prior("exponential", 1.0),
-}
-DEFAULTS_VIC_HYPER = {
-    "mu_ao": Prior("normal", 0.0, 1.5),
-    "sd_ao": Prior("exponential", 1.0),
-    "mu_b":  Prior("normal", 0.0, 1.5),
-    "sd_b":  Prior("exponential", 1.0),
-}
+def _safe_summary_metric(summary: Any, candidates: list[str], *, agg: str) -> float | None:
+    """Extract a scalar diagnostic from a CmdStanPy summary dataframe."""
+    if summary is None:
+        return None
+    cols = {str(c).lower(): c for c in getattr(summary, "columns", [])}
+    col = None
+    for cand in candidates:
+        if cand.lower() in cols:
+            col = cols[cand.lower()]
+            break
+    if col is None:
+        return None
 
-def _model_key(model: ComputationalModel) -> str:
-    n = model.__class__.__name__.lower()
-    if n == "vs":
-        return "vs"
-    if "vicarious" in n:
-        return "vicarious_rl"
-    raise ValueError(f"No Stan mapping for model {model.__class__.__name__}")
+    series = summary[col]
+    if agg == "max":
+        try:
+            return float(series.max())
+        except Exception:  # noqa: BLE001
+            return None
+    if agg == "min":
+        try:
+            return float(series.min())
+        except Exception:  # noqa: BLE001
+            return None
+    raise ValueError(f"Unknown agg: {agg!r}")
+
 
 @dataclass(slots=True)
-class StanNUTSSubjectwiseEstimator(Estimator):
+class StanEstimator(Estimator):
+    ...
+
+
+@dataclass(slots=True)
+class StanNUTSSubjectwiseEstimator(StanEstimator):
+    """Independent (per-subject) Bayesian inference with NUTS."""
+
     model: ComputationalModel
-    priors: Mapping[str, Any] | None = None  # config priors for individual parameters
+    priors: Mapping[str, Any] | str
 
     chains: int = 4
     iter_warmup: int = 500
@@ -62,12 +72,33 @@ class StanNUTSSubjectwiseEstimator(Estimator):
     adapt_delta: float = 0.9
     max_treedepth: int = 12
 
+    forbid_extra_priors: bool = True
+    show_progress: bool = False
+
     _compiled: Any = field(default=None, init=False, repr=False)
+
+    def __post_init__(self):
+        adapter = resolve_stan_adapter(self.model)
+
+        if isinstance(self.priors, str):
+            try:
+                import yaml  # type: ignore
+            except ImportError as e:
+                raise ImportError("PyYAML is required to load YAML plans. Install with: pip install pyyaml") from e
+            with open(self.priors, "r", encoding="utf-8") as f:
+                self.priors = yaml.safe_load(f)
+                
+        self.priors = priors_to_stan_data(
+            priors_cfg=self.priors,
+            adapter=adapter,
+            family="indiv",
+            forbid_extra=self.forbid_extra_priors,
+        )
 
     def supports(self, study: StudyData) -> bool:
         for subj in study.subjects:
             for blk in subj.blocks:
-                if blk.task_spec is None or not self.model.supports(blk.task_spec):
+                if blk.env_spec is None or not self.model.supports(blk.env_spec):
                     return False
                 if blk.event_log is None:
                     return False
@@ -77,25 +108,22 @@ class StanNUTSSubjectwiseEstimator(Estimator):
         if not self.supports(study):
             raise CompatibilityError("Data/model incompatible or event logs missing.")
 
-        key = _model_key(self.model)
-        stan_code = load_stan_code("indiv", key)
+        adapter = resolve_stan_adapter(self.model)
+        prog = adapter.program("indiv")
+
+        stan_code = load_stan_code(prog.family, prog.key)
         if self._compiled is None:
-            self._compiled = compile_cmdstan(stan_code, f"{key}_indiv")
+            self._compiled = compile_cmdstan(stan_code, prog.program_name)
+
+        required = adapter.required_priors("indiv")
 
         subj_hats: dict[str, dict[str, float]] = {}
+        per_subject_diags: dict[str, Any] = {}
 
         for subj in study.subjects:
             data = subject_to_stan_data(subj)
-
-            # bounds / config
-            data["beta_lower"] = 1e-6
-            data["beta_upper"] = float(getattr(self.model, "beta_max", 20.0))
-            if key == "vs":
-                data["kappa_abs_max"] = float(getattr(self.model, "kappa_abs_max", 5.0))
-                data["pseudo_reward"] = float(getattr(self.model, "pseudo_reward", 1.0))
-
-            defaults = DEFAULTS_VS_INDIV if key == "vs" else DEFAULTS_VIC_INDIV
-            data |= priors_to_stan_data(self.priors, defaults)
+            adapter.augment_subject_data(data)
+            data |= self.priors
 
             seed = int(rng.integers(1, 2**31 - 1))
             fit = self._compiled.sample(
@@ -106,24 +134,42 @@ class StanNUTSSubjectwiseEstimator(Estimator):
                 seed=seed,
                 adapt_delta=self.adapt_delta,
                 max_treedepth=self.max_treedepth,
-                show_progress=False,
+                show_progress=self.show_progress,
             )
 
             hats: dict[str, float] = {}
-            for p in self.model.param_schema.names:
-                try:
-                    draws = fit.stan_variable(p)
-                except KeyError:
-                    continue
+            for p in adapter.subject_param_names():
+                draws = fit.stan_variable(p)
                 hats[p] = float(np.mean(draws))
             subj_hats[subj.subject_id] = hats
 
-        return FitResult(subject_hats=subj_hats, success=True, message="OK", diagnostics={})
+            summ = None
+            try:
+                summ = fit.summary()
+            except Exception:  # noqa: BLE001
+                summ = None
+
+            per_subject_diags[subj.subject_id] = {
+                "seed": seed,
+                "required_priors": list(required),
+                "rhat_max": _safe_summary_metric(summ, ["R_hat", "r_hat"], agg="max"),
+                "ess_bulk_min": _safe_summary_metric(summ, ["ESS_bulk", "ess_bulk"], agg="min"),
+            }
+
+        return FitResult(
+            subject_hats=subj_hats,
+            success=True,
+            message="OK",
+            diagnostics={"per_subject": per_subject_diags},
+        )
+
 
 @dataclass(slots=True)
-class StanHierarchicalNUTSEstimator(Estimator):
+class StanHierarchicalNUTSEstimator(StanEstimator):
+    """Hierarchical Bayesian inference with NUTS over multiple subjects."""
+
     model: ComputationalModel
-    hyper_priors: Mapping[str, Any] | None = None
+    hyper_priors: Mapping[str, Any]
 
     chains: int = 4
     iter_warmup: int = 800
@@ -131,12 +177,15 @@ class StanHierarchicalNUTSEstimator(Estimator):
     adapt_delta: float = 0.92
     max_treedepth: int = 12
 
+    forbid_extra_priors: bool = True
+    show_progress: bool = False
+
     _compiled: Any = field(default=None, init=False, repr=False)
 
     def supports(self, study: StudyData) -> bool:
         for subj in study.subjects:
             for blk in subj.blocks:
-                if blk.task_spec is None or not self.model.supports(blk.task_spec):
+                if blk.env_spec is None or not self.model.supports(blk.env_spec):
                     return False
                 if blk.event_log is None:
                     return False
@@ -146,20 +195,22 @@ class StanHierarchicalNUTSEstimator(Estimator):
         if not self.supports(study):
             raise CompatibilityError("Data/model incompatible or event logs missing.")
 
-        key = _model_key(self.model)
-        stan_code = load_stan_code("hier", key)
+        adapter = resolve_stan_adapter(self.model)
+        prog = adapter.program("hier")
+
+        stan_code = load_stan_code(prog.family, prog.key)
         if self._compiled is None:
-            self._compiled = compile_cmdstan(stan_code, f"{key}_hier")
+            self._compiled = compile_cmdstan(stan_code, prog.program_name)
 
         data = study_to_stan_data(study)
-        data["beta_lower"] = 1e-6
-        data["beta_upper"] = float(getattr(self.model, "beta_max", 20.0))
-        if key == "vs":
-            data["kappa_abs_max"] = float(getattr(self.model, "kappa_abs_max", 5.0))
-            data["pseudo_reward"] = float(getattr(self.model, "pseudo_reward", 1.0))
+        adapter.augment_study_data(data)
 
-        defaults = DEFAULTS_VS_HYPER if key == "vs" else DEFAULTS_VIC_HYPER
-        data |= priors_to_stan_data(self.hyper_priors, defaults)
+        data |= priors_to_stan_data(
+            priors_cfg=self.hyper_priors,
+            adapter=adapter,
+            family="hier",
+            forbid_extra=self.forbid_extra_priors,
+        )
 
         seed = int(rng.integers(1, 2**31 - 1))
         fit = self._compiled.sample(
@@ -170,59 +221,39 @@ class StanHierarchicalNUTSEstimator(Estimator):
             seed=seed,
             adapt_delta=self.adapt_delta,
             max_treedepth=self.max_treedepth,
-            show_progress=False,
+            show_progress=self.show_progress,
         )
 
-        # subject-level means
         subj_hats: dict[str, dict[str, float]] = {}
         subj_ids = [s.subject_id for s in study.subjects]
-        for p in self.model.param_schema.names:
-            try:
-                draws = fit.stan_variable(p)  # expects vector[N]
-            except KeyError:
-                continue
+
+        for p in adapter.subject_param_names():
+            draws = fit.stan_variable(p)  # expects vector[N]
             means = np.mean(draws, axis=0)
             for i, sid in enumerate(subj_ids):
                 subj_hats.setdefault(sid, {})[p] = float(means[i])
 
-        # population-level estimates from generated quantities + hyperparameters
         pop_hat: dict[str, float] = {}
-
-        def _mean_var(name: str) -> None:
+        for nm in adapter.population_var_names():
             try:
-                pop_hat[name] = float(np.mean(fit.stan_variable(name)))
+                pop_hat[nm] = float(np.mean(fit.stan_variable(nm)))
             except KeyError:
-                pass
+                continue
 
-        # common population outputs
-        for nm in ["beta_pop", "mu_b_hat", "sd_b_hat"]:
-            _mean_var(nm)
+        summ = None
+        try:
+            summ = fit.summary()
+        except Exception:  # noqa: BLE001
+            summ = None
 
-        # VS-specific
-        if key == "vs":
-            for nm in [
-                "alpha_p_pop", "alpha_i_pop", "kappa_pop",
-                "mu_ap_hat", "sd_ap_hat",
-                "mu_ai_hat", "sd_ai_hat",
-                "mu_k_hat", "sd_k_hat",
-            ]:
-                _mean_var(nm)
-
-        # Vicarious RL-specific
-        if key == "vicarious_rl":
-            for nm in ["alpha_o_pop", "mu_ao_hat", "sd_ao_hat"]:
-                _mean_var(nm)
-
-        # optionally add sampling diagnostics
-        summ = fit.summary()
         diags = {
             "seed": seed,
-            "rhat_max": float(summ["R_hat"].max()),
-            "ess_bulk_min": float(summ["ESS_bulk"].min()),
+            "rhat_max": _safe_summary_metric(summ, ["R_hat", "r_hat"], agg="max"),
+            "ess_bulk_min": _safe_summary_metric(summ, ["ESS_bulk", "ess_bulk"], agg="min"),
         }
 
         return FitResult(
-            population_hat=pop_hat,       
+            population_hat=pop_hat,
             subject_hats=subj_hats,
             success=True,
             message="OK",

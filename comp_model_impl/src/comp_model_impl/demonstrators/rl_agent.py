@@ -1,3 +1,9 @@
+"""Demonstrator backed by a computational model.
+
+The demonstrator reuses a :class:`~comp_model_core.interfaces.model.ComputationalModel`
+policy to generate demonstration choices.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,6 +18,21 @@ from comp_model_core.spec import EnvironmentSpec
 
 @dataclass(slots=True)
 class RLDemonstrator(Demonstrator):
+
+    """
+    Demonstrator driven by a computational model policy.
+    
+    Parameters
+    ----------
+    model : comp_model_core.interfaces.model.ComputationalModel
+        Model used to produce action probabilities.
+    
+    Notes
+    -----
+    The demonstrator calls :meth:`model.action_probs` and samples an action using
+    the provided RNG.
+    """
+
     model: ComputationalModel
 
     @classmethod

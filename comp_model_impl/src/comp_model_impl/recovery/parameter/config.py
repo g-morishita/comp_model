@@ -1,3 +1,6 @@
+"""Configuration for parameter recovery experiments.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
@@ -50,6 +53,24 @@ class SamplingSpec:
 
 @dataclass(frozen=True, slots=True)
 class OutputSpec:
+
+    """
+    Output settings for parameter recovery.
+    
+    Attributes
+    ----------
+    out_dir : str
+        Directory to write outputs to.
+    save_format : {"csv", "parquet"}
+        Table serialization format.
+    save_config : bool
+        Whether to write the config alongside results.
+    save_fit_diagnostics : bool
+        Whether to write estimator diagnostics (if available).
+    save_simulated_study : bool
+        Whether to save pickled simulated StudyData (can be large).
+    """
+
     out_dir: str = "recovery_out"
     save_format: str = "csv"         # "csv" | "parquet"
     save_config: bool = True
@@ -59,6 +80,20 @@ class OutputSpec:
 
 @dataclass(frozen=True, slots=True)
 class PlotSpec:
+
+    """
+    Plot settings for parameter recovery.
+    
+    Attributes
+    ----------
+    make_plots : bool
+        Whether to generate plots.
+    scatter_alpha : float
+        Alpha value for scatter plots.
+    max_points : int
+        Maximum points per scatter plot (subsamples if larger).
+    """
+
     make_plots: bool = True
     scatter_alpha: float = 0.6
     max_points: int = 50_000
@@ -96,6 +131,21 @@ def _parse_dists(d: Any) -> dict[str, DistSpec]:
 
 
 def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
+
+    """
+    Load a :class:`ParameterRecoveryConfig` from YAML or JSON.
+    
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to a ``.yaml``/``.yml`` or ``.json`` config file.
+    
+    Returns
+    -------
+    ParameterRecoveryConfig
+        Parsed configuration.
+    """
+
     path = Path(path)
     if path.suffix.lower() in (".yaml", ".yml"):
         try:
@@ -154,4 +204,19 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
 
 
 def config_to_json(cfg: ParameterRecoveryConfig) -> str:
+
+    """
+    Serialize a :class:`ParameterRecoveryConfig` to JSON.
+    
+    Parameters
+    ----------
+    cfg : ParameterRecoveryConfig
+        Configuration to serialize.
+    
+    Returns
+    -------
+    str
+        Pretty-printed JSON string.
+    """
+
     return json.dumps(asdict(cfg), indent=2)

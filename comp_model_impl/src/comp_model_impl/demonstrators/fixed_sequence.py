@@ -1,3 +1,6 @@
+"""Demonstrator that plays a fixed action sequence.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,6 +14,21 @@ from comp_model_core.spec import EnvironmentSpec
 
 @dataclass(slots=True)
 class FixedSequenceDemonstrator(Demonstrator):
+
+    """
+    Demonstrator that returns a predetermined sequence of actions.
+    
+    Parameters
+    ----------
+    actions : Sequence[int]
+        Action indices to emit, one per call to :meth:`act`.
+    
+    Raises
+    ------
+    ValueError
+        If more actions are requested than are available in ``actions``.
+    """
+
     actions: Sequence[int]
     _t: int = 0
 

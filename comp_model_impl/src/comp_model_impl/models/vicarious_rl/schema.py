@@ -1,3 +1,6 @@
+"""Parameter schema for the Vicarious_RL model.
+"""
+
 from __future__ import annotations
 
 from comp_model_core.params import Bound, ParamDef, ParameterSchema, Sigmoid, BoundedTanh
@@ -9,6 +12,16 @@ def vicarious_rl_schema(
     beta_default: float = 5.0,
     beta_max: float = 20.0,
 ) -> ParameterSchema:
+
+    """
+    Construct the Vicarious_RL parameter schema.
+    
+    Returns
+    -------
+    comp_model_core.params.ParameterSchema
+        Schema describing parameter bounds and transforms.
+    """
+
     return ParameterSchema(
         params=(
             # alpha in (0,1)

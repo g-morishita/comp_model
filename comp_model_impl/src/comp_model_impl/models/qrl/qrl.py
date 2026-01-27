@@ -1,3 +1,6 @@
+"""Q reinforcement learning model implementation.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -1,3 +1,9 @@
+"""Sampling utilities for parameter recovery.
+
+Provides helpers for sampling subject parameters from scipy.stats distributions
+and mapping them into the model's parameter space.
+"""
+
 from __future__ import annotations
 
 from typing import Any, Mapping, Sequence

@@ -1,3 +1,9 @@
+"""End-to-end parameter recovery runner.
+
+This module runs simulation + fitting loops and writes a manifest and results
+tables to disk.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
@@ -37,6 +43,20 @@ from comp_model_impl.recovery.parameter.sampling import sample_subject_params
 
 @dataclass(frozen=True, slots=True)
 class ParameterRecoveryOutputs:
+
+    """
+    Outputs from a parameter recovery run.
+    
+    Attributes
+    ----------
+    records : pandas.DataFrame
+        Tidy table of true/estimated parameters per replication and subject.
+    metrics : pandas.DataFrame
+        Aggregate metrics per parameter (correlation, RMSE, bias, etc.).
+    out_dir : str
+        Output directory where artifacts were written.
+    """
+
     records: pd.DataFrame
     metrics: pd.DataFrame
     out_dir: str
@@ -203,6 +223,24 @@ def write_run_manifest(
     plan_path_copied: str | None,
     plan_summary: dict[str, Any],
 ) -> None:
+
+    """
+    Write a JSON manifest describing a recovery run.
+    
+    Parameters
+    ----------
+    out_dir : pathlib.Path
+        Output directory for this run.
+    config_obj : Any
+        Configuration object (typically :class:`~comp_model_impl.recovery.parameter.config.ParameterRecoveryConfig`).
+    generator, model, estimator : Any
+        Instantiated objects used in the run.
+    plan_path_copied : str or None
+        If the plan file was copied into ``out_dir``, the relative path.
+    plan_summary : dict[str, Any]
+        Small summary of the plan (e.g. number of blocks/trials).
+    """
+
     git_impl = git_info_for_module("comp_model_impl")
 
     manifest = {

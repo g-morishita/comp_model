@@ -1,3 +1,8 @@
+"""Parameter recovery utilities.
+
+Includes config loading, sampling, run orchestration, and plotting helpers.
+"""
+
 from .config import (
     DistSpec,
     SamplingSpec,

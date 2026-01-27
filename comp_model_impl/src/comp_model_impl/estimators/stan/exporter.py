@@ -1,4 +1,17 @@
+"""Export :class:`~comp_model_core.data.types.StudyData` to Stan ``data``.
+
+The Stan estimators operate by replaying an event log produced during simulation
+or ingestion. This module converts the internal event-log format into the
+arrays expected by the Stan templates.
+
+Notes
+-----
+The Stan templates assume action and state indices are 1-based, with 0 reserved
+for "missing" action entries.
+"""
+
 from __future__ import annotations
+
 from typing import Any
 
 import numpy as np
@@ -6,6 +19,7 @@ import numpy as np
 from comp_model_core.data.types import StudyData, SubjectData
 from comp_model_core.events.accessors import get_event_log
 from comp_model_core.events.types import EventType
+
 
 def _ensure_int_states(subject: SubjectData) -> None:
     for blk in subject.blocks:
@@ -15,11 +29,12 @@ def _ensure_int_states(subject: SubjectData) -> None:
                 continue
             int(e.state)  # will raise if not castable
 
+
 def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
+    """Convert a single subject into Stan ``data`` for ``indiv`` templates."""
     _ensure_int_states(subject)
 
-    # assume constant A across blocks for a subject
-    As = [int(blk.task_spec.n_actions) for blk in subject.blocks if blk.task_spec is not None]
+    As = [int(blk.env_spec.n_actions) for blk in subject.blocks if blk.env_spec is not None]
     if len(set(As)) != 1:
         raise ValueError("Stan export expects constant n_actions across blocks for a subject.")
     A = As[0]
@@ -85,7 +100,9 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
         "has_demo_outcome": has_demo_outcome.tolist(),
     }
 
+
 def study_to_stan_data(study: StudyData) -> dict[str, Any]:
+    """Convert a multi-subject study into Stan ``data`` for ``hier`` templates."""
     N = len(study.subjects)
     if N == 0:
         raise ValueError("Empty study")

@@ -1,3 +1,8 @@
+"""Bandit environment implementations.
+
+This module contains a simple K-armed Bernoulli bandit.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

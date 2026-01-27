@@ -1,3 +1,6 @@
+"""QRL model package.
+"""
+
 from .qrl import QRL
 from .schema import qrl_schema
 from .bounds import qrl_bounds_space

@@ -1,3 +1,10 @@
+"""Maximum-likelihood estimation using event-log replay.
+
+This estimator family fits model parameters by replaying an event log attached
+to each block. The event stream defines *exactly* when model reset, social
+observation, choice, and outcome updates occur.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

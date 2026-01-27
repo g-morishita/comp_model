@@ -1,3 +1,6 @@
+"""Analysis utilities for parameter recovery outputs.
+"""
+
 from __future__ import annotations
 
 from typing import Any

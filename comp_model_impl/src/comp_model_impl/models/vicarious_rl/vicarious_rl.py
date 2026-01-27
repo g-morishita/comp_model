@@ -1,3 +1,6 @@
+"""Vicarious reinforcement learning model implementation.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -6,7 +9,7 @@ from typing import Any, Mapping
 import numpy as np
 
 from comp_model_core.interfaces.model import SocialComputationalModel
-from comp_model_core.requirements import RequireAnyDemoOutcomeObservable, RequireSocialBlock, Requirement
+from comp_model_core.requirements import RequireAnyDemoOutcomeObservable, RequireSocialBlock, Requirement, RequireAllSelfOutcomesHidden
 from comp_model_core.params import ParameterSchema
 from comp_model_core.interfaces.block_runner import SocialObservation
 from comp_model_core.spec import EnvironmentSpec
@@ -41,6 +44,7 @@ class Vicarious_RL(SocialComputationalModel):
         return (
             RequireSocialBlock(),
             RequireAnyDemoOutcomeObservable(),
+            RequireAllSelfOutcomesHidden(),
         )
 
     @property

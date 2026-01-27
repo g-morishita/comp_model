@@ -1,3 +1,9 @@
+"""Value Shaping (VS) model.
+
+Implements a social reinforcement learning model that combines private outcome
+learning with value shaping from demonstrations.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

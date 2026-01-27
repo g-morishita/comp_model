@@ -1,3 +1,9 @@
+"""Simple demonstrator policies.
+
+This module implements a demonstrator that mostly chooses the best arm but
+occasionally explores.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

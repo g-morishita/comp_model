@@ -1,3 +1,6 @@
+"""Optional Dash dashboard for exploring parameter recovery results.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

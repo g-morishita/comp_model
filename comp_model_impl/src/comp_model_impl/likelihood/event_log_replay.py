@@ -1,3 +1,9 @@
+"""Event-log replay likelihood.
+
+This module computes log-likelihood by replaying the event stream and querying
+model action probabilities at each choice event.
+"""
+
 from __future__ import annotations
 
 from typing import Mapping, Sequence
@@ -53,7 +59,7 @@ def loglike_subject(
     for block in subject.blocks:
         spec = block.env_spec
         if spec is None:
-            raise ValueError("Block.task_spec is None; required for replay.")
+            raise ValueError("Block.env_spec is None; required for replay.")
 
         log = get_event_log(block)
 
@@ -114,6 +120,25 @@ def loglike_study_independent(
     model: ComputationalModel,
     subject_params: Mapping[str, Mapping[str, float]],
 ) -> float:
+
+    """
+    Compute the study log-likelihood as a sum of independent subjects.
+    
+    Parameters
+    ----------
+    study : comp_model_core.data.types.StudyData
+        Study containing subjects with event logs.
+    model : comp_model_core.interfaces.model.ComputationalModel
+        Model instance (will be reset/replayed).
+    params_by_subject : Mapping[str, Mapping[str, float]]
+        Mapping from ``subject_id`` to fitted parameter dict.
+    
+    Returns
+    -------
+    float
+        Total log-likelihood across all subjects.
+    """
+
     ll = 0.0
     for subj in study.subjects:
         ll += loglike_subject(subject=subj, model=model, params=subject_params[subj.subject_id])

@@ -1,3 +1,6 @@
+"""Vicarious + Value Shaping model.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -78,8 +81,7 @@ class Vicarious_VS(SocialComputationalModel):
         # If action count differs across blocks (rare), reset that state's vector safely.
         if self._q[s].shape[0] != n_actions:
             self._q[s] = np.zeros(n_actions, dtype=float)
-            self._last_choice[s] = None
-
+            
     def action_probs(self, *, state: Any, spec: EnvironmentSpec) -> np.ndarray:
         s = int(state)
         nA = int(spec.n_actions)

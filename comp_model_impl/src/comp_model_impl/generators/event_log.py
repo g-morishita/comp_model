@@ -1,3 +1,9 @@
+"""Generators that emit explicit event logs.
+
+The generators in this module simulate subjects and store a detailed
+:class:`~comp_model_core.events.types.EventLog` on each block for later replay.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

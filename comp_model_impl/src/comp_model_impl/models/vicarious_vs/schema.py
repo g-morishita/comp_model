@@ -1,3 +1,6 @@
+"""Parameter schema for the Vicarious_VS model.
+"""
+
 from __future__ import annotations
 
 from comp_model_core.params import Bound, ParamDef, ParameterSchema, Sigmoid, BoundedTanh
@@ -10,6 +13,16 @@ def vicarious_vs_schema(
     beta_default: float = 3.0,
     beta_max: float = 20.0,
 ) -> ParameterSchema:
+
+    """
+    Construct the Vicarious_VS parameter schema.
+    
+    Returns
+    -------
+    comp_model_core.params.ParameterSchema
+        Schema describing parameter bounds and transforms.
+    """
+
     return ParameterSchema(
         params=(
             ParamDef("alpha_o", float(alpha_o_default), Bound(0.0, 1.0), transform=Sigmoid()),
