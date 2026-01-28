@@ -60,10 +60,8 @@ model {
         Q[s,a] = Q[s,a] + alpha_a * (pseudo_reward - Q[s,a]);
 
         // Vicarious learning from observed demo outcome (if present).
-        if (has_demo_outcome[e] == 1) {
-          real r = demo_outcome_obs[e];
-          Q[s,a] = Q[s,a] + alpha_o * (r - Q[s,a]);
-        }
+        real r = demo_outcome_obs[e];
+        Q[s,a] = Q[s,a] + alpha_o * (r - Q[s,a]);
       }
 
     } else if (etype[e] == 3) {
