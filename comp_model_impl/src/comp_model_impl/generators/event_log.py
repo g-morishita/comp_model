@@ -36,6 +36,21 @@ def _reset_block(model: ComputationalModel, bandit: BanditEnv, rng: np.random.Ge
     model.reset_block(spec=bandit.spec)
 
 
+def _maybe_set_condition(model: ComputationalModel, condition: str) -> None:
+    """If the model supports block-level conditions, set the active condition."""
+    setter = getattr(model, "set_condition", None)
+    if callable(setter):
+        setter(str(condition))
+
+
+def _requirements_for_model(model: ComputationalModel):
+    """Return plan-validation requirements, unwrapping conditioned wrappers."""
+    base = getattr(model, "base_model", None)
+    if base is not None and hasattr(base, "requirements"):
+        return base.requirements()  # type: ignore[no-any-return]
+    return model.requirements()
+
+
 def _build_event_log(events: list[Event], *, metadata: dict) -> EventLog:
     return EventLog(events=events, metadata=metadata)
 
@@ -88,14 +103,25 @@ class EventLogAsocialGenerator(Generator):
                 raise CompatibilityError("EventLogAsocialGenerator cannot run a social task (spec.is_social=True).")
 
             _ensure_model_supports(model, runner)
-            validate_block_plan(plan=plan, env_spec=spec, requirements=model.requirements())
+            validate_block_plan(plan=plan, env_spec=spec, requirements=_requirements_for_model(model))
+
+            # Within-subject designs: condition is block-level.
+            _maybe_set_condition(model, plan.condition)
             _reset_block(model, runner, rng)
 
             trials: list[Trial] = []
             events: list[Event] = []
 
             # Mandatory: block reset marker
-            events.append(Event(idx=0, type=EventType.BLOCK_START, t=None, state=None, payload={"block_id": plan.block_id}))
+            events.append(
+                Event(
+                    idx=0,
+                    type=EventType.BLOCK_START,
+                    t=None,
+                    state=None,
+                    payload={"block_id": plan.block_id, "condition": plan.condition},
+                )
+            )
             idx = 1
 
             for t in range(int(plan.n_trials)):
@@ -160,6 +186,7 @@ class EventLogAsocialGenerator(Generator):
             blocks.append(
                 Block(
                     block_id=plan.block_id,
+                    condition=plan.condition,
                     trials=trials,
                     env_spec=spec,
                     event_log=_build_event_log(events, metadata={"timing": "asocial"}),
@@ -210,7 +237,9 @@ class EventLogSocialPreChoiceGenerator(Generator):
 
 
             _ensure_model_supports(model, runner)
-            validate_block_plan(plan=plan, env_spec=spec, requirements=model.requirements())
+            validate_block_plan(plan=plan, env_spec=spec, requirements=_requirements_for_model(model))
+
+            _maybe_set_condition(model, plan.condition)
             _reset_block(model, runner, rng)
 
             sb = cast(SocialBlockRunner, runner)
@@ -219,7 +248,15 @@ class EventLogSocialPreChoiceGenerator(Generator):
             trials: list[Trial] = []
             events: list[Event] = []
 
-            events.append(Event(idx=0, type=EventType.BLOCK_START, t=None, state=None, payload={"block_id": plan.block_id}))
+            events.append(
+                Event(
+                    idx=0,
+                    type=EventType.BLOCK_START,
+                    t=None,
+                    state=None,
+                    payload={"block_id": plan.block_id, "condition": plan.condition},
+                )
+            )
             idx = 1
 
             for t in range(int(plan.n_trials)):
@@ -299,6 +336,7 @@ class EventLogSocialPreChoiceGenerator(Generator):
             blocks.append(
                 Block(
                     block_id=plan.block_id,
+                    condition=plan.condition,
                     trials=trials,
                     env_spec=spec,
                     event_log=_build_event_log(events, metadata={"timing": "pre_choice"}),
@@ -348,7 +386,9 @@ class EventLogSocialPostOutcomeGenerator(Generator):
                 raise CompatibilityError("Social task requires a SocialComputationalModel.")
 
             _ensure_model_supports(model, runner)
-            validate_block_plan(plan=plan, env_spec=spec, requirements=model.requirements())
+            validate_block_plan(plan=plan, env_spec=spec, requirements=_requirements_for_model(model))
+
+            _maybe_set_condition(model, plan.condition)
             _reset_block(model, runner, rng)
 
             sb = cast(SocialBlockRunner, runner)
@@ -357,7 +397,15 @@ class EventLogSocialPostOutcomeGenerator(Generator):
             trials: list[Trial] = []
             events: list[Event] = []
 
-            events.append(Event(idx=0, type=EventType.BLOCK_START, t=None, state=None, payload={"block_id": plan.block_id}))
+            events.append(
+                Event(
+                    idx=0,
+                    type=EventType.BLOCK_START,
+                    t=None,
+                    state=None,
+                    payload={"block_id": plan.block_id, "condition": plan.condition},
+                )
+            )
             idx = 1
 
             for t in range(int(plan.n_trials)):
@@ -429,6 +477,7 @@ class EventLogSocialPostOutcomeGenerator(Generator):
             blocks.append(
                 Block(
                     block_id=plan.block_id,
+                    condition=plan.condition,
                     trials=trials,
                     env_spec=spec,
                     event_log=_build_event_log(events, metadata={"timing": "post_outcome"}),

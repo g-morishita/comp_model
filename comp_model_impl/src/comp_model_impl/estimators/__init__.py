@@ -6,5 +6,10 @@ Bayesian estimators.
 """
 
 from .mle_event_log import BoxMLESubjectwiseEstimator, TransformedMLESubjectwiseEstimator
+from .within_subject_shared_delta import WithinSubjectSharedDeltaTransformedMLEEstimator
 
-__all__ = ["BoxMLESubjectwiseEstimator", "TransformedMLESubjectwiseEstimator"]
+__all__ = [
+    "BoxMLESubjectwiseEstimator",
+    "TransformedMLESubjectwiseEstimator",
+    "WithinSubjectSharedDeltaTransformedMLEEstimator",
+]

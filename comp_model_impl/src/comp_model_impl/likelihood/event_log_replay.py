@@ -65,6 +65,18 @@ def loglike_subject(
 
         for e in log.events:
             if e.type is EventType.BLOCK_START:
+                # Within-subject designs: condition is block-level and must be
+                # explicitly present in the event stream.
+                cond = e.payload.get("condition", None)
+                if cond is None:
+                    raise ValueError(
+                        "BLOCK_START event is missing required payload key 'condition'. "
+                        "Re-generate logs with an updated generator or attach condition during ingestion."
+                    )
+                setter = getattr(m, "set_condition", None)
+                if callable(setter):
+                    setter(str(cond))
+
                 m.reset_block(spec=spec)
                 continue
 
