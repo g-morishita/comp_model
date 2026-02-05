@@ -1,0 +1,322 @@
+"""Tests for event-log MLE estimators.
+
+These tests exercise both box-constrained and z-space MLE estimators on a small
+synthetic study generated with an event-log generator.
+"""
+
+from __future__ import annotations
+
+from dataclasses import replace
+
+import numpy as np
+import pytest
+
+from comp_model_core.data.types import Block, StudyData, SubjectData, Trial
+from comp_model_core.errors import CompatibilityError
+from comp_model_core.events.types import Event, EventLog, EventType
+from comp_model_core.interfaces.model import ComputationalModel
+from comp_model_core.params import Bound, ParamDef, ParameterBoundsSpace, ParameterSchema, Sigmoid
+from comp_model_core.plans.block import BlockPlan
+from comp_model_core.spec import EnvironmentSpec, OutcomeType, StateKind
+
+from comp_model_impl.estimators.mle_event_log import (
+    BoxMLESubjectwiseEstimator,
+    TransformedMLESubjectwiseEstimator,
+)
+from comp_model_impl.generators.event_log import EventLogAsocialGenerator
+from comp_model_impl.models.qrl.qrl import QRL
+from comp_model_impl.register import make_registry
+from comp_model_impl.tasks.build import build_runner_for_plan
+
+
+def _make_study(*, n_subjects: int = 2, n_trials: int = 6, seed: int = 0) -> StudyData:
+    """Create a tiny study with event logs for QRL fitting."""
+    rng = np.random.default_rng(seed)
+    plan = BlockPlan(
+        block_id="b1",
+        n_trials=int(n_trials),
+        condition="c1",
+        bandit_type="BernoulliBanditEnv",
+        bandit_config={"probs": [0.2, 0.8]},
+        trial_specs=[{"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]}] * int(n_trials),
+    )
+
+    reg = make_registry()
+
+    def builder(p):
+        return build_runner_for_plan(plan=p, registries=reg)
+
+    params = {"alpha": 0.3, "beta": 2.0}
+    gen = EventLogAsocialGenerator()
+    subjects = []
+    for i in range(int(n_subjects)):
+        subj = gen.simulate_subject(
+            subject_id=f"s{i+1}",
+            block_runner_builder=builder,
+            model=QRL(),
+            params=params,
+            block_plans=[plan],
+            rng=np.random.default_rng(seed + i + 1),
+        )
+        subjects.append(subj)
+
+    return StudyData(subjects=subjects, metadata={"seed": int(seed)})
+
+
+def _study_with_missing_env_spec(study: StudyData) -> StudyData:
+    """Return a copy of the study where the first block lacks env_spec."""
+    subj0 = study.subjects[0]
+    blk0 = subj0.blocks[0]
+    blk0_missing = Block(
+        block_id=blk0.block_id,
+        condition=blk0.condition,
+        trials=blk0.trials,
+        env_spec=None,
+        event_log=blk0.event_log,
+        metadata=dict(blk0.metadata),
+    )
+    subj0_missing = replace(subj0, blocks=[blk0_missing] + list(subj0.blocks[1:]))
+    subjects = [subj0_missing] + list(study.subjects[1:])
+    return StudyData(subjects=subjects, metadata=dict(study.metadata))
+
+
+def test_box_mle_fit_returns_params_and_diags():
+    """Box-constrained MLE returns valid parameters and diagnostics."""
+    study = _make_study()
+    model = QRL()
+    est = BoxMLESubjectwiseEstimator(model=model, n_starts=2, maxiter=50, validate_bounds_on_set=True)
+
+    res = est.fit(study=study, rng=np.random.default_rng(10))
+    assert res.success is True
+    assert res.subject_hats is not None
+    assert isinstance(res.diagnostics, dict)
+
+    bounds = model.param_schema.bounds_space(names=model.param_schema.names, require_bounds=True)
+    for sid, params in res.subject_hats.items():
+        assert set(params.keys()) == set(bounds.names)
+        vec = np.array([params[n] for n in bounds.names], dtype=float)
+        clipped = bounds.clip_vec(vec)
+        assert np.allclose(vec, clipped)
+        assert f"subj_{sid}" in res.diagnostics
+
+
+def test_transformed_mle_fit_returns_params_and_diags():
+    """Z-space MLE returns valid parameters and diagnostics."""
+    study = _make_study()
+    model = QRL()
+    est = TransformedMLESubjectwiseEstimator(model=model, n_starts=2, maxiter=50, z_init_scale=0.5)
+
+    res = est.fit(study=study, rng=np.random.default_rng(11))
+    assert res.success is True
+    assert res.subject_hats is not None
+    assert isinstance(res.diagnostics, dict)
+
+    bounds = model.param_schema.bounds_space(names=model.param_schema.names, require_bounds=True)
+    for sid, params in res.subject_hats.items():
+        assert set(params.keys()) == set(bounds.names)
+        vec = np.array([params[n] for n in bounds.names], dtype=float)
+        clipped = bounds.clip_vec(vec)
+        assert np.allclose(vec, clipped)
+        assert f"subj_{sid}" in res.diagnostics
+
+
+def test_mle_supports_false_when_env_spec_missing():
+    """Estimators reject studies without environment specifications."""
+    study = _make_study()
+    study_missing = _study_with_missing_env_spec(study)
+    model = QRL()
+
+    box = BoxMLESubjectwiseEstimator(model=model, n_starts=1, maxiter=10)
+    assert box.supports(study_missing) is False
+    with pytest.raises(CompatibilityError):
+        box.fit(study=study_missing, rng=np.random.default_rng(0))
+
+    trans = TransformedMLESubjectwiseEstimator(model=model, n_starts=1, maxiter=10)
+    assert trans.supports(study_missing) is False
+    with pytest.raises(CompatibilityError):
+        trans.fit(study=study_missing, rng=np.random.default_rng(0))
+
+
+def test_box_mle_raises_on_space_mismatch():
+    """Box MLE validates that the provided bounds space matches the model."""
+    model = QRL()
+    space = ParameterBoundsSpace(names=["alpha"], bounds={"alpha": Bound(0.0, 1.0)})
+    with pytest.raises(ValueError):
+        BoxMLESubjectwiseEstimator(model=model, space=space)
+
+
+class BernoulliChoiceModel(ComputationalModel):
+    """Minimal model with a single Bernoulli choice parameter.
+
+    Parameters
+    ----------
+    theta : float
+        Probability of choosing action 1.
+    """
+
+    def __init__(self, theta: float = 0.5) -> None:
+        self.theta = float(theta)
+        self._schema = ParameterSchema(
+            params=(
+                ParamDef(
+                    "theta",
+                    float(theta),
+                    Bound(1e-6, 1.0 - 1e-6),
+                    transform=Sigmoid(),
+                ),
+            )
+        )
+
+    @property
+    def param_schema(self) -> ParameterSchema:
+        """Return the parameter schema for the model."""
+        return self._schema
+
+    @classmethod
+    def requirements(cls):  # type: ignore[override]
+        """Return empty requirements for plan validation."""
+        return ()
+
+    def set_params(self, params, **kwargs):  # type: ignore[override]
+        """Set model parameters from a mapping."""
+        self.theta = float(params["theta"])
+
+    def supports(self, spec: EnvironmentSpec) -> bool:
+        """Return ``True`` if the environment has at least 2 actions."""
+        return int(spec.n_actions) >= 2
+
+    def reset_block(self, *, spec: EnvironmentSpec) -> None:
+        """Reset any block-level state (no-op)."""
+        return
+
+    def action_probs(self, *, state, spec: EnvironmentSpec) -> np.ndarray:
+        """Return constant action probabilities."""
+        theta = float(self.theta)
+        return np.array([1.0 - theta, theta], dtype=float)
+
+    def update(self, *, state, action, outcome, spec: EnvironmentSpec, info=None, rng=None) -> None:
+        """Update the model (no-op)."""
+        return
+
+
+def _make_deterministic_choice_study(*, n_trials: int, n_ones: int) -> StudyData:
+    """Create a study with a fixed number of action-1 choices.
+
+    Parameters
+    ----------
+    n_trials : int
+        Total number of choice trials.
+    n_ones : int
+        Number of trials where choice=1.
+
+    Returns
+    -------
+    comp_model_core.data.types.StudyData
+        Study with a single subject and a single block.
+    """
+    spec = EnvironmentSpec(
+        n_actions=2,
+        outcome_type=OutcomeType.BINARY,
+        outcome_range=(0.0, 1.0),
+        outcome_is_bounded=True,
+        is_social=False,
+        state_kind=StateKind.DISCRETE,
+        n_states=1,
+    )
+
+    events: list[Event] = [
+        Event(idx=0, type=EventType.BLOCK_START, t=None, state=None, payload={"condition": "c1"})
+    ]
+    trials: list[Trial] = []
+    idx = 1
+    choices = [1] * int(n_ones) + [0] * int(n_trials - n_ones)
+    for t, a in enumerate(choices):
+        events.append(
+            Event(
+                idx=idx,
+                type=EventType.CHOICE,
+                t=t,
+                state=0,
+                payload={"choice": int(a), "available_actions": [0, 1]},
+            )
+        )
+        idx += 1
+        events.append(
+            Event(
+                idx=idx,
+                type=EventType.OUTCOME,
+                t=t,
+                state=0,
+                payload={"action": int(a), "observed_outcome": 1.0, "outcome": 1.0, "info": {}},
+            )
+        )
+        idx += 1
+        trials.append(
+            Trial(
+                t=t,
+                state=0,
+                choice=int(a),
+                observed_outcome=1.0,
+                outcome=1.0,
+                available_actions=[0, 1],
+                info={},
+            )
+        )
+
+    block = Block(
+        block_id="b1",
+        condition="c1",
+        trials=trials,
+        env_spec=spec,
+        event_log=EventLog(events=events, metadata={"test": True}),
+    )
+    subj = SubjectData(subject_id="s1", blocks=[block])
+    return StudyData(subjects=[subj], metadata={})
+
+
+def test_mle_recovers_bernoulli_choice_rate():
+    """MLE estimates match the empirical choice rate in a simple model."""
+    study = _make_deterministic_choice_study(n_trials=50, n_ones=30)
+    empirical = 30 / 50
+
+    model = BernoulliChoiceModel(theta=0.5)
+    box = BoxMLESubjectwiseEstimator(model=model, n_starts=3, maxiter=200)
+    res_box = box.fit(study=study, rng=np.random.default_rng(0))
+    theta_hat_box = res_box.subject_hats["s1"]["theta"]
+
+    trans = TransformedMLESubjectwiseEstimator(model=BernoulliChoiceModel(theta=0.5), n_starts=3, maxiter=200)
+    res_trans = trans.fit(study=study, rng=np.random.default_rng(1))
+    theta_hat_trans = res_trans.subject_hats["s1"]["theta"]
+
+    assert theta_hat_box == pytest.approx(empirical, abs=1e-2)
+    assert theta_hat_trans == pytest.approx(empirical, abs=1e-2)
+
+
+@pytest.mark.parametrize(
+    "est_cls",
+    [BoxMLESubjectwiseEstimator, TransformedMLESubjectwiseEstimator],
+)
+def test_mle_respects_fixed_params_mapping(est_cls):
+    """Fixed parameter mapping should be respected by MLE estimators."""
+    study = _make_deterministic_choice_study(n_trials=20, n_ones=10)
+    model = BernoulliChoiceModel(theta=0.5)
+    est = est_cls(model=model, n_starts=2, maxiter=50)
+
+    res = est.fit(study=study, rng=np.random.default_rng(0), fixed_params={"theta": 0.25})
+    theta_hat = res.subject_hats["s1"]["theta"]
+    assert theta_hat == pytest.approx(0.25, abs=1e-8)
+
+
+@pytest.mark.parametrize(
+    "est_cls",
+    [BoxMLESubjectwiseEstimator, TransformedMLESubjectwiseEstimator],
+)
+def test_mle_respects_fixed_params_from_model(est_cls):
+    """Fixed parameter names should use the current model values."""
+    study = _make_deterministic_choice_study(n_trials=20, n_ones=10)
+    model = BernoulliChoiceModel(theta=0.33)
+    est = est_cls(model=model, n_starts=2, maxiter=50)
+
+    res = est.fit(study=study, rng=np.random.default_rng(0), fixed_params=["theta"])
+    theta_hat = res.subject_hats["s1"]["theta"]
+    assert theta_hat == pytest.approx(0.33, abs=1e-8)

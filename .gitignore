@@ -1,0 +1,15 @@
+__pycache__
+.coverage
+.vscode
+.pytest_cache
+.DS_Store
+
+comp_model_core.egg-info
+comp_model_impl.egg-info
+comp_model_analysis.egg-info
+
+sandbox
+
+*zip
+app_configs
+*png

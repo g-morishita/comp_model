@@ -1,0 +1,797 @@
+"""End-to-end parameter recovery runner.
+
+This module orchestrates simulation + fitting loops for parameter recovery
+experiments. It writes a self-contained run directory with configuration
+    snapshots, true-vs-estimated parameter records, summary metrics, and optional
+    diagnostics. Helper utilities are included for manifest generation
+and population-level recovery summaries in hierarchical settings.
+
+Notes
+-----
+- Supports standard models and within-subject shared+delta wrappers.
+- Population-level summaries depend on estimator diagnostics and are only
+  computed when the sampling mode is hierarchical.
+
+See Also
+--------
+comp_model_impl.recovery.parameter.config.ParameterRecoveryConfig
+comp_model_impl.recovery.parameter.sampling.sample_subject_params
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable
+
+import importlib
+import json
+import secrets
+import shutil
+import subprocess
+
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+from comp_model_core.plans.io import load_study_plan_yaml, load_study_plan_json
+from comp_model_core.plans.block import StudyPlan, BlockPlan
+from comp_model_core.data.types import StudyData
+from comp_model_core.interfaces.estimator import Estimator, FitResult
+from comp_model_core.interfaces.generator import Generator
+from comp_model_core.interfaces.model import ComputationalModel
+
+from comp_model_impl.register import make_registry
+from comp_model_impl.tasks.build import build_runner_for_plan
+
+from comp_model_impl.recovery.parameter.analysis import (
+    compute_parameter_recovery_metrics,
+    compute_population_recovery_metrics,
+)
+from comp_model_impl.recovery.parameter.config import ParameterRecoveryConfig, config_to_json
+from comp_model_impl.recovery.parameter.sampling import sample_subject_params
+from comp_model_impl.models.within_subject_shared_delta import (
+    ConditionedSharedDeltaModel,
+    ConditionedSharedDeltaSocialModel,
+    constrained_params_by_condition_from_z,
+    flatten_params_by_condition,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ParameterRecoveryOutputs:
+    """Outputs from a parameter recovery run.
+
+    Attributes
+    ----------
+    records : pandas.DataFrame
+        Tidy table of true/estimated parameters per replication and subject.
+    metrics : pandas.DataFrame
+        Metrics per parameter and replication (correlation, RMSE, bias, etc.).
+    out_dir : str
+        Output directory where artifacts were written.
+    population_records : pandas.DataFrame or None
+        Population-level true/estimated records for hierarchical runs, if available.
+    population_metrics : pandas.DataFrame or None
+        Population-level recovery metrics per replication, if available.
+    """
+
+    records: pd.DataFrame
+    metrics: pd.DataFrame
+    out_dir: str
+    population_records: pd.DataFrame | None = None
+    population_metrics: pd.DataFrame | None = None
+
+
+def _strip_hat_key(name: str) -> str:
+    """Strip a trailing ``_hat`` suffix from a parameter name.
+
+    Parameters
+    ----------
+    name : str
+        Parameter name (possibly ending in ``_hat``).
+
+    Returns
+    -------
+    str
+        Name without the ``_hat`` suffix.
+    """
+    return str(name[:-4]) if str(name).endswith("_hat") else str(name)
+
+
+def _maybe_compute_population_recovery(
+    *,
+    fit_diags: list[dict[str, Any]],
+    config: ParameterRecoveryConfig,
+    model: ComputationalModel,
+) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
+    """Compute population-level recovery records and metrics when available.
+
+    Requirements
+    ------------
+    - ``sampling.mode`` must be ``"hierarchical"``
+    - diagnostics must include ``population_true`` and ``population_hat``
+
+    Notes
+    -----
+    For standard hierarchical models (non within-subject), we align:
+    - true: ``population_true["alpha_p"]`` vs hat: ``population_hat["alpha_p_pop"]``
+    - true: ``sampling.individual_sd["alpha_p"]`` vs hat: ``population_hat["sd_alpha_p"]``
+
+    For within-subject shared+delta wrappers, we also compute:
+    - per-condition constrained population locations: ``alpha_p_pop__A``, ...
+    - shared/delta hyperparameters on z-scale: ``mu_alpha_p_shared``, ``sd_alpha_p_shared``, ...
+
+    Parameters
+    ----------
+    fit_diags : list[dict[str, Any]]
+        Per-rep diagnostics from the estimator.
+    config : ParameterRecoveryConfig
+        Recovery configuration.
+    model : ComputationalModel
+        Model used in the recovery run.
+
+    Returns
+    -------
+    tuple[pandas.DataFrame | None, pandas.DataFrame | None]
+        Population-level records and metrics, or ``(None, None)`` if unavailable.
+    """
+    if str(config.sampling.mode).lower() != "hierarchical":
+        return None, None
+
+    # Build a tidy table with subject_id set to a sentinel value.
+    rows: list[dict[str, Any]] = []
+
+    def _is_ws(m: ComputationalModel) -> bool:
+        return isinstance(m, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel))
+
+    # True subject-level SDs (z-scale if sampling.space=z; param-scale otherwise).
+    true_sds = dict(getattr(config.sampling, "individual_sd", {}) or {})
+
+    for d in fit_diags:
+        rep = int(d.get("rep", -1))
+        pop_true = d.get("population_true")
+        pop_hat = d.get("population_hat")
+        if not isinstance(pop_true, dict) or not isinstance(pop_hat, dict):
+            continue
+
+        # Normalize estimator keys by stripping trailing _hat.
+        pop_hat_n = {_strip_hat_key(k): float(v) for k, v in pop_hat.items() if v is not None}
+
+        if _is_ws(model):
+            # 1) Per-condition constrained population locations on natural scale
+            try:
+                pb = constrained_params_by_condition_from_z(model, pop_true)  # type: ignore[arg-type]
+                for cond, pmap in pb.items():
+                    for p, v in pmap.items():
+                        key = f"{p}_pop__{cond}"
+                        if key in pop_hat_n:
+                            rows.append(
+                                {
+                                    "rep": rep,
+                                    "subject_id": "POP",
+                                    "param": key,
+                                    "true": float(v),
+                                    "hat": float(pop_hat_n.get(key, np.nan)),
+                                }
+                            )
+            except Exception:
+                pass
+
+            # 2) z-scale hyperparameters (shared / delta) if present
+            base_schema = getattr(getattr(model, "base_model", None), "param_schema", None)
+            base_params = list(getattr(base_schema, "params", []) or [])
+            conditions = list(getattr(model, "conditions", []) or [])
+            baseline = str(getattr(model, "baseline_condition", ""))
+
+            for pdef in base_params:
+                pname = str(getattr(pdef, "name"))
+                true_mu_key = f"{pname}__shared_z"
+                mu_hat_key = f"mu_{pname}_shared"
+                sd_hat_key = f"sd_{pname}_shared"
+                if true_mu_key in pop_true and mu_hat_key in pop_hat_n:
+                    rows.append(
+                        {
+                            "rep": rep,
+                            "subject_id": "POP",
+                            "param": mu_hat_key,
+                            "true": float(pop_true[true_mu_key]),
+                            "hat": float(pop_hat_n.get(mu_hat_key, np.nan)),
+                        }
+                    )
+                if true_mu_key in true_sds and sd_hat_key in pop_hat_n:
+                    rows.append(
+                        {
+                            "rep": rep,
+                            "subject_id": "POP",
+                            "param": sd_hat_key,
+                            "true": float(true_sds[true_mu_key]),
+                            "hat": float(pop_hat_n.get(sd_hat_key, np.nan)),
+                        }
+                    )
+
+                for cond in conditions:
+                    if cond == baseline:
+                        continue
+                    true_d_key = f"{pname}__delta_z__{cond}"
+                    mu_d_hat_key = f"mu_{pname}_delta__{cond}"
+                    sd_d_hat_key = f"sd_{pname}_delta__{cond}"
+                    if true_d_key in pop_true and mu_d_hat_key in pop_hat_n:
+                        rows.append(
+                            {
+                                "rep": rep,
+                                "subject_id": "POP",
+                                "param": mu_d_hat_key,
+                                "true": float(pop_true[true_d_key]),
+                                "hat": float(pop_hat_n.get(mu_d_hat_key, np.nan)),
+                            }
+                        )
+                    if true_d_key in true_sds and sd_d_hat_key in pop_hat_n:
+                        rows.append(
+                            {
+                                "rep": rep,
+                                "subject_id": "POP",
+                                "param": sd_d_hat_key,
+                                "true": float(true_sds[true_d_key]),
+                                "hat": float(pop_hat_n.get(sd_d_hat_key, np.nan)),
+                            }
+                        )
+
+        else:
+            # Standard hierarchical model (no within-subject conditioning)
+            for p, v_true in pop_true.items():
+                # Match to population-level natural-scale location if present
+                key = f"{p}_pop"
+                if key in pop_hat_n:
+                    rows.append(
+                        {
+                            "rep": rep,
+                            "subject_id": "POP",
+                            "param": key,
+                            "true": float(v_true),
+                            "hat": float(pop_hat_n.get(key, np.nan)),
+                        }
+                    )
+
+            # SDs (typically on z-scale) from the sampling config
+            for p, sd_true in true_sds.items():
+                sd_key = f"sd_{p}"
+                if sd_key in pop_hat_n:
+                    rows.append(
+                        {
+                            "rep": rep,
+                            "subject_id": "POP",
+                            "param": sd_key,
+                            "true": float(sd_true),
+                            "hat": float(pop_hat_n.get(sd_key, np.nan)),
+                        }
+                    )
+
+    if not rows:
+        return None, None
+
+    pop_df = pd.DataFrame.from_records(rows)
+    pop_df.sort_values(["param", "rep"], inplace=True)
+    pop_metrics = compute_population_recovery_metrics(pop_df)
+    return pop_df, pop_metrics
+
+
+def _find_git_root(start: Path) -> Path | None:
+    """Walk upward until a ``.git`` entry is found.
+
+    Parameters
+    ----------
+    start : pathlib.Path
+        Starting directory for the search.
+
+    Returns
+    -------
+    pathlib.Path or None
+        Repository root if found, otherwise ``None``.
+    """
+    p = start.resolve()
+    for parent in [p, *p.parents]:
+        git_entry = parent / ".git"
+        if git_entry.exists():
+            return parent
+    return None
+
+
+def _run_git(repo_root: Path, args: list[str]) -> str | None:
+    """Run a git command and return its output (or None on failure).
+
+    Parameters
+    ----------
+    repo_root : pathlib.Path
+        Root of the git repository.
+    args : list[str]
+        Git arguments (e.g., ``["rev-parse", "HEAD"]``).
+
+    Returns
+    -------
+    str or None
+        Command output (stripped) or ``None`` if the command fails.
+    """
+    try:
+        out = subprocess.check_output(
+            ["git", *args],
+            cwd=str(repo_root),
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+        return out.strip()
+    except Exception:
+        return None
+
+
+def git_info_for_module(module_name: str) -> dict[str, Any]:
+    """Return git metadata for the repository containing ``module_name``.
+
+    Parameters
+    ----------
+    module_name : str
+        Importable module name (e.g., ``"comp_model_impl"``).
+
+    Returns
+    -------
+    dict[str, Any]
+        Keys include ``<module>_repo_root``, ``<module>_git_commit``,
+        ``<module>_git_branch``, and ``<module>_git_dirty``. Values are ``None``
+        if git metadata cannot be determined.
+
+    Notes
+    -----
+    This helper never raises; it returns ``None`` values on failure.
+    """
+    try:
+        mod = importlib.import_module(module_name)
+        mod_path = Path(mod.__file__).resolve()
+    except Exception:
+        return {
+            f"{module_name}_repo_root": None,
+            f"{module_name}_git_commit": None,
+            f"{module_name}_git_branch": None,
+            f"{module_name}_git_dirty": None,
+        }
+
+    repo_root = _find_git_root(mod_path.parent)
+    if repo_root is None:
+        return {
+            f"{module_name}_repo_root": None,
+            f"{module_name}_git_commit": None,
+            f"{module_name}_git_branch": None,
+            f"{module_name}_git_dirty": None,
+        }
+
+    commit = _run_git(repo_root, ["rev-parse", "HEAD"])
+    branch = _run_git(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"])
+    status = _run_git(repo_root, ["status", "--porcelain"])
+    dirty = None if status is None else (len(status) > 0)
+
+    return {
+        f"{module_name}_repo_root": str(repo_root),
+        f"{module_name}_git_commit": commit,
+        f"{module_name}_git_branch": branch,
+        f"{module_name}_git_dirty": dirty,
+    }
+
+
+def make_unique_run_dir(base_out_dir: str | Path, *, git_commit: str | None = None) -> Path:
+    """Create a unique run directory under a base output directory.
+
+    Parameters
+    ----------
+    base_out_dir : str or pathlib.Path
+        Root output directory.
+    git_commit : str or None, optional
+        Optional git commit hash used to tag the run directory name.
+
+    Returns
+    -------
+    pathlib.Path
+        Newly created run directory path.
+
+    Notes
+    -----
+    The directory name encodes a timestamp and a short hash:
+    ``YYYY-MM-DD_HHMMSS__<commit>__<suffix>``.
+    """
+    base = Path(base_out_dir)
+    base.mkdir(parents=True, exist_ok=True)
+
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    short = (git_commit or "nogit")[:7]
+    suffix = secrets.token_hex(2)  # 4 hex chars
+
+    run_id = f"{ts}__{short}__{suffix}"
+    out_dir = base / run_id
+    out_dir.mkdir(parents=False, exist_ok=False)
+    return out_dir
+
+
+def _plan_summary(plan: StudyPlan) -> dict[str, Any]:
+    """Summarize a StudyPlan for run manifests.
+
+    Parameters
+    ----------
+    plan : StudyPlan
+        Study plan containing per-subject block lists.
+
+    Returns
+    -------
+    dict[str, Any]
+        Summary statistics and a small block table.
+    """
+    n_subjects = int(len(plan.subjects))
+
+    blocks_per_subject: list[int] = []
+    trials_per_subject: list[int] = []
+
+    block_trials_by_id: dict[str, list[int]] = {}
+    block_seen_by_subject: dict[str, set[str]] = {}
+
+    # Canonical view: derive block order + trials from first subject
+    canonical_subject_id = next(iter(plan.subjects.keys()))
+    canonical_blocks = list(plan.subjects[canonical_subject_id])
+    canonical_block_ids = [bp.block_id for bp in canonical_blocks]
+    canonical_trials_by_block = [int(bp.n_trials) for bp in canonical_blocks]
+
+    for sid, block_plans in plan.subjects.items():
+        block_plans = list(block_plans)
+        blocks_per_subject.append(int(len(block_plans)))
+
+        tot = 0
+        for bp in block_plans:
+            ntr = int(bp.n_trials)
+            tot += ntr
+
+            block_trials_by_id.setdefault(bp.block_id, []).append(ntr)
+            block_seen_by_subject.setdefault(bp.block_id, set()).add(sid)
+
+        trials_per_subject.append(int(tot))
+
+    n_blocks_unique = int(len(block_trials_by_id))
+
+    bmin = int(min(blocks_per_subject)) if blocks_per_subject else 0
+    bmax = int(max(blocks_per_subject)) if blocks_per_subject else 0
+    bmean = float(np.mean(blocks_per_subject)) if blocks_per_subject else 0.0
+
+    tmin = int(min(trials_per_subject)) if trials_per_subject else 0
+    tmax = int(max(trials_per_subject)) if trials_per_subject else 0
+    tmean = float(np.mean(trials_per_subject)) if trials_per_subject else 0.0
+
+    blocks_table = []
+    for block_id, trials_list in sorted(block_trials_by_id.items(), key=lambda kv: kv[0]):
+        blocks_table.append(
+            {
+                "block_id": block_id,
+                "n_trials_min": int(min(trials_list)),
+                "n_trials_max": int(max(trials_list)),
+                "n_trials_mean": float(np.mean(trials_list)),
+                "n_subjects_with_block": int(len(block_seen_by_subject.get(block_id, set()))),
+            }
+        )
+
+    return {
+        "n_subjects": n_subjects,
+        "n_blocks_unique": n_blocks_unique,
+        "blocks_per_subject_min": bmin,
+        "blocks_per_subject_mean": bmean,
+        "blocks_per_subject_max": bmax,
+        "total_trials_per_subject_min": tmin,
+        "total_trials_per_subject_mean": tmean,
+        "total_trials_per_subject_max": tmax,
+        "total_trials_all_subjects": int(sum(trials_per_subject)),
+        "canonical_subject_id": canonical_subject_id,
+        "canonical_block_ids": canonical_block_ids,
+        "canonical_trials_by_block": canonical_trials_by_block,
+        "blocks_table": blocks_table,
+    }
+
+
+def write_run_manifest(
+    out_dir: Path,
+    *,
+    config_obj: Any,
+    generator: Any,
+    model: Any,
+    estimator: Any,
+    plan_path_copied: str | None,
+    plan_summary: dict[str, Any],
+) -> None:
+    """Write a JSON manifest describing a recovery run.
+
+    Parameters
+    ----------
+    out_dir : pathlib.Path
+        Output directory for this run.
+    config_obj : Any
+        Configuration object (typically :class:`ParameterRecoveryConfig`).
+    generator, model, estimator : Any
+        Instantiated objects used in the run.
+    plan_path_copied : str or None
+        If the plan file was copied into ``out_dir``, the relative path.
+    plan_summary : dict[str, Any]
+        Small summary of the plan (e.g., number of blocks/trials).
+    """
+
+    git_impl = git_info_for_module("comp_model_impl")
+
+    manifest = {
+        "run_id": out_dir.name,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        **git_impl,
+        "generator": f"{generator.__class__.__module__}.{generator.__class__.__name__}",
+        "model": f"{model.__class__.__module__}.{model.__class__.__name__}",
+        "estimator": f"{estimator.__class__.__module__}.{estimator.__class__.__name__}",
+        "plan_file_copied": plan_path_copied,
+        "plan_summary": plan_summary,
+        "config_dict": asdict(config_obj) if hasattr(config_obj, "__dataclass_fields__") else None,
+    }
+
+    (out_dir / "run_manifest.json").write_text(
+        json.dumps(manifest, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+
+def run_parameter_recovery(
+    *,
+    config: ParameterRecoveryConfig,
+    generator: Generator,
+    model: ComputationalModel,
+    estimator: Estimator,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> ParameterRecoveryOutputs:
+    """Run a full parameter recovery experiment.
+
+    Parameters
+    ----------
+    config : ParameterRecoveryConfig
+        Recovery configuration.
+    generator : Generator
+        Data generator used to simulate studies.
+    model : ComputationalModel
+        Computational model used for simulation and fitting.
+    estimator : Estimator
+        Estimator used to fit the model to simulated data.
+    progress_callback : Callable[[int, int], None] or None, optional
+        Optional callback invoked after each replication with
+        ``(completed, total)`` to report progress.
+
+    Returns
+    -------
+    ParameterRecoveryOutputs
+        Records, metrics, output directory, and optional population summaries.
+
+    Raises
+    ------
+    ValueError
+        If ``plan_path`` does not end in ``.yaml/.yml`` or ``.json``.
+        Also raised if ``output.save_format`` is not ``"csv"`` or ``"parquet"``.
+
+    Notes
+    -----
+    The run performs the following steps:
+
+    - Load the study plan and summarize it for the run manifest.
+    - Create a unique output directory tagged with timestamp and git commit.
+    - Save the recovery config and a JSON manifest for provenance.
+    - For each replication:
+      * sample subject (and optional population) parameters
+      * simulate a full study
+      * fit the estimator and record diagnostics
+      * collect true vs. estimated parameters (subject-level or within-subject
+        constrained parameters, depending on the model wrapper)
+    - Write records/metrics tables and optional diagnostics.
+
+    Output files include (when enabled):
+    ``parameter_recovery_records.(csv|parquet)``,
+    ``parameter_recovery_metrics.csv``,
+    ``parameter_recovery_fit_diagnostics.jsonl``,
+    ``population_recovery_records.csv``,
+    ``population_recovery_metrics.csv``.
+    """
+    # Load study plan FIRST (so we can compute plan summary + copy plan into out_dir)
+    plan_path = Path(config.plan_path)
+    if plan_path.suffix.lower() in (".yaml", ".yml"):
+        plan: StudyPlan = load_study_plan_yaml(str(plan_path))
+    elif plan_path.suffix.lower() == ".json":
+        plan = load_study_plan_json(str(plan_path))
+    else:
+        raise ValueError("plan_path must be .yaml/.yml or .json")
+
+    subject_ids = list(plan.subjects.keys())
+
+    # Unique output directory (use comp_model_impl git commit if available)
+    git_impl = git_info_for_module("comp_model_impl")
+    git_commit = git_impl.get("comp_model_impl_git_commit")
+    out_dir = make_unique_run_dir(config.output.out_dir, git_commit=git_commit)
+
+    # Save config
+    if config.output.save_config:
+        (out_dir / "parameter_recovery_config.json").write_text(
+            config_to_json(config),
+            encoding="utf-8",
+        )
+
+    # Copy plan file into out_dir for reproducibility
+    plan_copied_name: str | None = None
+    try:
+        if plan_path.exists() and plan_path.is_file():
+            dest = out_dir / plan_path.name
+            shutil.copy2(plan_path, dest)
+            plan_copied_name = dest.name
+    except Exception:
+        plan_copied_name = None
+
+    # Manifest: git + plan summary + copied plan path
+    plan_summary = _plan_summary(plan)
+    write_run_manifest(
+        out_dir,
+        config_obj=config,
+        generator=generator,
+        model=model,
+        estimator=estimator,
+        plan_path_copied=plan_copied_name,
+        plan_summary=plan_summary,
+    )
+
+    rng = np.random.default_rng(int(config.seed))
+
+    records: list[dict[str, Any]] = []
+    fit_diags: list[dict[str, Any]] = []
+
+    r = make_registry()
+
+    def _is_within_subject_model(m: ComputationalModel) -> bool:
+        """Return True if the model is a within-subject shared+delta wrapper."""
+        return isinstance(m, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel))
+
+    def _derive_within_subject_targets(m: ComputationalModel, params: dict[str, float]) -> dict[str, float]:
+        """Derive constrained per-condition parameters from z-params."""
+        pb = constrained_params_by_condition_from_z(m, params)  # type: ignore[arg-type]
+        return flatten_params_by_condition(pb)
+
+    def block_runner_builder(block_plan: BlockPlan):
+        """Build a block runner for a single block plan."""
+        return build_runner_for_plan(plan=block_plan, registries=r)
+
+    n_reps = int(config.n_reps)
+    if progress_callback is not None:
+        progress_callback(0, n_reps)
+        rep_iter = range(n_reps)
+    else:
+        rep_iter = tqdm(range(n_reps), desc="Parameter recovery")
+
+    for rep in rep_iter:
+        rep_rng = np.random.default_rng(
+            rng.integers(0, 2**32 - 1, dtype=np.uint32)
+        )
+
+        subj_params_true, pop_true = sample_subject_params(
+            cfg=config.sampling,
+            model=model,
+            subject_ids=subject_ids,
+            rng=rep_rng,
+        )
+
+        study: StudyData = generator.simulate_study(
+            block_runner_builder=block_runner_builder,
+            model=model,
+            subj_params=subj_params_true,
+            subject_block_plans=plan.subjects,
+            rng=rep_rng,
+        )
+
+        fit: FitResult = estimator.fit(study=study, rng=rep_rng)
+
+        if config.output.save_simulated_study:
+            import pickle
+            with (out_dir / f"study_rep_{rep:04d}.pkl").open("wb") as f:
+                pickle.dump(study, f)
+
+        if config.output.save_fit_diagnostics:
+            fit_diags.append(
+                {
+                    "rep": rep,
+                    "success": bool(getattr(fit, "success", True)),
+                    "message": str(getattr(fit, "message", "")),
+                    "value": float(fit.value) if getattr(fit, "value", None) is not None else None,
+                    "diagnostics": getattr(fit, "diagnostics", None),
+                    "population_true": pop_true,
+                    "population_hat": getattr(fit, "population_hat", None),
+                }
+            )
+
+        hats = fit.subject_hats or {}
+        for sid in subject_ids:
+            theta_true_raw = subj_params_true[sid]
+            theta_hat_raw = hats.get(sid, {})
+
+            if _is_within_subject_model(model):
+                # Compare constrained per-condition params (param__cond)
+                true_targets = _derive_within_subject_targets(model, dict(theta_true_raw))
+
+                # Prefer already-constrained hats (Bayesian typically outputs these),
+                # otherwise derive from z-space hats if present (e.g. MLE in z-space).
+                if all(k in theta_hat_raw for k in true_targets.keys()):
+                    hat_targets = {k: float(theta_hat_raw.get(k, np.nan)) for k in true_targets.keys()}
+                else:
+                    z_names = list(getattr(model.param_schema, "names", []) or [])
+                    if z_names and all(k in theta_hat_raw for k in z_names):
+                        hat_targets = _derive_within_subject_targets(
+                            model,
+                            {k: float(theta_hat_raw[k]) for k in z_names},
+                        )
+                    else:
+                        hat_targets = {k: float(theta_hat_raw.get(k, np.nan)) for k in true_targets.keys()}
+
+                for p, v_true in true_targets.items():
+                    v_hat = hat_targets.get(p, np.nan)
+                    records.append(
+                        {
+                            "rep": rep,
+                            "subject_id": sid,
+                            "param": p,
+                            "true": float(v_true),
+                            "hat": float(v_hat) if np.isfinite(v_hat) else np.nan,
+                        }
+                    )
+            else:
+                theta_true = theta_true_raw
+                theta_hat = theta_hat_raw
+                for p, v_true in theta_true.items():
+                    v_hat = theta_hat.get(p, np.nan)
+                    records.append(
+                        {
+                            "rep": rep,
+                            "subject_id": sid,
+                            "param": p,
+                            "true": float(v_true),
+                            "hat": float(v_hat) if np.isfinite(v_hat) else np.nan,
+                        }
+                    )
+
+        if progress_callback is not None:
+            progress_callback(rep + 1, n_reps)
+
+    df = pd.DataFrame.from_records(records)
+    df.sort_values(["param", "rep", "subject_id"], inplace=True)
+
+    # Save records
+    fmt = config.output.save_format.lower()
+    if fmt == "csv":
+        df.to_csv(out_dir / "parameter_recovery_records.csv", index=False)
+    elif fmt == "parquet":
+        df.to_parquet(out_dir / "parameter_recovery_records.parquet", index=False)
+    else:
+        raise ValueError("output.save_format must be 'csv' or 'parquet'")
+
+    # Save diagnostics
+    if config.output.save_fit_diagnostics:
+        with (out_dir / "parameter_recovery_fit_diagnostics.jsonl").open("w", encoding="utf-8") as f:
+            for row in fit_diags:
+                f.write(json.dumps(row, default=str) + "\n")
+
+    metrics = compute_parameter_recovery_metrics(df)
+    metrics.to_csv(out_dir / "parameter_recovery_metrics.csv", index=False)
+
+    # Population-level recovery (hierarchical runs only)
+    pop_df, pop_metrics = _maybe_compute_population_recovery(
+        fit_diags=fit_diags,
+        config=config,
+        model=model,
+    )
+    if pop_df is not None and pop_metrics is not None:
+        pop_df.to_csv(out_dir / "population_recovery_records.csv", index=False)
+        pop_metrics.to_csv(out_dir / "population_recovery_metrics.csv", index=False)
+
+    return ParameterRecoveryOutputs(
+        records=df,
+        metrics=metrics,
+        out_dir=str(out_dir),
+        population_records=pop_df,
+        population_metrics=pop_metrics,
+    )

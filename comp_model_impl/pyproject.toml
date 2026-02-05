@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comp-model-impl"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "comp-model-core>=0.1.0",
+  "numpy",
+  "scipy",
+  "pandas",
+  "tqdm",
+  "pyyaml",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+comp_model_impl = ["estimators/stan/**/*.stan"]
+
+[project.optional-dependencies]
+stan = ["cmdstanpy"]
+test = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["../tests/impl"]
+addopts = "-q"

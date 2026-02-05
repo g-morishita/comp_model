@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comp-model-analysis"
+version = "0.1.0"
+description = "Analysis utilities for computational models (profiling, diagnostics, plotting)."
+requires-python = ">=3.10"
+dependencies = [
+  "comp-model-core>=0.1.0",
+  "numpy>=2.0",
+]
+authors = [
+  {name = "Gota Morishita", email = "gota.morishita@gmail.com"},
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
