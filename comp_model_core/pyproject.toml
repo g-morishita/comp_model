@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "comp-model-core"
 version = "0.1.0"
 description = "Lightweight core interfaces for computational models, inference, and simulation pipelines."
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
   "numpy>=2.0",
   "scipy>=1.6.2",

@@ -22,7 +22,7 @@ A Python toolkit for computational modeling of bandit-style decision tasks, simu
 
 ## Installation
 
-Python >= 3.10.
+Python >= 3.14.
 
 Editable installs (recommended for development):
 
