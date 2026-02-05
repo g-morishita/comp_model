@@ -3,6 +3,7 @@ __pycache__
 .vscode
 .pytest_cache
 .DS_Store
+.venv
 
 comp_model_core.egg-info
 comp_model_impl.egg-info
