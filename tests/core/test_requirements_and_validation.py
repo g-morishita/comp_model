@@ -52,6 +52,37 @@ def test_validate_action_sets_in_range():
         validate_block_plan(plan=bad, env_spec=env, requirements=())
 
 
+def test_validate_action_coverage_missing_action_raises():
+    env = EnvironmentSpec(n_actions=3, outcome_type=OutcomeType.BINARY)
+    plan = _mk_plan(
+        block_id="b1",
+        condition="c",
+        n_trials=3,
+        trial_specs=[
+            {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
+            {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
+            {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
+        ],
+    )
+    with pytest.raises(CompatibilityError):
+        validate_block_plan(plan=plan, env_spec=env, requirements=())
+
+
+def test_validate_action_coverage_all_actions_present_passes():
+    env = EnvironmentSpec(n_actions=3, outcome_type=OutcomeType.BINARY)
+    plan = _mk_plan(
+        block_id="b2",
+        condition="c",
+        n_trials=3,
+        trial_specs=[
+            {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
+            {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [1]},
+            {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [2]},
+        ],
+    )
+    validate_block_plan(plan=plan, env_spec=env, requirements=())
+
+
 def test_requirements_social_asocial_and_visibility():
     env_asocial = EnvironmentSpec(n_actions=2, outcome_type=OutcomeType.BINARY, is_social=False)
     env_social = EnvironmentSpec(n_actions=2, outcome_type=OutcomeType.BINARY, is_social=True)

@@ -44,6 +44,34 @@ def validate_action_sets(
                 raise CompatibilityError(f"Trial {t}{bid}: invalid action {ai}; n_actions={nA}")
 
 
+def validate_action_coverage(
+    *,
+    trial_specs: Sequence[TrialSpec],
+    env_spec: EnvironmentSpec,
+    block_id: str | None = None,
+) -> None:
+    """Validate that all actions appear at least once if available_actions is specified."""
+    bid = f" block_id={block_id!r}" if block_id is not None else ""
+    nA = int(env_spec.n_actions)
+
+    seen: set[int] = set()
+    saw_mask = False
+    for ts in trial_specs:
+        if ts.available_actions is None:
+            continue
+        saw_mask = True
+        for a in ts.available_actions:
+            seen.add(int(a))
+
+    if saw_mask and len(seen) < nA:
+        missing = sorted(set(range(nA)) - seen)
+        raise CompatibilityError(
+            f"{bid}: available_actions excludes actions for the entire block. "
+            f"Missing actions: {missing}. "
+            "Either include all actions in available_actions or adjust n_actions/bandit_config."
+        )
+
+
 def validate_block_plan(
     *,
     plan: BlockPlan,
@@ -74,6 +102,7 @@ def validate_block_plan(
     )
 
     validate_action_sets(trial_specs=trial_specs, env_spec=env_spec, block_id=plan.block_id)
+    validate_action_coverage(trial_specs=trial_specs, env_spec=env_spec, block_id=plan.block_id)
 
     for req in requirements:
         req.validate(plan=plan, env_spec=env_spec, trial_specs=trial_specs)
