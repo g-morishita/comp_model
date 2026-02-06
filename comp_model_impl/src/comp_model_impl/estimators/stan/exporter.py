@@ -42,6 +42,8 @@ def _ensure_int_states(subject: SubjectData) -> None:
             int(e.state)  # will raise if not castable
 
 
+
+
 def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
     """Convert a single subject into Stan ``data`` for ``indiv`` templates.
 
@@ -121,6 +123,7 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
     demo_action = np.zeros(E, dtype=int) # 0 unless SOCIAL_OBSERVED
     demo_outcome_obs = np.zeros(E, dtype=float)
     has_demo_outcome = np.zeros(E, dtype=int)
+    avail_mask = np.ones((E, A), dtype=float)  # 1 if action available for this event
 
     for i, e in enumerate(events):
         etype[i] = int(e.type)
@@ -131,6 +134,12 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
             c = p.get("choice", None)
             if c is not None:
                 choice[i] = int(c) + 1
+            aa = p.get("available_actions", None)
+            if aa is not None:
+                mask = np.zeros(A, dtype=float)
+                for a in aa:
+                    mask[int(a)] = 1.0
+                avail_mask[i] = mask
 
         elif e.type == EventType.OUTCOME:
             a = p.get("action", None)
@@ -160,6 +169,7 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
         "demo_action": demo_action.tolist(),
         "demo_outcome_obs": demo_outcome_obs.tolist(),
         "has_demo_outcome": has_demo_outcome.tolist(),
+        "avail_mask": avail_mask.tolist(),
     }
 
 
@@ -225,6 +235,7 @@ def study_to_stan_data(study: StudyData) -> dict[str, Any]:
 
     etype=[]; state=[]; choice=[]; action=[]; outcome_obs=[]
     demo_action=[]; demo_outcome_obs=[]; has_demo_outcome=[]; subj=[]
+    avail_mask=[]
     for si, d in enumerate(subj_chunks, start=1):
         for i in range(int(d["E"])):
             etype.append(int(d["etype"][i]))
@@ -236,6 +247,7 @@ def study_to_stan_data(study: StudyData) -> dict[str, Any]:
             demo_outcome_obs.append(float(d["demo_outcome_obs"][i]))
             has_demo_outcome.append(int(d["has_demo_outcome"][i]))
             subj.append(si)
+            avail_mask.append(list(d["avail_mask"][i]))
 
     return {
         "N": int(N),
@@ -251,6 +263,7 @@ def study_to_stan_data(study: StudyData) -> dict[str, Any]:
         "demo_action": demo_action,
         "demo_outcome_obs": demo_outcome_obs,
         "has_demo_outcome": has_demo_outcome,
+        "avail_mask": avail_mask,
     }
 
 

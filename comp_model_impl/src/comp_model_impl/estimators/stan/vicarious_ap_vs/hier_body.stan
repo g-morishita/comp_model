@@ -12,6 +12,8 @@ data {
   array[E] int<lower=0,upper=A> action;
   vector[E] outcome_obs; // unused
 
+  array[E] vector<lower=0,upper=1>[A] avail_mask;
+
   array[E] int<lower=0,upper=A> demo_action;
   vector[E] demo_outcome_obs;
   array[E] int<lower=0,upper=1> has_demo_outcome;
@@ -50,10 +52,10 @@ transformed parameters {
   vector<lower=0,upper=1>[N] alpha_a = inv_logit(mu_alpha_a + sd_alpha_a * z_alpha_a);
 
   vector<lower=beta_lower,upper=beta_upper>[N] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta + sd_beta * z_beta);
+    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta + sd_beta * z_beta) + 1) * 0.5;
 
   vector<lower=-kappa_abs_max,upper=kappa_abs_max>[N] kappa =
-    kappa_abs_max * (2 * inv_logit(mu_kappa + sd_kappa * z_kappa) - 1);
+    kappa_abs_max * tanh(mu_kappa + sd_kappa * z_kappa);
 }
 model {
   z_alpha_o ~ normal(0,1);
@@ -125,6 +127,7 @@ model {
       if (choice[e] > 0) {
         vector[A] u = beta[n] * to_vector(Q[n][s]');
         if (last_choice[n, s] > 0) u[last_choice[n, s]] += kappa[n];
+        for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
         target += categorical_logit_lpmf(choice[e] | u);
       }
 
@@ -142,10 +145,10 @@ generated quantities {
   real alpha_a_pop = inv_logit(mu_alpha_a);
 
   real beta_pop =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta);
+    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta) + 1) * 0.5;
 
   real kappa_pop =
-    kappa_abs_max * (2 * inv_logit(mu_kappa) - 1);
+    kappa_abs_max * tanh(mu_kappa);
 
   real mu_alpha_o_hat = mu_alpha_o;
   real sd_alpha_o_hat = sd_alpha_o;

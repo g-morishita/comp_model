@@ -10,6 +10,8 @@ data {
   array[E] int<lower=0,upper=A> action;
   vector[E] outcome_obs; // unused
 
+  array[E] vector<lower=0,upper=1>[A] avail_mask;
+
   array[E] int<lower=0,upper=A> demo_action;
   vector[E] demo_outcome_obs;
   array[E] int<lower=0,upper=1> has_demo_outcome;
@@ -67,6 +69,7 @@ model {
     } else if (etype[e] == 3) {
       if (choice[e] > 0) {
         vector[A] u = to_vector(Q[s]');
+        for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
         target += categorical_logit_lpmf(choice[e] | beta * u);
       }
     }
