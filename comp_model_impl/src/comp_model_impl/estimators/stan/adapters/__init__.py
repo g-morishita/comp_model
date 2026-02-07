@@ -17,6 +17,8 @@ Examples
 
 from .vicarious_rl import VicariousRLStanAdapter
 from .vicarious_ap_vs import VicariousAPVSStanAdapter
+from .vicarious_db_stay import VicariousDBStayStanAdapter
+from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAdapter
 from .qrl import QRLStanAdapter
 from .vs import VSStanAdapter
 from .vicarious_vs import VicariousVSStanAdapter
@@ -30,6 +32,8 @@ __all__ = [
     "QRLStanAdapter",
     "VicariousRLStanAdapter",
     "VicariousAPVSStanAdapter",
+    "VicariousDBStayStanAdapter",
+    "VicariousDBStayWithinSubjectStanAdapter",
     "VSStanAdapter",
     "VicariousVSStanAdapter",
     "VicariousVSStayStanAdapter",

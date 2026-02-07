@@ -21,6 +21,7 @@ from ....models import (
     VS,
     Vicarious_RL,
     Vicarious_AP_VS,
+    Vicarious_DB_Stay,
     Vicarious_VS,
     Vicarious_VS_Stay,
     ConditionedSharedDeltaModel,

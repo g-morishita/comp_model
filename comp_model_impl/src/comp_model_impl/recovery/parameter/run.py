@@ -188,26 +188,30 @@ def _maybe_compute_population_recovery(
             for pdef in base_params:
                 pname = str(getattr(pdef, "name"))
                 true_mu_key = f"{pname}__shared_z"
-                mu_hat_key = f"mu_{pname}_shared"
-                sd_hat_key = f"sd_{pname}_shared"
-                if true_mu_key in pop_true and mu_hat_key in pop_hat_n:
+                mu_hat_key = f"mu_{pname}__shared"
+                sd_hat_key = f"sd_{pname}__shared"
+                alt_mu_hat_key = f"mu_{pname}_shared"
+                alt_sd_hat_key = f"sd_{pname}_shared"
+                mu_key = mu_hat_key if mu_hat_key in pop_hat_n else alt_mu_hat_key
+                sd_key = sd_hat_key if sd_hat_key in pop_hat_n else alt_sd_hat_key
+                if true_mu_key in pop_true and mu_key in pop_hat_n:
                     rows.append(
                         {
                             "rep": rep,
                             "subject_id": "POP",
-                            "param": mu_hat_key,
+                            "param": mu_key,
                             "true": float(pop_true[true_mu_key]),
-                            "hat": float(pop_hat_n.get(mu_hat_key, np.nan)),
+                            "hat": float(pop_hat_n.get(mu_key, np.nan)),
                         }
                     )
-                if true_mu_key in true_sds and sd_hat_key in pop_hat_n:
+                if true_mu_key in true_sds and sd_key in pop_hat_n:
                     rows.append(
                         {
                             "rep": rep,
                             "subject_id": "POP",
-                            "param": sd_hat_key,
+                            "param": sd_key,
                             "true": float(true_sds[true_mu_key]),
-                            "hat": float(pop_hat_n.get(sd_hat_key, np.nan)),
+                            "hat": float(pop_hat_n.get(sd_key, np.nan)),
                         }
                     )
 
@@ -215,26 +219,30 @@ def _maybe_compute_population_recovery(
                     if cond == baseline:
                         continue
                     true_d_key = f"{pname}__delta_z__{cond}"
-                    mu_d_hat_key = f"mu_{pname}_delta__{cond}"
-                    sd_d_hat_key = f"sd_{pname}_delta__{cond}"
-                    if true_d_key in pop_true and mu_d_hat_key in pop_hat_n:
+                    mu_d_hat_key = f"mu_{pname}__delta__{cond}"
+                    sd_d_hat_key = f"sd_{pname}__delta__{cond}"
+                    alt_mu_d_hat_key = f"mu_{pname}_delta__{cond}"
+                    alt_sd_d_hat_key = f"sd_{pname}_delta__{cond}"
+                    mu_d_key = mu_d_hat_key if mu_d_hat_key in pop_hat_n else alt_mu_d_hat_key
+                    sd_d_key = sd_d_hat_key if sd_d_hat_key in pop_hat_n else alt_sd_d_hat_key
+                    if true_d_key in pop_true and mu_d_key in pop_hat_n:
                         rows.append(
                             {
                                 "rep": rep,
                                 "subject_id": "POP",
-                                "param": mu_d_hat_key,
+                                "param": mu_d_key,
                                 "true": float(pop_true[true_d_key]),
-                                "hat": float(pop_hat_n.get(mu_d_hat_key, np.nan)),
+                                "hat": float(pop_hat_n.get(mu_d_key, np.nan)),
                             }
                         )
-                    if true_d_key in true_sds and sd_d_hat_key in pop_hat_n:
+                    if true_d_key in true_sds and sd_d_key in pop_hat_n:
                         rows.append(
                             {
                                 "rep": rep,
                                 "subject_id": "POP",
-                                "param": sd_d_hat_key,
+                                "param": sd_d_key,
                                 "true": float(true_sds[true_d_key]),
-                                "hat": float(pop_hat_n.get(sd_d_hat_key, np.nan)),
+                                "hat": float(pop_hat_n.get(sd_d_key, np.nan)),
                             }
                         )
 

@@ -502,6 +502,7 @@ def study_to_stan_data_within_subject(
 
     etype=[]; state=[]; choice=[]; action=[]; outcome_obs=[]
     demo_action=[]; demo_outcome_obs=[]; has_demo_outcome=[]; subj=[]; cond=[]
+    avail_mask=[]
     for si, d in enumerate(subj_chunks, start=1):
         for i in range(int(d["E"])):
             etype.append(int(d["etype"][i]))
@@ -512,6 +513,7 @@ def study_to_stan_data_within_subject(
             demo_action.append(int(d["demo_action"][i]))
             demo_outcome_obs.append(float(d["demo_outcome_obs"][i]))
             has_demo_outcome.append(int(d["has_demo_outcome"][i]))
+            avail_mask.append(list(d["avail_mask"][i]))
             cond.append(int(d["cond"][i]))
             subj.append(si)
 
@@ -532,4 +534,5 @@ def study_to_stan_data_within_subject(
         "demo_action": demo_action,
         "demo_outcome_obs": demo_outcome_obs,
         "has_demo_outcome": has_demo_outcome,
+        "avail_mask": avail_mask,
     }
