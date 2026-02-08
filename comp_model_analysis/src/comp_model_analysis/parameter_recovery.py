@@ -152,6 +152,7 @@ def plot_parameter_recovery(
     out_dir: str | Path | None = None,
     max_points: int = 50000,
     scatter_alpha: float = 0.6,
+    split_by_rep: bool = False,
 ) -> dict[str, Path]:
     """
     Plot parameter recovery for subject- and population-level records.
@@ -168,6 +169,9 @@ def plot_parameter_recovery(
         Max points per scatter plot.
     scatter_alpha:
         Scatter alpha for true-vs-hat plots.
+    split_by_rep:
+        If True, generate separate scatter plots per replication for
+        subject- and population-level records.
 
     Returns
     -------
@@ -199,21 +203,45 @@ def plot_parameter_recovery(
 
     paths: dict[str, Path] = {}
 
+    def _rep_label(rep_val: Any) -> Any:
+        if isinstance(rep_val, (int, float)):
+            if isinstance(rep_val, float) and rep_val.is_integer():
+                return int(rep_val)
+            return rep_val
+        try:
+            rep_f = float(rep_val)
+            return int(rep_f) if rep_f.is_integer() else rep_val
+        except Exception:
+            return rep_val
+
     records = tables.get("records")
     metrics = tables.get("metrics")
     pop_records = tables.get("population_records")
     pop_metrics = tables.get("population_metrics")
 
     if isinstance(records, pd.DataFrame) and not records.empty:
-        p = base_out_dir / "recovery_scatter.png"
-        _scatter_true_hat(
-            records,
-            title="Parameter recovery (subject-level)",
-            out_path=p,
-            max_points=max_points,
-            alpha=scatter_alpha,
-        )
-        paths["recovery_scatter"] = p
+        if split_by_rep and "rep" in records.columns:
+            for rep, sub in records.groupby("rep", sort=True):
+                rep_label = _rep_label(rep)
+                p = base_out_dir / f"recovery_scatter_rep_{rep_label}.png"
+                _scatter_true_hat(
+                    sub,
+                    title=f"Parameter recovery (subject-level, rep {rep_label})",
+                    out_path=p,
+                    max_points=max_points,
+                    alpha=scatter_alpha,
+                )
+                paths[f"recovery_scatter_rep_{rep_label}"] = p
+        else:
+            p = base_out_dir / "recovery_scatter.png"
+            _scatter_true_hat(
+                records,
+                title="Parameter recovery (subject-level)",
+                out_path=p,
+                max_points=max_points,
+                alpha=scatter_alpha,
+            )
+            paths["recovery_scatter"] = p
 
     if isinstance(metrics, pd.DataFrame) and not metrics.empty:
         p = base_out_dir / "recovery_metrics.png"
@@ -226,15 +254,28 @@ def plot_parameter_recovery(
             paths["recovery_corr_hist"] = p
 
     if isinstance(pop_records, pd.DataFrame) and not pop_records.empty:
-        p = base_out_dir / "population_recovery_scatter.png"
-        _scatter_true_hat(
-            pop_records,
-            title="Population recovery",
-            out_path=p,
-            max_points=max_points,
-            alpha=scatter_alpha,
-        )
-        paths["population_recovery_scatter"] = p
+        if split_by_rep and "rep" in pop_records.columns:
+            for rep, sub in pop_records.groupby("rep", sort=True):
+                rep_label = _rep_label(rep)
+                p = base_out_dir / f"population_recovery_scatter_rep_{rep_label}.png"
+                _scatter_true_hat(
+                    sub,
+                    title=f"Population recovery (rep {rep_label})",
+                    out_path=p,
+                    max_points=max_points,
+                    alpha=scatter_alpha,
+                )
+                paths[f"population_recovery_scatter_rep_{rep_label}"] = p
+        else:
+            p = base_out_dir / "population_recovery_scatter.png"
+            _scatter_true_hat(
+                pop_records,
+                title="Population recovery",
+                out_path=p,
+                max_points=max_points,
+                alpha=scatter_alpha,
+            )
+            paths["population_recovery_scatter"] = p
 
     if isinstance(pop_metrics, pd.DataFrame) and not pop_metrics.empty:
         p = base_out_dir / "population_recovery_metrics.png"
