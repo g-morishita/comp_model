@@ -42,21 +42,35 @@ def test_compute_parameter_recovery_metrics_values() -> None:
     assert row["bias"] == pytest.approx(bias)
 
 
-def test_compute_population_recovery_metrics_is_alias() -> None:
-    """Population metrics should mirror parameter metrics."""
+def test_compute_population_recovery_metrics_pools_reps() -> None:
+    """Population metrics should pool across reps (one estimate per rep)."""
     df = pd.DataFrame(
         {
-            "rep": [0, 0],
-            "subject_id": ["POP", "POP"],
-            "param": ["alpha", "beta"],
-            "true": [0.1, 2.0],
-            "hat": [0.2, 2.5],
+            "rep": [0, 1, 2],
+            "subject_id": ["POP", "POP", "POP"],
+            "param": ["alpha", "alpha", "alpha"],
+            "true": [0.0, 1.0, 2.0],
+            "hat": [0.0, 2.0, 1.0],
         }
     )
-    m1 = compute_parameter_recovery_metrics(df)
-    m2 = compute_population_recovery_metrics(df)
-    assert list(m1.columns) == list(m2.columns)
-    assert m1.equals(m2)
+    metrics = compute_population_recovery_metrics(df)
+    assert list(metrics["param"]) == ["alpha"]
+    row = metrics.iloc[0]
+
+    err = np.array([0.0, 1.0, -1.0], dtype=float)
+    rmse = float(np.sqrt(np.mean(err ** 2)))
+    mae = float(np.mean(np.abs(err)))
+    med_abs = float(np.median(np.abs(err)))
+    bias = float(np.mean(err))
+    corr = float(np.corrcoef(df["true"].to_numpy(), df["hat"].to_numpy())[0, 1])
+
+    assert row["rep"] == -1
+    assert row["n"] == 3
+    assert row["rmse"] == pytest.approx(rmse)
+    assert row["mae"] == pytest.approx(mae)
+    assert row["median_abs_error"] == pytest.approx(med_abs)
+    assert row["bias"] == pytest.approx(bias)
+    assert row["corr"] == pytest.approx(corr)
 
 
 def test_compute_parameter_recovery_metrics_splits_by_rep() -> None:

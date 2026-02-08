@@ -74,7 +74,7 @@ class ParameterRecoveryOutputs:
     population_records : pandas.DataFrame or None
         Population-level true/estimated records for hierarchical runs, if available.
     population_metrics : pandas.DataFrame or None
-        Population-level recovery metrics per replication, if available.
+        Population-level recovery metrics pooled across replications, if available.
     """
 
     records: pd.DataFrame
@@ -278,7 +278,6 @@ def _maybe_compute_population_recovery(
 
     if not rows:
         return None, None
-
     pop_df = pd.DataFrame.from_records(rows)
     pop_df.sort_values(["param", "rep"], inplace=True)
     pop_metrics = compute_population_recovery_metrics(pop_df)
