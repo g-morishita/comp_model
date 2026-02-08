@@ -170,8 +170,8 @@ def plot_parameter_recovery(
     scatter_alpha:
         Scatter alpha for true-vs-hat plots.
     split_by_rep:
-        If True, generate separate scatter plots per replication for
-        subject- and population-level records.
+        If True, generate separate subject-level scatter plots per replication.
+        Population-level scatter plots are always combined across replications.
 
     Returns
     -------
@@ -254,28 +254,15 @@ def plot_parameter_recovery(
             paths["recovery_corr_hist"] = p
 
     if isinstance(pop_records, pd.DataFrame) and not pop_records.empty:
-        if split_by_rep and "rep" in pop_records.columns:
-            for rep, sub in pop_records.groupby("rep", sort=True):
-                rep_label = _rep_label(rep)
-                p = base_out_dir / f"population_recovery_scatter_rep_{rep_label}.png"
-                _scatter_true_hat(
-                    sub,
-                    title=f"Population recovery (rep {rep_label})",
-                    out_path=p,
-                    max_points=max_points,
-                    alpha=scatter_alpha,
-                )
-                paths[f"population_recovery_scatter_rep_{rep_label}"] = p
-        else:
-            p = base_out_dir / "population_recovery_scatter.png"
-            _scatter_true_hat(
-                pop_records,
-                title="Population recovery",
-                out_path=p,
-                max_points=max_points,
-                alpha=scatter_alpha,
-            )
-            paths["population_recovery_scatter"] = p
+        p = base_out_dir / "population_recovery_scatter.png"
+        _scatter_true_hat(
+            pop_records,
+            title="Population recovery",
+            out_path=p,
+            max_points=max_points,
+            alpha=scatter_alpha,
+        )
+        paths["population_recovery_scatter"] = p
 
     if isinstance(pop_metrics, pd.DataFrame) and not pop_metrics.empty:
         p = base_out_dir / "population_recovery_metrics.png"
