@@ -1,6 +1,6 @@
 """
 Recovery subpackages.
 
-- comp_model.recovery.parameter: parameter recovery
-- comp_model.recovery.model: model recovery (future / separate)
+- comp_model_impl.recovery.parameter: parameter recovery
+- comp_model_impl.recovery.model: model recovery
 """
