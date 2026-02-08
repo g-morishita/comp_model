@@ -21,6 +21,8 @@ from ....models import (
     VS,
     Vicarious_RL,
     Vicarious_AP_VS,
+    Vicarious_AP_DB_STAY,
+    Vicarious_Dir_DB_Stay,
     Vicarious_DB_Stay,
     Vicarious_VS,
     Vicarious_VS_Stay,
@@ -29,11 +31,15 @@ from ....models import (
 )
 
 from .vicarious_rl_within_subject import VicariousRLWithinSubjectStanAdapter
+from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAdapter
 from .vs_within_subject import VSWithinSubjectStanAdapter
 from .base import StanAdapter
 from .qrl import QRLStanAdapter
 from .vicarious_rl import VicariousRLStanAdapter
 from .vicarious_ap_vs import VicariousAPVSStanAdapter
+from .vicarious_ap_db_stay import VicariousAPDBStayStanAdapter
+from .vicarious_dir_db_stay import VicariousDirDBStayStanAdapter
+from .vicarious_db_stay import VicariousDBStayStanAdapter
 from .vicarious_vs import VicariousVSStanAdapter
 from .vicarious_vs_stay import VicariousVSStayStanAdapter
 from .vs import VSStanAdapter
@@ -65,6 +71,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
             return VSWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_RL):
             return VicariousRLWithinSubjectStanAdapter(model)
+        if isinstance(base, Vicarious_DB_Stay):
+            return VicariousDBStayWithinSubjectStanAdapter(model)
         raise ValueError(
             f"No within-subject Stan adapter registered for wrapped base model: {type(base).__name__}"
         )
@@ -77,6 +85,12 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
         return VicariousRLStanAdapter(model)
     if isinstance(model, Vicarious_AP_VS):
         return VicariousAPVSStanAdapter(model)
+    if isinstance(model, Vicarious_AP_DB_STAY):
+        return VicariousAPDBStayStanAdapter(model)
+    if isinstance(model, Vicarious_Dir_DB_Stay):
+        return VicariousDirDBStayStanAdapter(model)
+    if isinstance(model, Vicarious_DB_Stay):
+        return VicariousDBStayStanAdapter(model)
     if isinstance(model, Vicarious_VS):
         return VicariousVSStanAdapter(model)
     if isinstance(model, Vicarious_VS_Stay):

@@ -7,6 +7,10 @@ import pytest
 from comp_model_impl.estimators.stan.adapters import (
     QRLStanAdapter,
     VicariousAPVSStanAdapter,
+    VicariousAPDBStayStanAdapter,
+    VicariousDBStayStanAdapter,
+    VicariousDBStayWithinSubjectStanAdapter,
+    VicariousDirDBStayStanAdapter,
     VicariousRLStanAdapter,
     VicariousRLWithinSubjectStanAdapter,
     VicariousVSStanAdapter,
@@ -15,7 +19,17 @@ from comp_model_impl.estimators.stan.adapters import (
     VSWithinSubjectStanAdapter,
 )
 from comp_model_impl.estimators.stan.adapters.registry import resolve_stan_adapter
-from comp_model_impl.models import QRL, VS, Vicarious_AP_VS, Vicarious_RL, Vicarious_VS, Vicarious_VS_Stay
+from comp_model_impl.models import (
+    QRL,
+    VS,
+    Vicarious_AP_DB_STAY,
+    Vicarious_AP_VS,
+    Vicarious_DB_Stay,
+    Vicarious_Dir_DB_Stay,
+    Vicarious_RL,
+    Vicarious_VS,
+    Vicarious_VS_Stay,
+)
 from comp_model_impl.models.within_subject_shared_delta import wrap_model_with_shared_delta_conditions
 
 
@@ -86,6 +100,58 @@ def test_vicarious_ap_vs_adapter_adds_constants_and_priors():
     assert data["kappa_abs_max"] == pytest.approx(2.5)
 
 
+def test_vicarious_ap_db_stay_adapter_adds_constants_and_priors():
+    """Vicarious-AP-DB-Stay adapter exposes expected priors and data constants."""
+    model = Vicarious_AP_DB_STAY(beta_max=13.0, kappa_abs_max=2.0, demo_bias_abs_max=4.0)
+    adapter = VicariousAPDBStayStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "vicarious_ap_db_stay"
+    assert adapter.required_priors("indiv") == ["alpha_o", "alpha_a", "demo_bias_rel", "beta", "kappa"]
+    assert "mu_demo_bias_rel" in adapter.required_priors("hier")
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(13.0)
+    assert data["kappa_abs_max"] == pytest.approx(2.0)
+    assert data["demo_bias_rel_abs_max"] == pytest.approx(4.0)
+
+
+def test_vicarious_dir_db_stay_adapter_adds_constants_and_priors():
+    """Vicarious-Dirichlet-DB-Stay adapter exposes expected priors and data constants."""
+    model = Vicarious_Dir_DB_Stay(beta_max=11.0, kappa_abs_max=1.5, demo_bias_abs_max=3.5, demo_dirichlet_prior=1.25)
+    adapter = VicariousDirDBStayStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "vicarious_dir_db_stay"
+    assert adapter.required_priors("indiv") == ["alpha_o", "demo_bias_rel", "beta", "kappa"]
+    assert "mu_demo_bias_rel" in adapter.required_priors("hier")
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(11.0)
+    assert data["kappa_abs_max"] == pytest.approx(1.5)
+    assert data["demo_bias_rel_abs_max"] == pytest.approx(3.5)
+    assert data["demo_dirichlet_prior"] == pytest.approx(1.25)
+
+
+def test_vicarious_db_stay_adapter_adds_constants_and_priors():
+    """Vicarious-DB-Stay adapter exposes expected priors and data constants."""
+    model = Vicarious_DB_Stay(beta_max=9.5, kappa_abs_max=1.2, demo_bias_abs_max=2.25)
+    adapter = VicariousDBStayStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "vicarious_db_stay"
+    assert adapter.required_priors("indiv") == ["alpha_o", "demo_bias", "beta", "kappa"]
+    assert "mu_demo_bias" in adapter.required_priors("hier")
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(9.5)
+    assert data["kappa_abs_max"] == pytest.approx(1.2)
+    assert data["demo_bias_abs_max"] == pytest.approx(2.25)
+
+
 def test_vicarious_rl_adapter_adds_constants_and_priors():
     """Vicarious-RL adapter exposes expected priors and data constants."""
     model = Vicarious_RL(beta_max=12.0)
@@ -152,11 +218,33 @@ def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():
     assert data["beta_upper"] == pytest.approx(18.0)
 
 
+def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
+    """Within-subject Vicarious-DB-Stay adapter uses base-model bounds."""
+    wrapped = wrap_model_with_shared_delta_conditions(
+        model=Vicarious_DB_Stay(beta_max=7.5, kappa_abs_max=1.1, demo_bias_abs_max=2.2),
+        conditions=["A", "B"],
+        baseline_condition="A",
+    )
+    adapter = resolve_stan_adapter(wrapped)
+    assert isinstance(adapter, VicariousDBStayWithinSubjectStanAdapter)
+    assert adapter.program("indiv").key == "vicarious_db_stay_within_subject"
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(7.5)
+    assert data["kappa_abs_max"] == pytest.approx(1.1)
+    assert data["demo_bias_abs_max"] == pytest.approx(2.2)
+
+
 def test_resolve_stan_adapter_for_base_models():
     """Registry resolves adapters for base models."""
     assert isinstance(resolve_stan_adapter(QRL()), QRLStanAdapter)
     assert isinstance(resolve_stan_adapter(VS()), VSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_RL()), VicariousRLStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_AP_VS()), VicariousAPVSStanAdapter)
+    assert isinstance(resolve_stan_adapter(Vicarious_AP_DB_STAY()), VicariousAPDBStayStanAdapter)
+    assert isinstance(resolve_stan_adapter(Vicarious_Dir_DB_Stay()), VicariousDirDBStayStanAdapter)
+    assert isinstance(resolve_stan_adapter(Vicarious_DB_Stay()), VicariousDBStayStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_VS()), VicariousVSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_VS_Stay()), VicariousVSStayStanAdapter)

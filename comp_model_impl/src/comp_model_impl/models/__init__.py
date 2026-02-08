@@ -52,6 +52,8 @@ from .vicarious_rl.vicarious_rl import Vicarious_RL
 from .vicarious_vs.vicarious_vs import Vicarious_VS
 from .qrl.qrl import QRL
 from .vs.vs import VS
+from .vicarious_ap_db_stay.vicarious_ap_db_stay import Vicarious_AP_DB_STAY
+from .vicarious_dir_db_stay.vicarious_dir_db_stay import Vicarious_Dir_DB_Stay
 from .vicarious_db_stay.vicarious_db_stay import Vicarious_DB_Stay
 from .within_subject_shared_delta import (
     ConditionedSharedDeltaModel,
@@ -69,7 +71,9 @@ __all__ = [
     "VS",
     "Vicarious_VS_Stay",
     "UnidentifiableQRL",
-    "Vicarious_AP_VS"
+    "Vicarious_AP_VS",
+    "Vicarious_AP_DB_STAY",
+    "Vicarious_Dir_DB_Stay",
     "Vicarious_DB_Stay",
     "ConditionedSharedDeltaModel",
     "ConditionedSharedDeltaSocialModel",

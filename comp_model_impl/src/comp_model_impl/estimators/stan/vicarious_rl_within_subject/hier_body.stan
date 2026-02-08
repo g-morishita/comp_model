@@ -143,7 +143,7 @@ model {
   }
 
   array[N] matrix[S, A] Q;
-  array[N] array[S] int last_choice;
+  array[N, S] int last_choice;
   for (n in 1:N) {
     Q[n] = rep_matrix(0.0, S, A);
     last_choice[n] = rep_array(0, S);
