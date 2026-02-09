@@ -61,3 +61,15 @@ def test_compile_cmdstan_writes_file_and_uses_cache(tmp_path, monkeypatch):
     assert stan_path.exists()
     assert stan_path.read_text(encoding="utf-8") == code
     assert stan_path.parent.name.startswith("comp_model_stan_demo_")
+
+
+def test_all_stan_bodies_export_pointwise_log_lik():
+    """Every Stan model body should expose per-event log-likelihood draws."""
+    base = Path(cu.__file__).resolve().parent
+    body_files = sorted(base.rglob("*_body.stan"))
+    assert body_files, "Expected Stan body templates to exist."
+
+    for path in body_files:
+        text = path.read_text(encoding="utf-8")
+        assert "vector[E] log_lik = rep_vector(0.0, E);" in text, f"Missing log_lik vector in {path}"
+        assert "log_lik[e] = categorical_logit_lpmf(choice[e] |" in text, f"Missing pointwise assignment in {path}"

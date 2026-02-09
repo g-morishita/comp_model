@@ -106,50 +106,52 @@ model {
 }
 
 generated quantities {
-  real log_lik = 0.0;
-  matrix[S, A] Q = rep_matrix(0.0, S, A);
-  array[S] int last_choice = rep_array(0, S);
-  vector[A] demo_counts = rep_vector(demo_dirichlet_prior, A);
-  int recent_demo_choice = 0;
-
-  for (e in 1:E) {
-    int s = state[e];
-
-    if (etype[e] == 1) {
-      Q = rep_matrix(0.0, S, A);
-      last_choice = rep_array(0, S);
-      demo_counts = rep_vector(demo_dirichlet_prior, A);
-      recent_demo_choice = 0;
-
-    } else if (etype[e] == 2) {
-      if (demo_action[e] > 0) {
-        int a = demo_action[e];
-        recent_demo_choice = a;
-        demo_counts[a] = demo_counts[a] + 1.0;
-
-        if (has_demo_outcome[e] == 1) {
-          real r = demo_outcome_obs[e];
-          Q[s,a] = Q[s,a] + alpha_o * (r - Q[s,a]);
+  vector[E] log_lik = rep_vector(0.0, E);
+  {
+    matrix[S, A] Q = rep_matrix(0.0, S, A);
+    array[S] int last_choice = rep_array(0, S);
+    vector[A] demo_counts = rep_vector(demo_dirichlet_prior, A);
+    int recent_demo_choice = 0;
+  
+    for (e in 1:E) {
+      int s = state[e];
+  
+      if (etype[e] == 1) {
+        Q = rep_matrix(0.0, S, A);
+        last_choice = rep_array(0, S);
+        demo_counts = rep_vector(demo_dirichlet_prior, A);
+        recent_demo_choice = 0;
+  
+      } else if (etype[e] == 2) {
+        if (demo_action[e] > 0) {
+          int a = demo_action[e];
+          recent_demo_choice = a;
+          demo_counts[a] = demo_counts[a] + 1.0;
+  
+          if (has_demo_outcome[e] == 1) {
+            real r = demo_outcome_obs[e];
+            Q[s,a] = Q[s,a] + alpha_o * (r - Q[s,a]);
+          }
         }
-      }
-
-    } else if (etype[e] == 3) {
-      if (choice[e] > 0) {
-        vector[A] demo_pi = demo_counts / sum(demo_counts);
-        real maxp = max(demo_pi);
-        real rel = (maxp - 1.0 / A) / (1.0 - 1.0 / A);
-        rel = fmin(1.0, fmax(0.0, rel));
-
-        vector[A] u = beta * to_vector(Q[s]');
-        if (last_choice[s] > 0) u[last_choice[s]] += kappa;
-        if (recent_demo_choice > 0) u[recent_demo_choice] += demo_bias_rel * rel;
-        for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
-        log_lik += categorical_logit_lpmf(choice[e] | u);
-      }
-
-    } else if (etype[e] == 4) {
-      if (action[e] > 0) {
-        last_choice[s] = action[e];
+  
+      } else if (etype[e] == 3) {
+        if (choice[e] > 0) {
+          vector[A] demo_pi = demo_counts / sum(demo_counts);
+          real maxp = max(demo_pi);
+          real rel = (maxp - 1.0 / A) / (1.0 - 1.0 / A);
+          rel = fmin(1.0, fmax(0.0, rel));
+  
+          vector[A] u = beta * to_vector(Q[s]');
+          if (last_choice[s] > 0) u[last_choice[s]] += kappa;
+          if (recent_demo_choice > 0) u[recent_demo_choice] += demo_bias_rel * rel;
+          for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
+          log_lik[e] = categorical_logit_lpmf(choice[e] | u);
+        }
+  
+      } else if (etype[e] == 4) {
+        if (action[e] > 0) {
+          last_choice[s] = action[e];
+        }
       }
     }
   }

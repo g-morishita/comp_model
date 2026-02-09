@@ -218,6 +218,48 @@ model {
   }
 }
 generated quantities {
+  vector[E] log_lik = rep_vector(0.0, E);
+  {
+    array[N] matrix[S, A] Q;
+    array[N, S] int last_choice;
+    for (n in 1:N) {
+      Q[n] = rep_matrix(0.0, S, A);
+      last_choice[n] = rep_array(0, S);
+    }
+  
+    for (e in 1:E) {
+      int n = subj[e];
+      int s = state[e];
+      int c = cond[e];
+  
+      if (etype[e] == 1) {
+        Q[n] = rep_matrix(0.0, S, A);
+        last_choice[n] = rep_array(0, S);
+  
+      } else if (etype[e] == 2) {
+        if (demo_action[e] > 0) {
+          int a = demo_action[e];
+          Q[n][s, a] = Q[n][s, a] + alpha_i[n, c] * (pseudo_reward - Q[n][s, a]);
+        }
+  
+      } else if (etype[e] == 3) {
+        if (choice[e] > 0) {
+          vector[A] u = to_vector(Q[n][s]');
+          if (last_choice[n, s] > 0) u[last_choice[n, s]] += kappa[n, c];
+          for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
+          log_lik[e] = categorical_logit_lpmf(choice[e] | beta[n, c] * u);
+        }
+  
+      } else if (etype[e] == 4) {
+        if (action[e] > 0) {
+          int a = action[e];
+          real r = outcome_obs[e];
+          Q[n][s, a] = Q[n][s, a] + alpha_p[n, c] * (r - Q[n][s, a]);
+          last_choice[n, s] = a;
+        }
+      }
+    }
+  }
   // subject-condition parameters on natural scale
   matrix[N, C] alpha_p_hat = alpha_p;
   matrix[N, C] alpha_i_hat = alpha_i;

@@ -12,9 +12,11 @@ def add_information_criteria(
     ll_col: str = "ll_total",
     k_col: str = "k_total",
     n_obs_col: str = "n_obs_total",
+    waic_col: str | None = None,
+    elpd_waic_col: str | None = None,
     group_cols: tuple[str, ...] = ("rep", "generating_model"),
 ) -> pd.DataFrame:
-    """Add AIC/BIC and BIC-approximate Bayes factors to a fit table.
+    """Add model-comparison criteria columns to a fit table.
 
     Parameters
     ----------
@@ -27,9 +29,15 @@ def add_information_criteria(
         Column name for total free-parameter count.
     n_obs_col : str, optional
         Column name for observation count.
+    waic_col : str or None, optional
+        Column name for WAIC values. If ``None``, this function auto-detects a
+        ``"waic"`` column when present.
+    elpd_waic_col : str or None, optional
+        Column name for ELPD-WAIC values. If provided (or auto-detected as
+        ``"elpd_waic"``), WAIC is computed as ``-2 * elpd_waic``.
     group_cols : tuple[str, ...], optional
         Columns that define independent model-comparison groups. Metrics such as
-        delta-AIC, delta-BIC, and weights are computed within each group. If no
+        delta criteria and weights are computed within each group. If no
         provided group columns are present, all rows are treated as one group.
 
     Returns
@@ -38,7 +46,8 @@ def add_information_criteria(
         Copy of ``fit_table`` with added columns:
         ``aic``, ``bic``, ``delta_aic``, ``delta_bic``,
         ``akaike_weight``, ``bic_weight``,
-        ``bf_best_vs_model_bic``, ``bf_model_vs_best_bic``.
+        ``bf_best_vs_model_bic``, ``bf_model_vs_best_bic``, and when available
+        WAIC columns: ``waic``, ``delta_waic``, ``waic_weight``.
 
     Notes
     -----
@@ -56,6 +65,9 @@ def add_information_criteria(
             "bic_weight",
             "bf_best_vs_model_bic",
             "bf_model_vs_best_bic",
+            "waic",
+            "delta_waic",
+            "waic_weight",
         ):
             out[c] = np.array([], dtype=float)
         return out
@@ -100,6 +112,39 @@ def add_information_criteria(
     out["bf_best_vs_model_bic"] = np.exp(0.5 * np.clip(out["delta_bic"].astype(float), 0.0, 700.0))
     out["bf_model_vs_best_bic"] = np.exp(-0.5 * np.clip(out["delta_bic"].astype(float), 0.0, 700.0))
 
-    out.drop(columns=["_aic_rel", "_bic_rel"], inplace=True)
-    return out
+    waic_source_col = waic_col
+    if waic_source_col is None and "waic" in out.columns:
+        waic_source_col = "waic"
 
+    elpd_source_col = elpd_waic_col
+    if waic_source_col is None and elpd_source_col is None and "elpd_waic" in out.columns:
+        elpd_source_col = "elpd_waic"
+
+    if waic_source_col is not None:
+        if waic_source_col not in out.columns:
+            raise ValueError(f"fit_table is missing required WAIC column: {waic_source_col!r}")
+        waic_values = out[waic_source_col].astype(float)
+        out["waic"] = waic_values
+    elif elpd_source_col is not None:
+        if elpd_source_col not in out.columns:
+            raise ValueError(f"fit_table is missing required ELPD-WAIC column: {elpd_source_col!r}")
+        waic_values = -2.0 * out[elpd_source_col].astype(float)
+        out["waic"] = waic_values
+
+    if "waic" in out.columns:
+        if active_group_cols:
+            min_waic = out.groupby(list(active_group_cols), dropna=False)["waic"].transform("min")
+        else:
+            min_waic = pd.Series(float(out["waic"].min()), index=out.index)
+
+        out["delta_waic"] = out["waic"] - min_waic
+        out["_waic_rel"] = np.exp(-0.5 * np.clip(out["delta_waic"].astype(float), 0.0, 700.0))
+        if active_group_cols:
+            waic_den = out.groupby(list(active_group_cols), dropna=False)["_waic_rel"].transform("sum")
+        else:
+            waic_den = pd.Series(float(out["_waic_rel"].sum()), index=out.index)
+        out["waic_weight"] = out["_waic_rel"] / waic_den.replace(0.0, np.nan)
+
+    drop_cols = [c for c in ("_aic_rel", "_bic_rel", "_waic_rel") if c in out.columns]
+    out.drop(columns=drop_cols, inplace=True)
+    return out

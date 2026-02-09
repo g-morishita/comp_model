@@ -170,6 +170,10 @@ Notes:
   `False` for large recovery runs unless you need uncertainty outputs.
 - `bf_best_vs_model_bic` and `bf_model_vs_best_bic` are BIC-based Bayes-factor
   approximations, not bridge-sampling Bayes factors.
+- If your fit table includes `waic` (or `elpd_waic`), `add_information_criteria`
+  also adds `delta_waic` and `waic_weight`.
+- WAIC cannot be inferred from scalar `ll_total` alone; it needs pointwise
+  log-likelihood draws or precomputed WAIC/ELPD-WAIC.
 
 For MLE estimators, you can request approximate uncertainty as well:
 

@@ -70,6 +70,34 @@ model {
   }
 }
 generated quantities {
+  vector[E] log_lik = rep_vector(0.0, E);
+  {
+    array[N] matrix[S, A] Q;
+    for (n in 1:N) Q[n] = rep_matrix(0.0, S, A);
+  
+    for (e in 1:E) {
+      int n = subj[e];
+      int s = state[e];
+  
+      if (etype[e] == 1) {
+        Q[n] = rep_matrix(0.0, S, A);
+  
+      } else if (etype[e] == 3) {
+        if (choice[e] > 0) {
+          vector[A] u = to_vector(Q[n][s]');
+          for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
+          log_lik[e] = categorical_logit_lpmf(choice[e] | beta[n] * u);
+        }
+  
+      } else if (etype[e] == 4) {
+        if (action[e] > 0) {
+          int a = action[e];
+          real r = outcome_obs[e];
+          Q[n][s, a] = Q[n][s, a] + alpha[n] * (r - Q[n][s, a]);
+        }
+      }
+    }
+  }
   real alpha_pop = inv_logit(mu_alpha);
   real beta_pop =
     beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta);

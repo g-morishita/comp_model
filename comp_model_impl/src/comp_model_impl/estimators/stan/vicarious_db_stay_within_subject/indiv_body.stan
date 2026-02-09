@@ -164,6 +164,48 @@ model {
 }
 
 generated quantities {
+  vector[E] log_lik = rep_vector(0.0, E);
+  {
+    matrix[S, A] Q = rep_matrix(0.0, S, A);
+    array[S] int last_choice = rep_array(0, S);
+    int recent_demo_choice = 0;
+  
+    for (e in 1:E) {
+      int s = state[e];
+      int c = cond[e];
+  
+      if (etype[e] == 1) {
+        Q = rep_matrix(0.0, S, A);
+        last_choice = rep_array(0, S);
+        recent_demo_choice = 0;
+  
+      } else if (etype[e] == 2) {
+        if (demo_action[e] > 0) {
+          int a = demo_action[e];
+          recent_demo_choice = a;
+  
+          if (has_demo_outcome[e] == 1) {
+            real r = demo_outcome_obs[e];
+            Q[s, a] = Q[s, a] + alpha_o[c] * (r - Q[s, a]);
+          }
+        }
+  
+      } else if (etype[e] == 3) {
+        if (choice[e] > 0) {
+          vector[A] u = beta[c] * to_vector(Q[s]');
+          if (last_choice[s] > 0) u[last_choice[s]] += kappa[c];
+          if (recent_demo_choice > 0) u[recent_demo_choice] += demo_bias[c];
+          for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
+          log_lik[e] = categorical_logit_lpmf(choice[e] | u);
+        }
+  
+      } else if (etype[e] == 4) {
+        if (action[e] > 0) {
+          last_choice[s] = action[e];
+        }
+      }
+    }
+  }
   vector[C] alpha_o_hat = alpha_o;
   vector[C] demo_bias_hat = demo_bias;
   vector[C] beta_hat    = beta;

@@ -140,6 +140,63 @@ model {
 }
 
 generated quantities {
+  vector[E] log_lik = rep_vector(0.0, E);
+  {
+    array[N] matrix[S, A] Q;
+    array[N, S] int last_choice;
+    array[N] vector[A] demo_pi;
+  
+    for (n in 1:N) {
+      Q[n] = rep_matrix(0.0, S, A);
+      for (s in 1:S) last_choice[n, s] = 0;
+      demo_pi[n] = rep_vector(1.0 / A, A);
+    }
+  
+    for (e in 1:E) {
+      int n = subj[e];
+      int s = state[e];
+  
+      if (etype[e] == 1) {
+        Q[n] = rep_matrix(0.0, S, A);
+        for (s2 in 1:S) last_choice[n, s2] = 0;
+        demo_pi[n] = rep_vector(1.0 / A, A);
+  
+      } else if (etype[e] == 2) {
+        if (demo_action[e] > 0) {
+          int a = demo_action[e];
+          vector[A] onehot = rep_vector(0.0, A);
+          onehot[a] = 1.0;
+  
+          demo_pi[n] = demo_pi[n] + alpha_a[n] * (onehot - demo_pi[n]);
+  
+          real maxp = max(demo_pi[n]);
+          real rel = (maxp - 1.0 / A) / (1.0 - 1.0 / A);
+          rel = fmin(1.0, fmax(0.0, rel));
+          real alpha_vs = alpha_vs_base[n] * rel;
+  
+          Q[n][s,a] = Q[n][s,a] + alpha_vs * (pseudo_reward - Q[n][s,a]);
+  
+          if (has_demo_outcome[e] == 1) {
+            real r = demo_outcome_obs[e];
+            Q[n][s,a] = Q[n][s,a] + alpha_o[n] * (r - Q[n][s,a]);
+          }
+        }
+  
+      } else if (etype[e] == 3) {
+        if (choice[e] > 0) {
+          vector[A] u = beta[n] * to_vector(Q[n][s]');
+          if (last_choice[n, s] > 0) u[last_choice[n, s]] += kappa[n];
+          for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
+          log_lik[e] = categorical_logit_lpmf(choice[e] | u);
+        }
+  
+      } else if (etype[e] == 4) {
+        if (action[e] > 0) {
+          last_choice[n, s] = action[e];
+        }
+      }
+    }
+  }
   real alpha_o_pop = inv_logit(mu_alpha_o);
   real alpha_vs_base_pop = inv_logit(mu_alpha_vs_base);
   real alpha_a_pop = inv_logit(mu_alpha_a);

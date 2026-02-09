@@ -223,10 +223,14 @@ Added columns:
 - `akaike_weight`, `bic_weight`: relative weights within each group.
 - `bf_best_vs_model_bic`, `bf_model_vs_best_bic`: BIC-based Bayes-factor
   approximations.
+- If `waic` (or `elpd_waic`) is present in the input table:
+  `waic`, `delta_waic`, `waic_weight` are also added.
 
 Notes:
 - These BF values are BIC approximations, not exact marginal-likelihood Bayes
   factors (e.g., bridge sampling).
+- WAIC requires pointwise log-likelihood draws (or precomputed WAIC/ELPD-WAIC);
+  it cannot be recovered from scalar `ll_total` alone.
 - For parameter recovery batches, keep `return_posterior_summary=False` unless
   you explicitly need uncertainty summaries.
 

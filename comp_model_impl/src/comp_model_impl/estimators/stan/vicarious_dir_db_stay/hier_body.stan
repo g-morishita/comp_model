@@ -134,6 +134,63 @@ model {
 }
 
 generated quantities {
+  vector[E] log_lik = rep_vector(0.0, E);
+  {
+    array[N] matrix[S, A] Q;
+    array[N, S] int last_choice;
+    array[N] vector[A] demo_counts;
+    array[N] int recent_demo_choice;
+  
+    for (n in 1:N) {
+      Q[n] = rep_matrix(0.0, S, A);
+      for (s in 1:S) last_choice[n, s] = 0;
+      demo_counts[n] = rep_vector(demo_dirichlet_prior, A);
+      recent_demo_choice[n] = 0;
+    }
+  
+    for (e in 1:E) {
+      int n = subj[e];
+      int s = state[e];
+  
+      if (etype[e] == 1) {
+        Q[n] = rep_matrix(0.0, S, A);
+        for (s2 in 1:S) last_choice[n, s2] = 0;
+        demo_counts[n] = rep_vector(demo_dirichlet_prior, A);
+        recent_demo_choice[n] = 0;
+  
+      } else if (etype[e] == 2) {
+        if (demo_action[e] > 0) {
+          int a = demo_action[e];
+          recent_demo_choice[n] = a;
+          demo_counts[n][a] = demo_counts[n][a] + 1.0;
+  
+          if (has_demo_outcome[e] == 1) {
+            real r = demo_outcome_obs[e];
+            Q[n][s,a] = Q[n][s,a] + alpha_o[n] * (r - Q[n][s,a]);
+          }
+        }
+  
+      } else if (etype[e] == 3) {
+        if (choice[e] > 0) {
+          vector[A] demo_pi = demo_counts[n] / sum(demo_counts[n]);
+          real maxp = max(demo_pi);
+          real rel = (maxp - 1.0 / A) / (1.0 - 1.0 / A);
+          rel = fmin(1.0, fmax(0.0, rel));
+  
+          vector[A] u = beta[n] * to_vector(Q[n][s]');
+          if (last_choice[n, s] > 0) u[last_choice[n, s]] += kappa[n];
+          if (recent_demo_choice[n] > 0) u[recent_demo_choice[n]] += demo_bias_rel[n] * rel;
+          for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
+          log_lik[e] = categorical_logit_lpmf(choice[e] | u);
+        }
+  
+      } else if (etype[e] == 4) {
+        if (action[e] > 0) {
+          last_choice[n, s] = action[e];
+        }
+      }
+    }
+  }
   real alpha_o_pop = inv_logit(mu_alpha_o);
 
   real demo_bias_rel_pop = demo_bias_rel_abs_max * tanh(mu_demo_bias_rel);

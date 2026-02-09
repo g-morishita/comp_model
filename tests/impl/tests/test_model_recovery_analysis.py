@@ -144,3 +144,61 @@ def test_add_information_criteria_requires_columns() -> None:
     """Missing required columns should raise a clear error."""
     with pytest.raises(ValueError, match="missing required column"):
         _ = add_information_criteria(pd.DataFrame({"ll_total": [-1.0]}))
+
+
+def test_add_information_criteria_waic_from_waic_column() -> None:
+    """WAIC deltas and weights should be computed when WAIC is present."""
+    fit = pd.DataFrame(
+        {
+            "candidate_model": ["m1", "m2"],
+            "ll_total": [-100.0, -110.0],
+            "k_total": [5, 5],
+            "n_obs_total": [200, 200],
+            "waic": [210.0, 220.0],
+        }
+    )
+    out = add_information_criteria(fit, group_cols=())
+
+    m1 = out.loc[out["candidate_model"] == "m1"].iloc[0]
+    m2 = out.loc[out["candidate_model"] == "m2"].iloc[0]
+
+    assert m1["delta_waic"] == pytest.approx(0.0)
+    assert m2["delta_waic"] == pytest.approx(10.0)
+    assert m1["waic_weight"] + m2["waic_weight"] == pytest.approx(1.0)
+    assert m1["waic_weight"] > m2["waic_weight"]
+
+
+def test_add_information_criteria_waic_from_elpd_waic_column() -> None:
+    """WAIC should be derived as -2 * elpd_waic when only ELPD is available."""
+    fit = pd.DataFrame(
+        {
+            "candidate_model": ["m1", "m2"],
+            "ll_total": [-100.0, -110.0],
+            "k_total": [5, 5],
+            "n_obs_total": [200, 200],
+            "elpd_waic": [-105.0, -110.0],
+        }
+    )
+    out = add_information_criteria(fit, group_cols=())
+
+    m1 = out.loc[out["candidate_model"] == "m1"].iloc[0]
+    m2 = out.loc[out["candidate_model"] == "m2"].iloc[0]
+
+    assert m1["waic"] == pytest.approx(210.0)
+    assert m2["waic"] == pytest.approx(220.0)
+    assert m1["delta_waic"] == pytest.approx(0.0)
+    assert m2["delta_waic"] == pytest.approx(10.0)
+
+
+def test_add_information_criteria_waic_missing_declared_column() -> None:
+    """Declaring a WAIC column that is absent should raise a clear error."""
+    fit = pd.DataFrame(
+        {
+            "candidate_model": ["m1"],
+            "ll_total": [-100.0],
+            "k_total": [5],
+            "n_obs_total": [200],
+        }
+    )
+    with pytest.raises(ValueError, match="missing required WAIC column"):
+        _ = add_information_criteria(fit, waic_col="waic_custom")
