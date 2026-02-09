@@ -8,10 +8,12 @@ import numpy as np
 import pytest
 
 from comp_model_impl.estimators.stan.nuts import (
+    _add_subject_posterior_summaries,
     _delta_labels,
     _flatten_mean,
     _is_within_subject_model,
     _load_yaml,
+    _posterior_summary_from_draws,
     _safe_summary_metric,
     _strip_hat,
 )
@@ -110,6 +112,54 @@ def test_is_within_subject_model_flag():
     ws = ConditionedSharedDeltaModel(base_model=base, conditions=["A", "B"], baseline_condition="A")
     assert _is_within_subject_model(base) is False
     assert _is_within_subject_model(ws) is True
+
+
+def test_posterior_summary_from_draws_scalar_and_vector():
+    """Posterior summaries return mean/sd/quantiles for flattened variables."""
+    scalar = _posterior_summary_from_draws(name="alpha_hat", draws=np.array([0.1, 0.2, 0.3, 0.4]))
+    assert set(scalar.keys()) == {"alpha"}
+    assert scalar["alpha"]["mean"] == pytest.approx(0.25)
+    assert scalar["alpha"]["q50"] == pytest.approx(0.25)
+
+    vec_draws = np.array(
+        [
+            [0.1, 0.9],
+            [0.2, 0.8],
+            [0.3, 0.7],
+            [0.4, 0.6],
+        ]
+    )
+    vec = _posterior_summary_from_draws(
+        name="beta_hat",
+        draws=vec_draws,
+        condition_labels=["A", "B"],
+    )
+    assert set(vec.keys()) == {"beta__A", "beta__B"}
+    assert vec["beta__A"]["mean"] == pytest.approx(0.25)
+    assert vec["beta__B"]["mean"] == pytest.approx(0.75)
+
+
+def test_add_subject_posterior_summaries_maps_draws_axis_1():
+    """Subject posterior summaries should be split by subject axis."""
+    out: dict[str, dict[str, dict[str, float]]] = {}
+    draws = np.array(
+        [
+            [0.1, 0.9],
+            [0.2, 0.8],
+            [0.3, 0.7],
+            [0.4, 0.6],
+        ]
+    )
+    _add_subject_posterior_summaries(
+        out=out,
+        name="theta_hat",
+        draws=draws,
+        subject_ids=["S1", "S2"],
+    )
+
+    assert set(out.keys()) == {"S1", "S2"}
+    assert out["S1"]["theta"]["mean"] == pytest.approx(0.25)
+    assert out["S2"]["theta"]["mean"] == pytest.approx(0.75)
 
 
 def test_load_yaml_reads_mapping(tmp_path):

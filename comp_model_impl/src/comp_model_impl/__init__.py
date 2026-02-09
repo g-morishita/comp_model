@@ -29,6 +29,7 @@ except PackageNotFoundError:  # pragma: no cover
 
 __all__ = [
     "__version__",
+    "analysis",
     "bandits",
     "demonstrators",
     "estimators",
@@ -42,6 +43,7 @@ __all__ = [
 
 def __getattr__(name: str):
     if name in {
+        "analysis",
         "bandits",
         "demonstrators",
         "estimators",

@@ -223,6 +223,141 @@ def _flatten_mean(
     return out
 
 
+def _posterior_summary_from_draws(
+    *,
+    name: str,
+    draws: Any,
+    condition_labels: list[str] | None = None,
+    baseline_idx_1based: int | None = None,
+) -> dict[str, dict[str, float]]:
+    """Summarize posterior draws for one Stan variable.
+
+    Parameters
+    ----------
+    name : str
+        Stan variable name.
+    draws : Any
+        Posterior draws where axis 0 is sampling draw.
+    condition_labels : list[str] or None, optional
+        Optional condition labels for flattening condition-indexed vectors.
+    baseline_idx_1based : int or None, optional
+        Optional one-based baseline index for delta parameters.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Mapping from flattened parameter name to summary stats:
+        ``mean``, ``sd``, ``q025``, ``q50``, ``q975``.
+    """
+    arr = np.asarray(draws, dtype=float)
+    if arr.ndim == 0:
+        arr = arr.reshape((1,))
+    if int(arr.shape[0]) <= 0:
+        return {}
+
+    mean = np.mean(arr, axis=0)
+    sd = np.std(arr, axis=0, ddof=0)
+    q025 = np.quantile(arr, 0.025, axis=0)
+    q50 = np.quantile(arr, 0.5, axis=0)
+    q975 = np.quantile(arr, 0.975, axis=0)
+
+    maps = {
+        "mean": _flatten_mean(
+            name=name,
+            mean=mean,
+            condition_labels=condition_labels,
+            baseline_idx_1based=baseline_idx_1based,
+        ),
+        "sd": _flatten_mean(
+            name=name,
+            mean=sd,
+            condition_labels=condition_labels,
+            baseline_idx_1based=baseline_idx_1based,
+        ),
+        "q025": _flatten_mean(
+            name=name,
+            mean=q025,
+            condition_labels=condition_labels,
+            baseline_idx_1based=baseline_idx_1based,
+        ),
+        "q50": _flatten_mean(
+            name=name,
+            mean=q50,
+            condition_labels=condition_labels,
+            baseline_idx_1based=baseline_idx_1based,
+        ),
+        "q975": _flatten_mean(
+            name=name,
+            mean=q975,
+            condition_labels=condition_labels,
+            baseline_idx_1based=baseline_idx_1based,
+        ),
+    }
+
+    keys = sorted({k for d in maps.values() for k in d.keys()})
+    out: dict[str, dict[str, float]] = {}
+    for k in keys:
+        out[k] = {stat: float(maps[stat].get(k, np.nan)) for stat in ("mean", "sd", "q025", "q50", "q975")}
+    return out
+
+
+def _add_subject_posterior_summaries(
+    *,
+    out: dict[str, dict[str, dict[str, float]]],
+    name: str,
+    draws: Any,
+    subject_ids: list[str],
+    condition_labels: list[str] | None = None,
+    baseline_idx_1based: int | None = None,
+) -> None:
+    """Add per-subject posterior summaries from hierarchical Stan draws.
+
+    Parameters
+    ----------
+    out : dict[str, dict[str, dict[str, float]]]
+        Output mapping to update: ``subject_id -> parameter -> stats``.
+    name : str
+        Stan variable name.
+    draws : Any
+        Draw array expected to have shape ``(draws, N, ...)`` for subject-level
+        variables, where ``N == len(subject_ids)``.
+    subject_ids : list[str]
+        Subject identifiers in Stan order.
+    condition_labels : list[str] or None, optional
+        Optional condition labels for flattening.
+    baseline_idx_1based : int or None, optional
+        Optional baseline index for delta-parameter flattening.
+    """
+    arr = np.asarray(draws, dtype=float)
+    n_subj = int(len(subject_ids))
+
+    # Scalar subject parameter: draws x N
+    if arr.ndim == 2 and int(arr.shape[1]) == n_subj:
+        for i, sid in enumerate(subject_ids):
+            out.setdefault(str(sid), {}).update(
+                _posterior_summary_from_draws(
+                    name=name,
+                    draws=arr[:, i],
+                    condition_labels=condition_labels,
+                    baseline_idx_1based=baseline_idx_1based,
+                )
+            )
+        return
+
+    # Vector/matrix subject parameter: draws x N x ...
+    if arr.ndim >= 3 and int(arr.shape[1]) == n_subj:
+        for i, sid in enumerate(subject_ids):
+            out.setdefault(str(sid), {}).update(
+                _posterior_summary_from_draws(
+                    name=name,
+                    draws=arr[:, i, ...],
+                    condition_labels=condition_labels,
+                    baseline_idx_1based=baseline_idx_1based,
+                )
+            )
+        return
+
+
 def _is_within_subject_model(model: ComputationalModel) -> bool:
     """Return ``True`` if the model uses the shared+delta wrapper."""
     return isinstance(model, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel))
@@ -379,22 +514,13 @@ class StanNUTSSubjectwiseEstimator(Estimator):
         Target acceptance probability for NUTS.
     max_treedepth : int, optional
         Maximum tree depth for NUTS.
-    subject_point_estimate : {"mean", "conditional_map"}, optional
-        Point estimate for subject-level parameters. ``"mean"`` uses posterior
-        means from draws. ``"conditional_map"`` optimizes each subject's
-        parameters conditional on fixed hyperparameters (empirical Bayes).
-    cond_map_method : str, optional
-        SciPy optimizer name for conditional MAP (default: ``"L-BFGS-B"``).
-    cond_map_maxiter : int, optional
-        Maximum optimizer iterations per subject for conditional MAP.
-    cond_map_n_starts : int, optional
-        Number of optimization restarts per subject for conditional MAP.
-    cond_map_jitter : float, optional
-        Jitter scale (in z-space, scaled by hyper SD) for additional starts.
     forbid_extra_priors : bool, optional
         If ``True``, reject priors not required by the adapter.
     show_progress : bool, optional
         If ``True``, display CmdStanPy progress output.
+    return_posterior_summary : bool, optional
+        If ``True``, include posterior uncertainty summaries (mean, SD, 95%
+        interval) in diagnostics.
 
     Notes
     -----
@@ -413,6 +539,7 @@ class StanNUTSSubjectwiseEstimator(Estimator):
 
     forbid_extra_priors: bool = True
     show_progress: bool = False
+    return_posterior_summary: bool = False
 
     _compiled: Any = field(default=None, init=False, repr=False)
 
@@ -503,6 +630,7 @@ class StanNUTSSubjectwiseEstimator(Estimator):
             )
 
             hats: dict[str, float] = {}
+            posterior_summary: dict[str, dict[str, float]] = {}
             if is_ws:
                 # For within-subject models, Stan variables include per-condition vectors.
                 bl_idx = int(data.get("baseline_cond", 1))
@@ -517,10 +645,23 @@ class StanNUTSSubjectwiseEstimator(Estimator):
                             baseline_idx_1based=bl_idx,
                         )
                     )
+                    if self.return_posterior_summary:
+                        posterior_summary.update(
+                            _posterior_summary_from_draws(
+                                name=p,
+                                draws=draws,
+                                condition_labels=condition_labels,
+                                baseline_idx_1based=bl_idx,
+                            )
+                        )
             else:
                 for p in adapter.subject_param_names():
                     draws = fit.stan_variable(p)
                     hats[p] = float(np.mean(draws))
+                    if self.return_posterior_summary:
+                        posterior_summary.update(
+                            _posterior_summary_from_draws(name=p, draws=draws)
+                        )
             subj_hats[subj.subject_id] = hats
 
             summ = None
@@ -539,6 +680,8 @@ class StanNUTSSubjectwiseEstimator(Estimator):
             if is_ws:
                 per_subject_diags[subj.subject_id]["conditions"] = list(condition_labels or [])
                 per_subject_diags[subj.subject_id]["baseline_condition"] = baseline_cond_label
+            if self.return_posterior_summary:
+                per_subject_diags[subj.subject_id]["posterior_summary"] = posterior_summary
 
         return FitResult(
             subject_hats=subj_hats,
@@ -568,10 +711,25 @@ class StanHierarchicalNUTSEstimator(Estimator):
         Target acceptance probability for NUTS.
     max_treedepth : int, optional
         Maximum tree depth for NUTS.
+    subject_point_estimate : {"mean", "conditional_map"}, optional
+        Point estimate for subject-level parameters. ``"mean"`` uses posterior
+        means from draws. ``"conditional_map"`` optimizes each subject's
+        parameters conditional on fixed hyperparameters (empirical Bayes).
+    cond_map_method : str, optional
+        SciPy optimizer name for conditional MAP (default: ``"L-BFGS-B"``).
+    cond_map_maxiter : int, optional
+        Maximum optimizer iterations per subject for conditional MAP.
+    cond_map_n_starts : int, optional
+        Number of optimization restarts per subject for conditional MAP.
+    cond_map_jitter : float, optional
+        Jitter scale (in z-space, scaled by hyper SD) for additional starts.
     forbid_extra_priors : bool, optional
         If ``True``, reject priors not required by the adapter.
     show_progress : bool, optional
         If ``True``, display CmdStanPy progress output.
+    return_posterior_summary : bool, optional
+        If ``True``, include posterior uncertainty summaries (mean, SD, 95%
+        interval) in diagnostics for both population and subject parameters.
 
     Notes
     -----
@@ -596,6 +754,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
     cond_map_maxiter: int = 300
     cond_map_n_starts: int = 1
     cond_map_jitter: float = 0.1
+    return_posterior_summary: bool = False
 
     _compiled: Any = field(default=None, init=False, repr=False)
 
@@ -676,6 +835,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
         )
 
         pop_hat: dict[str, float] = {}
+        pop_posterior_summary: dict[str, dict[str, float]] = {}
         if is_ws:
             bl_idx = int(data.get("baseline_cond", 1))
             for nm in adapter.population_var_names():
@@ -692,16 +852,30 @@ class StanHierarchicalNUTSEstimator(Estimator):
                         baseline_idx_1based=bl_idx,
                     )
                 )
+                if self.return_posterior_summary:
+                    pop_posterior_summary.update(
+                        _posterior_summary_from_draws(
+                            name=nm,
+                            draws=draws,
+                            condition_labels=condition_labels,
+                            baseline_idx_1based=bl_idx,
+                        )
+                    )
         else:
             for nm in adapter.population_var_names():
                 try:
-                    mean = np.mean(fit.stan_variable(nm))
+                    draws = fit.stan_variable(nm)
+                    mean = np.mean(draws)
                     pop_hat.update(_flatten_mean(name=nm, mean=mean))
+                    if self.return_posterior_summary:
+                        pop_posterior_summary.update(
+                            _posterior_summary_from_draws(name=nm, draws=draws)
+                        )
                 except KeyError:
                     continue
 
         subj_hats: dict[str, dict[str, float]] = {}
-        subj_ids = [s.subject_id for s in study.subjects]
+        subj_ids = [str(s.subject_id) for s in study.subjects]
 
         point_est = str(self.subject_point_estimate).lower()
         cond_diags: dict[str, Any] | None = None
@@ -760,6 +934,23 @@ class StanHierarchicalNUTSEstimator(Estimator):
         else:
             raise ValueError(f"Unknown subject_point_estimate: {self.subject_point_estimate!r}")
 
+        subj_posterior_summary: dict[str, dict[str, dict[str, float]]] = {}
+        if self.return_posterior_summary:
+            bl_idx = int(data.get("baseline_cond", 1))
+            for p in adapter.subject_param_names():
+                try:
+                    draws = fit.stan_variable(p)
+                except KeyError:
+                    continue
+                _add_subject_posterior_summaries(
+                    out=subj_posterior_summary,
+                    name=p,
+                    draws=draws,
+                    subject_ids=subj_ids,
+                    condition_labels=condition_labels if is_ws else None,
+                    baseline_idx_1based=bl_idx if is_ws else None,
+                )
+
         summ = None
         try:
             summ = fit.summary()
@@ -774,6 +965,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
         }
         if cond_diags is not None:
             diags.update(cond_diags)
+        if self.return_posterior_summary:
+            diags["population_posterior_summary"] = pop_posterior_summary
+            diags["subject_posterior_summary"] = subj_posterior_summary
 
         return FitResult(
             population_hat=pop_hat,

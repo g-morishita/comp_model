@@ -165,6 +165,71 @@ If recovery is poor, typical fixes are:
 - ensure your trial interface matches the experiment (feedback visibility,
   forced-choice actions, etc.).
 
+## Fit real data: uncertainty and model comparison
+
+For real datasets, parameter recovery outputs are usually not enough. You often
+want:
+- posterior uncertainty for population/subject parameters, and
+- model-comparison metrics (AIC/BIC and Bayes-factor approximations).
+
+### 1) Fit with uncertainty summaries
+
+```python
+import numpy as np
+from comp_model_impl.estimators import StanHierarchicalNUTSEstimator
+from comp_model_impl.models import Vicarious_AP_DB_STAY
+
+est = StanHierarchicalNUTSEstimator(
+    model=Vicarious_AP_DB_STAY(),
+    hyper_priors=hyper_priors,
+    subject_point_estimate="conditional_map",  # or "mean"
+    return_posterior_summary=True,
+)
+fit = est.fit(study=real_study, rng=np.random.default_rng(0))
+
+pop = fit.diagnostics["population_posterior_summary"]      # param -> {mean, sd, q025, q50, q975}
+subj = fit.diagnostics["subject_posterior_summary"]        # subject -> param -> {mean, sd, ...}
+```
+
+Interpretation:
+- `subject_point_estimate="mean"`: posterior mean for each subject parameter.
+- `subject_point_estimate="conditional_map"`: empirical-Bayes conditional MAP
+  (less shrinkage than posterior mean, still regularized by group hyperparameters).
+
+### 2) Compare candidate models on real data
+
+`comp_model_impl.analysis.model_selection.add_information_criteria` adds model
+comparison columns to your fit table.
+
+```python
+import pandas as pd
+from comp_model_impl.analysis.model_selection import add_information_criteria
+
+fit_table = pd.DataFrame(
+    [
+        {"candidate_model": "m1", "ll_total": -120.1, "k_total": 10, "n_obs_total": 500},
+        {"candidate_model": "m2", "ll_total": -126.4, "k_total": 9, "n_obs_total": 500},
+    ]
+)
+
+# group_cols=() means "single real dataset comparison"
+fit_table = add_information_criteria(fit_table, group_cols=())
+print(fit_table[["candidate_model", "aic", "bic", "bf_best_vs_model_bic"]])
+```
+
+Added columns:
+- `aic`, `bic`: information criteria.
+- `delta_aic`, `delta_bic`: difference from the best model in each group.
+- `akaike_weight`, `bic_weight`: relative weights within each group.
+- `bf_best_vs_model_bic`, `bf_model_vs_best_bic`: BIC-based Bayes-factor
+  approximations.
+
+Notes:
+- These BF values are BIC approximations, not exact marginal-likelihood Bayes
+  factors (e.g., bridge sampling).
+- For parameter recovery batches, keep `return_posterior_summary=False` unless
+  you explicitly need uncertainty summaries.
+
 ## Common checks
 
 - If you change `n_trials`, your `trial_specs` (or template) must still cover all trials.

@@ -30,6 +30,7 @@ import json
 import secrets
 import shutil
 import subprocess
+import sys
 
 import numpy as np
 import pandas as pd
@@ -670,7 +671,11 @@ def run_parameter_recovery(
         progress_callback(0, n_reps)
         rep_iter = range(n_reps)
     else:
-        rep_iter = tqdm(range(n_reps), desc="Parameter recovery")
+        rep_iter = tqdm(
+            range(n_reps),
+            desc="Parameter recovery",
+            disable=not sys.stderr.isatty(),
+        )
 
     for rep in rep_iter:
         rep_rng = np.random.default_rng(

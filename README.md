@@ -128,6 +128,49 @@ outputs = run_parameter_recovery(
 )
 ```
 
+## Real-data fitting: uncertainty + model comparison
+
+For real-data fitting, you can request posterior uncertainty summaries from Stan
+estimators and then compute model-comparison metrics from fit tables.
+
+```python
+import numpy as np
+import pandas as pd
+
+from comp_model_impl.models import Vicarious_AP_DB_STAY
+from comp_model_impl.estimators import StanHierarchicalNUTSEstimator
+from comp_model_impl.analysis.model_selection import add_information_criteria
+
+# fit one model to your event-log StudyData
+est = StanHierarchicalNUTSEstimator(
+    model=Vicarious_AP_DB_STAY(),
+    hyper_priors=hyper_priors,                    # your prior mapping
+    subject_point_estimate="conditional_map",     # "mean" or "conditional_map"
+    return_posterior_summary=True,                # adds uncertainty summaries
+)
+fit = est.fit(study=study, rng=np.random.default_rng(0))
+
+# uncertainty summaries are in diagnostics
+population_summary = fit.diagnostics.get("population_posterior_summary", {})
+subject_summary = fit.diagnostics.get("subject_posterior_summary", {})
+
+# compare multiple fitted models (example fit table schema)
+fit_table = pd.DataFrame(
+    [
+        {"candidate_model": "m1", "ll_total": -120.1, "k_total": 10, "n_obs_total": 500},
+        {"candidate_model": "m2", "ll_total": -126.4, "k_total": 9, "n_obs_total": 500},
+    ]
+)
+fit_table = add_information_criteria(fit_table, group_cols=())
+print(fit_table[["candidate_model", "aic", "bic", "bf_best_vs_model_bic"]])
+```
+
+Notes:
+- `return_posterior_summary=True` is intended for real-data inference; keep it
+  `False` for large recovery runs unless you need uncertainty outputs.
+- `bf_best_vs_model_bic` and `bf_model_vs_best_bic` are BIC-based Bayes-factor
+  approximations, not bridge-sampling Bayes factors.
+
 ## Parameter recovery GUI
 
 ```bash

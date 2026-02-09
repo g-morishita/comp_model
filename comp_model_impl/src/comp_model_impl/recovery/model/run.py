@@ -19,6 +19,7 @@ from typing import Any, Callable, Mapping
 import importlib
 import json
 import time
+import sys
 
 import numpy as np
 import pandas as pd
@@ -653,7 +654,12 @@ def run_model_recovery(
         # Build generating model once per generating spec, but fresh per rep for safety.
         gen_name = str(gen_spec.name)
 
-        for rep in tqdm(range(int(config.n_reps)), desc=f"Model recovery: gen={gen_name}", leave=False):
+        for rep in tqdm(
+            range(int(config.n_reps)),
+            desc=f"Model recovery: gen={gen_name}",
+            leave=False,
+            disable=not sys.stderr.isatty(),
+        ):
             rep_seed = int(base_rng.integers(0, 2**32 - 1))
             rep_rng = np.random.default_rng(rep_seed)
 
