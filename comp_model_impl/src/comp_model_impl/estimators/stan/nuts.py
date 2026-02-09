@@ -55,6 +55,7 @@ from ..within_subject_shared_delta import (
 
 from .priors import priors_to_stan_data
 from .adapters import StanAdapter
+from ...likelihood.event_log_replay import loglike_subject
 
 
 def _safe_summary_metric(summary: Any, candidates: list[str], *, agg: str) -> float | None:
@@ -227,6 +228,109 @@ def _is_within_subject_model(model: ComputationalModel) -> bool:
     return isinstance(model, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel))
 
 
+def _hyper_keys_for_z_param(z_name: str) -> tuple[str, str]:
+    """Map a z-parameter name to its hyperparameter keys (mu, sd)."""
+    if z_name.endswith("__shared_z"):
+        base = z_name[: -len("__shared_z")]
+        return f"mu_{base}__shared", f"sd_{base}__shared"
+    if "__delta_z__" in z_name:
+        base, cond = z_name.split("__delta_z__", maxsplit=1)
+        return f"mu_{base}__delta__{cond}", f"sd_{base}__delta__{cond}"
+    return f"mu_{z_name}", f"sd_{z_name}"
+
+
+def _hyper_means_from_pop_hat(
+    *,
+    pop_hat: Mapping[str, float],
+    z_names: list[str],
+) -> tuple[np.ndarray, np.ndarray]:
+    """Build mu/sd vectors for z-parameters from population summaries."""
+    mu = []
+    sd = []
+    for z_name in z_names:
+        mu_key, sd_key = _hyper_keys_for_z_param(z_name)
+        if mu_key not in pop_hat or sd_key not in pop_hat:
+            raise ValueError(
+                f"Missing hyperparameter summaries for {z_name!r}: "
+                f"expected {mu_key!r} and {sd_key!r} in population_hat."
+            )
+        mu.append(float(pop_hat[mu_key]))
+        sd.append(float(pop_hat[sd_key]))
+    mu_arr = np.asarray(mu, dtype=float)
+    sd_arr = np.asarray(sd, dtype=float)
+    if np.any(~np.isfinite(mu_arr)) or np.any(~np.isfinite(sd_arr)):
+        raise ValueError("Non-finite hyperparameter summaries encountered for conditional MAP.")
+    if np.any(sd_arr <= 0):
+        raise ValueError("Non-positive sd hyperparameter encountered for conditional MAP.")
+    return mu_arr, sd_arr
+
+
+def _conditional_map_subject_hats(
+    *,
+    study: StudyData,
+    model: ComputationalModel,
+    z_names: list[str],
+    mu: np.ndarray,
+    sd: np.ndarray,
+    rng: np.random.Generator,
+    method: str,
+    maxiter: int,
+    n_starts: int,
+    jitter: float,
+) -> tuple[dict[str, dict[str, float]], dict[str, Any]]:
+    """Compute conditional MAP estimates for subject parameters."""
+    try:
+        from scipy.optimize import minimize
+    except Exception as exc:  # noqa: BLE001
+        raise ImportError("scipy is required for conditional MAP optimization") from exc
+
+    schema = model.param_schema
+    z_names_tuple = tuple(z_names)
+    n_params = int(len(z_names_tuple))
+    if n_params == 0:
+        raise ValueError("No parameters found for conditional MAP optimization.")
+
+    subj_hats: dict[str, dict[str, float]] = {}
+    diags: dict[str, Any] = {"cond_map": {}}
+
+    # Base start at hyper means, with optional jitter.
+    def _starts() -> list[np.ndarray]:
+        starts = [mu.copy()]
+        for _ in range(max(n_starts - 1, 0)):
+            noise = rng.normal(0.0, 1.0, size=n_params)
+            starts.append(mu + jitter * sd * noise)
+        return starts
+
+    for subj in study.subjects:
+        best_res = None
+
+        def _neg_log_post(z: np.ndarray) -> float:
+            params = dict(schema.params_from_z(z))
+            ll = loglike_subject(subject=subj, model=model, params=params)
+            prior = 0.5 * float(np.sum(((z - mu) / sd) ** 2))
+            return prior - ll
+
+        for start in _starts():
+            res = minimize(_neg_log_post, x0=start, method=method, options={"maxiter": maxiter})
+            if best_res is None or float(res.fun) < float(best_res.fun):
+                best_res = res
+
+        if best_res is None:
+            raise RuntimeError("Conditional MAP optimization failed to produce a result.")
+
+        z_hat = np.asarray(best_res.x, dtype=float)
+        params_hat = dict(schema.params_from_z(z_hat))
+        subj_hats[subj.subject_id] = {k: float(v) for k, v in params_hat.items()}
+        diags["cond_map"][subj.subject_id] = {
+            "success": bool(getattr(best_res, "success", False)),
+            "message": str(getattr(best_res, "message", "")),
+            "fun": float(getattr(best_res, "fun", np.nan)),
+            "nfev": int(getattr(best_res, "nfev", 0)) if getattr(best_res, "nfev", None) is not None else None,
+        }
+
+    return subj_hats, diags
+
+
 def _load_yaml(path_to_yml: str) -> dict[str, Any]:
     """Load a YAML file into a dictionary.
 
@@ -275,6 +379,18 @@ class StanNUTSSubjectwiseEstimator(Estimator):
         Target acceptance probability for NUTS.
     max_treedepth : int, optional
         Maximum tree depth for NUTS.
+    subject_point_estimate : {"mean", "conditional_map"}, optional
+        Point estimate for subject-level parameters. ``"mean"`` uses posterior
+        means from draws. ``"conditional_map"`` optimizes each subject's
+        parameters conditional on fixed hyperparameters (empirical Bayes).
+    cond_map_method : str, optional
+        SciPy optimizer name for conditional MAP (default: ``"L-BFGS-B"``).
+    cond_map_maxiter : int, optional
+        Maximum optimizer iterations per subject for conditional MAP.
+    cond_map_n_starts : int, optional
+        Number of optimization restarts per subject for conditional MAP.
+    cond_map_jitter : float, optional
+        Jitter scale (in z-space, scaled by hyper SD) for additional starts.
     forbid_extra_priors : bool, optional
         If ``True``, reject priors not required by the adapter.
     show_progress : bool, optional
@@ -475,6 +591,12 @@ class StanHierarchicalNUTSEstimator(Estimator):
     forbid_extra_priors: bool = True
     show_progress: bool = False
 
+    subject_point_estimate: str = "mean"
+    cond_map_method: str = "L-BFGS-B"
+    cond_map_maxiter: int = 300
+    cond_map_n_starts: int = 1
+    cond_map_jitter: float = 0.1
+
     _compiled: Any = field(default=None, init=False, repr=False)
 
     def __post_init__(self):
@@ -553,46 +675,6 @@ class StanHierarchicalNUTSEstimator(Estimator):
             show_progress=self.show_progress,
         )
 
-        subj_hats: dict[str, dict[str, float]] = {}
-        subj_ids = [s.subject_id for s in study.subjects]
-
-        if is_ws:
-            bl_idx = int(data.get("baseline_cond", 1))
-            for p in adapter.subject_param_names():
-                draws = fit.stan_variable(p)
-                means = np.mean(draws, axis=0)
-                arr = np.asarray(means)
-                base = _strip_hat(str(p))
-                # subject-level vectors: shape (N,)
-                if arr.ndim == 1 and int(arr.shape[0]) == len(subj_ids):
-                    for i, sid in enumerate(subj_ids):
-                        subj_hats.setdefault(sid, {})[base] = float(arr[i])
-                    continue
-
-                # subject-level matrices: shape (N, K)
-                if arr.ndim >= 2 and int(arr.shape[0]) == len(subj_ids):
-                    for i, sid in enumerate(subj_ids):
-                        row = arr[i]
-                        subj_hats.setdefault(sid, {}).update(
-                            _flatten_mean(
-                                name=base,
-                                mean=row,
-                                condition_labels=condition_labels,
-                                baseline_idx_1based=bl_idx,
-                            )
-                        )
-                    continue
-
-                # fallback: store a single scalar across subjects
-                for sid in subj_ids:
-                    subj_hats.setdefault(sid, {})[base] = float(np.mean(arr))
-        else:
-            for p in adapter.subject_param_names():
-                draws = fit.stan_variable(p)  # expects vector[N]
-                means = np.mean(draws, axis=0)
-                for i, sid in enumerate(subj_ids):
-                    subj_hats.setdefault(sid, {})[p] = float(means[i])
-
         pop_hat: dict[str, float] = {}
         if is_ws:
             bl_idx = int(data.get("baseline_cond", 1))
@@ -613,9 +695,70 @@ class StanHierarchicalNUTSEstimator(Estimator):
         else:
             for nm in adapter.population_var_names():
                 try:
-                    pop_hat[nm] = float(np.mean(fit.stan_variable(nm)))
+                    mean = np.mean(fit.stan_variable(nm))
+                    pop_hat.update(_flatten_mean(name=nm, mean=mean))
                 except KeyError:
                     continue
+
+        subj_hats: dict[str, dict[str, float]] = {}
+        subj_ids = [s.subject_id for s in study.subjects]
+
+        point_est = str(self.subject_point_estimate).lower()
+        cond_diags: dict[str, Any] | None = None
+        if point_est in ("conditional_map", "cond_map", "cmap"):
+            z_names = list(getattr(self.model.param_schema, "names", []) or [])
+            mu, sd = _hyper_means_from_pop_hat(pop_hat=pop_hat, z_names=z_names)
+            subj_hats, cond_diags = _conditional_map_subject_hats(
+                study=study,
+                model=self.model,
+                z_names=z_names,
+                mu=mu,
+                sd=sd,
+                rng=rng,
+                method=self.cond_map_method,
+                maxiter=self.cond_map_maxiter,
+                n_starts=self.cond_map_n_starts,
+                jitter=self.cond_map_jitter,
+            )
+        elif point_est in ("mean", "posterior_mean"):
+            if is_ws:
+                bl_idx = int(data.get("baseline_cond", 1))
+                for p in adapter.subject_param_names():
+                    draws = fit.stan_variable(p)
+                    means = np.mean(draws, axis=0)
+                    arr = np.asarray(means)
+                    base = _strip_hat(str(p))
+                    # subject-level vectors: shape (N,)
+                    if arr.ndim == 1 and int(arr.shape[0]) == len(subj_ids):
+                        for i, sid in enumerate(subj_ids):
+                            subj_hats.setdefault(sid, {})[base] = float(arr[i])
+                        continue
+
+                    # subject-level matrices: shape (N, K)
+                    if arr.ndim >= 2 and int(arr.shape[0]) == len(subj_ids):
+                        for i, sid in enumerate(subj_ids):
+                            row = arr[i]
+                            subj_hats.setdefault(sid, {}).update(
+                                _flatten_mean(
+                                    name=base,
+                                    mean=row,
+                                    condition_labels=condition_labels,
+                                    baseline_idx_1based=bl_idx,
+                                )
+                            )
+                        continue
+
+                    # fallback: store a single scalar across subjects
+                    for sid in subj_ids:
+                        subj_hats.setdefault(sid, {})[base] = float(np.mean(arr))
+            else:
+                for p in adapter.subject_param_names():
+                    draws = fit.stan_variable(p)  # expects vector[N]
+                    means = np.mean(draws, axis=0)
+                    for i, sid in enumerate(subj_ids):
+                        subj_hats.setdefault(sid, {})[p] = float(means[i])
+        else:
+            raise ValueError(f"Unknown subject_point_estimate: {self.subject_point_estimate!r}")
 
         summ = None
         try:
@@ -627,7 +770,10 @@ class StanHierarchicalNUTSEstimator(Estimator):
             "seed": seed,
             "rhat_max": _safe_summary_metric(summ, ["R_hat", "r_hat"], agg="max"),
             "ess_bulk_min": _safe_summary_metric(summ, ["ESS_bulk", "ess_bulk"], agg="min"),
+            "point_estimate": point_est,
         }
+        if cond_diags is not None:
+            diags.update(cond_diags)
 
         return FitResult(
             population_hat=pop_hat,
