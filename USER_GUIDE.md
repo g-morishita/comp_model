@@ -230,6 +230,30 @@ Notes:
 - For parameter recovery batches, keep `return_posterior_summary=False` unless
   you explicitly need uncertainty summaries.
 
+### 3) MLE uncertainty (approximate)
+
+MLE estimators also support optional uncertainty diagnostics:
+
+```python
+import numpy as np
+from comp_model_impl.estimators import BoxMLESubjectwiseEstimator
+from comp_model_impl.models import QRL
+
+est = BoxMLESubjectwiseEstimator(
+    model=QRL(),
+    return_uncertainty=True,
+    uncertainty_ci=0.95,
+)
+fit = est.fit(study=real_study, rng=np.random.default_rng(0))
+print(fit.diagnostics["subj_S001"]["uncertainty"])
+```
+
+Interpretation:
+- These intervals are asymptotic local-curvature approximations, not Bayesian
+  credible intervals.
+- For z-space MLE, uncertainty is transformed to parameter space via a
+  delta-method Jacobian.
+
 ## Common checks
 
 - If you change `n_trials`, your `trial_specs` (or template) must still cover all trials.

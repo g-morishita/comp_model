@@ -171,6 +171,24 @@ Notes:
 - `bf_best_vs_model_bic` and `bf_model_vs_best_bic` are BIC-based Bayes-factor
   approximations, not bridge-sampling Bayes factors.
 
+For MLE estimators, you can request approximate uncertainty as well:
+
+```python
+import numpy as np
+from comp_model_impl.estimators import TransformedMLESubjectwiseEstimator
+from comp_model_impl.models import QRL
+
+est = TransformedMLESubjectwiseEstimator(
+    model=QRL(),
+    return_uncertainty=True,
+)
+fit = est.fit(study=study, rng=np.random.default_rng(0))
+print(fit.diagnostics["subj_S001"]["uncertainty"])
+```
+
+MLE uncertainty is an asymptotic approximation based on inverse-Hessian
+curvature near the optimum (with a delta-method transform for z-space MLE).
+
 ## Parameter recovery GUI
 
 ```bash

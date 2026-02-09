@@ -29,6 +29,7 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 from scipy.optimize import minimize
+from scipy.stats import norm
 
 from comp_model_core.data.types import StudyData
 from comp_model_core.errors import CompatibilityError
@@ -72,6 +73,116 @@ def _resolve_fixed_params(
     return model.param_schema.validate(fixed, strict=True, check_bounds=True)
 
 
+def _normal_z_for_ci(ci_level: float) -> float:
+    """Return the normal critical value for a two-sided CI level."""
+    q = float(ci_level)
+    if not (0.0 < q < 1.0):
+        raise ValueError(f"uncertainty_ci must be in (0, 1), got {ci_level!r}")
+    return float(norm.ppf(0.5 + 0.5 * q))
+
+
+def _cov_from_opt_result(opt_res: Any, *, dim: int) -> np.ndarray | None:
+    """Extract approximate covariance from a SciPy optimization result."""
+    if int(dim) <= 0 or opt_res is None:
+        return None
+    h_inv = getattr(opt_res, "hess_inv", None)
+    if h_inv is None:
+        return None
+    try:
+        if hasattr(h_inv, "todense"):
+            cov = np.asarray(h_inv.todense(), dtype=float)
+        else:
+            cov = np.asarray(h_inv, dtype=float)
+    except Exception:
+        return None
+    if cov.shape != (int(dim), int(dim)):
+        return None
+    if np.any(~np.isfinite(cov)):
+        return None
+    # Symmetrize for numerical stability.
+    cov = 0.5 * (cov + cov.T)
+    return cov
+
+
+def _uncertainty_from_cov(
+    *,
+    params_hat: Mapping[str, float],
+    param_names: Sequence[str],
+    cov: np.ndarray,
+    ci_level: float,
+) -> dict[str, dict[str, float]]:
+    """Build per-parameter uncertainty summaries from covariance."""
+    zcrit = _normal_z_for_ci(ci_level)
+    out: dict[str, dict[str, float]] = {}
+    for i, name in enumerate(param_names):
+        name = str(name)
+        var = float(cov[i, i])
+        se = float(np.sqrt(var)) if np.isfinite(var) and var >= 0.0 else float("nan")
+        hat = float(params_hat[name])
+        if np.isfinite(se):
+            ci_lo = float(hat - zcrit * se)
+            ci_hi = float(hat + zcrit * se)
+        else:
+            ci_lo = float("nan")
+            ci_hi = float("nan")
+        out[name] = {
+            "hat": hat,
+            "se": se,
+            "var": var,
+            "ci_level": float(ci_level),
+            "ci_lower": ci_lo,
+            "ci_upper": ci_hi,
+        }
+    return out
+
+
+def _jacobian_params_wrt_free_z(
+    *,
+    schema: Any,
+    z_base: np.ndarray,
+    z_hat_free: np.ndarray,
+    free_idx: np.ndarray,
+    free_names: Sequence[str],
+    fixed: Mapping[str, float],
+    step: float,
+) -> np.ndarray:
+    """Numerically approximate Jacobian of free params wrt free z."""
+    free_dim = int(len(free_idx))
+    if free_dim == 0:
+        return np.zeros((0, 0), dtype=float)
+
+    h_scale = float(step)
+    if h_scale <= 0:
+        raise ValueError(f"uncertainty_fd_step must be > 0, got {step!r}")
+
+    def _params_from_free_z(zf: np.ndarray) -> np.ndarray:
+        z_full = z_base.copy()
+        z_full[free_idx] = zf
+        p = dict(schema.params_from_z(z_full))
+        if fixed:
+            p.update(fixed)
+        return np.asarray([float(p[n]) for n in free_names], dtype=float)
+
+    f0 = _params_from_free_z(z_hat_free)
+    J = np.zeros((len(free_names), free_dim), dtype=float)
+    for j in range(free_dim):
+        h = float(h_scale * max(1.0, abs(float(z_hat_free[j]))))
+        zp = np.array(z_hat_free, dtype=float)
+        zm = np.array(z_hat_free, dtype=float)
+        zp[j] += h
+        zm[j] -= h
+        fp = _params_from_free_z(zp)
+        fm = _params_from_free_z(zm)
+        deriv = (fp - fm) / (2.0 * h)
+        J[:, j] = deriv
+    # If central differences produce NaNs, fallback to zeros for stability.
+    if np.any(~np.isfinite(J)):
+        return np.zeros_like(J)
+    # Keep f0 referenced to make intent explicit for potential future extensions.
+    _ = f0
+    return J
+
+
 @dataclass(slots=True)
 class BoxMLESubjectwiseEstimator(Estimator):
     """Subject-wise MLE with multi-start box-constrained optimization.
@@ -93,6 +204,11 @@ class BoxMLESubjectwiseEstimator(Estimator):
     validate_bounds_on_set : bool, optional
         If ``True``, validates parameters against schema bounds on each
         likelihood call (slower but stricter).
+    return_uncertainty : bool, optional
+        If ``True``, include approximate parameter uncertainty from the
+        optimizer inverse-Hessian in diagnostics.
+    uncertainty_ci : float, optional
+        Two-sided confidence interval level for reported bounds.
 
     Notes
     -----
@@ -106,6 +222,8 @@ class BoxMLESubjectwiseEstimator(Estimator):
     maxiter: int = 300
 
     validate_bounds_on_set: bool = False
+    return_uncertainty: bool = False
+    uncertainty_ci: float = 0.95
 
     def __post_init__(self) -> None:
         """Initialize defaults and validate parameter-space consistency.
@@ -199,6 +317,8 @@ class BoxMLESubjectwiseEstimator(Estimator):
             "space_names": list(self.space.names),
             "fixed_params": dict(fixed),
             "free_names": list(free_names),
+            "return_uncertainty": bool(self.return_uncertainty),
+            "uncertainty_ci": float(self.uncertainty_ci),
         }
 
         for subj in study.subjects:
@@ -258,6 +378,25 @@ class BoxMLESubjectwiseEstimator(Estimator):
                 "message": str(getattr(best_res, "message", "")),
                 "nit": int(getattr(best_res, "nit", -1)),
             }
+            if self.return_uncertainty and free_space.dim > 0:
+                cov_free = _cov_from_opt_result(best_res, dim=free_space.dim)
+                if cov_free is not None:
+                    unc = _uncertainty_from_cov(
+                        params_hat=params_hat,
+                        param_names=free_names,
+                        cov=cov_free,
+                        ci_level=float(self.uncertainty_ci),
+                    )
+                    diags[f"subj_{subj.subject_id}"]["uncertainty"] = {
+                        "method": "hessian_inv",
+                        "params": unc,
+                    }
+                else:
+                    diags[f"subj_{subj.subject_id}"]["uncertainty"] = {
+                        "method": "hessian_inv",
+                        "params": {},
+                        "warning": "inverse-Hessian unavailable from optimizer result",
+                    }
 
         return FitResult(
             subject_hats=subj_hats,
@@ -285,6 +424,13 @@ class TransformedMLESubjectwiseEstimator(Estimator):
         Maximum number of optimizer iterations.
     z_init_scale : float, optional
         Scale factor for random z initializations around the default.
+    return_uncertainty : bool, optional
+        If ``True``, include approximate parameter uncertainty via inverse
+        Hessian in z-space and a delta-method transform to parameter space.
+    uncertainty_ci : float, optional
+        Two-sided confidence interval level for reported bounds.
+    uncertainty_fd_step : float, optional
+        Relative finite-difference step used for the delta-method Jacobian.
 
     Notes
     -----
@@ -296,6 +442,9 @@ class TransformedMLESubjectwiseEstimator(Estimator):
     method: str = "L-BFGS-B"
     maxiter: int = 300
     z_init_scale: float = 1.0
+    return_uncertainty: bool = False
+    uncertainty_ci: float = 0.95
+    uncertainty_fd_step: float = 1e-5
 
     def supports(self, study: StudyData) -> bool:
         """Check whether the estimator can fit the provided study.
@@ -368,6 +517,9 @@ class TransformedMLESubjectwiseEstimator(Estimator):
             "z_init_scale": float(self.z_init_scale),
             "fixed_params": dict(fixed),
             "free_names": list(free_names),
+            "return_uncertainty": bool(self.return_uncertainty),
+            "uncertainty_ci": float(self.uncertainty_ci),
+            "uncertainty_fd_step": float(self.uncertainty_fd_step),
         }
 
         for subj in study.subjects:
@@ -430,6 +582,35 @@ class TransformedMLESubjectwiseEstimator(Estimator):
                 "message": str(getattr(best_res, "message", "")),
                 "nit": int(getattr(best_res, "nit", -1)),
             }
+            if self.return_uncertainty and free_dim > 0:
+                cov_z = _cov_from_opt_result(best_res, dim=free_dim)
+                if cov_z is not None:
+                    J = _jacobian_params_wrt_free_z(
+                        schema=schema,
+                        z_base=z_base,
+                        z_hat_free=best_z,
+                        free_idx=free_idx,
+                        free_names=free_names,
+                        fixed=fixed,
+                        step=float(self.uncertainty_fd_step),
+                    )
+                    cov_p = J @ cov_z @ J.T
+                    unc = _uncertainty_from_cov(
+                        params_hat=params_hat,
+                        param_names=free_names,
+                        cov=cov_p,
+                        ci_level=float(self.uncertainty_ci),
+                    )
+                    diags[f"subj_{subj.subject_id}"]["uncertainty"] = {
+                        "method": "delta_method_from_z_hessian_inv",
+                        "params": unc,
+                    }
+                else:
+                    diags[f"subj_{subj.subject_id}"]["uncertainty"] = {
+                        "method": "delta_method_from_z_hessian_inv",
+                        "params": {},
+                        "warning": "inverse-Hessian unavailable from optimizer result",
+                    }
 
         return FitResult(
             subject_hats=subj_hats,

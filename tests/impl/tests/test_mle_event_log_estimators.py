@@ -320,3 +320,46 @@ def test_mle_respects_fixed_params_from_model(est_cls):
     res = est.fit(study=study, rng=np.random.default_rng(0), fixed_params=["theta"])
     theta_hat = res.subject_hats["s1"]["theta"]
     assert theta_hat == pytest.approx(0.33, abs=1e-8)
+
+
+@pytest.mark.parametrize(
+    ("est", "method_name"),
+    [
+        (
+            BoxMLESubjectwiseEstimator(
+                model=BernoulliChoiceModel(theta=0.5),
+                n_starts=3,
+                maxiter=200,
+                return_uncertainty=True,
+            ),
+            "hessian_inv",
+        ),
+        (
+            TransformedMLESubjectwiseEstimator(
+                model=BernoulliChoiceModel(theta=0.5),
+                n_starts=3,
+                maxiter=200,
+                return_uncertainty=True,
+            ),
+            "delta_method_from_z_hessian_inv",
+        ),
+    ],
+)
+def test_mle_uncertainty_diagnostics_present(est, method_name):
+    """MLE uncertainty diagnostics should include SE and CI for free params."""
+    study = _make_deterministic_choice_study(n_trials=50, n_ones=30)
+    res = est.fit(study=study, rng=np.random.default_rng(123))
+
+    d = res.diagnostics["subj_s1"]
+    assert "uncertainty" in d
+    unc = d["uncertainty"]
+    assert unc["method"] == method_name
+    assert "theta" in unc["params"]
+    theta_unc = unc["params"]["theta"]
+
+    assert np.isfinite(float(theta_unc["hat"]))
+    assert np.isfinite(float(theta_unc["se"]))
+    assert float(theta_unc["se"]) >= 0.0
+    assert np.isfinite(float(theta_unc["ci_lower"]))
+    assert np.isfinite(float(theta_unc["ci_upper"]))
+    assert float(theta_unc["ci_lower"]) <= float(theta_unc["hat"]) <= float(theta_unc["ci_upper"])
