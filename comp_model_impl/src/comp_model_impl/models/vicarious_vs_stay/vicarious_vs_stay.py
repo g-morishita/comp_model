@@ -183,7 +183,6 @@ class Vicarious_VS_Stay(SocialComputationalModel):
             # chosen-only social shaping toward pseudo_reward
             self._q[d] += float(self.alpha_a) * (float(self.pseudo_reward) - self._q[d])
             self._q[d] += float(self.alpha_o) * (oo - self._q[d])
-            self._prev_self_action = d
 
     def update(
         self,
@@ -194,7 +193,7 @@ class Vicarious_VS_Stay(SocialComputationalModel):
         spec: EnvironmentSpec,
         info: Mapping[str, Any] | None = None,
     ) -> None:
-        """No-op private update (self outcomes are ignored).
+        """Private outcome update is a no-op, but self action is tracked for stay.
 
         Parameters
         ----------
@@ -209,4 +208,9 @@ class Vicarious_VS_Stay(SocialComputationalModel):
         info : Mapping[str, Any] or None, optional
             Optional metadata.
         """
-        return
+        if action is None:
+            return
+
+        a = int(action)
+        if 0 <= a < int(spec.n_actions):
+            self._prev_self_action = a
