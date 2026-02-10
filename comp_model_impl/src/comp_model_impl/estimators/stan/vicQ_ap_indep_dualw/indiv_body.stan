@@ -31,15 +31,15 @@ data {
   real alpha_a_prior_p2;
   real alpha_a_prior_p3;
 
-  int<lower=1,upper=8> beta_prior_family;
-  real beta_prior_p1;
-  real beta_prior_p2;
-  real beta_prior_p3;
+  int<lower=1,upper=8> beta_q_prior_family;
+  real beta_q_prior_p1;
+  real beta_q_prior_p2;
+  real beta_q_prior_p3;
 
-  int<lower=1,upper=8> w_prior_family;
-  real w_prior_p1;
-  real w_prior_p2;
-  real w_prior_p3;
+  int<lower=1,upper=8> beta_a_prior_family;
+  real beta_a_prior_p1;
+  real beta_a_prior_p2;
+  real beta_a_prior_p3;
 
   int<lower=1,upper=8> kappa_prior_family;
   real kappa_prior_p1;
@@ -49,15 +49,15 @@ data {
 parameters {
   real<lower=0,upper=1> alpha_o;
   real<lower=0,upper=1> alpha_a;
-  real<lower=beta_lower,upper=beta_upper> beta;
-  real<lower=0,upper=1> w;
+  real<lower=beta_lower,upper=beta_upper> beta_q;
+  real<lower=beta_lower,upper=beta_upper> beta_a;
   real<lower=-kappa_abs_max,upper=kappa_abs_max> kappa;
 }
 model {
   target += prior_lpdf(alpha_o | alpha_o_prior_family, alpha_o_prior_p1, alpha_o_prior_p2, alpha_o_prior_p3);
   target += prior_lpdf(alpha_a | alpha_a_prior_family, alpha_a_prior_p1, alpha_a_prior_p2, alpha_a_prior_p3);
-  target += prior_lpdf(beta | beta_prior_family, beta_prior_p1, beta_prior_p2, beta_prior_p3);
-  target += prior_lpdf(w | w_prior_family, w_prior_p1, w_prior_p2, w_prior_p3);
+  target += prior_lpdf(beta_q | beta_q_prior_family, beta_q_prior_p1, beta_q_prior_p2, beta_q_prior_p3);
+  target += prior_lpdf(beta_a | beta_a_prior_family, beta_a_prior_p1, beta_a_prior_p2, beta_a_prior_p3);
   target += prior_lpdf(kappa | kappa_prior_family, kappa_prior_p1, kappa_prior_p2, kappa_prior_p3);
 
   matrix[S, A] Q = rep_matrix(0.0, S, A);
@@ -89,8 +89,7 @@ model {
     } else if (etype[e] == 3) {
       if (choice[e] > 0) {
         vector[A] g = (demo_pi - (1.0 / A)) / (1.0 - (1.0 / A));
-        vector[A] social_drive = w * to_vector(Q[s]') + (1.0 - w) * g;
-        vector[A] u = beta * social_drive;
+        vector[A] u = beta_q * to_vector(Q[s]') + beta_a * g;
         if (last_choice[s] > 0) u[last_choice[s]] += kappa;
         for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
         target += categorical_logit_lpmf(choice[e] | u);
@@ -136,8 +135,7 @@ generated quantities {
       } else if (etype[e] == 3) {
         if (choice[e] > 0) {
           vector[A] g = (demo_pi - (1.0 / A)) / (1.0 - (1.0 / A));
-          vector[A] social_drive = w * to_vector(Q[s]') + (1.0 - w) * g;
-          vector[A] u = beta * social_drive;
+          vector[A] u = beta_q * to_vector(Q[s]') + beta_a * g;
           if (last_choice[s] > 0) u[last_choice[s]] += kappa;
           for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
           log_lik[e] = categorical_logit_lpmf(choice[e] | u);

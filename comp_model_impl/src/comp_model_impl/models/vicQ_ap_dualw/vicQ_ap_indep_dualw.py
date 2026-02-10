@@ -10,11 +10,14 @@ representations learned from a demonstrator:
 2) Demonstrator action policy (pi): learned from the demonstrator's observed
    actions (policy prediction error / action surprise).
 
-At choice time, the agent integrates these two sources with a shared inverse
-temperature ``beta`` and a mixture weight ``w``:
+At choice time, the agent integrates these two sources via separate decision
+weights, combining value-based evidence (Qv) and policy-based evidence (pi) in
+a softmax decision rule. This parameterization separates learning dynamics
+(learning rates) from decision reliance (decision weights), enabling clean
+comparisons of imitation- vs emulation-like control.
 
 Typical decision form:
-    P(a) ∝ exp( beta * (w * Qv(a) + (1 - w) * g(pi(a))) )
+    P(a) ∝ exp( β_Q * Qv(a) + β_pi * g(pi(a)) )
 
 where g(.) is a scale-fixed policy signal (e.g., log-probability or normalized
 above-chance probability).
@@ -34,11 +37,11 @@ from comp_model_core.params import ParameterSchema
 from comp_model_core.interfaces.block_runner import SocialObservation
 from comp_model_core.spec import EnvironmentSpec
 
-from .schema import vicQ_ap_dualw_schema
+from .schema_indep_dualw import vicQ_ap_indep_dualw_schema
 from ..common import perseveration_bonus
 
 @dataclass(slots=True)
-class VicQ_AP_DualW(SocialComputationalModel):
+class VicQ_AP_IndepDualW(SocialComputationalModel):
     """Vicarious-Q + Action-Policy Learning (Social RL)
 
     Parameters
@@ -47,11 +50,10 @@ class VicQ_AP_DualW(SocialComputationalModel):
         Vicarious outcome learning rate (demonstrator outcomes).
     alpha_a : float, optional
         Action policy learning rate (demonstrator action).
-    beta : float, optional
-        Shared inverse temperature for social decision evidence.
-    w : float, optional
-        Mixture weight for vicarious-value evidence.
-        The action-policy evidence is weighted by ``(1 - w)``.
+    beta_q : float, optional
+        Weight of learning from the demonstrator's outcome.
+    beta_a : float, optional
+        Weight of learning from the dmeonstartor's actions
     kappa : float, optional
         Perseveration parameter.
     beta_max : float, optional
@@ -72,10 +74,11 @@ class VicQ_AP_DualW(SocialComputationalModel):
         2) Demonstrator action policy (pi): learned from the demonstrator's observed
         actions (policy prediction error / action surprise).
 
-        At choice time, the agent integrates these two sources via a mixture
-        parameter and a shared inverse temperature, separating learning dynamics
-        (learning rates) from the relative decision reliance on value vs policy
-        evidence.
+        At choice time, the agent integrates these two sources via separate decision
+        weights, combining value-based evidence (Qv) and policy-based evidence (pi) in
+        a softmax decision rule. This parameterization separates learning dynamics
+        (learning rates) from decision reliance (decision weights), enabling clean
+        comparisons of imitation- vs emulation-like control.
 
         Update
         ------
@@ -105,7 +108,8 @@ class VicQ_AP_DualW(SocialComputationalModel):
         - perseveration (stay bias)
 
         P(a_t = i) ∝ exp(
-            beta * (w * Q_t(i) + (1 - w) * g(demo_pi))
+            beta_q * Q_t(i)
+            + beta_a * g(demo_pi)
             + kappa * I[i == prev_self_action]
         )
 
@@ -115,8 +119,8 @@ class VicQ_AP_DualW(SocialComputationalModel):
     """
     alpha_o: float = 0.2
     alpha_a: float = 0.2
-    beta: float = 6.0
-    w: float = 0.5
+    beta_q: float = 3.0
+    beta_a: float = 3.0
     kappa: float = 3.0
     
     # config (not estimated)
@@ -153,11 +157,11 @@ class VicQ_AP_DualW(SocialComputationalModel):
         -------
         ParameterSchema
         """
-        return vicQ_ap_dualw_schema(
+        return vicQ_ap_indep_dualw_schema(
             alpha_o_default=float(self.alpha_o),
             alpha_a_default=float(self.alpha_a),
-            beta_default=float(self.beta),
-            w_default=float(self.w),
+            beta_q_default=float(self.beta_q),
+            beta_a_default=float(self.beta_a),
             kappa_default=float(self.kappa),
             beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max)
@@ -209,8 +213,7 @@ class VicQ_AP_DualW(SocialComputationalModel):
         nA = int(spec.n_actions)
 
         g = (self._demo_pi - 1 / nA) / (1 - 1 / nA)
-        social_drive = float(self.w) * self._q + (1.0 - float(self.w)) * g
-        u = float(self.beta) * social_drive + perseveration_bonus(self._last_self_choice, nA, self.kappa)
+        u = self.beta_q * self._q + self.beta_a * g + perseveration_bonus(self._last_self_choice, nA, self.kappa)
 
         return softmax(u)
 

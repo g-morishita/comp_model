@@ -27,6 +27,7 @@ from .vicarious_vs import VicariousVSStanAdapter
 from .vicarious_vs_stay import VicariousVSStayStanAdapter
 from .vicarious_rl_within_subject import VicariousRLWithinSubjectStanAdapter
 from .vicQ_ap_dualw import VicQAPDualWStanAdapter
+from .vicQ_ap_indep_dualw import VicQAPIndepDualWStanAdapter
 from .vs_within_subject import VSWithinSubjectStanAdapter
 from .base import StanAdapter
 
@@ -44,5 +45,6 @@ __all__ = [
     "VicariousVSStayStanAdapter",
     "VicariousRLWithinSubjectStanAdapter",
     "VicQAPDualWStanAdapter",
+    "VicQAPIndepDualWStanAdapter",
     "VSWithinSubjectStanAdapter",
 ]

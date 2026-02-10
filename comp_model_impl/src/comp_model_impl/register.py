@@ -21,6 +21,7 @@ from .models import (
     QRL,
     VS,
     VicQ_AP_DualW,
+    VicQ_AP_IndepDualW,
     Vicarious_RL,
     Vicarious_VS,
     Vicarious_VS_Stay,
@@ -55,6 +56,7 @@ def make_registry() -> Registry:
     r.models.register("Vicarious_Dir_DB_Stay", Vicarious_Dir_DB_Stay)
     r.models.register("Vicarious_DB_Stay", Vicarious_DB_Stay)
     r.models.register("VicQ_AP_DualW", VicQ_AP_DualW)
+    r.models.register("VicQ_AP_IndepDualW", VicQ_AP_IndepDualW)
 
     # Bandit environments
     r.bandits.register("BernoulliBanditEnv", BernoulliBanditEnv)

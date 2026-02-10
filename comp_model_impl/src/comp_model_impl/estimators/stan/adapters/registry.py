@@ -20,6 +20,7 @@ from ....models import (
     QRL,
     VS,
     VicQ_AP_DualW,
+    VicQ_AP_IndepDualW,
     Vicarious_RL,
     Vicarious_AP_VS,
     Vicarious_AP_DB_STAY,
@@ -44,6 +45,7 @@ from .vicarious_db_stay import VicariousDBStayStanAdapter
 from .vicarious_vs import VicariousVSStanAdapter
 from .vicarious_vs_stay import VicariousVSStayStanAdapter
 from .vicQ_ap_dualw import VicQAPDualWStanAdapter
+from .vicQ_ap_indep_dualw import VicQAPIndepDualWStanAdapter
 from .vs import VSStanAdapter
 
 
@@ -97,6 +99,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
         return VicariousVSStanAdapter(model)
     if isinstance(model, Vicarious_VS_Stay):
         return VicariousVSStayStanAdapter(model)
+    if isinstance(model, VicQ_AP_IndepDualW):
+        return VicQAPIndepDualWStanAdapter(model)
     if isinstance(model, VicQ_AP_DualW):
         return VicQAPDualWStanAdapter(model)
     raise ValueError(f"No Stan adapter registered for model: {model.__class__.__name__}")

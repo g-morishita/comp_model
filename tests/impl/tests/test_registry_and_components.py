@@ -9,7 +9,16 @@ from comp_model_impl.bandits.bernoulli import BernoulliBanditEnv
 from comp_model_impl.demonstrators.fixed_sequence import FixedSequenceDemonstrator
 from comp_model_impl.demonstrators.noisy_best import NoisyBestArmDemonstrator
 from comp_model_impl.demonstrators.rl_agent import RLDemonstrator
-from comp_model_impl.models import QRL, VS, VicQ_AP_DualW, Vicarious_RL, Vicarious_VS, Vicarious_VS_Stay, UnidentifiableQRL
+from comp_model_impl.models import (
+    QRL,
+    VS,
+    VicQ_AP_DualW,
+    VicQ_AP_IndepDualW,
+    Vicarious_RL,
+    Vicarious_VS,
+    Vicarious_VS_Stay,
+    UnidentifiableQRL,
+)
 
 
 def test_make_registry_contains_expected_components():
@@ -33,6 +42,8 @@ def test_make_registry_contains_expected_components():
 
     assert "VicQ_AP_DualW" in r.models.names()
     assert r.models.get("VicQ_AP_DualW") is VicQ_AP_DualW
+    assert "VicQ_AP_IndepDualW" in r.models.names()
+    assert r.models.get("VicQ_AP_IndepDualW") is VicQ_AP_IndepDualW
 
     # Bandits
     assert "BernoulliBanditEnv" in r.bandits.names()

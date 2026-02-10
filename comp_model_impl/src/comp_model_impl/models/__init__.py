@@ -64,6 +64,7 @@ from .vicarious_vs_stay.vicarious_vs_stay import Vicarious_VS_Stay
 from .unidentifiable_qrl.unidentifiable_qrl import UnidentifiableQRL
 from .vicarious_ap_vs.vicarious_ap_vs import Vicarious_AP_VS
 from .vicQ_ap_dualw.vicQ_ap_dualw import VicQ_AP_DualW
+from .vicQ_ap_dualw.vicQ_ap_indep_dualw import VicQ_AP_IndepDualW
 
 __all__ = [
     "Vicarious_RL",
@@ -74,6 +75,7 @@ __all__ = [
     "UnidentifiableQRL",
     "Vicarious_AP_VS",
     "VicQ_AP_DualW",
+    "VicQ_AP_IndepDualW",
     "Vicarious_AP_DB_STAY",
     "Vicarious_Dir_DB_Stay",
     "Vicarious_DB_Stay",

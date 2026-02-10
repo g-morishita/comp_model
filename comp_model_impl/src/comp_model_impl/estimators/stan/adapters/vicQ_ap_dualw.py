@@ -91,17 +91,17 @@ class VicQAPDualWStanAdapter(StanAdapter):
             If ``family`` is not recognized.
         """
         if family == "indiv":
-            return ["alpha_o", "alpha_a", "beta_q", "beta_a", "kappa"]
+            return ["alpha_o", "alpha_a", "beta", "w", "kappa"]
         if family == "hier":
             return [
                 "mu_alpha_o",
                 "sd_alpha_o",
                 "mu_alpha_a",
                 "sd_alpha_a",
-                "mu_beta_q",
-                "sd_beta_q",
-                "mu_beta_a",
-                "sd_beta_a",
+                "mu_beta",
+                "sd_beta",
+                "mu_w",
+                "sd_w",
                 "mu_kappa",
                 "sd_kappa",
             ]
@@ -137,7 +137,7 @@ class VicQAPDualWStanAdapter(StanAdapter):
         Sequence[str]
             Stan variable names used for subject-level summaries.
         """
-        return ["alpha_o", "alpha_a", "beta_q", "beta_a", "kappa"]
+        return ["alpha_o", "alpha_a", "beta", "w", "kappa"]
 
     def population_var_names(self) -> Sequence[str]:
         """Names of population-level Stan variables to summarize.
@@ -150,17 +150,17 @@ class VicQAPDualWStanAdapter(StanAdapter):
         return [
             "alpha_o_pop",
             "alpha_a_pop",
-            "beta_q_pop",
-            "beta_a_pop",
+            "beta_pop",
+            "w_pop",
             "kappa_pop",
             "mu_alpha_o_hat",
             "sd_alpha_o_hat",
             "mu_alpha_a_hat",
             "sd_alpha_a_hat",
-            "mu_beta_q_hat",
-            "sd_beta_q_hat",
-            "mu_beta_a_hat",
-            "sd_beta_a_hat",
+            "mu_beta_hat",
+            "sd_beta_hat",
+            "mu_w_hat",
+            "sd_w_hat",
             "mu_kappa_hat",
             "sd_kappa_hat",
         ]

@@ -29,11 +29,11 @@ data {
   int<lower=1,upper=8> mu_alpha_a_prior_family; real mu_alpha_a_prior_p1; real mu_alpha_a_prior_p2; real mu_alpha_a_prior_p3;
   int<lower=1,upper=8> sd_alpha_a_prior_family; real sd_alpha_a_prior_p1; real sd_alpha_a_prior_p2; real sd_alpha_a_prior_p3;
 
-  int<lower=1,upper=8> mu_beta_prior_family; real mu_beta_prior_p1; real mu_beta_prior_p2; real mu_beta_prior_p3;
-  int<lower=1,upper=8> sd_beta_prior_family; real sd_beta_prior_p1; real sd_beta_prior_p2; real sd_beta_prior_p3;
+  int<lower=1,upper=8> mu_beta_q_prior_family; real mu_beta_q_prior_p1; real mu_beta_q_prior_p2; real mu_beta_q_prior_p3;
+  int<lower=1,upper=8> sd_beta_q_prior_family; real sd_beta_q_prior_p1; real sd_beta_q_prior_p2; real sd_beta_q_prior_p3;
 
-  int<lower=1,upper=8> mu_w_prior_family; real mu_w_prior_p1; real mu_w_prior_p2; real mu_w_prior_p3;
-  int<lower=1,upper=8> sd_w_prior_family; real sd_w_prior_p1; real sd_w_prior_p2; real sd_w_prior_p3;
+  int<lower=1,upper=8> mu_beta_a_prior_family; real mu_beta_a_prior_p1; real mu_beta_a_prior_p2; real mu_beta_a_prior_p3;
+  int<lower=1,upper=8> sd_beta_a_prior_family; real sd_beta_a_prior_p1; real sd_beta_a_prior_p2; real sd_beta_a_prior_p3;
 
   int<lower=1,upper=8> mu_kappa_prior_family; real mu_kappa_prior_p1; real mu_kappa_prior_p2; real mu_kappa_prior_p3;
   int<lower=1,upper=8> sd_kappa_prior_family; real sd_kappa_prior_p1; real sd_kappa_prior_p2; real sd_kappa_prior_p3;
@@ -41,18 +41,19 @@ data {
 parameters {
   real mu_alpha_o; real<lower=0> sd_alpha_o; vector[N] z_alpha_o;
   real mu_alpha_a; real<lower=0> sd_alpha_a; vector[N] z_alpha_a;
-  real mu_beta; real<lower=0> sd_beta; vector[N] z_beta;
-  real mu_w; real<lower=0> sd_w; vector[N] z_w;
+  real mu_beta_q;  real<lower=0> sd_beta_q;  vector[N] z_beta_q;
+  real mu_beta_a;  real<lower=0> sd_beta_a;  vector[N] z_beta_a;
   real mu_kappa; real<lower=0> sd_kappa; vector[N] z_kappa;
 }
 transformed parameters {
   vector<lower=0,upper=1>[N] alpha_o = inv_logit(mu_alpha_o + sd_alpha_o * z_alpha_o);
   vector<lower=0,upper=1>[N] alpha_a = inv_logit(mu_alpha_a + sd_alpha_a * z_alpha_a);
 
-  vector<lower=beta_lower,upper=beta_upper>[N] beta =
-    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta + sd_beta * z_beta) + 1) * 0.5;
+  vector<lower=beta_lower,upper=beta_upper>[N] beta_q =
+    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_q + sd_beta_q * z_beta_q) + 1) * 0.5;
 
-  vector<lower=0,upper=1>[N] w = inv_logit(mu_w + sd_w * z_w);
+  vector<lower=beta_lower,upper=beta_upper>[N] beta_a =
+    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_a + sd_beta_a * z_beta_a) + 1) * 0.5;
 
   vector<lower=-kappa_abs_max,upper=kappa_abs_max>[N] kappa =
     kappa_abs_max * tanh(mu_kappa + sd_kappa * z_kappa);
@@ -60,8 +61,8 @@ transformed parameters {
 model {
   z_alpha_o ~ normal(0,1);
   z_alpha_a ~ normal(0,1);
-  z_beta ~ normal(0,1);
-  z_w ~ normal(0,1);
+  z_beta_q ~ normal(0,1);
+  z_beta_a ~ normal(0,1);
   z_kappa ~ normal(0,1);
 
   target += prior_lpdf(mu_alpha_o | mu_alpha_o_prior_family, mu_alpha_o_prior_p1, mu_alpha_o_prior_p2, mu_alpha_o_prior_p3);
@@ -70,11 +71,11 @@ model {
   target += prior_lpdf(mu_alpha_a | mu_alpha_a_prior_family, mu_alpha_a_prior_p1, mu_alpha_a_prior_p2, mu_alpha_a_prior_p3);
   target += prior_lpdf(sd_alpha_a | sd_alpha_a_prior_family, sd_alpha_a_prior_p1, sd_alpha_a_prior_p2, sd_alpha_a_prior_p3);
 
-  target += prior_lpdf(mu_beta | mu_beta_prior_family, mu_beta_prior_p1, mu_beta_prior_p2, mu_beta_prior_p3);
-  target += prior_lpdf(sd_beta | sd_beta_prior_family, sd_beta_prior_p1, sd_beta_prior_p2, sd_beta_prior_p3);
+  target += prior_lpdf(mu_beta_q | mu_beta_q_prior_family, mu_beta_q_prior_p1, mu_beta_q_prior_p2, mu_beta_q_prior_p3);
+  target += prior_lpdf(sd_beta_q | sd_beta_q_prior_family, sd_beta_q_prior_p1, sd_beta_q_prior_p2, sd_beta_q_prior_p3);
 
-  target += prior_lpdf(mu_w | mu_w_prior_family, mu_w_prior_p1, mu_w_prior_p2, mu_w_prior_p3);
-  target += prior_lpdf(sd_w | sd_w_prior_family, sd_w_prior_p1, sd_w_prior_p2, sd_w_prior_p3);
+  target += prior_lpdf(mu_beta_a | mu_beta_a_prior_family, mu_beta_a_prior_p1, mu_beta_a_prior_p2, mu_beta_a_prior_p3);
+  target += prior_lpdf(sd_beta_a | sd_beta_a_prior_family, sd_beta_a_prior_p1, sd_beta_a_prior_p2, sd_beta_a_prior_p3);
 
   target += prior_lpdf(mu_kappa | mu_kappa_prior_family, mu_kappa_prior_p1, mu_kappa_prior_p2, mu_kappa_prior_p3);
   target += prior_lpdf(sd_kappa | sd_kappa_prior_family, sd_kappa_prior_p1, sd_kappa_prior_p2, sd_kappa_prior_p3);
@@ -115,8 +116,7 @@ model {
     } else if (etype[e] == 3) {
       if (choice[e] > 0) {
         vector[A] g = (demo_pi[n] - (1.0 / A)) / (1.0 - (1.0 / A));
-        vector[A] social_drive = w[n] * to_vector(Q[n][s]') + (1.0 - w[n]) * g;
-        vector[A] u = beta[n] * social_drive;
+        vector[A] u = beta_q[n] * to_vector(Q[n][s]') + beta_a[n] * g;
         if (last_choice[n, s] > 0) u[last_choice[n, s]] += kappa[n];
         for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
         target += categorical_logit_lpmf(choice[e] | u);
@@ -169,8 +169,7 @@ generated quantities {
       } else if (etype[e] == 3) {
         if (choice[e] > 0) {
           vector[A] g = (demo_pi[n] - (1.0 / A)) / (1.0 - (1.0 / A));
-          vector[A] social_drive = w[n] * to_vector(Q[n][s]') + (1.0 - w[n]) * g;
-          vector[A] u = beta[n] * social_drive;
+          vector[A] u = beta_q[n] * to_vector(Q[n][s]') + beta_a[n] * g;
           if (last_choice[n, s] > 0) u[last_choice[n, s]] += kappa[n];
           for (a in 1:A) if (avail_mask[e][a] == 0) u[a] = negative_infinity();
           log_lik[e] = categorical_logit_lpmf(choice[e] | u);
@@ -186,10 +185,11 @@ generated quantities {
   real alpha_o_pop = inv_logit(mu_alpha_o);
   real alpha_a_pop = inv_logit(mu_alpha_a);
 
-  real beta_pop =
-    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta) + 1) * 0.5;
+  real beta_q_pop =
+    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_q) + 1) * 0.5;
 
-  real w_pop = inv_logit(mu_w);
+  real beta_a_pop =
+    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_a) + 1) * 0.5;
 
   real kappa_pop =
     kappa_abs_max * tanh(mu_kappa);
@@ -198,10 +198,10 @@ generated quantities {
   real sd_alpha_o_hat = sd_alpha_o;
   real mu_alpha_a_hat = mu_alpha_a;
   real sd_alpha_a_hat = sd_alpha_a;
-  real mu_beta_hat = mu_beta;
-  real sd_beta_hat = sd_beta;
-  real mu_w_hat = mu_w;
-  real sd_w_hat = sd_w;
+  real mu_beta_q_hat = mu_beta_q;
+  real sd_beta_q_hat = sd_beta_q;
+  real mu_beta_a_hat = mu_beta_a;
+  real sd_beta_a_hat = sd_beta_a;
   real mu_kappa_hat = mu_kappa;
   real sd_kappa_hat = sd_kappa;
 }

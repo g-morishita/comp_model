@@ -7,6 +7,7 @@ import pytest
 from comp_model_impl.estimators.stan.adapters import (
     QRLStanAdapter,
     VicQAPDualWStanAdapter,
+    VicQAPIndepDualWStanAdapter,
     VicariousAPVSStanAdapter,
     VicariousAPDBStayStanAdapter,
     VicariousDBStayStanAdapter,
@@ -24,6 +25,7 @@ from comp_model_impl.models import (
     QRL,
     VS,
     VicQ_AP_DualW,
+    VicQ_AP_IndepDualW,
     Vicarious_AP_DB_STAY,
     Vicarious_AP_VS,
     Vicarious_DB_Stay,
@@ -125,6 +127,23 @@ def test_vicq_ap_dualw_adapter_adds_constants_and_priors():
     adapter = VicQAPDualWStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicQ_ap_dualw"
+    assert adapter.required_priors("indiv") == ["alpha_o", "alpha_a", "beta", "w", "kappa"]
+    assert "mu_beta" in adapter.required_priors("hier")
+    assert "mu_w" in adapter.required_priors("hier")
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(19.0)
+    assert data["kappa_abs_max"] == pytest.approx(1.75)
+
+
+def test_vicq_ap_indep_dualw_adapter_adds_constants_and_priors():
+    """Independent VicQ-AP-DualW adapter exposes expected priors and constants."""
+    model = VicQ_AP_IndepDualW(beta_max=19.0, kappa_abs_max=1.75)
+    adapter = VicQAPIndepDualWStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "vicQ_ap_indep_dualw"
     assert adapter.required_priors("indiv") == ["alpha_o", "alpha_a", "beta_q", "beta_a", "kappa"]
     assert "mu_beta_q" in adapter.required_priors("hier")
     assert "mu_beta_a" in adapter.required_priors("hier")
@@ -267,4 +286,5 @@ def test_resolve_stan_adapter_for_base_models():
     assert isinstance(resolve_stan_adapter(Vicarious_DB_Stay()), VicariousDBStayStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_VS()), VicariousVSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_VS_Stay()), VicariousVSStayStanAdapter)
+    assert isinstance(resolve_stan_adapter(VicQ_AP_IndepDualW()), VicQAPIndepDualWStanAdapter)
     assert isinstance(resolve_stan_adapter(VicQ_AP_DualW()), VicQAPDualWStanAdapter)
