@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from typing import Any, Callable, Iterable, Mapping, Sequence
+import warnings
 
 import numpy as np
 
@@ -126,7 +127,7 @@ def trials_from_partner_self_rows(
     default_state: Any = 0,
     # outcome strategy
     prefer_self_outcome: bool = True,
-    fallback_to_partner_outcome: bool = False,
+    warn_on_missing_self_outcome: bool = True,
 ) -> list[Trial]:
     """Parse a combined self+partner trial table into :class:`~comp_model_core.data.types.Trial` objects.
 
@@ -137,14 +138,16 @@ def trials_from_partner_self_rows(
     ----------
     prefer_self_outcome
         If True, we look for self outcome columns first.
-    fallback_to_partner_outcome
-        If True, and self outcome is missing, use partner outcome/reward as a fallback
-        (useful for fully-yoked/shared payoff tasks).
+    warn_on_missing_self_outcome
+        If True, emit warnings when self observed outcome and/or self true outcome
+        are missing.
     """
     cols = columns or PartnerSelfTrialTableColumns()
     recs = _as_rows(rows)
 
     trials: list[Trial] = []
+    missing_self_observed_count = 0
+    missing_self_true_count = 0
     for r in recs:
         t_raw = r.get(cols.t)
         if _is_null(t_raw):
@@ -193,17 +196,16 @@ def trials_from_partner_self_rows(
         observed_outcome = None
         outcome = None
 
+        if _is_null(self_obs_raw):
+            missing_self_observed_count += 1
+        if _is_null(self_out_raw):
+            missing_self_true_count += 1
+
         if prefer_self_outcome:
             if not _is_null(self_obs_raw):
                 observed_outcome = float(self_obs_raw)
             if not _is_null(self_out_raw):
                 outcome = float(self_out_raw)
-
-        if (observed_outcome is None and outcome is None) and fallback_to_partner_outcome:
-            if not _is_null(partner_obs_raw):
-                observed_outcome = float(partner_obs_raw)
-            if not _is_null(partner_out_raw):
-                outcome = float(partner_out_raw)
 
         # --- social fields (single partner OR already-list columns)
         # Prefer explicit list columns if present.
@@ -289,6 +291,23 @@ def trials_from_partner_self_rows(
             )
         )
 
+    if warn_on_missing_self_outcome and recs:
+        n = len(recs)
+        if missing_self_observed_count > 0:
+            warnings.warn(
+                f"Self observed outcome is missing for {missing_self_observed_count}/{n} trials; "
+                "observed_outcome is left as None.",
+                UserWarning,
+                stacklevel=2,
+            )
+        if missing_self_true_count > 0:
+            warnings.warn(
+                f"Self true outcome is missing for {missing_self_true_count}/{n} trials; "
+                "outcome is left as None.",
+                UserWarning,
+                stacklevel=2,
+            )
+
     trials.sort(key=lambda tr: tr.t)
     return trials
 
@@ -302,7 +321,7 @@ def event_log_from_partner_self_rows(
     columns: PartnerSelfTrialTableColumns | None = None,
     default_state: Any = 0,
     prefer_self_outcome: bool = True,
-    fallback_to_partner_outcome: bool = False,
+    warn_on_missing_self_outcome: bool = True,
     metadata: Mapping[str, Any] | None = None,
 ) -> EventLog:
     """One-shot conversion for combined self+partner tables."""
@@ -311,7 +330,7 @@ def event_log_from_partner_self_rows(
         columns=columns,
         default_state=default_state,
         prefer_self_outcome=prefer_self_outcome,
-        fallback_to_partner_outcome=fallback_to_partner_outcome,
+        warn_on_missing_self_outcome=warn_on_missing_self_outcome,
     )
     return event_log_from_trials(
         block_id=block_id,

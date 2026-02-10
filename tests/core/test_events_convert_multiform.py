@@ -82,8 +82,8 @@ def test_event_log_from_trials_timing_orders():
     assert [e.idx for e in log_post.events] == list(range(len(log_post.events)))
 
 
-def test_partner_outcome_fallback_strategy():
-    """If self outcome is absent, we can optionally fall back to partner reward."""
+def test_missing_self_outcomes_warn():
+    """Missing self outcomes warn and remain None."""
     from comp_model_core.events.convert import event_log_from_partner_self_rows
 
     row = {
@@ -96,25 +96,37 @@ def test_partner_outcome_fallback_strategy():
         "partner_reward": 1,
     }
 
-    log_no_fallback = event_log_from_partner_self_rows(
-        [row],
-        block_id="1",
-        condition="cond",
-        timing="asocial",
-        fallback_to_partner_outcome=False,
-    )
-    # OUTCOME event payload should have None if no self outcomes and no fallback
-    assert log_no_fallback.events[-1].type.name == "OUTCOME"
-    assert log_no_fallback.events[-1].payload["observed_outcome"] is None
+    with pytest.warns(UserWarning, match="Self observed outcome is missing"):
+        log_missing = event_log_from_partner_self_rows(
+            [row],
+            block_id="1",
+            condition="cond",
+            timing="asocial",
+        )
 
-    log_fallback = event_log_from_partner_self_rows(
-        [row],
-        block_id="1",
-        condition="cond",
-        timing="asocial",
-        fallback_to_partner_outcome=True,
-    )
-    assert log_fallback.events[-1].payload["observed_outcome"] == 1.0
+    # OUTCOME event payload should have None if self outcomes are missing.
+    assert log_missing.events[-1].type.name == "OUTCOME"
+    assert log_missing.events[-1].payload["observed_outcome"] is None
+
+    row_partial = {
+        "id": 1,
+        "block": 1,
+        "trial": 1,
+        "self_choice": 1,
+        # self true outcome exists, but observed self outcome is missing
+        "self_outcome": 0,
+        "partner_choice": 0,
+        "partner_reward": 1,
+    }
+    with pytest.warns(UserWarning, match="Self observed outcome is missing"):
+        log_partial = event_log_from_partner_self_rows(
+            [row_partial],
+            block_id="1",
+            condition="cond",
+            timing="asocial",
+        )
+    assert log_partial.events[-1].payload["observed_outcome"] is None
+    assert log_partial.events[-1].payload["outcome"] == 0.0
 
 
 def test_merge_self_and_demo_rows_aggregates_multiple_demos():
@@ -223,4 +235,3 @@ def test_choice_none_omits_choice_and_outcome_but_keeps_social():
     tr = Trial(t=0, state=0, choice=None, observed_outcome=1.0, outcome=1.0, others_choices=[1])
     log = event_log_from_trials(block_id="b", condition="c", trials=[tr], timing="pre_choice")
     assert _types(log) == ["BLOCK_START", "SOCIAL_OBSERVED"]
-
