@@ -17,7 +17,18 @@ This registry is what allows YAML/JSON study plans to resolve string names
 from comp_model_core.registry import Registry
 
 from .bandits.bernoulli import BernoulliBanditEnv
-from .models import QRL, VS, Vicarious_RL, Vicarious_VS, Vicarious_VS_Stay, UnidentifiableQRL, Vicarious_AP_DB_STAY, Vicarious_Dir_DB_Stay, Vicarious_DB_Stay
+from .models import (
+    QRL,
+    VS,
+    VicQ_AP_DualW,
+    Vicarious_RL,
+    Vicarious_VS,
+    Vicarious_VS_Stay,
+    UnidentifiableQRL,
+    Vicarious_AP_DB_STAY,
+    Vicarious_Dir_DB_Stay,
+    Vicarious_DB_Stay,
+)
 from .demonstrators import NoisyBestArmDemonstrator, RLDemonstrator, FixedSequenceDemonstrator
 
 def make_registry() -> Registry:
@@ -43,6 +54,7 @@ def make_registry() -> Registry:
     r.models.register("Vicarious_AP_DB_STAY", Vicarious_AP_DB_STAY)
     r.models.register("Vicarious_Dir_DB_Stay", Vicarious_Dir_DB_Stay)
     r.models.register("Vicarious_DB_Stay", Vicarious_DB_Stay)
+    r.models.register("VicQ_AP_DualW", VicQ_AP_DualW)
 
     # Bandit environments
     r.bandits.register("BernoulliBanditEnv", BernoulliBanditEnv)
