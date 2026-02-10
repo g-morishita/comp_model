@@ -19,6 +19,8 @@ def test_partner_self_row_parsing_and_orders():
             "partner_choice_pos_idx": 0.0,
             "self_choice": 0.0,
             "self_choice_pos_idx": 2.0,
+            "self_reward": 0.0,
+            "self_outcome": 0.0,
             "rt": 1.1457259583257837,
             "obs_randomized_img_order": "0-1-2",
             "self_randomized_img_order": "2-1-0",
@@ -96,13 +98,16 @@ def test_missing_self_outcomes_warn():
         "partner_reward": 1,
     }
 
-    with pytest.warns(UserWarning, match="Self observed outcome is missing"):
+    with pytest.warns(UserWarning) as w_missing:
         log_missing = event_log_from_partner_self_rows(
             [row],
             block_id="1",
             condition="cond",
             timing="asocial",
         )
+    msgs = [str(w.message) for w in w_missing]
+    assert any("Self observed outcome is missing" in m for m in msgs)
+    assert any("Self true outcome is missing" in m for m in msgs)
 
     # OUTCOME event payload should have None if self outcomes are missing.
     assert log_missing.events[-1].type.name == "OUTCOME"
@@ -159,13 +164,22 @@ def test_event_log_from_any_rows_infers_forms():
     from comp_model_core.events.convert import event_log_from_any_rows
 
     combined = [
-        {"id": 1, "block": 1, "trial": 0, "self_choice": 1, "partner_choice": 0, "partner_reward": 1},
+        {
+            "id": 1,
+            "block": 1,
+            "trial": 0,
+            "self_choice": 1,
+            "self_reward": 0,
+            "self_outcome": 0,
+            "partner_choice": 0,
+            "partner_reward": 1,
+        },
     ]
     log1 = event_log_from_any_rows(combined, block_id="1", condition="c", timing="pre_choice")
     assert _types(log1)[1] == "SOCIAL_OBSERVED"  # inferred combined form
 
     separate = {
-        "self": [{"id": 1, "block": 1, "trial": 0, "self_choice": 1}],
+        "self": [{"id": 1, "block": 1, "trial": 0, "self_choice": 1, "self_reward": 0, "self_outcome": 0}],
         "demo": [{"id": 1, "block": 1, "trial": 0, "partner_choice": 0, "partner_reward": 1}],
     }
     log2 = event_log_from_any_rows(separate, block_id="1", condition="c", timing="pre_choice")
@@ -182,6 +196,8 @@ def test_as_rows_accepts_dict_of_columns_and_pandas_like():
         "block": [1, 1],
         "trial": [0, 1],
         "self_choice": [0, 1],
+        "self_reward": [0, 1],
+        "self_outcome": [0, 1],
         "partner_choice": [1, 0],
         "partner_reward": [1, 0],
     }
@@ -199,7 +215,16 @@ def test_as_rows_accepts_dict_of_columns_and_pandas_like():
 
     df_like = _DF(
         [
-            {"id": 1, "block": 1, "trial": 0, "self_choice": 0, "partner_choice": 1, "partner_reward": 1},
+            {
+                "id": 1,
+                "block": 1,
+                "trial": 0,
+                "self_choice": 0,
+                "self_reward": 0,
+                "self_outcome": 0,
+                "partner_choice": 1,
+                "partner_reward": 1,
+            },
         ]
     )
     trials2 = trials_from_partner_self_rows(df_like)
