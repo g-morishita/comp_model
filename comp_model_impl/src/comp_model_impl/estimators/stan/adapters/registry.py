@@ -34,6 +34,7 @@ from ....models import (
 
 from .vicarious_rl_within_subject import VicariousRLWithinSubjectStanAdapter
 from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAdapter
+from .vicQ_ap_dualw_within_subject import VicQAPDualWWithinSubjectStanAdapter
 from .vs_within_subject import VSWithinSubjectStanAdapter
 from .base import StanAdapter
 from .qrl import QRLStanAdapter
@@ -77,6 +78,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
             return VicariousRLWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_DB_Stay):
             return VicariousDBStayWithinSubjectStanAdapter(model)
+        if isinstance(base, VicQ_AP_DualW):
+            return VicQAPDualWWithinSubjectStanAdapter(model)
         raise ValueError(
             f"No within-subject Stan adapter registered for wrapped base model: {type(base).__name__}"
         )

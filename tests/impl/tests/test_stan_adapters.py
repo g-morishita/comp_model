@@ -7,6 +7,7 @@ import pytest
 from comp_model_impl.estimators.stan.adapters import (
     QRLStanAdapter,
     VicQAPDualWStanAdapter,
+    VicQAPDualWWithinSubjectStanAdapter,
     VicQAPIndepDualWStanAdapter,
     VicariousAPVSStanAdapter,
     VicariousAPDBStayStanAdapter,
@@ -273,6 +274,24 @@ def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
     assert data["beta_upper"] == pytest.approx(7.5)
     assert data["kappa_abs_max"] == pytest.approx(1.1)
     assert data["demo_bias_abs_max"] == pytest.approx(2.2)
+
+
+def test_vicq_ap_dualw_within_subject_adapter_uses_base_model_constants():
+    """Within-subject VicQ-AP-DualW adapter uses base-model bounds."""
+    wrapped = wrap_model_with_shared_delta_conditions(
+        model=VicQ_AP_DualW(beta_max=17.5, kappa_abs_max=1.7),
+        conditions=["A", "B"],
+        baseline_condition="A",
+    )
+    adapter = resolve_stan_adapter(wrapped)
+    assert isinstance(adapter, VicQAPDualWWithinSubjectStanAdapter)
+    assert adapter.program("indiv").key == "vicQ_ap_dualw_within_subject"
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(17.5)
+    assert data["kappa_abs_max"] == pytest.approx(1.7)
 
 
 def test_resolve_stan_adapter_for_base_models():
