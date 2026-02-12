@@ -154,6 +154,9 @@ class ParameterRecoveryConfig:
         Number of replications.
     seed : int
         RNG seed.
+    n_jobs : int
+        Number of parallel worker processes for replications.
+        Use ``1`` for sequential execution.
     sampling : SamplingSpec
         Sampling configuration.
     output : OutputSpec
@@ -161,12 +164,13 @@ class ParameterRecoveryConfig:
 
     Examples
     --------
-    >>> ParameterRecoveryConfig(plan_path="study_plan.yaml", n_reps=10, seed=123)
-    ParameterRecoveryConfig(plan_path='study_plan.yaml', n_reps=10, seed=123, sampling=SamplingSpec(mode='independent', space='param', individual={}, population={}, individual_sd={}, fixed={}, by_condition={}, clip_to_bounds=True), output=OutputSpec(out_dir='recovery_out', save_format='csv', save_config=True, save_fit_diagnostics=True, save_simulated_study=False))
+    >>> ParameterRecoveryConfig(plan_path="study_plan.yaml", n_reps=10, seed=123, n_jobs=1)
+    ParameterRecoveryConfig(plan_path='study_plan.yaml', n_reps=10, seed=123, n_jobs=1, sampling=SamplingSpec(mode='independent', space='param', individual={}, population={}, individual_sd={}, fixed={}, by_condition={}, clip_to_bounds=True), output=OutputSpec(out_dir='recovery_out', save_format='csv', save_config=True, save_fit_diagnostics=True, save_simulated_study=False))
     """
     plan_path: str
     n_reps: int = 50
     seed: int = 0
+    n_jobs: int = 1
 
     sampling: SamplingSpec = field(default_factory=SamplingSpec)
     output: OutputSpec = field(default_factory=OutputSpec)
@@ -306,6 +310,7 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
         plan_path=str(raw["plan_path"]),
         n_reps=int(raw.get("n_reps", 50)),
         seed=int(raw.get("seed", 0)),
+        n_jobs=max(1, int(raw.get("n_jobs", 1))),
         sampling=sampling,
         output=output,
     )

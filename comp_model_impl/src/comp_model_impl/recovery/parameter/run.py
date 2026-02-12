@@ -20,10 +20,11 @@ comp_model_impl.recovery.parameter.sampling.sample_subject_params
 
 from __future__ import annotations
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Mapping, Sequence
 
 import importlib
 import json
@@ -31,6 +32,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -83,6 +85,18 @@ class ParameterRecoveryOutputs:
     out_dir: str
     population_records: pd.DataFrame | None = None
     population_metrics: pd.DataFrame | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _ReplicationResult:
+    """Per-replication outputs used by sequential/parallel execution."""
+
+    rep: int
+    records: list[dict[str, Any]]
+    fit_diag: dict[str, Any] | None = None
+
+
+_WORKER_CONTEXT: dict[str, Any] | None = None
 
 
 def _strip_hat_key(name: str) -> str:
@@ -544,6 +558,168 @@ def write_run_manifest(
     )
 
 
+def _is_within_subject_model(m: ComputationalModel) -> bool:
+    """Return ``True`` if the model is a within-subject shared+delta wrapper."""
+    return isinstance(m, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel))
+
+
+def _derive_within_subject_targets(
+    m: ComputationalModel,
+    params: dict[str, float],
+) -> dict[str, float]:
+    """Derive constrained per-condition parameters from z-params."""
+    pb = constrained_params_by_condition_from_z(m, params)  # type: ignore[arg-type]
+    return flatten_params_by_condition(pb)
+
+
+def _run_single_rep(
+    *,
+    rep: int,
+    rep_seed: int,
+    config: ParameterRecoveryConfig,
+    generator: Generator,
+    model: ComputationalModel,
+    estimator: Estimator,
+    subject_ids: Sequence[str],
+    subject_block_plans: Mapping[str, Sequence[BlockPlan]],
+    out_dir: str,
+) -> _ReplicationResult:
+    """Run one replication: sample -> simulate -> fit -> collect records."""
+    rep_rng = np.random.default_rng(int(rep_seed))
+
+    subj_params_true, pop_true = sample_subject_params(
+        cfg=config.sampling,
+        model=model,
+        subject_ids=subject_ids,
+        rng=rep_rng,
+    )
+
+    r = make_registry()
+
+    def block_runner_builder(block_plan: BlockPlan):
+        return build_runner_for_plan(plan=block_plan, registries=r)
+
+    study: StudyData = generator.simulate_study(
+        block_runner_builder=block_runner_builder,
+        model=model,
+        subj_params=subj_params_true,
+        subject_block_plans=subject_block_plans,
+        rng=rep_rng,
+    )
+
+    fit: FitResult = estimator.fit(study=study, rng=rep_rng)
+
+    if config.output.save_simulated_study:
+        import pickle
+
+        with (Path(out_dir) / f"study_rep_{rep:04d}.pkl").open("wb") as f:
+            pickle.dump(study, f)
+
+    fit_diag: dict[str, Any] | None = None
+    if config.output.save_fit_diagnostics:
+        fit_diag = {
+            "rep": rep,
+            "success": bool(getattr(fit, "success", True)),
+            "message": str(getattr(fit, "message", "")),
+            "value": float(fit.value) if getattr(fit, "value", None) is not None else None,
+            "diagnostics": getattr(fit, "diagnostics", None),
+            "population_true": pop_true,
+            "population_hat": getattr(fit, "population_hat", None),
+        }
+
+    records: list[dict[str, Any]] = []
+    hats = fit.subject_hats or {}
+    for sid in subject_ids:
+        theta_true_raw = subj_params_true[sid]
+        theta_hat_raw = hats.get(sid, {})
+
+        if _is_within_subject_model(model):
+            # Compare constrained per-condition params (param__cond)
+            true_targets = _derive_within_subject_targets(model, dict(theta_true_raw))
+
+            # Prefer already-constrained hats (Bayesian typically outputs these),
+            # otherwise derive from z-space hats if present (e.g. MLE in z-space).
+            if all(k in theta_hat_raw for k in true_targets.keys()):
+                hat_targets = {k: float(theta_hat_raw.get(k, np.nan)) for k in true_targets.keys()}
+            else:
+                z_names = list(getattr(model.param_schema, "names", []) or [])
+                if z_names and all(k in theta_hat_raw for k in z_names):
+                    hat_targets = _derive_within_subject_targets(
+                        model,
+                        {k: float(theta_hat_raw[k]) for k in z_names},
+                    )
+                else:
+                    hat_targets = {k: float(theta_hat_raw.get(k, np.nan)) for k in true_targets.keys()}
+
+            for p, v_true in true_targets.items():
+                v_hat = hat_targets.get(p, np.nan)
+                records.append(
+                    {
+                        "rep": rep,
+                        "subject_id": sid,
+                        "param": p,
+                        "true": float(v_true),
+                        "hat": float(v_hat) if np.isfinite(v_hat) else np.nan,
+                    }
+                )
+        else:
+            theta_true = theta_true_raw
+            theta_hat = theta_hat_raw
+            for p, v_true in theta_true.items():
+                v_hat = theta_hat.get(p, np.nan)
+                records.append(
+                    {
+                        "rep": rep,
+                        "subject_id": sid,
+                        "param": p,
+                        "true": float(v_true),
+                        "hat": float(v_hat) if np.isfinite(v_hat) else np.nan,
+                    }
+                )
+
+    return _ReplicationResult(rep=rep, records=records, fit_diag=fit_diag)
+
+
+def _init_worker_context(
+    config: ParameterRecoveryConfig,
+    generator: Generator,
+    model: ComputationalModel,
+    estimator: Estimator,
+    subject_ids: list[str],
+    subject_block_plans: dict[str, list[BlockPlan]],
+    out_dir: str,
+) -> None:
+    """Initialize global worker context for process-based replications."""
+    global _WORKER_CONTEXT
+    _WORKER_CONTEXT = {
+        "config": config,
+        "generator": generator,
+        "model": model,
+        "estimator": estimator,
+        "subject_ids": subject_ids,
+        "subject_block_plans": subject_block_plans,
+        "out_dir": out_dir,
+    }
+
+
+def _run_single_rep_from_worker(rep: int, rep_seed: int) -> _ReplicationResult:
+    """Run one replication from process-worker global context."""
+    if _WORKER_CONTEXT is None:
+        raise RuntimeError("Worker context not initialized.")
+    ctx = _WORKER_CONTEXT
+    return _run_single_rep(
+        rep=rep,
+        rep_seed=rep_seed,
+        config=ctx["config"],
+        generator=ctx["generator"],
+        model=ctx["model"],
+        estimator=ctx["estimator"],
+        subject_ids=ctx["subject_ids"],
+        subject_block_plans=ctx["subject_block_plans"],
+        out_dir=ctx["out_dir"],
+    )
+
+
 def run_parameter_recovery(
     *,
     config: ParameterRecoveryConfig,
@@ -646,128 +822,106 @@ def run_parameter_recovery(
         plan_summary=plan_summary,
     )
 
+    n_reps = int(config.n_reps)
+    n_jobs = max(1, int(config.n_jobs))
+
     rng = np.random.default_rng(int(config.seed))
+    rep_seeds = [
+        int(x)
+        for x in rng.integers(
+            0,
+            2**32 - 1,
+            size=max(n_reps, 0),
+            dtype=np.uint32,
+        )
+    ]
 
     records: list[dict[str, Any]] = []
     fit_diags: list[dict[str, Any]] = []
 
-    r = make_registry()
-
-    def _is_within_subject_model(m: ComputationalModel) -> bool:
-        """Return True if the model is a within-subject shared+delta wrapper."""
-        return isinstance(m, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel))
-
-    def _derive_within_subject_targets(m: ComputationalModel, params: dict[str, float]) -> dict[str, float]:
-        """Derive constrained per-condition parameters from z-params."""
-        pb = constrained_params_by_condition_from_z(m, params)  # type: ignore[arg-type]
-        return flatten_params_by_condition(pb)
-
-    def block_runner_builder(block_plan: BlockPlan):
-        """Build a block runner for a single block plan."""
-        return build_runner_for_plan(plan=block_plan, registries=r)
-
-    n_reps = int(config.n_reps)
+    completed = 0
+    pbar = None
     if progress_callback is not None:
         progress_callback(0, n_reps)
-        rep_iter = range(n_reps)
     else:
-        rep_iter = tqdm(
-            range(n_reps),
+        pbar = tqdm(
+            total=n_reps,
             desc="Parameter recovery",
             disable=not sys.stderr.isatty(),
         )
 
-    for rep in rep_iter:
-        rep_rng = np.random.default_rng(
-            rng.integers(0, 2**32 - 1, dtype=np.uint32)
-        )
+    def _accumulate_rep_result(res: _ReplicationResult) -> None:
+        records.extend(res.records)
+        if res.fit_diag is not None:
+            fit_diags.append(res.fit_diag)
 
-        subj_params_true, pop_true = sample_subject_params(
-            cfg=config.sampling,
-            model=model,
-            subject_ids=subject_ids,
-            rng=rep_rng,
-        )
-
-        study: StudyData = generator.simulate_study(
-            block_runner_builder=block_runner_builder,
-            model=model,
-            subj_params=subj_params_true,
-            subject_block_plans=plan.subjects,
-            rng=rep_rng,
-        )
-
-        fit: FitResult = estimator.fit(study=study, rng=rep_rng)
-
-        if config.output.save_simulated_study:
-            import pickle
-            with (out_dir / f"study_rep_{rep:04d}.pkl").open("wb") as f:
-                pickle.dump(study, f)
-
-        if config.output.save_fit_diagnostics:
-            fit_diags.append(
-                {
-                    "rep": rep,
-                    "success": bool(getattr(fit, "success", True)),
-                    "message": str(getattr(fit, "message", "")),
-                    "value": float(fit.value) if getattr(fit, "value", None) is not None else None,
-                    "diagnostics": getattr(fit, "diagnostics", None),
-                    "population_true": pop_true,
-                    "population_hat": getattr(fit, "population_hat", None),
-                }
+    def _run_reps_sequential() -> None:
+        nonlocal completed
+        for rep in range(n_reps):
+            rep_result = _run_single_rep(
+                rep=rep,
+                rep_seed=rep_seeds[rep],
+                config=config,
+                generator=generator,
+                model=model,
+                estimator=estimator,
+                subject_ids=subject_ids,
+                subject_block_plans=plan.subjects,
+                out_dir=str(out_dir),
             )
+            _accumulate_rep_result(rep_result)
+            completed += 1
+            if progress_callback is not None:
+                progress_callback(completed, n_reps)
+            elif pbar is not None:
+                pbar.update(1)
 
-        hats = fit.subject_hats or {}
-        for sid in subject_ids:
-            theta_true_raw = subj_params_true[sid]
-            theta_hat_raw = hats.get(sid, {})
-
-            if _is_within_subject_model(model):
-                # Compare constrained per-condition params (param__cond)
-                true_targets = _derive_within_subject_targets(model, dict(theta_true_raw))
-
-                # Prefer already-constrained hats (Bayesian typically outputs these),
-                # otherwise derive from z-space hats if present (e.g. MLE in z-space).
-                if all(k in theta_hat_raw for k in true_targets.keys()):
-                    hat_targets = {k: float(theta_hat_raw.get(k, np.nan)) for k in true_targets.keys()}
-                else:
-                    z_names = list(getattr(model.param_schema, "names", []) or [])
-                    if z_names and all(k in theta_hat_raw for k in z_names):
-                        hat_targets = _derive_within_subject_targets(
-                            model,
-                            {k: float(theta_hat_raw[k]) for k in z_names},
-                        )
-                    else:
-                        hat_targets = {k: float(theta_hat_raw.get(k, np.nan)) for k in true_targets.keys()}
-
-                for p, v_true in true_targets.items():
-                    v_hat = hat_targets.get(p, np.nan)
-                    records.append(
-                        {
-                            "rep": rep,
-                            "subject_id": sid,
-                            "param": p,
-                            "true": float(v_true),
-                            "hat": float(v_hat) if np.isfinite(v_hat) else np.nan,
-                        }
-                    )
+    try:
+        if n_jobs <= 1 or n_reps <= 1:
+            _run_reps_sequential()
+        else:
+            max_workers = min(n_jobs, n_reps)
+            try:
+                executor = ProcessPoolExecutor(
+                    max_workers=max_workers,
+                    initializer=_init_worker_context,
+                    initargs=(
+                        config,
+                        generator,
+                        model,
+                        estimator,
+                        subject_ids,
+                        plan.subjects,
+                        str(out_dir),
+                    ),
+                )
+            except (PermissionError, OSError) as exc:
+                warnings.warn(
+                    (
+                        f"Parallel parameter recovery unavailable ({exc}). "
+                        "Falling back to sequential execution."
+                    ),
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                _run_reps_sequential()
             else:
-                theta_true = theta_true_raw
-                theta_hat = theta_hat_raw
-                for p, v_true in theta_true.items():
-                    v_hat = theta_hat.get(p, np.nan)
-                    records.append(
-                        {
-                            "rep": rep,
-                            "subject_id": sid,
-                            "param": p,
-                            "true": float(v_true),
-                            "hat": float(v_hat) if np.isfinite(v_hat) else np.nan,
-                        }
-                    )
-
-        if progress_callback is not None:
-            progress_callback(rep + 1, n_reps)
+                with executor as ex:
+                    futures = [
+                        ex.submit(_run_single_rep_from_worker, rep, rep_seeds[rep])
+                        for rep in range(n_reps)
+                    ]
+                    for fut in as_completed(futures):
+                        rep_result = fut.result()
+                        _accumulate_rep_result(rep_result)
+                        completed += 1
+                        if progress_callback is not None:
+                            progress_callback(completed, n_reps)
+                        elif pbar is not None:
+                            pbar.update(1)
+    finally:
+        if pbar is not None:
+            pbar.close()
 
     df = pd.DataFrame.from_records(records)
     df.sort_values(["param", "rep", "subject_id"], inplace=True)
@@ -783,6 +937,7 @@ def run_parameter_recovery(
 
     # Save diagnostics
     if config.output.save_fit_diagnostics:
+        fit_diags.sort(key=lambda x: int(x.get("rep", -1)))
         with (out_dir / "parameter_recovery_fit_diagnostics.jsonl").open("w", encoding="utf-8") as f:
             for row in fit_diags:
                 f.write(json.dumps(row, default=str) + "\n")
