@@ -16,6 +16,7 @@ from comp_model_impl.models import (
     VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
     Vicarious_RL,
+    Vicarious_RL_Stay,
     Vicarious_VS,
     Vicarious_VS_Stay,
     UnidentifiableQRL,
@@ -34,6 +35,8 @@ def test_make_registry_contains_expected_components():
 
     assert "Vicarious_RL" in r.models.names()
     assert r.models.get("Vicarious_RL") is Vicarious_RL
+    assert "Vicarious_RL_Stay" in r.models.names()
+    assert r.models.get("Vicarious_RL_Stay") is Vicarious_RL_Stay
 
     assert "Vicarious_VS" in r.models.names()
     assert r.models.get("Vicarious_VS") is Vicarious_VS

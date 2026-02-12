@@ -16,6 +16,7 @@ Examples
 """
 
 from .vicarious_rl import VicariousRLStanAdapter
+from .vicarious_rl_stay import VicariousRLStayStanAdapter
 from .vicarious_ap_vs import VicariousAPVSStanAdapter
 from .vicarious_ap_db_stay import VicariousAPDBStayStanAdapter
 from .vicarious_dir_db_stay import VicariousDirDBStayStanAdapter
@@ -26,6 +27,7 @@ from .vs import VSStanAdapter
 from .vicarious_vs import VicariousVSStanAdapter
 from .vicarious_vs_stay import VicariousVSStayStanAdapter
 from .vicarious_rl_within_subject import VicariousRLWithinSubjectStanAdapter
+from .vicarious_rl_stay_within_subject import VicariousRLStayWithinSubjectStanAdapter
 from .vicQ_ap_dualw_stay import VicQAPDualWStayStanAdapter
 from .vicQ_ap_indep_dualw import VicQAPIndepDualWStanAdapter
 from .vicQ_ap_dualw_stay_within_subject import VicQAPDualWStayWithinSubjectStanAdapter
@@ -38,6 +40,7 @@ __all__ = [
     "StanAdapter",
     "QRLStanAdapter",
     "VicariousRLStanAdapter",
+    "VicariousRLStayStanAdapter",
     "VicariousAPVSStanAdapter",
     "VicariousAPDBStayStanAdapter",
     "VicariousDirDBStayStanAdapter",
@@ -47,6 +50,7 @@ __all__ = [
     "VicariousVSStanAdapter",
     "VicariousVSStayStanAdapter",
     "VicariousRLWithinSubjectStanAdapter",
+    "VicariousRLStayWithinSubjectStanAdapter",
     "VicQAPDualWStayStanAdapter",
     "VicQAPIndepDualWStanAdapter",
     "VicQAPDualWStayWithinSubjectStanAdapter",

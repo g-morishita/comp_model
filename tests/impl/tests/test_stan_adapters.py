@@ -17,7 +17,9 @@ from comp_model_impl.estimators.stan.adapters import (
     VicariousDBStayWithinSubjectStanAdapter,
     VicariousDirDBStayStanAdapter,
     VicariousRLStanAdapter,
+    VicariousRLStayStanAdapter,
     VicariousRLWithinSubjectStanAdapter,
+    VicariousRLStayWithinSubjectStanAdapter,
     VicariousVSStanAdapter,
     VicariousVSStayStanAdapter,
     VSStanAdapter,
@@ -35,6 +37,7 @@ from comp_model_impl.models import (
     Vicarious_DB_Stay,
     Vicarious_Dir_DB_Stay,
     Vicarious_RL,
+    Vicarious_RL_Stay,
     Vicarious_VS,
     Vicarious_VS_Stay,
 )
@@ -225,6 +228,29 @@ def test_vicarious_rl_adapter_adds_constants_and_priors():
     assert data["beta_upper"] == pytest.approx(12.0)
 
 
+def test_vicarious_rl_stay_adapter_adds_constants_and_priors():
+    """Vicarious-RL-Stay adapter exposes expected priors and data constants."""
+    model = Vicarious_RL_Stay(beta_max=12.0, kappa_abs_max=1.5)
+    adapter = VicariousRLStayStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "vicarious_rl_stay"
+    assert adapter.required_priors("indiv") == ["alpha_o", "beta", "kappa"]
+    assert adapter.required_priors("hier") == [
+        "mu_alpha_o",
+        "sd_alpha_o",
+        "mu_beta",
+        "sd_beta",
+        "mu_kappa",
+        "sd_kappa",
+    ]
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(12.0)
+    assert data["kappa_abs_max"] == pytest.approx(1.5)
+
+
 def test_qrl_adapter_adds_constants_and_priors():
     """QRL adapter exposes expected priors and beta bounds."""
     model = QRL(beta_max=9.0)
@@ -274,6 +300,24 @@ def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
     assert data["beta_upper"] == pytest.approx(18.0)
+
+
+def test_vicarious_rl_stay_within_subject_adapter_uses_base_model_constants():
+    """Within-subject Vicarious-RL-Stay adapter uses base-model bounds."""
+    wrapped = wrap_model_with_shared_delta_conditions(
+        model=Vicarious_RL_Stay(beta_max=18.0, kappa_abs_max=1.3),
+        conditions=["A", "B"],
+        baseline_condition="A",
+    )
+    adapter = resolve_stan_adapter(wrapped)
+    assert isinstance(adapter, VicariousRLStayWithinSubjectStanAdapter)
+    assert adapter.program("indiv").key == "vicarious_rl_stay_within_subject"
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(18.0)
+    assert data["kappa_abs_max"] == pytest.approx(1.3)
 
 
 def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
@@ -335,6 +379,7 @@ def test_resolve_stan_adapter_for_base_models():
     assert isinstance(resolve_stan_adapter(QRL()), QRLStanAdapter)
     assert isinstance(resolve_stan_adapter(VS()), VSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_RL()), VicariousRLStanAdapter)
+    assert isinstance(resolve_stan_adapter(Vicarious_RL_Stay()), VicariousRLStayStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_AP_VS()), VicariousAPVSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_AP_DB_STAY()), VicariousAPDBStayStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_Dir_DB_Stay()), VicariousDirDBStayStanAdapter)

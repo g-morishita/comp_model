@@ -23,6 +23,7 @@ from ....models import (
     VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
     Vicarious_RL,
+    Vicarious_RL_Stay,
     Vicarious_AP_VS,
     Vicarious_AP_DB_STAY,
     Vicarious_Dir_DB_Stay,
@@ -34,6 +35,7 @@ from ....models import (
 )
 
 from .vicarious_rl_within_subject import VicariousRLWithinSubjectStanAdapter
+from .vicarious_rl_stay_within_subject import VicariousRLStayWithinSubjectStanAdapter
 from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAdapter
 from .vicQ_ap_dualw_stay_within_subject import VicQAPDualWStayWithinSubjectStanAdapter
 from .vicQ_ap_dualw_nostay_within_subject import VicQAPDualWNoStayWithinSubjectStanAdapter
@@ -41,6 +43,7 @@ from .vs_within_subject import VSWithinSubjectStanAdapter
 from .base import StanAdapter
 from .qrl import QRLStanAdapter
 from .vicarious_rl import VicariousRLStanAdapter
+from .vicarious_rl_stay import VicariousRLStayStanAdapter
 from .vicarious_ap_vs import VicariousAPVSStanAdapter
 from .vicarious_ap_db_stay import VicariousAPDBStayStanAdapter
 from .vicarious_dir_db_stay import VicariousDirDBStayStanAdapter
@@ -79,6 +82,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
             return VSWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_RL):
             return VicariousRLWithinSubjectStanAdapter(model)
+        if isinstance(base, Vicarious_RL_Stay):
+            return VicariousRLStayWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_DB_Stay):
             return VicariousDBStayWithinSubjectStanAdapter(model)
         if isinstance(base, VicQ_AP_DualW_Stay):
@@ -95,6 +100,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
         return QRLStanAdapter(model)
     if isinstance(model, Vicarious_RL):
         return VicariousRLStanAdapter(model)
+    if isinstance(model, Vicarious_RL_Stay):
+        return VicariousRLStayStanAdapter(model)
     if isinstance(model, Vicarious_AP_VS):
         return VicariousAPVSStanAdapter(model)
     if isinstance(model, Vicarious_AP_DB_STAY):

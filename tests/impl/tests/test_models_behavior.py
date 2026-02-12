@@ -10,6 +10,7 @@ from comp_model_core.spec import EnvironmentSpec, OutcomeType, StateKind
 from comp_model_impl.models.qrl.qrl import QRL
 from comp_model_impl.models.vs.vs import VS
 from comp_model_impl.models.vicarious_rl.vicarious_rl import Vicarious_RL
+from comp_model_impl.models.vicarious_rl_stay.vicarious_rl_stay import Vicarious_RL_Stay
 from comp_model_impl.models.vicarious_vs.vicarious_vs import Vicarious_VS
 
 
@@ -93,6 +94,19 @@ def test_vicarious_rl_social_update_and_no_private_update() -> None:
     assert np.allclose(probs_no_outcome, np.array([0.5, 0.5]))
 
 
+def test_vicarious_rl_stay_tracks_private_action_for_perseveration() -> None:
+    spec = _spec(is_social=True)
+    model = Vicarious_RL_Stay(alpha_o=0.0, beta=1.0, kappa=1.0)
+    model.reset_block(spec=spec)
+
+    probs0 = model.action_probs(state=0, spec=spec)
+    assert np.allclose(probs0, np.array([0.5, 0.5]))
+
+    model.update(state=0, action=1, outcome=None, spec=spec)
+    probs1 = model.action_probs(state=0, spec=spec)
+    assert probs1[1] > probs1[0]
+
+
 def test_vicarious_vs_social_update_combines_pseudo_and_outcome() -> None:
     spec = _spec(is_social=True)
     model = Vicarious_VS(alpha_o=0.5, alpha_a=0.2, beta=1.0, pseudo_reward=1.0)
@@ -124,6 +138,8 @@ def test_model_supports_flags() -> None:
 
     assert Vicarious_RL().supports(social_spec)
     assert not Vicarious_RL().supports(asocial_spec)
+    assert Vicarious_RL_Stay().supports(social_spec)
+    assert not Vicarious_RL_Stay().supports(asocial_spec)
 
     assert Vicarious_VS().supports(social_spec)
     assert not Vicarious_VS().supports(asocial_spec)

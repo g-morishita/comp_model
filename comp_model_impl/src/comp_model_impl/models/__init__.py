@@ -49,6 +49,7 @@ comp_model_impl.generators.event_log
 
 from __future__ import annotations
 from .vicarious_rl.vicarious_rl import Vicarious_RL
+from .vicarious_rl_stay.vicarious_rl_stay import Vicarious_RL_Stay
 from .vicarious_vs.vicarious_vs import Vicarious_VS
 from .qrl.qrl import QRL
 from .vs.vs import VS
@@ -69,6 +70,7 @@ from .vicQ_ap_dualw_nostay.vicQ_ap_dualw_nostay import VicQ_AP_DualW_NoStay
 
 __all__ = [
     "Vicarious_RL",
+    "Vicarious_RL_Stay",
     "Vicarious_VS",
     "QRL",
     "VS",

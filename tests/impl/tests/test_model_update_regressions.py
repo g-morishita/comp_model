@@ -19,6 +19,7 @@ from comp_model_impl.models import (
     Vicarious_DB_Stay,
     Vicarious_Dir_DB_Stay,
     Vicarious_RL,
+    Vicarious_RL_Stay,
     Vicarious_VS,
     Vicarious_VS_Stay,
 )
@@ -59,6 +60,7 @@ def _all_model_cases() -> list[tuple[str, ModelFactory, bool]]:
         ("UnidentifiableQRL", lambda: UnidentifiableQRL(alpha_1=0.2, alpha_2=0.3, beta=1.0), False),
         ("VS", lambda: VS(alpha_p=0.5, alpha_i=0.3, beta=1.0, kappa=0.5), True),
         ("Vicarious_RL", lambda: Vicarious_RL(alpha_o=0.5, beta=1.0), True),
+        ("Vicarious_RL_Stay", lambda: Vicarious_RL_Stay(alpha_o=0.5, beta=1.0, kappa=0.5), True),
         ("Vicarious_VS", lambda: Vicarious_VS(alpha_o=0.5, alpha_a=0.3, beta=1.0), True),
         ("Vicarious_VS_Stay", lambda: Vicarious_VS_Stay(alpha_o=0.5, alpha_a=0.3, beta=1.0, kappa=0.5), True),
         ("Vicarious_AP_VS", lambda: Vicarious_AP_VS(alpha_o=0.5, alpha_vs_base=0.3, alpha_a=0.2, beta=1.0, kappa=0.5), True),
@@ -134,6 +136,7 @@ def _social_learning_cases() -> list[tuple[str, ModelFactory]]:
     cases: list[tuple[str, ModelFactory]] = [
         ("VS", lambda: VS(alpha_p=0.0, alpha_i=0.5, beta=1.0, kappa=0.0)),
         ("Vicarious_RL", lambda: Vicarious_RL(alpha_o=0.5, beta=1.0)),
+        ("Vicarious_RL_Stay", lambda: Vicarious_RL_Stay(alpha_o=0.5, beta=1.0, kappa=0.0)),
         ("Vicarious_VS", lambda: Vicarious_VS(alpha_o=0.5, alpha_a=0.0, beta=1.0)),
         ("Vicarious_VS_Stay", lambda: Vicarious_VS_Stay(alpha_o=0.5, alpha_a=0.0, beta=1.0, kappa=0.0)),
         ("Vicarious_AP_VS", lambda: Vicarious_AP_VS(alpha_o=0.5, alpha_vs_base=0.0, alpha_a=0.0, beta=1.0, kappa=0.0)),
@@ -170,6 +173,7 @@ def test_social_update_increases_preference_for_observed_demo_action(
 def _stay_regression_cases() -> list[tuple[str, ModelFactory]]:
     cases: list[tuple[str, ModelFactory]] = [
         ("VS", lambda: VS(alpha_p=0.0, alpha_i=0.0, beta=1.0, kappa=2.0)),
+        ("Vicarious_RL_Stay", lambda: Vicarious_RL_Stay(alpha_o=0.0, beta=1.0, kappa=2.0)),
         ("Vicarious_AP_VS", lambda: Vicarious_AP_VS(alpha_o=0.0, alpha_vs_base=0.0, alpha_a=0.0, beta=1.0, kappa=2.0)),
         ("Vicarious_VS_Stay", lambda: Vicarious_VS_Stay(alpha_o=0.0, alpha_a=0.0, beta=1.0, kappa=2.0)),
         ("Vicarious_DB_Stay", lambda: Vicarious_DB_Stay(alpha_o=0.0, demo_bias=0.0, beta=1.0, kappa=2.0)),

@@ -24,6 +24,7 @@ from .models import (
     VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
     Vicarious_RL,
+    Vicarious_RL_Stay,
     Vicarious_VS,
     Vicarious_VS_Stay,
     UnidentifiableQRL,
@@ -50,6 +51,7 @@ def make_registry() -> Registry:
     r.models.register("QRL", QRL)
     r.models.register("VS", VS)
     r.models.register("Vicarious_RL", Vicarious_RL)
+    r.models.register("Vicarious_RL_Stay", Vicarious_RL_Stay)
     r.models.register("Vicarious_VS", Vicarious_VS)
     r.models.register("Vicarious_VS_Stay", Vicarious_VS_Stay)
     r.models.register("UnidentifiableQRL", UnidentifiableQRL)
