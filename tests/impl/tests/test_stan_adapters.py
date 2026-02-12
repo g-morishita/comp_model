@@ -6,8 +6,10 @@ import pytest
 
 from comp_model_impl.estimators.stan.adapters import (
     QRLStanAdapter,
-    VicQAPDualWStanAdapter,
-    VicQAPDualWWithinSubjectStanAdapter,
+    VicQAPDualWStayStanAdapter,
+    VicQAPDualWStayWithinSubjectStanAdapter,
+    VicQAPDualWNoStayStanAdapter,
+    VicQAPDualWNoStayWithinSubjectStanAdapter,
     VicQAPIndepDualWStanAdapter,
     VicariousAPVSStanAdapter,
     VicariousAPDBStayStanAdapter,
@@ -25,7 +27,8 @@ from comp_model_impl.estimators.stan.adapters.registry import resolve_stan_adapt
 from comp_model_impl.models import (
     QRL,
     VS,
-    VicQ_AP_DualW,
+    VicQ_AP_DualW_Stay,
+    VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
     Vicarious_AP_DB_STAY,
     Vicarious_AP_VS,
@@ -122,12 +125,12 @@ def test_vicarious_ap_db_stay_adapter_adds_constants_and_priors():
     assert data["demo_bias_rel_abs_max"] == pytest.approx(4.0)
 
 
-def test_vicq_ap_dualw_adapter_adds_constants_and_priors():
-    """VicQ-AP-DualW adapter exposes expected priors and data constants."""
-    model = VicQ_AP_DualW(beta_max=19.0, kappa_abs_max=1.75)
-    adapter = VicQAPDualWStanAdapter(model=model)
+def test_vicq_ap_dualw_stay_adapter_adds_constants_and_priors():
+    """VicQ-AP-DualW-Stay adapter exposes expected priors and data constants."""
+    model = VicQ_AP_DualW_Stay(beta_max=19.0, kappa_abs_max=1.75)
+    adapter = VicQAPDualWStayStanAdapter(model=model)
 
-    assert adapter.program("indiv").key == "vicQ_ap_dualw"
+    assert adapter.program("indiv").key == "vicQ_ap_dualw_stay"
     assert adapter.required_priors("indiv") == ["alpha_o", "alpha_a", "beta", "w", "kappa"]
     assert "mu_beta" in adapter.required_priors("hier")
     assert "mu_w" in adapter.required_priors("hier")
@@ -137,6 +140,22 @@ def test_vicq_ap_dualw_adapter_adds_constants_and_priors():
     assert data["beta_lower"] == pytest.approx(1e-6)
     assert data["beta_upper"] == pytest.approx(19.0)
     assert data["kappa_abs_max"] == pytest.approx(1.75)
+
+
+def test_vicq_ap_dualw_nostay_adapter_adds_constants_and_priors():
+    """VicQ-AP-DualW-NoStay adapter exposes expected priors and data constants."""
+    model = VicQ_AP_DualW_NoStay(beta_max=19.0)
+    adapter = VicQAPDualWNoStayStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "vicQ_ap_dualw_nostay"
+    assert adapter.required_priors("indiv") == ["alpha_o", "alpha_a", "beta", "w"]
+    assert "mu_beta" in adapter.required_priors("hier")
+    assert "mu_w" in adapter.required_priors("hier")
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(19.0)
 
 
 def test_vicq_ap_indep_dualw_adapter_adds_constants_and_priors():
@@ -276,22 +295,39 @@ def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
     assert data["demo_bias_abs_max"] == pytest.approx(2.2)
 
 
-def test_vicq_ap_dualw_within_subject_adapter_uses_base_model_constants():
-    """Within-subject VicQ-AP-DualW adapter uses base-model bounds."""
+def test_vicq_ap_dualw_stay_within_subject_adapter_uses_base_model_constants():
+    """Within-subject VicQ-AP-DualW-Stay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=VicQ_AP_DualW(beta_max=17.5, kappa_abs_max=1.7),
+        model=VicQ_AP_DualW_Stay(beta_max=17.5, kappa_abs_max=1.7),
         conditions=["A", "B"],
         baseline_condition="A",
     )
     adapter = resolve_stan_adapter(wrapped)
-    assert isinstance(adapter, VicQAPDualWWithinSubjectStanAdapter)
-    assert adapter.program("indiv").key == "vicQ_ap_dualw_within_subject"
+    assert isinstance(adapter, VicQAPDualWStayWithinSubjectStanAdapter)
+    assert adapter.program("indiv").key == "vicQ_ap_dualw_stay_within_subject"
 
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
     assert data["beta_upper"] == pytest.approx(17.5)
     assert data["kappa_abs_max"] == pytest.approx(1.7)
+
+
+def test_vicq_ap_dualw_nostay_within_subject_adapter_uses_base_model_constants():
+    """Within-subject VicQ-AP-DualW-NoStay adapter uses base-model bounds."""
+    wrapped = wrap_model_with_shared_delta_conditions(
+        model=VicQ_AP_DualW_NoStay(beta_max=17.5),
+        conditions=["A", "B"],
+        baseline_condition="A",
+    )
+    adapter = resolve_stan_adapter(wrapped)
+    assert isinstance(adapter, VicQAPDualWNoStayWithinSubjectStanAdapter)
+    assert adapter.program("indiv").key == "vicQ_ap_dualw_nostay_within_subject"
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(17.5)
 
 
 def test_resolve_stan_adapter_for_base_models():
@@ -306,4 +342,5 @@ def test_resolve_stan_adapter_for_base_models():
     assert isinstance(resolve_stan_adapter(Vicarious_VS()), VicariousVSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_VS_Stay()), VicariousVSStayStanAdapter)
     assert isinstance(resolve_stan_adapter(VicQ_AP_IndepDualW()), VicQAPIndepDualWStanAdapter)
-    assert isinstance(resolve_stan_adapter(VicQ_AP_DualW()), VicQAPDualWStanAdapter)
+    assert isinstance(resolve_stan_adapter(VicQ_AP_DualW_Stay()), VicQAPDualWStayStanAdapter)
+    assert isinstance(resolve_stan_adapter(VicQ_AP_DualW_NoStay()), VicQAPDualWNoStayStanAdapter)

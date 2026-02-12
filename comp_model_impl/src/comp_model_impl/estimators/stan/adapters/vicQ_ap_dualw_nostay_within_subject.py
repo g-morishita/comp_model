@@ -1,4 +1,4 @@
-"""Stan adapter for within-subject (shared+delta) VicQ_AP_DualW models."""
+"""Stan adapter for within-subject (shared+delta) VicQ_AP_DualW_NoStay models."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any, Sequence
 from comp_model_core.interfaces.model import ComputationalModel
 
 from .base import StanAdapter, StanProgramRef
-from ....models import VicQ_AP_DualW
+from ....models import VicQ_AP_DualW_NoStay
 from ....models.within_subject_shared_delta import (
     ConditionedSharedDeltaModel,
     ConditionedSharedDeltaSocialModel,
@@ -16,8 +16,8 @@ from ....models.within_subject_shared_delta import (
 
 
 @dataclass(frozen=True, slots=True)
-class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
-    """Adapter for :class:`VicQ_AP_DualW` wrapped in shared+delta conditioner."""
+class VicQAPDualWNoStayWithinSubjectStanAdapter(StanAdapter):
+    """Adapter for :class:`VicQ_AP_DualW_NoStay` wrapped in shared+delta conditioner."""
 
     model: ComputationalModel
 
@@ -28,21 +28,21 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
                 f"got {type(self.model).__name__}"
             )
         base = getattr(self.model, "base_model", None)
-        if not isinstance(base, VicQ_AP_DualW):
+        if not isinstance(base, VicQ_AP_DualW_NoStay):
             raise TypeError(
-                f"{self.__class__.__name__} requires base_model={VicQ_AP_DualW.__name__}, "
+                f"{self.__class__.__name__} requires base_model={VicQ_AP_DualW_NoStay.__name__}, "
                 f"got {type(base).__name__}"
             )
 
     @property
-    def base_model(self) -> VicQ_AP_DualW:
+    def base_model(self) -> VicQ_AP_DualW_NoStay:
         return getattr(self.model, "base_model")
 
     def program(self, family: str) -> StanProgramRef:
         return StanProgramRef(
             family=family,
-            key="vicQ_ap_dualw_within_subject",
-            program_name=f"vicQ_ap_dualw_within_subject_{family}",
+            key="vicQ_ap_dualw_nostay_within_subject",
+            program_name=f"vicQ_ap_dualw_nostay_within_subject_{family}",
         )
 
     def required_priors(self, family: str) -> Sequence[str]:
@@ -56,8 +56,6 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
                 "beta__delta",
                 "w__shared",
                 "w__delta",
-                "kappa__shared",
-                "kappa__delta",
             ]
 
         if family == "hier":
@@ -70,8 +68,6 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
                 "sd_beta__shared",
                 "mu_w__shared",
                 "sd_w__shared",
-                "mu_kappa__shared",
-                "sd_kappa__shared",
                 "mu_alpha_o__delta",
                 "sd_alpha_o__delta",
                 "mu_alpha_a__delta",
@@ -80,8 +76,6 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
                 "sd_beta__delta",
                 "mu_w__delta",
                 "sd_w__delta",
-                "mu_kappa__delta",
-                "sd_kappa__delta",
             ]
 
         raise ValueError(f"Unknown family: {family!r}")
@@ -89,7 +83,6 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
     def augment_subject_data(self, data: dict[str, Any]) -> None:
         data["beta_lower"] = float(1e-6)
         data["beta_upper"] = float(getattr(self.base_model, "beta_max"))
-        data["kappa_abs_max"] = float(getattr(self.base_model, "kappa_abs_max"))
 
     def augment_study_data(self, data: dict[str, Any]) -> None:
         self.augment_subject_data(data)
@@ -100,17 +93,14 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
             "alpha_a_hat",
             "beta_hat",
             "w_hat",
-            "kappa_hat",
             "alpha_o__shared_z_hat",
             "alpha_a__shared_z_hat",
             "beta__shared_z_hat",
             "w__shared_z_hat",
-            "kappa__shared_z_hat",
             "alpha_o__delta_z_hat",
             "alpha_a__delta_z_hat",
             "beta__delta_z_hat",
             "w__delta_z_hat",
-            "kappa__delta_z_hat",
         ]
 
     def population_var_names(self) -> Sequence[str]:
@@ -119,7 +109,6 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
             "alpha_a_pop",
             "beta_pop",
             "w_pop",
-            "kappa_pop",
             "mu_alpha_o__shared_hat",
             "sd_alpha_o__shared_hat",
             "mu_alpha_a__shared_hat",
@@ -128,8 +117,6 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
             "sd_beta__shared_hat",
             "mu_w__shared_hat",
             "sd_w__shared_hat",
-            "mu_kappa__shared_hat",
-            "sd_kappa__shared_hat",
             "mu_alpha_o__delta_hat",
             "sd_alpha_o__delta_hat",
             "mu_alpha_a__delta_hat",
@@ -138,6 +125,4 @@ class VicQAPDualWWithinSubjectStanAdapter(StanAdapter):
             "sd_beta__delta_hat",
             "mu_w__delta_hat",
             "sd_w__delta_hat",
-            "mu_kappa__delta_hat",
-            "sd_kappa__delta_hat",
         ]

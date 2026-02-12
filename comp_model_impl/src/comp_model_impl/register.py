@@ -20,7 +20,8 @@ from .bandits.bernoulli import BernoulliBanditEnv
 from .models import (
     QRL,
     VS,
-    VicQ_AP_DualW,
+    VicQ_AP_DualW_Stay,
+    VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
     Vicarious_RL,
     Vicarious_VS,
@@ -55,7 +56,8 @@ def make_registry() -> Registry:
     r.models.register("Vicarious_AP_DB_STAY", Vicarious_AP_DB_STAY)
     r.models.register("Vicarious_Dir_DB_Stay", Vicarious_Dir_DB_Stay)
     r.models.register("Vicarious_DB_Stay", Vicarious_DB_Stay)
-    r.models.register("VicQ_AP_DualW", VicQ_AP_DualW)
+    r.models.register("VicQ_AP_DualW_Stay", VicQ_AP_DualW_Stay)
+    r.models.register("VicQ_AP_DualW_NoStay", VicQ_AP_DualW_NoStay)
     r.models.register("VicQ_AP_IndepDualW", VicQ_AP_IndepDualW)
 
     # Bandit environments

@@ -63,8 +63,9 @@ from .within_subject_shared_delta import (
 from .vicarious_vs_stay.vicarious_vs_stay import Vicarious_VS_Stay
 from .unidentifiable_qrl.unidentifiable_qrl import UnidentifiableQRL
 from .vicarious_ap_vs.vicarious_ap_vs import Vicarious_AP_VS
-from .vicQ_ap_dualw.vicQ_ap_dualw import VicQ_AP_DualW
-from .vicQ_ap_dualw.vicQ_ap_indep_dualw import VicQ_AP_IndepDualW
+from .vicQ_ap_dualw_stay.vicQ_ap_dualw_stay import VicQ_AP_DualW_Stay
+from .vicQ_ap_dualw_stay.vicQ_ap_indep_dualw import VicQ_AP_IndepDualW
+from .vicQ_ap_dualw_nostay.vicQ_ap_dualw_nostay import VicQ_AP_DualW_NoStay
 
 __all__ = [
     "Vicarious_RL",
@@ -74,7 +75,8 @@ __all__ = [
     "Vicarious_VS_Stay",
     "UnidentifiableQRL",
     "Vicarious_AP_VS",
-    "VicQ_AP_DualW",
+    "VicQ_AP_DualW_Stay",
+    "VicQ_AP_DualW_NoStay",
     "VicQ_AP_IndepDualW",
     "Vicarious_AP_DB_STAY",
     "Vicarious_Dir_DB_Stay",

@@ -1,11 +1,11 @@
-"""Parameter schema for the mixture dual-weight VicQ+AP model."""
+"""Parameter schema for the mixture dual-weight VicQ+AP stay model."""
 
 from __future__ import annotations
 
 from comp_model_core.params import Bound, BoundedTanh, ParamDef, ParameterSchema, Sigmoid
 
 
-def vicQ_ap_dualw_schema(
+def vicQ_ap_dualw_stay_schema(
     *,
     alpha_o_default: float = 0.2,
     alpha_a_default: float = 0.2,
@@ -15,7 +15,7 @@ def vicQ_ap_dualw_schema(
     beta_max: float = 20.0,
     kappa_abs_max: float = 5.0,
 ) -> ParameterSchema:
-    """Construct the VicQ_AP_DualW (beta-mix) parameter schema."""
+    """Construct the VicQ_AP_DualW_Stay (beta-mix) parameter schema."""
 
     return ParameterSchema(
         params=(

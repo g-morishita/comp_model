@@ -34,11 +34,11 @@ from comp_model_core.params import ParameterSchema
 from comp_model_core.interfaces.block_runner import SocialObservation
 from comp_model_core.spec import EnvironmentSpec
 
-from .schema import vicQ_ap_dualw_schema
+from .schema_stay import vicQ_ap_dualw_stay_schema
 from ..common import perseveration_bonus
 
 @dataclass(slots=True)
-class VicQ_AP_DualW(SocialComputationalModel):
+class VicQ_AP_DualW_Stay(SocialComputationalModel):
     """Vicarious-Q + Action-Policy Learning (Social RL)
 
     Parameters
@@ -153,7 +153,7 @@ class VicQ_AP_DualW(SocialComputationalModel):
         -------
         ParameterSchema
         """
-        return vicQ_ap_dualw_schema(
+        return vicQ_ap_dualw_stay_schema(
             alpha_o_default=float(self.alpha_o),
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),

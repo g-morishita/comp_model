@@ -12,7 +12,8 @@ from comp_model_impl.demonstrators.rl_agent import RLDemonstrator
 from comp_model_impl.models import (
     QRL,
     VS,
-    VicQ_AP_DualW,
+    VicQ_AP_DualW_Stay,
+    VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
     Vicarious_RL,
     Vicarious_VS,
@@ -40,8 +41,10 @@ def test_make_registry_contains_expected_components():
     assert "Vicarious_VS_Stay" in r.models.names()
     assert r.models.get("Vicarious_VS_Stay") is Vicarious_VS_Stay
 
-    assert "VicQ_AP_DualW" in r.models.names()
-    assert r.models.get("VicQ_AP_DualW") is VicQ_AP_DualW
+    assert "VicQ_AP_DualW_Stay" in r.models.names()
+    assert r.models.get("VicQ_AP_DualW_Stay") is VicQ_AP_DualW_Stay
+    assert "VicQ_AP_DualW_NoStay" in r.models.names()
+    assert r.models.get("VicQ_AP_DualW_NoStay") is VicQ_AP_DualW_NoStay
     assert "VicQ_AP_IndepDualW" in r.models.names()
     assert r.models.get("VicQ_AP_IndepDualW") is VicQ_AP_IndepDualW
 
