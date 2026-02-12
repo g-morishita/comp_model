@@ -12,6 +12,8 @@ from comp_model_impl.models.vs.vs import VS
 from comp_model_impl.models.vicarious_rl.vicarious_rl import Vicarious_RL
 from comp_model_impl.models.vicarious_rl_stay.vicarious_rl_stay import Vicarious_RL_Stay
 from comp_model_impl.models.vicarious_vs.vicarious_vs import Vicarious_VS
+from comp_model_impl.models.ap_rl_nostay.ap_rl_nostay import AP_RL_NoStay
+from comp_model_impl.models.ap_rl_stay.ap_rl_stay import AP_RL_Stay
 
 
 def _spec(*, is_social: bool) -> EnvironmentSpec:
@@ -107,6 +109,36 @@ def test_vicarious_rl_stay_tracks_private_action_for_perseveration() -> None:
     assert probs1[1] > probs1[0]
 
 
+def test_ap_rl_nostay_uses_demo_action_policy_and_ignores_private_update() -> None:
+    spec = _spec(is_social=True)
+    model = AP_RL_NoStay(alpha_a=0.5, beta=4.0)
+    model.reset_block(spec=spec)
+
+    probs0 = model.action_probs(state=0, spec=spec)
+    assert np.allclose(probs0, np.array([0.5, 0.5]))
+
+    model.social_update(state=0, social=SocialObservation(others_choices=[1]), spec=spec)
+    probs1 = model.action_probs(state=0, spec=spec)
+    assert probs1[1] > probs1[0]
+
+    model.update(state=0, action=1, outcome=None, spec=spec)
+    probs2 = model.action_probs(state=0, spec=spec)
+    assert np.allclose(probs2, probs1)
+
+
+def test_ap_rl_stay_tracks_private_action_for_perseveration() -> None:
+    spec = _spec(is_social=True)
+    model = AP_RL_Stay(alpha_a=0.0, beta=1.0, kappa=1.0)
+    model.reset_block(spec=spec)
+
+    probs0 = model.action_probs(state=0, spec=spec)
+    assert np.allclose(probs0, np.array([0.5, 0.5]))
+
+    model.update(state=0, action=1, outcome=None, spec=spec)
+    probs1 = model.action_probs(state=0, spec=spec)
+    assert probs1[1] > probs1[0]
+
+
 def test_vicarious_vs_social_update_combines_pseudo_and_outcome() -> None:
     spec = _spec(is_social=True)
     model = Vicarious_VS(alpha_o=0.5, alpha_a=0.2, beta=1.0, pseudo_reward=1.0)
@@ -140,6 +172,10 @@ def test_model_supports_flags() -> None:
     assert not Vicarious_RL().supports(asocial_spec)
     assert Vicarious_RL_Stay().supports(social_spec)
     assert not Vicarious_RL_Stay().supports(asocial_spec)
+    assert AP_RL_NoStay().supports(social_spec)
+    assert not AP_RL_NoStay().supports(asocial_spec)
+    assert AP_RL_Stay().supports(social_spec)
+    assert not AP_RL_Stay().supports(asocial_spec)
 
     assert Vicarious_VS().supports(social_spec)
     assert not Vicarious_VS().supports(asocial_spec)

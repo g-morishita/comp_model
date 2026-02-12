@@ -23,6 +23,8 @@ from .models import (
     VicQ_AP_DualW_Stay,
     VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
+    AP_RL_Stay,
+    AP_RL_NoStay,
     Vicarious_RL,
     Vicarious_RL_Stay,
     Vicarious_VS,
@@ -61,6 +63,8 @@ def make_registry() -> Registry:
     r.models.register("VicQ_AP_DualW_Stay", VicQ_AP_DualW_Stay)
     r.models.register("VicQ_AP_DualW_NoStay", VicQ_AP_DualW_NoStay)
     r.models.register("VicQ_AP_IndepDualW", VicQ_AP_IndepDualW)
+    r.models.register("AP_RL_Stay", AP_RL_Stay)
+    r.models.register("AP_RL_NoStay", AP_RL_NoStay)
 
     # Bandit environments
     r.bandits.register("BernoulliBanditEnv", BernoulliBanditEnv)

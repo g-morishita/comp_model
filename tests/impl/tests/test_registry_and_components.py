@@ -11,6 +11,8 @@ from comp_model_impl.demonstrators.noisy_best import NoisyBestArmDemonstrator
 from comp_model_impl.demonstrators.rl_agent import RLDemonstrator
 from comp_model_impl.models import (
     QRL,
+    AP_RL_Stay,
+    AP_RL_NoStay,
     VS,
     VicQ_AP_DualW_Stay,
     VicQ_AP_DualW_NoStay,
@@ -50,6 +52,11 @@ def test_make_registry_contains_expected_components():
     assert r.models.get("VicQ_AP_DualW_NoStay") is VicQ_AP_DualW_NoStay
     assert "VicQ_AP_IndepDualW" in r.models.names()
     assert r.models.get("VicQ_AP_IndepDualW") is VicQ_AP_IndepDualW
+
+    assert "AP_RL_Stay" in r.models.names()
+    assert r.models.get("AP_RL_Stay") is AP_RL_Stay
+    assert "AP_RL_NoStay" in r.models.names()
+    assert r.models.get("AP_RL_NoStay") is AP_RL_NoStay
 
     # Bandits
     assert "BernoulliBanditEnv" in r.bandits.names()

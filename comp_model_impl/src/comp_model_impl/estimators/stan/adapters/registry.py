@@ -19,6 +19,8 @@ from comp_model_core.interfaces.model import ComputationalModel
 from ....models import (
     QRL,
     VS,
+    AP_RL_Stay,
+    AP_RL_NoStay,
     VicQ_AP_DualW_Stay,
     VicQ_AP_DualW_NoStay,
     VicQ_AP_IndepDualW,
@@ -36,6 +38,8 @@ from ....models import (
 
 from .vicarious_rl_within_subject import VicariousRLWithinSubjectStanAdapter
 from .vicarious_rl_stay_within_subject import VicariousRLStayWithinSubjectStanAdapter
+from .ap_rl_stay_within_subject import APRLStayWithinSubjectStanAdapter
+from .ap_rl_nostay_within_subject import APRLNoStayWithinSubjectStanAdapter
 from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAdapter
 from .vicQ_ap_dualw_stay_within_subject import VicQAPDualWStayWithinSubjectStanAdapter
 from .vicQ_ap_dualw_nostay_within_subject import VicQAPDualWNoStayWithinSubjectStanAdapter
@@ -44,6 +48,8 @@ from .base import StanAdapter
 from .qrl import QRLStanAdapter
 from .vicarious_rl import VicariousRLStanAdapter
 from .vicarious_rl_stay import VicariousRLStayStanAdapter
+from .ap_rl_stay import APRLStayStanAdapter
+from .ap_rl_nostay import APRLNoStayStanAdapter
 from .vicarious_ap_vs import VicariousAPVSStanAdapter
 from .vicarious_ap_db_stay import VicariousAPDBStayStanAdapter
 from .vicarious_dir_db_stay import VicariousDirDBStayStanAdapter
@@ -84,6 +90,10 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
             return VicariousRLWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_RL_Stay):
             return VicariousRLStayWithinSubjectStanAdapter(model)
+        if isinstance(base, AP_RL_Stay):
+            return APRLStayWithinSubjectStanAdapter(model)
+        if isinstance(base, AP_RL_NoStay):
+            return APRLNoStayWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_DB_Stay):
             return VicariousDBStayWithinSubjectStanAdapter(model)
         if isinstance(base, VicQ_AP_DualW_Stay):
@@ -102,6 +112,10 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
         return VicariousRLStanAdapter(model)
     if isinstance(model, Vicarious_RL_Stay):
         return VicariousRLStayStanAdapter(model)
+    if isinstance(model, AP_RL_Stay):
+        return APRLStayStanAdapter(model)
+    if isinstance(model, AP_RL_NoStay):
+        return APRLNoStayStanAdapter(model)
     if isinstance(model, Vicarious_AP_VS):
         return VicariousAPVSStanAdapter(model)
     if isinstance(model, Vicarious_AP_DB_STAY):

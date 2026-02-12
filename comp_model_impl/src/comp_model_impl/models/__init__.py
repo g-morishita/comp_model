@@ -67,6 +67,8 @@ from .vicarious_ap_vs.vicarious_ap_vs import Vicarious_AP_VS
 from .vicQ_ap_dualw_stay.vicQ_ap_dualw_stay import VicQ_AP_DualW_Stay
 from .vicQ_ap_dualw_stay.vicQ_ap_indep_dualw import VicQ_AP_IndepDualW
 from .vicQ_ap_dualw_nostay.vicQ_ap_dualw_nostay import VicQ_AP_DualW_NoStay
+from .ap_rl_stay.ap_rl_stay import AP_RL_Stay
+from .ap_rl_nostay.ap_rl_nostay import AP_RL_NoStay
 
 __all__ = [
     "Vicarious_RL",
@@ -80,6 +82,8 @@ __all__ = [
     "VicQ_AP_DualW_Stay",
     "VicQ_AP_DualW_NoStay",
     "VicQ_AP_IndepDualW",
+    "AP_RL_Stay",
+    "AP_RL_NoStay",
     "Vicarious_AP_DB_STAY",
     "Vicarious_Dir_DB_Stay",
     "Vicarious_DB_Stay",
