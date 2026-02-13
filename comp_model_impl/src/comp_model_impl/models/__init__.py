@@ -8,6 +8,7 @@ import and instantiate them directly for custom workflows or tests.
 Models
 ------
 - :class:`~comp_model_impl.models.qrl.qrl.QRL` (asocial Q-learning)
+- :class:`~comp_model_impl.models.mvs.mvs.MVS` (lottery mean-variance-skewness)
 - :class:`~comp_model_impl.models.vs.vs.VS` (social Vicarious Social model)
 - :class:`~comp_model_impl.models.vicarious_rl.vicarious_rl.Vicarious_RL`
 - :class:`~comp_model_impl.models.vicarious_vs.vicarious_vs.Vicarious_VS`
@@ -69,6 +70,7 @@ from .vicQ_ap_dualw_stay.vicQ_ap_indep_dualw import VicQ_AP_IndepDualW
 from .vicQ_ap_dualw_nostay.vicQ_ap_dualw_nostay import VicQ_AP_DualW_NoStay
 from .ap_rl_stay.ap_rl_stay import AP_RL_Stay
 from .ap_rl_nostay.ap_rl_nostay import AP_RL_NoStay
+from .mvs.mvs import MVS
 
 __all__ = [
     "Vicarious_RL",
@@ -84,6 +86,7 @@ __all__ = [
     "VicQ_AP_IndepDualW",
     "AP_RL_Stay",
     "AP_RL_NoStay",
+    "MVS",
     "Vicarious_AP_DB_STAY",
     "Vicarious_Dir_DB_Stay",
     "Vicarious_DB_Stay",

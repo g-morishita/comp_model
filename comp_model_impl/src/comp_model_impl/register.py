@@ -17,6 +17,7 @@ This registry is what allows YAML/JSON study plans to resolve string names
 from comp_model_core.registry import Registry
 
 from .bandits.bernoulli import BernoulliBanditEnv
+from .bandits.lottery_choice import LotteryChoiceBanditEnv
 from .models import (
     QRL,
     VS,
@@ -33,6 +34,7 @@ from .models import (
     Vicarious_AP_DB_STAY,
     Vicarious_Dir_DB_Stay,
     Vicarious_DB_Stay,
+    MVS,
 )
 from .demonstrators import NoisyBestArmDemonstrator, RLDemonstrator, FixedSequenceDemonstrator
 
@@ -65,9 +67,11 @@ def make_registry() -> Registry:
     r.models.register("VicQ_AP_IndepDualW", VicQ_AP_IndepDualW)
     r.models.register("AP_RL_Stay", AP_RL_Stay)
     r.models.register("AP_RL_NoStay", AP_RL_NoStay)
+    r.models.register("MVS", MVS)
 
     # Bandit environments
     r.bandits.register("BernoulliBanditEnv", BernoulliBanditEnv)
+    r.bandits.register("LotteryChoiceBanditEnv", LotteryChoiceBanditEnv)
 
     # Demonstrators
     r.demonstrators.register("FixedSequenceDemonstrator", FixedSequenceDemonstrator)

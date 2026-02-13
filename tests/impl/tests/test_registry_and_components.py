@@ -6,11 +6,13 @@ import pytest
 
 from comp_model_impl.register import make_registry
 from comp_model_impl.bandits.bernoulli import BernoulliBanditEnv
+from comp_model_impl.bandits.lottery_choice import LotteryChoiceBanditEnv
 from comp_model_impl.demonstrators.fixed_sequence import FixedSequenceDemonstrator
 from comp_model_impl.demonstrators.noisy_best import NoisyBestArmDemonstrator
 from comp_model_impl.demonstrators.rl_agent import RLDemonstrator
 from comp_model_impl.models import (
     QRL,
+    MVS,
     AP_RL_Stay,
     AP_RL_NoStay,
     VS,
@@ -57,10 +59,14 @@ def test_make_registry_contains_expected_components():
     assert r.models.get("AP_RL_Stay") is AP_RL_Stay
     assert "AP_RL_NoStay" in r.models.names()
     assert r.models.get("AP_RL_NoStay") is AP_RL_NoStay
+    assert "MVS" in r.models.names()
+    assert r.models.get("MVS") is MVS
 
     # Bandits
     assert "BernoulliBanditEnv" in r.bandits.names()
     assert r.bandits.get("BernoulliBanditEnv") is BernoulliBanditEnv
+    assert "LotteryChoiceBanditEnv" in r.bandits.names()
+    assert r.bandits.get("LotteryChoiceBanditEnv") is LotteryChoiceBanditEnv
 
     # Demonstrators
     assert "FixedSequenceDemonstrator" in r.demonstrators.names()
@@ -174,3 +180,28 @@ def test_bernoulli_bandit_env_from_config():
     env = BernoulliBanditEnv.from_config(cfg)
     assert isinstance(env, BernoulliBanditEnv)
     assert list(env.probs) == [0.1, 0.9]
+
+
+def test_lottery_choice_bandit_env_from_config():
+    cfg = {
+        "trials": [
+            {
+                "lotteries": [
+                    {"outcomes": [0.0, 10.0], "probs": [0.9, 0.1]},
+                    {"outcomes": [1.0], "probs": [1.0]},
+                ],
+                "metadata": {"representation": "high", "bonus": "low"},
+            },
+            {
+                "lotteries": [
+                    {"outcomes": [0.0, 8.0], "probs": [0.8, 0.2]},
+                    {"outcomes": [2.0], "probs": [1.0]},
+                ]
+            },
+        ]
+    }
+    env = LotteryChoiceBanditEnv.from_config(cfg)
+    assert isinstance(env, LotteryChoiceBanditEnv)
+    assert env.spec.n_actions == 2
+    assert env.spec.is_social is False
+    assert env.spec.state_kind.name == "NONE"

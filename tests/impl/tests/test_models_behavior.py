@@ -8,6 +8,7 @@ from comp_model_core.interfaces.block_runner import SocialObservation
 from comp_model_core.spec import EnvironmentSpec, OutcomeType, StateKind
 
 from comp_model_impl.models.qrl.qrl import QRL
+from comp_model_impl.models.mvs.mvs import MVS
 from comp_model_impl.models.vs.vs import VS
 from comp_model_impl.models.vicarious_rl.vicarious_rl import Vicarious_RL
 from comp_model_impl.models.vicarious_rl_stay.vicarious_rl_stay import Vicarious_RL_Stay
@@ -164,6 +165,8 @@ def test_model_supports_flags() -> None:
 
     assert QRL().supports(asocial_spec)
     assert not QRL().supports(social_spec)
+    assert MVS().supports(asocial_spec)
+    assert not MVS().supports(social_spec)
 
     assert VS().supports(social_spec)
     assert not VS().supports(asocial_spec)
@@ -179,3 +182,25 @@ def test_model_supports_flags() -> None:
 
     assert Vicarious_VS().supports(social_spec)
     assert not Vicarious_VS().supports(asocial_spec)
+
+
+def test_mvs_uses_mean_variance_skewness_utility() -> None:
+    spec = _spec(is_social=False)
+    model = MVS(lambda_var=-0.3, delta=0.6, beta=3.0)
+    model.reset_block(spec=spec)
+
+    # action_moments format: (mean, variance, skewness)
+    state = {
+        "action_moments": [
+            (5.0, 4.0, 0.2),
+            (5.0, 1.0, 0.8),
+        ]
+    }
+    probs = model.action_probs(state=state, spec=spec)
+
+    u0 = 5.0 + (-0.3) * 4.0 + 0.6 * 0.2
+    u1 = 5.0 + (-0.3) * 1.0 + 0.6 * 0.8
+    expected = _softmax(np.array([u0, u1], dtype=float), beta=3.0)
+
+    assert np.allclose(probs, expected)
+    assert probs[1] > probs[0]
