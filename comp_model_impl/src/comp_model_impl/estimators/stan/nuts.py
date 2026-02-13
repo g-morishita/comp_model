@@ -47,6 +47,7 @@ from ...models.within_subject_shared_delta import (
     ConditionedSharedDeltaModel,
     ConditionedSharedDeltaSocialModel,
 )
+from ...analysis.waic import compute_waic_from_log_lik_draws
 
 from ..within_subject_shared_delta import (
     _infer_conditions_from_study,
@@ -98,6 +99,38 @@ def _safe_summary_metric(summary: Any, candidates: list[str], *, agg: str) -> fl
         except Exception:  # noqa: BLE001
             return None
     raise ValueError(f"Unknown agg: {agg!r}")
+
+
+def _waic_diagnostics_from_fit(fit: Any) -> dict[str, float] | None:
+    """Compute WAIC diagnostics from CmdStan fit object when ``log_lik`` exists.
+
+    Parameters
+    ----------
+    fit : Any
+        CmdStanPy fit-like object exposing ``stan_variable``.
+
+    Returns
+    -------
+    dict[str, float] or None
+        ``{"waic", "elpd_waic", "p_waic", "waic_n_obs"}`` if available,
+        otherwise ``None``.
+    """
+    try:
+        log_lik = fit.stan_variable("log_lik")
+    except Exception:  # noqa: BLE001
+        return None
+
+    try:
+        s = compute_waic_from_log_lik_draws(log_lik)
+    except Exception:  # noqa: BLE001
+        return None
+
+    return {
+        "waic": float(s.waic),
+        "elpd_waic": float(s.elpd_waic),
+        "p_waic": float(s.p_waic),
+        "waic_n_obs": float(s.n_obs),
+    }
 
 
 def _strip_hat(name: str) -> str:
@@ -599,6 +632,7 @@ class StanNUTSSubjectwiseEstimator(Estimator):
 
         subj_hats: dict[str, dict[str, float]] = {}
         per_subject_diags: dict[str, Any] = {}
+        waic_terms: list[dict[str, float]] = []
 
         for subj in study.subjects:
             if is_ws:
@@ -671,23 +705,39 @@ class StanNUTSSubjectwiseEstimator(Estimator):
                 summ = None
 
             required = adapter.required_priors("indiv")
-            per_subject_diags[subj.subject_id] = {
+            subj_diag: dict[str, Any] = {
                 "seed": seed,
                 "required_priors": list(required),
                 "rhat_max": _safe_summary_metric(summ, ["R_hat", "r_hat"], agg="max"),
                 "ess_bulk_min": _safe_summary_metric(summ, ["ESS_bulk", "ess_bulk"], agg="min"),
             }
+            waic_diag = _waic_diagnostics_from_fit(fit)
+            if waic_diag is not None:
+                subj_diag.update(waic_diag)
+                waic_terms.append(waic_diag)
             if is_ws:
-                per_subject_diags[subj.subject_id]["conditions"] = list(condition_labels or [])
-                per_subject_diags[subj.subject_id]["baseline_condition"] = baseline_cond_label
+                subj_diag["conditions"] = list(condition_labels or [])
+                subj_diag["baseline_condition"] = baseline_cond_label
             if self.return_posterior_summary:
-                per_subject_diags[subj.subject_id]["posterior_summary"] = posterior_summary
+                subj_diag["posterior_summary"] = posterior_summary
+            per_subject_diags[subj.subject_id] = subj_diag
+
+        diags: dict[str, Any] = {"per_subject": per_subject_diags}
+        if waic_terms:
+            diags.update(
+                {
+                    "waic": float(np.sum([d["waic"] for d in waic_terms])),
+                    "elpd_waic": float(np.sum([d["elpd_waic"] for d in waic_terms])),
+                    "p_waic": float(np.sum([d["p_waic"] for d in waic_terms])),
+                    "waic_n_obs": float(np.sum([d["waic_n_obs"] for d in waic_terms])),
+                }
+            )
 
         return FitResult(
             subject_hats=subj_hats,
             success=True,
             message="OK",
-            diagnostics={"per_subject": per_subject_diags},
+            diagnostics=diags,
         )
 
 
@@ -963,6 +1013,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
             "ess_bulk_min": _safe_summary_metric(summ, ["ESS_bulk", "ess_bulk"], agg="min"),
             "point_estimate": point_est,
         }
+        waic_diag = _waic_diagnostics_from_fit(fit)
+        if waic_diag is not None:
+            diags.update(waic_diag)
         if cond_diags is not None:
             diags.update(cond_diags)
         if self.return_posterior_summary:

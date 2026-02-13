@@ -291,6 +291,50 @@ def test_count_free_params_falls_back_to_subject_hats() -> None:
     assert k_total == 2
 
 
+def test_extract_waic_from_fit_diagnostics_top_level() -> None:
+    """WAIC extraction should read top-level diagnostics directly."""
+    fit = FitResult(
+        diagnostics={
+            "waic": 123.4,
+            "elpd_waic": -61.7,
+            "p_waic": 9.1,
+            "waic_n_obs": 200,
+        }
+    )
+    out = run_mod._extract_waic_from_fit_diagnostics(fit)
+    assert out == {
+        "waic": pytest.approx(123.4),
+        "elpd_waic": pytest.approx(-61.7),
+        "p_waic": pytest.approx(9.1),
+        "waic_n_obs": pytest.approx(200.0),
+    }
+
+
+def test_extract_waic_from_fit_diagnostics_per_subject_sum() -> None:
+    """WAIC extraction should aggregate per-subject diagnostics when present."""
+    fit = FitResult(
+        diagnostics={
+            "per_subject": {
+                "s1": {"waic": 10.0, "elpd_waic": -5.0, "p_waic": 1.0, "waic_n_obs": 20},
+                "s2": {"waic": 12.0, "elpd_waic": -6.0, "p_waic": 1.5, "waic_n_obs": 25},
+            }
+        }
+    )
+    out = run_mod._extract_waic_from_fit_diagnostics(fit)
+    assert out == {
+        "waic": pytest.approx(22.0),
+        "elpd_waic": pytest.approx(-11.0),
+        "p_waic": pytest.approx(2.5),
+        "waic_n_obs": pytest.approx(45.0),
+    }
+
+
+def test_extract_waic_from_fit_diagnostics_missing_returns_none() -> None:
+    """WAIC extraction should return None when diagnostics do not carry WAIC."""
+    fit = FitResult(diagnostics={"per_subject": {"s1": {"rhat_max": 1.01}}})
+    assert run_mod._extract_waic_from_fit_diagnostics(fit) is None
+
+
 def test_select_winner_logic() -> None:
     """Winner selection should respect criterion direction and tie strategy."""
     rows = [

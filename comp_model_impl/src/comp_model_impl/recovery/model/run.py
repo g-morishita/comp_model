@@ -485,6 +485,58 @@ def _count_free_params(
     return int(k_per_sub), int(k_total)
 
 
+def _extract_waic_from_fit_diagnostics(fit: FitResult) -> dict[str, float] | None:
+    """Extract WAIC diagnostics from a fit result when available.
+
+    Supports either:
+    - top-level diagnostics keys (``waic``, ``elpd_waic``, optional ``p_waic``),
+    - per-subject diagnostics under ``diagnostics['per_subject']`` where each
+      subject has WAIC metrics (aggregated by summation).
+    """
+    d = getattr(fit, "diagnostics", None)
+    if not isinstance(d, Mapping):
+        return None
+
+    # Direct study-level WAIC (typical for hierarchical Stan estimators).
+    if "waic" in d and "elpd_waic" in d:
+        out: dict[str, float] = {
+            "waic": float(d["waic"]),
+            "elpd_waic": float(d["elpd_waic"]),
+        }
+        if "p_waic" in d:
+            out["p_waic"] = float(d["p_waic"])
+        if "waic_n_obs" in d:
+            out["waic_n_obs"] = float(d["waic_n_obs"])
+        if all(np.isfinite(list(out.values()))):
+            return out
+        return None
+
+    # Subject-wise WAIC (typical for independent Stan fits).
+    per_subject = d.get("per_subject", None)
+    if not isinstance(per_subject, Mapping):
+        return None
+
+    waic_rows: list[Mapping[str, Any]] = []
+    for v in per_subject.values():
+        if isinstance(v, Mapping) and "waic" in v and "elpd_waic" in v:
+            waic_rows.append(v)
+    if not waic_rows:
+        return None
+
+    out = {
+        "waic": float(np.sum([float(v["waic"]) for v in waic_rows])),
+        "elpd_waic": float(np.sum([float(v["elpd_waic"]) for v in waic_rows])),
+    }
+    if all("p_waic" in v for v in waic_rows):
+        out["p_waic"] = float(np.sum([float(v["p_waic"]) for v in waic_rows]))
+    if all("waic_n_obs" in v for v in waic_rows):
+        out["waic_n_obs"] = float(np.sum([float(v["waic_n_obs"]) for v in waic_rows]))
+
+    if all(np.isfinite(list(out.values()))):
+        return out
+    return None
+
+
 def _select_winner(
     rows: list[dict[str, Any]],
     *,
@@ -765,6 +817,9 @@ def run_model_recovery(
                         "score": float(score),
                         "runtime_s": runtime_s,
                     }
+                    waic_diag = _extract_waic_from_fit_diagnostics(fit)
+                    if waic_diag is not None:
+                        row.update(waic_diag)
                     fit_rows.append(row)
                     rep_candidate_rows.append(row)
 

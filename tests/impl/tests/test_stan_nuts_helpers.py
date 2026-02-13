@@ -16,6 +16,7 @@ from comp_model_impl.estimators.stan.nuts import (
     _posterior_summary_from_draws,
     _safe_summary_metric,
     _strip_hat,
+    _waic_diagnostics_from_fit,
 )
 from comp_model_impl.models.qrl.qrl import QRL
 from comp_model_impl.models.within_subject_shared_delta import ConditionedSharedDeltaModel
@@ -46,6 +47,19 @@ class _DummySummary:
     def __getitem__(self, key: str) -> _DummySeries:
         """Return the series for a column."""
         return self.data[key]
+
+
+@dataclass
+class _DummyFitWithLogLik:
+    """Minimal CmdStanPy-fit-like object for log_lik extraction."""
+
+    log_lik: np.ndarray
+
+    def stan_variable(self, name: str):
+        """Return named Stan variable or raise KeyError."""
+        if str(name) != "log_lik":
+            raise KeyError(name)
+        return self.log_lik
 
 
 def test_strip_hat():
@@ -170,3 +184,31 @@ def test_load_yaml_reads_mapping(tmp_path):
     cfg = _load_yaml(str(path))
     assert isinstance(cfg, dict)
     assert cfg == {"a": 1, "b": 2}
+
+
+def test_waic_diagnostics_from_fit_extracts_metrics() -> None:
+    """WAIC diagnostics should be computed when log_lik draws are available."""
+    fit = _DummyFitWithLogLik(
+        log_lik=np.array(
+            [
+                [-1.0, -2.0, -0.5],
+                [-1.1, -1.9, -0.7],
+                [-0.8, -2.2, -0.6],
+            ],
+            dtype=float,
+        )
+    )
+    out = _waic_diagnostics_from_fit(fit)
+    assert out is not None
+    assert set(out.keys()) == {"waic", "elpd_waic", "p_waic", "waic_n_obs"}
+    assert np.isfinite(float(out["waic"]))
+    assert int(out["waic_n_obs"]) == 3
+
+
+def test_waic_diagnostics_from_fit_returns_none_when_missing() -> None:
+    """Missing log_lik should return None rather than raising."""
+    fit = _DummyFitWithLogLik(log_lik=np.array([[-1.0, -2.0]], dtype=float))
+    # monkey patch method to always fail lookup
+    fit.stan_variable = lambda name: (_ for _ in ()).throw(KeyError(name))  # type: ignore[method-assign]
+    out = _waic_diagnostics_from_fit(fit)
+    assert out is None
