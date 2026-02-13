@@ -9,8 +9,6 @@ data {
 
   array[E] int<lower=1, upper=S> state;
   array[E] int<lower=0, upper=A> choice;
-  array[E] int<lower=0, upper=A> action;
-  vector[E] outcome_obs; // unused
 
   array[E] vector<lower=0,upper=1>[A] avail_mask;
 

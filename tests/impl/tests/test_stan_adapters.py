@@ -345,6 +345,11 @@ def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():
     assert data["beta_lower"] == pytest.approx(1e-6)
     assert data["beta_upper"] == pytest.approx(18.0)
 
+    hier_data = {}
+    adapter.augment_study_data(hier_data)
+    assert hier_data["beta_lower"] == pytest.approx(1e-6)
+    assert hier_data["beta_upper"] == pytest.approx(18.0)
+
 
 def test_vicarious_rl_stay_within_subject_adapter_uses_base_model_constants():
     """Within-subject Vicarious-RL-Stay adapter uses base-model bounds."""

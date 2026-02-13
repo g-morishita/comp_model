@@ -187,14 +187,8 @@ class VicariousRLWithinSubjectStanAdapter(StanAdapter):
         ----------
         data : dict[str, Any]
             Stan data dictionary to mutate in-place.
-
-        Notes
-        -----
-        The within-subject hierarchical templates for vicarious RL do not
-        require additional study-level constants beyond those implied by the
-        per-subject data.
         """
-        return None
+        self.augment_subject_data(data)
 
     def subject_param_names(self) -> Sequence[str]:
         """Names of subject-level Stan variables to summarize.
