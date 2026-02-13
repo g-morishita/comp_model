@@ -1,0 +1,54 @@
+plan_path: lottery_between_subject_plan_96.yaml
+n_reps: 50
+seed: 20260212
+
+sampling:
+  mode: independent
+  space: param
+  clip_to_bounds: true
+  individual:
+    lambda_var:
+      name: norm
+      args:
+        loc: -0.08
+        scale: 0.12
+    delta:
+      name: norm
+      args:
+        loc: 0.60
+        scale: 0.55
+    beta:
+      name: lognorm
+      args:
+        s: 0.45
+        scale: 2.5
+
+output:
+  out_dir: recovery_out_lottery_mvs
+  save_format: csv
+  save_config: true
+  save_fit_diagnostics: true
+  save_simulated_study: false
+
+plots:
+  make_plots: true
+  scatter_alpha: 0.6
+  max_points: 50000
+
+model:
+  base_model: MVS
+  base_model_config:
+    lambda_abs_max: 2.0
+    delta_abs_max: 4.0
+    beta_max: 15.0
+
+estimator:
+  type: transformed_mle  # transformed_mle | box_mle
+  n_starts: 12
+  method: L-BFGS-B
+  maxiter: 400
+  z_init_scale: 0.7
+  validate_bounds_on_set: false
+  return_uncertainty: false
+  uncertainty_ci: 0.95
+  uncertainty_fd_step: 1.0e-5
