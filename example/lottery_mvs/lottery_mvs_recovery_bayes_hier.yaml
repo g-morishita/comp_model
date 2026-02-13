@@ -1,0 +1,81 @@
+plan_path: lottery_between_subject_plan_96.yaml
+n_reps: 20
+seed: 20260213
+
+sampling:
+  mode: hierarchical
+  space: z
+  clip_to_bounds: true
+  population:
+    lambda_var:
+      name: norm
+      args:
+        loc: -0.1
+        scale: 0.35
+    delta:
+      name: norm
+      args:
+        loc: 0.35
+        scale: 0.5
+    beta:
+      name: norm
+      args:
+        loc: -1.25
+        scale: 0.6
+  individual_sd:
+    lambda_var: 0.35
+    delta: 0.45
+    beta: 0.35
+
+output:
+  out_dir: recovery_out_lottery_mvs_bayes_hier
+  save_format: csv
+  save_config: true
+  save_fit_diagnostics: true
+  save_simulated_study: false
+
+plots:
+  make_plots: false
+  scatter_alpha: 0.6
+  max_points: 50000
+
+model:
+  base_model: MVS
+  base_model_config:
+    lambda_abs_max: 2.0
+    delta_abs_max: 4.0
+    beta_max: 15.0
+
+estimator:
+  type: stan_hierarchical_nuts
+  chains: 4
+  iter_warmup: 500
+  iter_sampling: 800
+  adapt_delta: 0.92
+  max_treedepth: 12
+  forbid_extra_priors: true
+  show_progress: false
+  subject_point_estimate: mean
+  return_posterior_summary: false
+  hyper_priors:
+    mu_lambda_var:
+      family: normal
+      mu: -0.1
+      sigma: 1.0
+    sd_lambda_var:
+      family: half-normal
+      sigma: 0.6
+    mu_delta:
+      family: normal
+      mu: 0.35
+      sigma: 1.0
+    sd_delta:
+      family: half-normal
+      sigma: 0.7
+    mu_beta:
+      family: normal
+      mu: -1.25
+      sigma: 0.8
+    sd_beta:
+      family: half-normal
+      sigma: 0.5

@@ -18,6 +18,7 @@ from comp_model_core.interfaces.model import ComputationalModel
 
 from ....models import (
     QRL,
+    MVS,
     VS,
     AP_RL_Stay,
     AP_RL_NoStay,
@@ -46,6 +47,7 @@ from .vicQ_ap_dualw_nostay_within_subject import VicQAPDualWNoStayWithinSubjectS
 from .vs_within_subject import VSWithinSubjectStanAdapter
 from .base import StanAdapter
 from .qrl import QRLStanAdapter
+from .mvs import MVSStanAdapter
 from .vicarious_rl import VicariousRLStanAdapter
 from .vicarious_rl_stay import VicariousRLStayStanAdapter
 from .ap_rl_stay import APRLStayStanAdapter
@@ -106,6 +108,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
 
     if isinstance(model, VS):
         return VSStanAdapter(model)
+    if isinstance(model, MVS):
+        return MVSStanAdapter(model)
     if isinstance(model, QRL):
         return QRLStanAdapter(model)
     if isinstance(model, Vicarious_RL):

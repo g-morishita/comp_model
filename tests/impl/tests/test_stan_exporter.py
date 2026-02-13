@@ -84,6 +84,49 @@ def test_subject_to_stan_data_basic_fields():
     assert data["S"] == 1
     assert data["E"] == 3
     assert data["choice"][1] == 2  # 1-indexed
+    assert len(data["action_mean"]) == 3
+    assert len(data["action_mean"][1]) == 2
+
+
+def test_subject_to_stan_data_accepts_non_int_states_and_extracts_moments():
+    """Exporter should handle dict states and carry action moments."""
+    action_moments = [[1.0, 0.25, 0.0], [2.0, 1.0, 0.5]]
+    state = {"trial_index": 0, "action_moments": action_moments}
+    log = EventLog(
+        events=[
+            Event(idx=0, type=EventType.BLOCK_START, t=None, state=None, payload={"condition": "A"}),
+            Event(
+                idx=1,
+                type=EventType.CHOICE,
+                t=0,
+                state=state,
+                payload={"choice": 1, "available_actions": [0, 1]},
+            ),
+            Event(
+                idx=2,
+                type=EventType.OUTCOME,
+                t=0,
+                state=state,
+                payload={"action": 1, "observed_outcome": 1.0, "info": {"action_moments": action_moments}},
+            ),
+        ],
+        metadata={"test": True},
+    )
+    block = Block(
+        block_id="b1",
+        condition="A",
+        trials=[Trial(t=0, state=state, choice=1, observed_outcome=1.0, outcome=1.0)],
+        env_spec=_spec(),
+        event_log=log,
+    )
+    subj = SubjectData(subject_id="s1", blocks=[block])
+
+    data = subject_to_stan_data(subj)
+    assert data["S"] == 2
+    assert data["choice"][1] == 2
+    assert data["action_mean"][1] == pytest.approx([1.0, 2.0])
+    assert data["action_variance"][1] == pytest.approx([0.25, 1.0])
+    assert data["action_skewness"][1] == pytest.approx([0.0, 0.5])
 
 
 def test_study_to_stan_data_aggregates_subjects():

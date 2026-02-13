@@ -13,7 +13,12 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from comp_model_analysis import plot_parameter_recovery
-from comp_model_impl.estimators import BoxMLESubjectwiseEstimator, TransformedMLESubjectwiseEstimator
+from comp_model_impl.estimators import (
+    BoxMLESubjectwiseEstimator,
+    StanHierarchicalNUTSEstimator,
+    StanNUTSSubjectwiseEstimator,
+    TransformedMLESubjectwiseEstimator,
+)
 from comp_model_impl.generators.event_log import EventLogAsocialGenerator
 from comp_model_impl.models import MVS
 from comp_model_impl.recovery.parameter.config import load_parameter_recovery_config
@@ -70,9 +75,63 @@ def _build_estimator(est_cfg: Mapping[str, Any], *, model: MVS):
             return_uncertainty=bool(est_cfg.get("return_uncertainty", False)),
             uncertainty_ci=float(est_cfg.get("uncertainty_ci", 0.95)),
         )
+    if est_type in (
+        "stan_nuts_subjectwise",
+        "stan_subjectwise_nuts",
+        "stan_nuts_indiv",
+        "bayes_subjectwise",
+    ):
+        priors = est_cfg.get("priors", None)
+        if priors is None:
+            raise ValueError(
+                "Subjectwise Stan NUTS requires estimator.priors in config "
+                "(keys: lambda_var, delta, beta)."
+            )
+        return StanNUTSSubjectwiseEstimator(
+            model=model,
+            priors=priors,
+            chains=int(est_cfg.get("chains", 4)),
+            iter_warmup=int(est_cfg.get("iter_warmup", 500)),
+            iter_sampling=int(est_cfg.get("iter_sampling", 1000)),
+            adapt_delta=float(est_cfg.get("adapt_delta", 0.9)),
+            max_treedepth=int(est_cfg.get("max_treedepth", 12)),
+            forbid_extra_priors=bool(est_cfg.get("forbid_extra_priors", True)),
+            show_progress=bool(est_cfg.get("show_progress", False)),
+            return_posterior_summary=bool(est_cfg.get("return_posterior_summary", False)),
+        )
+    if est_type in (
+        "stan_hierarchical_nuts",
+        "stan_nuts_hierarchical",
+        "bayes_hierarchical",
+        "bayesian_hierarchical",
+    ):
+        hyper_priors = est_cfg.get("hyper_priors", None)
+        if hyper_priors is None:
+            raise ValueError(
+                "Hierarchical Stan NUTS requires estimator.hyper_priors in config "
+                "(keys: mu_*/sd_* for lambda_var, delta, beta)."
+            )
+        return StanHierarchicalNUTSEstimator(
+            model=model,
+            hyper_priors=hyper_priors,
+            chains=int(est_cfg.get("chains", 4)),
+            iter_warmup=int(est_cfg.get("iter_warmup", 800)),
+            iter_sampling=int(est_cfg.get("iter_sampling", 1200)),
+            adapt_delta=float(est_cfg.get("adapt_delta", 0.92)),
+            max_treedepth=int(est_cfg.get("max_treedepth", 12)),
+            forbid_extra_priors=bool(est_cfg.get("forbid_extra_priors", True)),
+            show_progress=bool(est_cfg.get("show_progress", False)),
+            subject_point_estimate=str(est_cfg.get("subject_point_estimate", "mean")),
+            cond_map_method=str(est_cfg.get("cond_map_method", "L-BFGS-B")),
+            cond_map_maxiter=int(est_cfg.get("cond_map_maxiter", 300)),
+            cond_map_n_starts=int(est_cfg.get("cond_map_n_starts", 1)),
+            cond_map_jitter=float(est_cfg.get("cond_map_jitter", 0.1)),
+            return_posterior_summary=bool(est_cfg.get("return_posterior_summary", False)),
+        )
     raise ValueError(
         f"Unsupported estimator.type={est_type!r}. "
-        "Expected one of: 'transformed_mle', 'box_mle'."
+        "Expected one of: 'transformed_mle', 'box_mle', "
+        "'stan_nuts_subjectwise', 'stan_hierarchical_nuts'."
     )
 
 

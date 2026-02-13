@@ -9,6 +9,7 @@ from comp_model_impl.estimators.stan.adapters import (
     APRLNoStayWithinSubjectStanAdapter,
     APRLStayStanAdapter,
     APRLStayWithinSubjectStanAdapter,
+    MVSStanAdapter,
     QRLStanAdapter,
     VicQAPDualWStayStanAdapter,
     VicQAPDualWStayWithinSubjectStanAdapter,
@@ -33,6 +34,7 @@ from comp_model_impl.estimators.stan.adapters.registry import resolve_stan_adapt
 from comp_model_impl.models import (
     AP_RL_NoStay,
     AP_RL_Stay,
+    MVS,
     QRL,
     VS,
     VicQ_AP_DualW_Stay,
@@ -65,6 +67,23 @@ def test_vs_adapter_adds_constants_and_priors():
     assert data["beta_upper"] == pytest.approx(20.0)
     assert data["kappa_abs_max"] == pytest.approx(1.0)
     assert data["pseudo_reward"] == pytest.approx(1.0)
+
+
+def test_mvs_adapter_adds_constants_and_priors():
+    """MVS adapter exposes expected priors and data constants."""
+    model = MVS(lambda_abs_max=2.0, delta_abs_max=4.0, beta_max=15.0)
+    adapter = MVSStanAdapter(model=model)
+
+    assert adapter.program("indiv").key == "mvs"
+    assert adapter.required_priors("indiv") == ["lambda_var", "delta", "beta"]
+    assert "mu_lambda_var" in adapter.required_priors("hier")
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["lambda_abs_max"] == pytest.approx(2.0)
+    assert data["delta_abs_max"] == pytest.approx(4.0)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert data["beta_upper"] == pytest.approx(15.0)
 
 
 def test_vicarious_vs_adapter_adds_constants_and_priors():
@@ -455,6 +474,7 @@ def test_vicq_ap_dualw_nostay_within_subject_adapter_uses_base_model_constants()
 
 def test_resolve_stan_adapter_for_base_models():
     """Registry resolves adapters for base models."""
+    assert isinstance(resolve_stan_adapter(MVS()), MVSStanAdapter)
     assert isinstance(resolve_stan_adapter(QRL()), QRLStanAdapter)
     assert isinstance(resolve_stan_adapter(VS()), VSStanAdapter)
     assert isinstance(resolve_stan_adapter(Vicarious_RL()), VicariousRLStanAdapter)

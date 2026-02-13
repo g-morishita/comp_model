@@ -4,7 +4,7 @@ This example adds a first-pass lottery-choice workflow using:
 
 - `LotteryChoiceBanditEnv` (trial-wise lottery menus)
 - `MVS` model (`E + lambda_var * Var + delta * Skew`)
-- event-log simulation + MLE fitting via the existing recovery runner
+- event-log simulation + MLE or Bayesian (Stan NUTS) fitting via the existing recovery runner
 
 ## Files
 
@@ -12,6 +12,7 @@ This example adds a first-pass lottery-choice workflow using:
 - `lottery_between_subject_plan_96.yaml`: 96-trial between-subject plan (recommended default)
 - `lottery_within_subject_plan.yaml`: legacy alias currently mirroring the 96-trial between-subject plan
 - `lottery_mvs_recovery.yaml`: recovery/sampling configuration
+- `lottery_mvs_recovery_bayes_hier.yaml`: hierarchical Bayesian recovery config (Stan NUTS)
 - `run_lottery_mvs_recovery.py`: runnable script
 
 ## Run
@@ -26,6 +27,13 @@ python example/lottery_mvs/run_lottery_mvs_recovery.py \
 Output is written to:
 
 - `recovery_out_lottery_mvs/`
+
+Hierarchical Bayesian run (requires `cmdstanpy` + CmdStan):
+
+```bash
+python example/lottery_mvs/run_lottery_mvs_recovery.py \
+  --config example/lottery_mvs/lottery_mvs_recovery_bayes_hier.yaml
+```
 
 ## Trial Count Guidance
 

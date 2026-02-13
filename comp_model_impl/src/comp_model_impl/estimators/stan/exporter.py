@@ -12,7 +12,8 @@ for "missing" action entries.
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+import json
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 
@@ -40,6 +41,144 @@ def _ensure_int_states(subject: SubjectData) -> None:
             if e.state is None:
                 continue
             int(e.state)  # will raise if not castable
+
+
+def _state_key(state: Any) -> str:
+    """Build a stable key for arbitrary event states."""
+    if state is None:
+        return "__none__"
+    try:
+        s = int(state)
+        if s < 0:
+            raise ValueError("Stan export expects integer states >= 0.")
+        return f"int:{s}"
+    except Exception:
+        pass
+    try:
+        return "json:" + json.dumps(state, sort_keys=True, separators=(",", ":"), default=str)
+    except Exception:
+        return f"repr:{repr(state)}"
+
+
+def _state_indices(events: Sequence[Any]) -> tuple[np.ndarray, int]:
+    """Map event states to 1-based contiguous indices for Stan."""
+    non_none = [e.state for e in events if e.state is not None]
+    all_int_like = True
+    for s in non_none:
+        try:
+            if int(s) < 0:
+                raise ValueError("Stan export expects integer states >= 0.")
+        except Exception:
+            all_int_like = False
+            break
+
+    state = np.ones(len(events), dtype=int)
+    if all_int_like:
+        max_state = 0
+        for i, e in enumerate(events):
+            if e.state is None:
+                state[i] = 1
+                continue
+            si = int(e.state)
+            if si < 0:
+                raise ValueError("Stan export expects integer states >= 0.")
+            state[i] = si + 1
+            max_state = max(max_state, si)
+        return state, (max_state + 1)
+
+    key_to_idx: dict[str, int] = {"__none__": 1}
+    next_idx = 2
+    for i, e in enumerate(events):
+        key = _state_key(e.state)
+        if key not in key_to_idx:
+            key_to_idx[key] = next_idx
+            next_idx += 1
+        state[i] = int(key_to_idx[key])
+    return state, int(max(key_to_idx.values()))
+
+
+def _moment_stats(*, outcomes: Sequence[float], probs: Sequence[float]) -> tuple[float, float, float]:
+    """Compute mean, variance, and standardized skewness."""
+    x = np.asarray(outcomes, dtype=float)
+    p = np.asarray(probs, dtype=float)
+    if x.ndim != 1 or p.ndim != 1 or x.shape[0] != p.shape[0] or x.shape[0] == 0:
+        raise ValueError("Invalid lottery shapes: expected equal-length 1D outcomes/probs.")
+    if np.any(~np.isfinite(x)) or np.any(~np.isfinite(p)):
+        raise ValueError("Lottery outcomes/probabilities must be finite.")
+    if np.any(p < 0.0):
+        raise ValueError("Lottery probabilities must be non-negative.")
+    s = float(np.sum(p))
+    if s <= 0.0:
+        raise ValueError("Lottery probabilities must sum to a positive value.")
+    p = p / s
+
+    mu = float(np.sum(p * x))
+    dev = x - mu
+    var = float(np.sum(p * (dev ** 2)))
+    if var <= 1e-12:
+        skew = 0.0
+    else:
+        skew = float(np.sum(p * (dev ** 3)) / (var ** 1.5))
+    return mu, var, skew
+
+
+def _coerce_action_moments(raw: Any, *, n_actions: int) -> np.ndarray:
+    """Normalize action moments to ``(A, 3)`` float array."""
+    arr = np.asarray(raw, dtype=float)
+    if arr.shape != (int(n_actions), 3):
+        raise ValueError(
+            f"Expected action moments with shape ({n_actions}, 3), got {arr.shape}."
+        )
+    if np.any(~np.isfinite(arr)):
+        raise ValueError("Non-finite action moments encountered in event log.")
+    return arr
+
+
+def _moments_from_lotteries(raw: Any, *, n_actions: int) -> np.ndarray:
+    """Compute moments from explicit lottery definitions."""
+    if not isinstance(raw, Sequence) or isinstance(raw, (str, bytes)):
+        raise ValueError("lotteries must be a sequence of mappings.")
+    if len(raw) != int(n_actions):
+        raise ValueError(f"Expected {n_actions} lotteries, got {len(raw)}.")
+    rows: list[tuple[float, float, float]] = []
+    for lot in raw:
+        if not isinstance(lot, Mapping):
+            raise ValueError("Each lottery must be a mapping with outcomes/probs.")
+        if "outcomes" not in lot or "probs" not in lot:
+            raise ValueError("Lottery mapping must include 'outcomes' and 'probs'.")
+        mu, var, skew = _moment_stats(
+            outcomes=lot["outcomes"],
+            probs=lot["probs"],
+        )
+        rows.append((mu, var, skew))
+    return _coerce_action_moments(rows, n_actions=n_actions)
+
+
+def _extract_action_moments(event: Any, *, n_actions: int) -> np.ndarray | None:
+    """Extract per-action moments from event state or payload."""
+    st = getattr(event, "state", None)
+    if isinstance(st, Mapping):
+        if "action_moments" in st:
+            return _coerce_action_moments(st["action_moments"], n_actions=n_actions)
+        if "lotteries" in st:
+            return _moments_from_lotteries(st["lotteries"], n_actions=n_actions)
+
+    payload = getattr(event, "payload", None)
+    if not isinstance(payload, Mapping):
+        return None
+
+    if "action_moments" in payload:
+        return _coerce_action_moments(payload["action_moments"], n_actions=n_actions)
+    if "lotteries" in payload:
+        return _moments_from_lotteries(payload["lotteries"], n_actions=n_actions)
+
+    info = payload.get("info", None)
+    if isinstance(info, Mapping):
+        if "action_moments" in info:
+            return _coerce_action_moments(info["action_moments"], n_actions=n_actions)
+        if "lotteries" in info:
+            return _moments_from_lotteries(info["lotteries"], n_actions=n_actions)
+    return None
 
 
 
@@ -96,8 +235,6 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
     >>> data["A"], data["S"], data["E"]
     (2, 1, 3)
     """
-    _ensure_int_states(subject)
-
     As = [int(blk.env_spec.n_actions) for blk in subject.blocks if blk.env_spec is not None]
     if len(set(As)) != 1:
         raise ValueError("Stan export expects constant n_actions across blocks for a subject.")
@@ -107,15 +244,10 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
     for blk in subject.blocks:
         events.extend(get_event_log(blk).events)
 
-    max_state = 0
-    for e in events:
-        if e.state is not None:
-            max_state = max(max_state, int(e.state))
-    S = max_state + 1
+    state, S = _state_indices(events)
 
     E = len(events)
     etype = np.zeros(E, dtype=int)
-    state = np.ones(E, dtype=int)        # 1-indexed
     choice = np.zeros(E, dtype=int)      # 0 unless CHOICE
     action = np.zeros(E, dtype=int)      # 0 unless OUTCOME
     outcome_obs = np.zeros(E, dtype=float)
@@ -124,10 +256,17 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
     demo_outcome_obs = np.zeros(E, dtype=float)
     has_demo_outcome = np.zeros(E, dtype=int)
     avail_mask = np.ones((E, A), dtype=float)  # 1 if action available for this event
+    action_mean = np.zeros((E, A), dtype=float)
+    action_variance = np.zeros((E, A), dtype=float)
+    action_skewness = np.zeros((E, A), dtype=float)
 
     for i, e in enumerate(events):
         etype[i] = int(e.type)
-        state[i] = (0 if e.state is None else int(e.state)) + 1
+        moments = _extract_action_moments(e, n_actions=A)
+        if moments is not None:
+            action_mean[i, :] = moments[:, 0]
+            action_variance[i, :] = moments[:, 1]
+            action_skewness[i, :] = moments[:, 2]
 
         p = e.payload
         if e.type == EventType.CHOICE:
@@ -170,6 +309,9 @@ def subject_to_stan_data(subject: SubjectData) -> dict[str, Any]:
         "demo_outcome_obs": demo_outcome_obs.tolist(),
         "has_demo_outcome": has_demo_outcome.tolist(),
         "avail_mask": avail_mask.tolist(),
+        "action_mean": action_mean.tolist(),
+        "action_variance": action_variance.tolist(),
+        "action_skewness": action_skewness.tolist(),
     }
 
 
@@ -236,6 +378,7 @@ def study_to_stan_data(study: StudyData) -> dict[str, Any]:
     etype=[]; state=[]; choice=[]; action=[]; outcome_obs=[]
     demo_action=[]; demo_outcome_obs=[]; has_demo_outcome=[]; subj=[]
     avail_mask=[]
+    action_mean=[]; action_variance=[]; action_skewness=[]
     for si, d in enumerate(subj_chunks, start=1):
         for i in range(int(d["E"])):
             etype.append(int(d["etype"][i]))
@@ -248,6 +391,9 @@ def study_to_stan_data(study: StudyData) -> dict[str, Any]:
             has_demo_outcome.append(int(d["has_demo_outcome"][i]))
             subj.append(si)
             avail_mask.append(list(d["avail_mask"][i]))
+            action_mean.append(list(d["action_mean"][i]))
+            action_variance.append(list(d["action_variance"][i]))
+            action_skewness.append(list(d["action_skewness"][i]))
 
     return {
         "N": int(N),
@@ -264,6 +410,9 @@ def study_to_stan_data(study: StudyData) -> dict[str, Any]:
         "demo_outcome_obs": demo_outcome_obs,
         "has_demo_outcome": has_demo_outcome,
         "avail_mask": avail_mask,
+        "action_mean": action_mean,
+        "action_variance": action_variance,
+        "action_skewness": action_skewness,
     }
 
 
