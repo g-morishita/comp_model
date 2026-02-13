@@ -30,7 +30,9 @@ Direct import:
 """
 
 from .bernoulli import BernoulliBanditEnv
+from .lottery_choice import LotteryChoiceBanditEnv
 
 __all__ = [
     "BernoulliBanditEnv",
+    "LotteryChoiceBanditEnv",
 ]
