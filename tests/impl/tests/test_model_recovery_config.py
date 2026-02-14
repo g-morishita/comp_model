@@ -41,7 +41,7 @@ def _minimal_raw_config() -> dict:
             {
                 "name": "QRL",
                 "model": "QRL",
-                "estimator": "comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator",
+                "estimator": "TransformedMLESubjectwiseEstimator",
                 "estimator_kwargs": {"n_starts": 2, "maxiter": 20},
             }
         ],
@@ -136,7 +136,7 @@ def test_config_from_raw_dict_rejects_legacy_factory_schema() -> None:
                 "model": {"factory": "QRL", "kwargs": {"beta": 3.0}},
                 "model_kwargs": {"beta": 6.0},
                 "estimator": {
-                    "factory": "comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator",
+                    "factory": "TransformedMLESubjectwiseEstimator",
                     "kwargs": {"n_starts": 1, "maxiter": 10},
                 },
                 "estimator_kwargs": {"maxiter": 20},
@@ -162,7 +162,7 @@ def test_config_from_raw_dict_generating_requires_model() -> None:
             {
                 "name": "QRL",
                 "model": "QRL",
-                "estimator": "comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator",
+                "estimator": "TransformedMLESubjectwiseEstimator",
             }
         ],
     }

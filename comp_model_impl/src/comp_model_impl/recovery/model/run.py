@@ -16,7 +16,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-import importlib
 import json
 import time
 import sys
@@ -31,10 +30,10 @@ from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
 from comp_model_core.interfaces.estimator import Estimator, FitResult
 
-from comp_model_impl.register import make_registry
-from comp_model_impl.tasks.build import build_runner_for_plan
+from ...register import make_registry
+from ...tasks.build import build_runner_for_plan
 
-from comp_model_impl.recovery.parameter.run import (
+from ..parameter.run import (
     make_unique_run_dir,
     _plan_summary,
     git_info_for_module,
@@ -42,13 +41,7 @@ from comp_model_impl.recovery.parameter.run import (
 from .config import ModelRecoveryConfig
 from .criteria import get_criterion, ModelCriterion
 from .likelihood import compute_likelihood_summary
-
-
-_ESTIMATOR_MODULES: tuple[str, ...] = (
-    "comp_model_impl.estimators.mle_event_log",
-    "comp_model_impl.estimators.within_subject_shared_delta",
-    "comp_model_impl.estimators.stan.nuts",
-)
+from .resolution import resolve_estimator_callable, resolve_model_callable
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,83 +122,6 @@ def write_model_recovery_manifest(
         encoding="utf-8",
     )
 
-def _is_dotted_path(s: str) -> bool:
-    """Return whether a component reference looks like a dotted import path.
-
-    Parameters
-    ----------
-    s : str
-        Component reference.
-
-    Returns
-    -------
-    bool
-        ``True`` when ``s`` contains ``"."`` after stripping whitespace.
-    """
-
-    return "." in str(s).strip()
-
-
-def _resolve_callable(reference: str, *, kind: str) -> Any:
-    """Resolve a callable from a dotted path.
-
-    Parameters
-    ----------
-    reference : str
-        Dotted import path.
-    kind : str
-        Component kind used in error messages.
-
-    Returns
-    -------
-    Any
-        Imported callable or class.
-    """
-
-    if not _is_dotted_path(reference):
-        raise ValueError(f"Expected dotted path for {kind}, got {reference!r}")
-    mod_name, attr = str(reference).rsplit(".", 1)
-    mod = importlib.import_module(mod_name)
-    return getattr(mod, attr)
-
-
-def _resolve_estimator_callable(reference: str) -> Any:
-    """Resolve an estimator callable from reference.
-
-    Parameters
-    ----------
-    reference : str
-        Dotted path or estimator class name available in built-in estimator
-        modules.
-
-    Returns
-    -------
-    Any
-        Estimator class or factory.
-
-    Raises
-    ------
-    ValueError
-        If ``reference`` cannot be resolved.
-    """
-
-    if _is_dotted_path(reference):
-        return _resolve_callable(reference, kind="estimator")
-
-    for mod_name in _ESTIMATOR_MODULES:
-        try:
-            mod = importlib.import_module(mod_name)
-            if hasattr(mod, reference):
-                return getattr(mod, reference)
-        except Exception:
-            continue
-
-    raise ValueError(
-        f"Could not resolve estimator {reference!r}. Provide a dotted path (for example, "
-        f"'comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator')."
-    )
-
-
 def _build_nested(value: Any, *, registries: Any) -> Any:
     """Build nested inline factory mappings found in kwargs.
 
@@ -278,7 +194,7 @@ def _build_from_reference(
     Parameters
     ----------
     reference : str
-        Component reference string.
+        Registry key.
     kwargs : Mapping[str, Any] or None
         Constructor/factory kwargs.
     registries : Any
@@ -294,16 +210,12 @@ def _build_from_reference(
 
     resolved_kwargs = _build_kwargs(kwargs, registries=registries)
 
-    if _is_dotted_path(reference):
-        fn = _resolve_callable(reference, kind=kind)
-        return fn(**resolved_kwargs)
-
     if kind in ("model", "model_or_other"):
-        cls = registries.models.get(reference)
+        cls = resolve_model_callable(reference, registries=registries)
         return cls(**resolved_kwargs)
 
     if kind == "estimator":
-        cls_or_fn = _resolve_estimator_callable(reference)
+        cls_or_fn = resolve_estimator_callable(reference, registries=registries)
         return cls_or_fn(**resolved_kwargs)
 
     raise ValueError(f"Unknown kind: {kind!r}")
@@ -315,7 +227,7 @@ def _build_model(model: str, *, model_kwargs: Mapping[str, Any] | None, registri
     Parameters
     ----------
     model : str
-        Model reference (registry key or dotted path).
+        Model registry key.
     model_kwargs : Mapping[str, Any] or None
         Model constructor/factory kwargs.
     registries : Any
@@ -365,7 +277,7 @@ def _build_estimator(
     """
 
     kwargs = _build_kwargs(estimator_kwargs, registries=registries)
-    cls_or_fn = _resolve_estimator_callable(str(estimator))
+    cls_or_fn = resolve_estimator_callable(str(estimator), registries=registries)
 
     try:
         import inspect

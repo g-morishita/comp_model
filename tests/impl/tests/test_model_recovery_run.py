@@ -28,6 +28,7 @@ from comp_model_impl.recovery.model.config import (
 from comp_model_impl.recovery.model.criteria import get_criterion
 from comp_model_impl.recovery.model.likelihood import LikelihoodSummary
 from comp_model_impl.recovery.model import run as run_mod
+from comp_model_impl.recovery.model import resolution as resolve_mod
 from comp_model_impl.recovery.parameter.config import SamplingSpec
 from comp_model_impl.register import make_registry
 
@@ -126,34 +127,27 @@ def _minimal_plan() -> StudyPlan:
     return StudyPlan(subjects={"s1": [block]})
 
 
-def test_is_dotted_path() -> None:
-    """Dotted-path detector should be straightforward."""
-    assert run_mod._is_dotted_path("a.b") is True
-    assert run_mod._is_dotted_path("QRL") is False
-
-
-def test_resolve_callable_and_unknown_format() -> None:
-    """Callable resolver should import dotted paths and reject non-dotted refs."""
-    fn = run_mod._resolve_callable("json.loads", kind="test")
-    assert callable(fn)
-    assert fn("[1,2]") == [1, 2]
-
-    with pytest.raises(ValueError, match="Expected dotted path"):
-        _ = run_mod._resolve_callable("not_dotted", kind="test")
-
-
 def test_resolve_estimator_callable() -> None:
-    """Estimator resolver should support both dotted and module-searched names."""
-    cls = run_mod._resolve_estimator_callable("TransformedMLESubjectwiseEstimator")
+    """Estimator resolver should use estimator registry keys."""
+    registries = make_registry()
+
+    cls = resolve_mod.resolve_estimator_callable(
+        "TransformedMLESubjectwiseEstimator",
+        registries=registries,
+    )
     assert cls.__name__ == "TransformedMLESubjectwiseEstimator"
 
-    cls2 = run_mod._resolve_estimator_callable(
-        "comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator"
-    )
-    assert cls2.__name__ == "TransformedMLESubjectwiseEstimator"
+    with pytest.raises(ValueError, match="registered estimator key"):
+        _ = resolve_mod.resolve_estimator_callable(
+            "comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator",
+            registries=registries,
+        )
 
     with pytest.raises(ValueError, match="Could not resolve estimator"):
-        _ = run_mod._resolve_estimator_callable("DefinitelyUnknownEstimator")
+        _ = resolve_mod.resolve_estimator_callable(
+            "DefinitelyUnknownEstimator",
+            registries=registries,
+        )
 
 
 def test_build_nested_and_build_kwargs() -> None:
@@ -198,13 +192,13 @@ def test_build_from_reference_model_and_estimator() -> None:
     assert isinstance(model, QRL)
     assert model.alpha == pytest.approx(0.3)
 
-    model2 = run_mod._build_from_reference(
-        reference="comp_model_impl.models.qrl.qrl.QRL",
-        kwargs={"alpha": 0.1, "beta": 2.0},
-        registries=registries,
-        kind="model",
-    )
-    assert isinstance(model2, QRL)
+    with pytest.raises(ValueError, match="registered model key"):
+        _ = run_mod._build_from_reference(
+            reference="comp_model_impl.models.qrl.qrl.QRL",
+            kwargs={"alpha": 0.1, "beta": 2.0},
+            registries=registries,
+            kind="model",
+        )
 
     est = run_mod._build_from_reference(
         reference="TransformedMLESubjectwiseEstimator",
@@ -218,9 +212,9 @@ def test_build_from_reference_model_and_estimator() -> None:
         _ = run_mod._build_from_reference(reference="QRL", kwargs={}, registries=registries, kind="unknown")
 
 
-def test_build_model_type_error() -> None:
-    """Model builder should reject non-model callables."""
-    with pytest.raises(TypeError, match="ComputationalModel"):
+def test_build_model_unknown_key() -> None:
+    """Model builder should reject unknown model keys."""
+    with pytest.raises(ValueError, match="Could not resolve model"):
         _ = run_mod._build_model(
             "builtins.dict",
             model_kwargs={},
@@ -498,7 +492,7 @@ def test_run_model_recovery_rejects_bad_plan_extension(tmp_path: Path) -> None:
             CandidateModelSpec(
                 name="cand",
                 model="QRL",
-                estimator="comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator",
+                estimator="TransformedMLESubjectwiseEstimator",
             )
         ],
     )
@@ -524,7 +518,7 @@ def test_run_model_recovery_requires_nonempty_generating_and_candidates(
             CandidateModelSpec(
                 name="cand",
                 model="QRL",
-                estimator="comp_model_impl.estimators.mle_event_log.TransformedMLESubjectwiseEstimator",
+                estimator="TransformedMLESubjectwiseEstimator",
             )
         ],
     )

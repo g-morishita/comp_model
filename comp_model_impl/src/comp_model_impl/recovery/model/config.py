@@ -32,9 +32,8 @@ class GeneratingModelSpec:
     name : str
         Human-readable label used in output tables.
     model : str
-        Model reference. Non-dotted values are resolved from
-        ``comp_model_impl.register.make_registry().models``. Dotted values are
-        imported as callables/classes.
+        Model registry key resolved from
+        ``comp_model_impl.register.make_registry().models``.
     model_kwargs : dict[str, Any], default={}
         Keyword arguments passed to the model constructor/factory.
     sampling : SamplingSpec, default=SamplingSpec()
@@ -56,10 +55,11 @@ class CandidateModelSpec:
     name : str
         Human-readable label used in output tables.
     model : str
-        Candidate model reference (registry key or dotted path).
+        Candidate model registry key resolved from
+        ``comp_model_impl.register.make_registry().models``.
     estimator : str
-        Estimator reference. A dotted path is imported directly. A non-dotted
-        value is looked up in built-in estimator modules.
+        Estimator registry key resolved from
+        ``comp_model_impl.register.make_registry().estimators``.
     model_kwargs : dict[str, Any], default={}
         Keyword arguments passed to the model constructor/factory.
     estimator_kwargs : dict[str, Any], default={}

@@ -2,11 +2,12 @@
 
 This module defines :func:`make_registry`, which returns a
 :class:`comp_model_core.registry.Registry` populated with built-in models,
-bandit environments, and demonstrators shipped in :mod:`comp_model_impl`.
+estimators, bandit environments, and demonstrators shipped in
+:mod:`comp_model_impl`.
 
 Notes
 -----
-If you add a new model, bandit, or demonstrator implementation and want it
+If you add a new model, estimator, bandit, or demonstrator implementation and want it
 available via plan configuration or factory helpers, register it here.
 
 This registry is what allows YAML/JSON study plans to resolve string names
@@ -35,6 +36,13 @@ from .models import (
     Vicarious_DB_Stay,
 )
 from .demonstrators import NoisyBestArmDemonstrator, RLDemonstrator, FixedSequenceDemonstrator
+from .estimators import (
+    BoxMLESubjectwiseEstimator,
+    TransformedMLESubjectwiseEstimator,
+    StanHierarchicalNUTSEstimator,
+    StanNUTSSubjectwiseEstimator,
+    WithinSubjectSharedDeltaTransformedMLEEstimator,
+)
 
 def make_registry() -> Registry:
 
@@ -73,5 +81,15 @@ def make_registry() -> Registry:
     r.demonstrators.register("FixedSequenceDemonstrator", FixedSequenceDemonstrator)
     r.demonstrators.register("NoisyBestArmDemonstrator", NoisyBestArmDemonstrator)
     r.demonstrators.register("RLDemonstrator", RLDemonstrator)
+
+    # Estimators
+    r.estimators.register("BoxMLESubjectwiseEstimator", BoxMLESubjectwiseEstimator)
+    r.estimators.register("TransformedMLESubjectwiseEstimator", TransformedMLESubjectwiseEstimator)
+    r.estimators.register("StanHierarchicalNUTSEstimator", StanHierarchicalNUTSEstimator)
+    r.estimators.register("StanNUTSSubjectwiseEstimator", StanNUTSSubjectwiseEstimator)
+    r.estimators.register(
+        "WithinSubjectSharedDeltaTransformedMLEEstimator",
+        WithinSubjectSharedDeltaTransformedMLEEstimator,
+    )
 
     return r
