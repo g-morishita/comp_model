@@ -339,6 +339,22 @@ def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():
     adapter = resolve_stan_adapter(wrapped)
     assert isinstance(adapter, VicariousRLWithinSubjectStanAdapter)
     assert adapter.program("indiv").key == "vicarious_rl_within_subject"
+    assert adapter.required_priors("indiv") == [
+        "alpha_o__shared",
+        "alpha_o__delta",
+        "beta__shared",
+        "beta__delta",
+    ]
+    assert adapter.required_priors("hier") == [
+        "mu_alpha_o__shared",
+        "sd_alpha_o__shared",
+        "mu_beta__shared",
+        "sd_beta__shared",
+        "mu_alpha_o__delta",
+        "sd_alpha_o__delta",
+        "mu_beta__delta",
+        "sd_beta__delta",
+    ]
 
     data = {}
     adapter.augment_subject_data(data)

@@ -143,22 +143,22 @@ class VicariousRLWithinSubjectStanAdapter(StanAdapter):
         """
         if family == "indiv":
             return [
-                "alpha_o_shared",
-                "alpha_o_delta",
-                "beta_shared",
-                "beta_delta",
+                "alpha_o__shared",
+                "alpha_o__delta",
+                "beta__shared",
+                "beta__delta",
             ]
 
         if family == "hier":
             return [
-                "mu_alpha_o_shared",
-                "sd_alpha_o_shared",
-                "mu_beta_shared",
-                "sd_beta_shared",
-                "mu_alpha_o_delta",
-                "sd_alpha_o_delta",
-                "mu_beta_delta",
-                "sd_beta_delta",
+                "mu_alpha_o__shared",
+                "sd_alpha_o__shared",
+                "mu_beta__shared",
+                "sd_beta__shared",
+                "mu_alpha_o__delta",
+                "sd_alpha_o__delta",
+                "mu_beta__delta",
+                "sd_beta__delta",
             ]
 
         raise ValueError(f"Unknown family: {family!r}")
@@ -218,12 +218,12 @@ class VicariousRLWithinSubjectStanAdapter(StanAdapter):
         return [
             "alpha_o_pop",
             "beta_pop",
-            "mu_alpha_o_shared_hat",
-            "sd_alpha_o_shared_hat",
-            "mu_beta_shared_hat",
-            "sd_beta_shared_hat",
-            "mu_alpha_o_delta_hat",
-            "sd_alpha_o_delta_hat",
-            "mu_beta_delta_hat",
-            "sd_beta_delta_hat",
+            "mu_alpha_o__shared_hat",
+            "sd_alpha_o__shared_hat",
+            "mu_beta__shared_hat",
+            "sd_beta__shared_hat",
+            "mu_alpha_o__delta_hat",
+            "sd_alpha_o__delta_hat",
+            "mu_beta__delta_hat",
+            "sd_beta__delta_hat",
         ]

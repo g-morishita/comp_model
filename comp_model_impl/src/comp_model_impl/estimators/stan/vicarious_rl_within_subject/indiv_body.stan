@@ -24,25 +24,25 @@ data {
   real<lower=1e-6> beta_upper;
 
   // priors on z-scale (configurable)
-  int<lower=1,upper=8> alpha_o_shared_prior_family;
-  real alpha_o_shared_prior_p1;
-  real alpha_o_shared_prior_p2;
-  real alpha_o_shared_prior_p3;
+  int<lower=1,upper=8> alpha_o__shared_prior_family;
+  real alpha_o__shared_prior_p1;
+  real alpha_o__shared_prior_p2;
+  real alpha_o__shared_prior_p3;
 
-  int<lower=1,upper=8> alpha_o_delta_prior_family;
-  real alpha_o_delta_prior_p1;
-  real alpha_o_delta_prior_p2;
-  real alpha_o_delta_prior_p3;
+  int<lower=1,upper=8> alpha_o__delta_prior_family;
+  real alpha_o__delta_prior_p1;
+  real alpha_o__delta_prior_p2;
+  real alpha_o__delta_prior_p3;
 
-  int<lower=1,upper=8> beta_shared_prior_family;
-  real beta_shared_prior_p1;
-  real beta_shared_prior_p2;
-  real beta_shared_prior_p3;
+  int<lower=1,upper=8> beta__shared_prior_family;
+  real beta__shared_prior_p1;
+  real beta__shared_prior_p2;
+  real beta__shared_prior_p3;
 
-  int<lower=1,upper=8> beta_delta_prior_family;
-  real beta_delta_prior_p1;
-  real beta_delta_prior_p2;
-  real beta_delta_prior_p3;
+  int<lower=1,upper=8> beta__delta_prior_family;
+  real beta__delta_prior_p1;
+  real beta__delta_prior_p2;
+  real beta__delta_prior_p3;
 }
 parameters {
   real alpha_o__shared_z;
@@ -71,12 +71,12 @@ transformed parameters {
     beta_lower + (beta_upper - beta_lower) * inv_logit(beta_z);
 }
 model {
-  target += prior_lpdf(alpha_o__shared_z | alpha_o_shared_prior_family, alpha_o_shared_prior_p1, alpha_o_shared_prior_p2, alpha_o_shared_prior_p3);
-  target += prior_lpdf(beta__shared_z | beta_shared_prior_family, beta_shared_prior_p1, beta_shared_prior_p2, beta_shared_prior_p3);
+  target += prior_lpdf(alpha_o__shared_z | alpha_o__shared_prior_family, alpha_o__shared_prior_p1, alpha_o__shared_prior_p2, alpha_o__shared_prior_p3);
+  target += prior_lpdf(beta__shared_z | beta__shared_prior_family, beta__shared_prior_p1, beta__shared_prior_p2, beta__shared_prior_p3);
 
   for (i in 1:(C-1)) {
-    target += prior_lpdf(alpha_o__delta_z[i] | alpha_o_delta_prior_family, alpha_o_delta_prior_p1, alpha_o_delta_prior_p2, alpha_o_delta_prior_p3);
-    target += prior_lpdf(beta__delta_z[i] | beta_delta_prior_family, beta_delta_prior_p1, beta_delta_prior_p2, beta_delta_prior_p3);
+    target += prior_lpdf(alpha_o__delta_z[i] | alpha_o__delta_prior_family, alpha_o__delta_prior_p1, alpha_o__delta_prior_p2, alpha_o__delta_prior_p3);
+    target += prior_lpdf(beta__delta_z[i] | beta__delta_prior_family, beta__delta_prior_p1, beta__delta_prior_p2, beta__delta_prior_p3);
   }
 
   matrix[S, A] Q = rep_matrix(0.0, S, A);

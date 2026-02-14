@@ -11,6 +11,7 @@ from comp_model_impl.estimators.stan.nuts import (
     _add_subject_posterior_summaries,
     _delta_labels,
     _flatten_mean,
+    _hyper_means_from_pop_hat,
     _is_within_subject_model,
     _load_yaml,
     _posterior_summary_from_draws,
@@ -212,3 +213,42 @@ def test_waic_diagnostics_from_fit_returns_none_when_missing() -> None:
     fit.stan_variable = lambda name: (_ for _ in ()).throw(KeyError(name))  # type: ignore[method-assign]
     out = _waic_diagnostics_from_fit(fit)
     assert out is None
+
+
+def test_hyper_means_from_pop_hat_requires_canonical_keys() -> None:
+    """Conditional-MAP hyper key lookup should require canonical key names."""
+    z_names = [
+        "alpha_o__shared_z",
+        "beta__shared_z",
+        "alpha_o__delta_z__B",
+        "beta__delta_z__B",
+    ]
+
+    # Legacy/single-underscore style should be rejected.
+    pop_hat_legacy = {
+        "mu_alpha_o_shared": 0.1,
+        "sd_alpha_o_shared": 1.0,
+        "mu_beta__shared": -0.2,
+        "sd_beta__shared": 0.8,
+        "mu_alpha_o_delta__B": 0.3,
+        "sd_alpha_o_delta__B": 1.2,
+        "mu_beta__delta__B": -0.1,
+        "sd_beta__delta__B": 0.7,
+    }
+    with pytest.raises(ValueError, match="mu_alpha_o__shared"):
+        _ = _hyper_means_from_pop_hat(pop_hat=pop_hat_legacy, z_names=z_names)
+
+    # Canonical/double-underscore style should work.
+    pop_hat_canonical = {
+        "mu_alpha_o__shared": 0.4,
+        "sd_alpha_o__shared": 1.5,
+        "mu_beta__shared": 0.0,
+        "sd_beta__shared": 0.9,
+        "mu_alpha_o__delta__B": -0.2,
+        "sd_alpha_o__delta__B": 1.1,
+        "mu_beta__delta__B": 0.6,
+        "sd_beta__delta__B": 0.5,
+    }
+    mu2, sd2 = _hyper_means_from_pop_hat(pop_hat=pop_hat_canonical, z_names=z_names)
+    assert mu2.tolist() == pytest.approx([0.4, 0.0, -0.2, 0.6])
+    assert sd2.tolist() == pytest.approx([1.5, 0.9, 1.1, 0.5])
