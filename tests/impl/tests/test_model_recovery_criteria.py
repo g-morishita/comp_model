@@ -10,6 +10,7 @@ from comp_model_impl.recovery.model.criteria import (
     AICCriterion,
     BICCriterion,
     LogLikelihoodCriterion,
+    WAICCriterion,
     get_criterion,
 )
 
@@ -36,6 +37,14 @@ def test_bic_criterion() -> None:
     assert c.higher_is_better() is False
 
 
+def test_waic_criterion() -> None:
+    """WAIC criterion should return WAIC and prefer lower values."""
+    c = WAICCriterion()
+    assert c.score(ll=-10.0, k=4, n_obs=100, waic=123.4) == pytest.approx(123.4)
+    assert c.score(ll=-10.0, k=4, n_obs=100, waic=None) == pytest.approx(float("inf"))
+    assert c.higher_is_better() is False
+
+
 def test_get_criterion_aliases_and_errors() -> None:
     """Criterion factory should accept aliases and reject unknown names."""
     assert get_criterion("ll").name == "loglike"
@@ -43,6 +52,7 @@ def test_get_criterion_aliases_and_errors() -> None:
     assert get_criterion("log_likelihood").name == "loglike"
     assert get_criterion("aic").name == "aic"
     assert get_criterion("bic").name == "bic"
+    assert get_criterion("waic").name == "waic"
 
     with pytest.raises(ValueError, match="Unknown criterion"):
-        _ = get_criterion("waic")
+        _ = get_criterion("not_a_criterion")

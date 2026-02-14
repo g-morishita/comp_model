@@ -2,7 +2,7 @@
 
 Model recovery simulates data from each generating model, fits all candidate
 models to each simulated dataset, and selects a winner under a criterion
-such as log-likelihood, AIC, or BIC.
+such as log-likelihood, AIC, BIC, or WAIC.
 
 The sampling schema intentionally reuses parameter-recovery specs so the same
 parameter generation definitions can be shared across both workflows.
@@ -83,7 +83,7 @@ class SelectionSpec:
 
     Parameters
     ----------
-    criterion : {"loglike", "aic", "bic"}, default="bic"
+    criterion : {"loglike", "aic", "bic", "waic"}, default="bic"
         Scoring criterion used to compare candidates.
     tie_break : {"first", "simpler"}, default="simpler"
         Tie-breaking strategy when scores are equal within ``atol``.

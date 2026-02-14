@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import Protocol
 
 
@@ -16,7 +17,7 @@ class ModelCriterion(Protocol):
 
     name: str
 
-    def score(self, *, ll: float, k: int, n_obs: int) -> float:
+    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
         """Compute a scalar model-selection score.
 
         Parameters
@@ -27,6 +28,8 @@ class ModelCriterion(Protocol):
             Number of free parameters.
         n_obs : int
             Number of observations.
+        waic : float or None, optional
+            WAIC value when available. Ignored by non-WAIC criteria.
 
         Returns
         -------
@@ -56,7 +59,7 @@ class LogLikelihoodCriterion:
     """
     name: str = "loglike"
 
-    def score(self, *, ll: float, k: int, n_obs: int) -> float:
+    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
         """Return log-likelihood score.
 
         Parameters
@@ -96,7 +99,7 @@ class AICCriterion:
     """
     name: str = "aic"
 
-    def score(self, *, ll: float, k: int, n_obs: int) -> float:
+    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
         """Compute AIC score.
 
         Parameters
@@ -136,7 +139,7 @@ class BICCriterion:
     """
     name: str = "bic"
 
-    def score(self, *, ll: float, k: int, n_obs: int) -> float:
+    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
         """Compute BIC score.
 
         Parameters
@@ -153,7 +156,6 @@ class BICCriterion:
         float
             BIC score.
         """
-        import math
         n = max(int(n_obs), 1)
         return float(k * math.log(n) - 2.0 * ll)
 
@@ -164,6 +166,53 @@ class BICCriterion:
         -------
         bool
             Always ``False`` for BIC.
+        """
+        return False
+
+
+@dataclass(frozen=True, slots=True)
+class WAICCriterion:
+    """WAIC criterion.
+
+    Notes
+    -----
+    Lower WAIC is better. If WAIC is unavailable for a fit, the criterion
+    returns ``+inf`` so that fit is never preferred when finite-WAIC fits exist.
+    """
+
+    name: str = "waic"
+
+    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
+        """Return WAIC score from diagnostics.
+
+        Parameters
+        ----------
+        ll : float
+            Unused.
+        k : int
+            Unused.
+        n_obs : int
+            Unused.
+        waic : float or None, optional
+            WAIC value extracted from fit diagnostics.
+
+        Returns
+        -------
+        float
+            WAIC score (lower is better), or ``+inf`` if unavailable.
+        """
+        if waic is None:
+            return float("inf")
+        x = float(waic)
+        return x if math.isfinite(x) else float("inf")
+
+    def higher_is_better(self) -> bool:
+        """Return whether larger scores are better.
+
+        Returns
+        -------
+        bool
+            Always ``False`` for WAIC.
         """
         return False
 
@@ -193,4 +242,6 @@ def get_criterion(name: str) -> ModelCriterion:
         return AICCriterion()
     if n in ("bic",):
         return BICCriterion()
-    raise ValueError(f"Unknown criterion: {name!r}. Expected one of: loglike, aic, bic.")
+    if n in ("waic",):
+        return WAICCriterion()
+    raise ValueError(f"Unknown criterion: {name!r}. Expected one of: loglike, aic, bic, waic.")

@@ -2,7 +2,7 @@
 
 Model recovery simulates datasets from each generating model and fits a set of
 candidate models to each dataset, then selects the best candidate using a
-model selection criterion (log-likelihood, AIC, BIC).
+model selection criterion (log-likelihood, AIC, BIC, WAIC).
 
 The runner writes a self-contained run directory with configuration snapshots,
 a per-candidate fit table, a winners table, optional diagnostics, and optional
@@ -705,10 +705,24 @@ def run_model_recovery(
                         fixed_params=cand_spec.fixed_params,
                     )
 
-                    score = criterion.score(ll=ll_summary.ll_total, k=k_total, n_obs=ll_summary.n_obs_total)
+                    waic_diag = _extract_waic_from_fit_diagnostics(fit)
+                    waic_value = None
+                    if waic_diag is not None and "waic" in waic_diag:
+                        waic_value = float(waic_diag["waic"])
+
+                    score = criterion.score(
+                        ll=ll_summary.ll_total,
+                        k=k_total,
+                        n_obs=ll_summary.n_obs_total,
+                        waic=waic_value,
+                    )
+
+                    missing_waic = str(criterion.name).lower() == "waic" and not np.isfinite(float(score))
 
                     success = bool(getattr(fit, "success", True)) and np.isfinite(score)
                     message = str(getattr(fit, "message", ""))
+                    if missing_waic:
+                        message = f"{message} | WAIC unavailable" if message else "WAIC unavailable"
                     value = float(getattr(fit, "value", np.nan)) if getattr(fit, "value", None) is not None else np.nan
 
                     runtime_s = float(time.time() - t0)
@@ -729,7 +743,6 @@ def run_model_recovery(
                         "score": float(score),
                         "runtime_s": runtime_s,
                     }
-                    waic_diag = _extract_waic_from_fit_diagnostics(fit)
                     if waic_diag is not None:
                         row.update(waic_diag)
                     fit_rows.append(row)
