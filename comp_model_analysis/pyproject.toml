@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
   "comp-model-core>=0.1.0",
   "numpy>=2.0",
+  "matplotlib>=3.7",
 ]
 authors = [
   {name = "Gota Morishita", email = "gota.morishita@gmail.com"},
@@ -21,5 +22,3 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[project.optional-dependencies]
-plot = ["matplotlib>=3.7"]
