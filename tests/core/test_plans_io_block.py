@@ -205,11 +205,20 @@ def test_expand_subjects_variants_and_errors():
     with pytest.raises(ValueError, match="subjects integer must be > 0"):
         _expand_subjects({"subjects": 0, "blocks_template": [_base_block()]})
 
-    with pytest.raises(ValueError, match="subjects list requires"):
+    with pytest.raises(ValueError, match="Specify exactly one of 'blocks_template' or 'subject_template'"):
         _expand_subjects({"subjects": ["S1"]})
 
-    with pytest.raises(ValueError, match="Template must be a list"):
+    with pytest.raises(ValueError, match="subject_template.blocks"):
         _expand_subjects({"subjects": ["S1"], "subject_template": {}})
+
+    with pytest.raises(ValueError, match="Specify exactly one of 'blocks_template' or 'subject_template'"):
+        _expand_subjects(
+            {
+                "subjects": ["S1"],
+                "blocks_template": [_base_block()],
+                "subject_template": {"blocks": [_base_block()]},
+            }
+        )
 
     with pytest.raises(ValueError, match="subjects list must contain"):
         _expand_subjects({"subjects": [object()], "blocks_template": [_base_block()]})

@@ -230,7 +230,155 @@ def _normalize_block_dict(b: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _expand_subjects(raw: Mapping[str, Any]) -> dict[str, list[Mapping[str, Any]]]:
+    """
+    Expand the ``subjects`` section into a canonical subject->blocks mapping.
+
+    Accepted ``subjects`` forms are:
+
+    - ``dict``: already-canonical mapping ``{subject_id: [block, ...]}``
+    - ``list``: subject IDs to expand with ``blocks_template`` (or
+      ``subject_template.blocks``)
+    - ``int``: number of subjects, expanded to ``s01..sNN`` and then treated
+      as a list-based template expansion
+
+    Parameters
+    ----------
+    raw : Mapping[str, Any]
+        Root plan mapping containing ``subjects`` and optional template keys.
+
+    Returns
+    -------
+    dict[str, list[Mapping[str, Any]]]
+        Canonical mapping from subject ID string to block mappings.
+
+    Raises
+    ------
+    ValueError
+        If ``subjects`` is missing/invalid, if template structures are invalid,
+        or if ``repeat``/block structures are malformed.
+
+    Notes
+    -----
+    - Template resolution order for list/int subjects:
+      ``blocks_template`` first, then ``subject_template.blocks``.
+    - Template block IDs may use ``{subject}``, ``{sid}``, and ``{rep}``
+      placeholders.
+    - If ``repeat > 1`` and ``block_id`` has no ``{rep}`` placeholder,
+      ``_r<rep>`` is appended to keep block IDs unique.
+
+    Examples
+    --------
+    Before expansion (compact list-based input):
+
+    .. code-block:: yaml
+
+       subjects: [S1, S2]
+       blocks_template:
+         - block_id: "train_{sid}_{rep}"
+           repeat: 2
+           condition: "A"
+           n_trials: 2
+           bandit_type: "BernoulliBanditEnv"
+           bandit_config: {probs: [0.2, 0.8]}
+           trial_spec_template:
+             self_outcome: {kind: VERIDICAL}
+             available_actions: [0, 1]
+
+    After expansion (canonical subject mapping):
+
+    .. code-block:: yaml
+
+       subjects:
+         S1:
+           - block_id: "train_S1_1"
+             condition: "A"
+             n_trials: 2
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.2, 0.8]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+           - block_id: "train_S1_2"
+             condition: "A"
+             n_trials: 2
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.2, 0.8]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+         S2:
+           - block_id: "train_S2_1"
+             condition: "A"
+             n_trials: 2
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.2, 0.8]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+           - block_id: "train_S2_2"
+             condition: "A"
+             n_trials: 2
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.2, 0.8]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+
+    Before expansion (integer shorthand):
+
+    .. code-block:: yaml
+
+       subjects: 3
+       blocks_template:
+         - block_id: "b_{subject}"
+           condition: "A"
+           n_trials: 1
+           bandit_type: "BernoulliBanditEnv"
+           bandit_config: {probs: [0.5, 0.5]}
+           trial_spec_template:
+             self_outcome: {kind: VERIDICAL}
+             available_actions: [0, 1]
+
+    After expansion (auto-generated subject IDs):
+
+    .. code-block:: yaml
+
+       subjects:
+         s01:
+           - block_id: "b_s01"
+             condition: "A"
+             n_trials: 1
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.5, 0.5]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+         s02:
+           - block_id: "b_s02"
+             condition: "A"
+             n_trials: 1
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.5, 0.5]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+         s03:
+           - block_id: "b_s03"
+             condition: "A"
+             n_trials: 1
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.5, 0.5]}
+             trial_spec_template:
+               self_outcome: {kind: VERIDICAL}
+               available_actions: [0, 1]
+
+    What changes during expansion:
+    - ``subjects`` list/int becomes a dict mapping ``subject_id -> [blocks]``.
+    - ``repeat`` duplicates blocks.
+    - ``block_id`` placeholders are formatted with subject/repetition values.
+    """
     subjects_raw = raw.get("subjects")
+    # Integer shorthand: create subject IDs like s01..sNN.
     if isinstance(subjects_raw, int):
         if subjects_raw <= 0:
             raise ValueError("subjects integer must be > 0.")
@@ -240,18 +388,23 @@ def _expand_subjects(raw: Mapping[str, Any]) -> dict[str, list[Mapping[str, Any]
         return subjects_raw
 
     if isinstance(subjects_raw, list):
-        template = raw.get("blocks_template")
-        if template is None:
-            template = raw.get("subject_template")
+        has_blocks_template = "blocks_template" in raw
+        has_subject_template = "subject_template" in raw
 
-        if template is None:
-            raise ValueError("subjects list requires 'blocks_template' or 'subject_template'.")
+        if has_blocks_template == has_subject_template:
+            raise ValueError("Specify exactly one of 'blocks_template' or 'subject_template'.")
 
-        if isinstance(template, Mapping):
-            template = template.get("blocks")
-
-        if not isinstance(template, list):
-            raise ValueError("Template must be a list of block mappings (or subject_template.blocks).")
+        if has_blocks_template:
+            template = raw["blocks_template"]
+            if not isinstance(template, list):
+                raise ValueError("'blocks_template' must be a list of block mappings.")
+        else:
+            subject_template = raw["subject_template"]
+            if not isinstance(subject_template, Mapping):
+                raise ValueError("'subject_template' must be a mapping with key 'blocks'.")
+            template = subject_template.get("blocks")
+            if not isinstance(template, list):
+                raise ValueError("'subject_template.blocks' must be a list of block mappings.")
 
         out: dict[str, list[Mapping[str, Any]]] = {}
         for sid in subjects_raw:
@@ -277,6 +430,7 @@ def _expand_subjects(raw: Mapping[str, Any]) -> dict[str, list[Mapping[str, Any]
                     nb.pop("repeat", None)
                     bid = nb.get("block_id")
                     if isinstance(bid, str):
+                        # Prefer explicit placeholders; otherwise suffix repeats.
                         if "{subject}" in bid or "{sid}" in bid or "{rep}" in bid:
                             nb["block_id"] = bid.format(subject=sid_str, sid=sid_str, rep=rep)
                         elif repeat > 1:
