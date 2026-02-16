@@ -6,6 +6,7 @@ utilities for loading them from YAML/JSON.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
@@ -169,9 +170,9 @@ class ParameterRecoveryConfig:
     ParameterRecoveryConfig(plan_path='study_plan.yaml', n_reps=10, seed=123, n_jobs=1, sampling=SamplingSpec(mode='independent', space='param', individual={}, population={}, individual_sd={}, fixed={}, by_condition={}, clip_to_bounds=True), output=OutputSpec(out_dir='recovery_out', save_format='csv', save_config=True, save_fit_diagnostics=True, save_simulated_study=False))
     """
     plan_path: str
-    n_reps: int = 50
-    seed: int = 0
-    n_jobs: int = 1
+    n_reps: int
+    seed: int
+    n_jobs: int
 
     sampling: SamplingSpec = field(default_factory=SamplingSpec)
     output: OutputSpec = field(default_factory=OutputSpec)
@@ -246,6 +247,104 @@ def _parse_condition_sampling(d: Any) -> dict[str, ConditionSamplingSpec]:
     return out
 
 
+def _require(raw: Mapping[str, Any], key: str) -> Any:
+    if key not in raw:
+        raise ValueError(f"Missing required field: {key}")
+    return raw[key]
+
+
+def _require_int(raw: Mapping[str, Any], key: str, *, min_value: int | None = None) -> int:
+    """Require an integer field and optionally validate a minimum value."""
+    value = _require(raw, key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{key} must be an integer.")
+    out = int(value)
+    if min_value is not None and out < min_value:
+        raise ValueError(f"{key} must be >= {min_value}.")
+    return out
+
+
+def _as_mapping(value: Any, *, field_name: str) -> Mapping[str, Any]:
+    """Require a mapping/object value for a named field."""
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{field_name} must be a mapping/object.")
+    return value
+
+
+def _parse_sampling_spec_strict(samp_raw: Mapping[str, Any]) -> SamplingSpec:
+    """
+    Parse and validate the ``sampling`` section with no implicit defaults.
+
+    Required keys for every sampling config are:
+    ``mode``, ``space``, ``clip_to_bounds``, and ``by_condition``.
+
+    Mode-specific required keys are:
+    - ``fixed``: ``fixed``
+    - ``independent``: ``individual``
+    - ``hierarchical``: ``population`` and ``individual_sd``
+
+    Parameters
+    ----------
+    samp_raw : Mapping[str, Any]
+        Raw ``sampling`` object loaded from YAML/JSON.
+
+    Returns
+    -------
+    SamplingSpec
+        Parsed sampling specification.
+
+    Raises
+    ------
+    ValueError
+        If required fields are missing, malformed, or contain unknown enum
+        values for mode/space.
+    """
+    if not isinstance(samp_raw, Mapping):
+        raise ValueError("sampling must be a mapping/object.")
+
+    mode = str(_require(samp_raw, "mode")).lower()
+    space = str(_require(samp_raw, "space")).lower()
+
+    if mode not in {"fixed", "independent", "hierarchical"}:
+        raise ValueError(f"Unknown sampling.mode: {mode!r}")
+    if space not in {"param", "z"}:
+        raise ValueError(f"Unknown sampling.space: {space!r}")
+
+    individual: dict[str, DistSpec] = {}
+    population: dict[str, DistSpec] = {}
+    individual_sd: dict[str, float] = {}
+    fixed: dict[str, float] = {}
+
+    if mode == "fixed":
+        fixed_raw = _as_mapping(_require(samp_raw, "fixed"), field_name="sampling.fixed")
+        fixed = {str(k): float(v) for k, v in fixed_raw.items()}
+    elif mode == "independent":
+        individual_raw = _as_mapping(_require(samp_raw, "individual"), field_name="sampling.individual")
+        individual = _parse_dists(dict(individual_raw))
+    else:  # hierarchical
+        population_raw = _as_mapping(_require(samp_raw, "population"), field_name="sampling.population")
+        individual_sd_raw = _as_mapping(
+            _require(samp_raw, "individual_sd"),
+            field_name="sampling.individual_sd",
+        )
+        population = _parse_dists(dict(population_raw))
+        individual_sd = {str(k): float(v) for k, v in individual_sd_raw.items()}
+
+    by_condition_raw = _require(samp_raw, "by_condition")
+    clip_to_bounds_raw = _require(samp_raw, "clip_to_bounds")
+
+    return SamplingSpec(
+        mode=mode,
+        space=space,
+        individual=individual,
+        population=population,
+        individual_sd=individual_sd,
+        fixed=fixed,
+        by_condition=_parse_condition_sampling(by_condition_raw),
+        clip_to_bounds=bool(clip_to_bounds_raw),
+    )
+
+
 def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
 
     """
@@ -260,10 +359,6 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
     -------
     ParameterRecoveryConfig
         Parsed configuration.
-
-    Examples
-    --------
-    >>> # cfg = load_parameter_recovery_config("recovery_config.yaml")  # doctest: +SKIP
     """
 
     path = Path(path)
@@ -283,17 +378,7 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
     if not isinstance(raw, dict):
         raise ValueError("Config root must be a mapping/object.")
 
-    samp_raw = raw.get("sampling", {}) or {}
-    sampling = SamplingSpec(
-        mode=str(samp_raw.get("mode", "independent")),
-        space=str(samp_raw.get("space", "param")),
-        individual=_parse_dists(samp_raw.get("individual")),
-        population=_parse_dists(samp_raw.get("population")),
-        individual_sd={str(k): float(v) for k, v in (samp_raw.get("individual_sd", {}) or {}).items()},
-        fixed={str(k): float(v) for k, v in (samp_raw.get("fixed", {}) or {}).items()},
-        by_condition=_parse_condition_sampling(samp_raw.get("by_condition")),
-        clip_to_bounds=bool(samp_raw.get("clip_to_bounds", True)),
-    )
+    sampling = _parse_sampling_spec_strict(_require(raw, "sampling"))
 
     out_raw = raw.get("output", {}) or {}
     output = OutputSpec(
@@ -303,15 +388,18 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
         save_fit_diagnostics=bool(out_raw.get("save_fit_diagnostics", True)),
         save_simulated_study=bool(out_raw.get("save_simulated_study", False)),
     )
+    
+    plan_path = _require(raw, "plan_path")
 
-    if "plan_path" not in raw:
-        raise ValueError("Missing required field: plan_path")
+    n_reps = _require_int(raw, "n_reps", min_value=1)
+    seed = _require_int(raw, "seed")
+    n_jobs = _require_int(raw, "n_jobs", min_value=1)
 
     return ParameterRecoveryConfig(
-        plan_path=str(raw["plan_path"]),
-        n_reps=int(raw.get("n_reps", 50)),
-        seed=int(raw.get("seed", 0)),
-        n_jobs=max(1, int(raw.get("n_jobs", 1))),
+        plan_path=str(plan_path),
+        n_reps=n_reps,
+        seed=seed,
+        n_jobs=n_jobs,
         sampling=sampling,
         output=output,
     )

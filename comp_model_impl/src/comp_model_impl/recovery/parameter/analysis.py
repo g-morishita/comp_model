@@ -103,7 +103,7 @@ def compute_parameter_recovery_metrics(df: pd.DataFrame) -> pd.DataFrame:
     The input is expected to contain ``rep``, ``param``, ``true``, and ``hat``
     columns (``subject_id`` and other columns are ignored).
 
-    Metrics computed (per ``param`` × ``rep``):
+    Metrics computed (per ``param`` x ``rep``):
       - n (count)
       - corr (Pearson correlation between true and hat)
       - rmse (root mean squared error)
