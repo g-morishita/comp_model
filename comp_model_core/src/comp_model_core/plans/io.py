@@ -120,17 +120,30 @@ def _expand_trial_specs(block: Mapping[str, Any]) -> list[dict[str, Any]]:
 
     Examples
     --------
-    Using a template with overrides:
+    Compact/original YAML block input:
 
-    >>> b = {
-    ...   "n_trials": 3,
-    ...   "trial_spec_template": {"self_outcome": {"kind": "VERIDICAL"}, "available_actions": [0, 1]},
-    ...   "trial_spec_overrides": [None, {"available_actions": [1]}, None],
-    ... }
-    >>> _expand_trial_specs(b)
-    [{'self_outcome': {'kind': 'VERIDICAL'}, 'available_actions': [0, 1]},
-     {'self_outcome': {'kind': 'VERIDICAL'}, 'available_actions': [1]},
-     {'self_outcome': {'kind': 'VERIDICAL'}, 'available_actions': [0, 1]}]
+    .. code-block:: yaml
+
+       n_trials: 3
+       trial_spec_template:
+         self_outcome: {kind: VERIDICAL}
+         available_actions: [0, 1]
+       trial_spec_overrides:
+         - null
+         - {available_actions: [1]}
+         - null
+
+    Transformed/canonical YAML trial schedule:
+
+    .. code-block:: yaml
+
+       trial_specs:
+         - self_outcome: {kind: VERIDICAL}
+           available_actions: [0, 1]
+         - self_outcome: {kind: VERIDICAL}
+           available_actions: [1]
+         - self_outcome: {kind: VERIDICAL}
+           available_actions: [0, 1]
     """
     if "n_trials" not in block:
         raise ValueError("Block is missing required key 'n_trials'.")
