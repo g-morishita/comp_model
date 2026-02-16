@@ -36,7 +36,6 @@ from ...tasks.build import build_runner_for_plan
 from ..parameter.run import (
     make_unique_run_dir,
     _plan_summary,
-    git_info_for_module,
 )
 from .config import ModelRecoveryConfig
 from .criteria import get_criterion, ModelCriterion
@@ -85,12 +84,10 @@ def write_model_recovery_manifest(
     plan_summary : dict[str, Any]
         Compact summary of the loaded study plan.
     """
-    git_impl = git_info_for_module("comp_model_impl")
 
     manifest = {
         "run_id": out_dir.name,
         "created_at": datetime.now().isoformat(timespec="seconds"),
-        **git_impl,
         "generator": f"{generator.__class__.__module__}.{generator.__class__.__name__}",
         "plan_file_copied": plan_path_copied,
         "plan_summary": plan_summary,
@@ -576,8 +573,7 @@ def run_model_recovery(
     block_runner_builder = lambda p: build_runner_for_plan(plan=p, registries=registries)
 
     # Output directory
-    git_impl = git_info_for_module("comp_model_impl")
-    out_dir = make_unique_run_dir(config.output.out_dir, git_commit=git_impl.get("comp_model_impl_git_commit"))
+    out_dir = make_unique_run_dir(config.output.out_dir)
 
     # Copy plan into output directory (provenance)
     plan_copy_rel = None

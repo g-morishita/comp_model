@@ -425,7 +425,7 @@ def test_run_model_recovery_uses_waic_criterion(
                 diagnostics={"waic": waic, "elpd_waic": -0.5 * waic, "waic_n_obs": 5},
             )
 
-    def fake_make_unique_run_dir(base: str, git_commit: str | None = None) -> Path:
+    def fake_make_unique_run_dir(base: str) -> Path:
         out = Path(base) / "run_fixed"
         out.mkdir(parents=True, exist_ok=True)
         return out
@@ -450,7 +450,6 @@ def test_run_model_recovery_uses_waic_criterion(
         )
 
     monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
-    monkeypatch.setattr(run_mod, "git_info_for_module", lambda _: {"comp_model_impl_git_commit": "abc"})
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
     monkeypatch.setattr(run_mod, "_build_model", fake_build_model)
@@ -509,7 +508,7 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
         ),
     )
 
-    def fake_make_unique_run_dir(base: str, git_commit: str | None = None) -> Path:
+    def fake_make_unique_run_dir(base: str) -> Path:
         out = Path(base) / "run_fixed"
         out.mkdir(parents=True, exist_ok=True)
         return out
@@ -535,7 +534,6 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     progress_calls: list[tuple[int, int]] = []
 
     monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
-    monkeypatch.setattr(run_mod, "git_info_for_module", lambda _: {"comp_model_impl_git_commit": "abc"})
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
     monkeypatch.setattr(run_mod, "_build_model", fake_build_model)

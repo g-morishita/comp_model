@@ -347,67 +347,13 @@ def _run_git(repo_root: Path, args: list[str]) -> str | None:
         return None
 
 
-def git_info_for_module(module_name: str) -> dict[str, Any]:
-    """Return git metadata for the repository containing ``module_name``.
-
-    Parameters
-    ----------
-    module_name : str
-        Importable module name (e.g., ``"comp_model_impl"``).
-
-    Returns
-    -------
-    dict[str, Any]
-        Keys include ``<module>_repo_root``, ``<module>_git_commit``,
-        ``<module>_git_branch``, and ``<module>_git_dirty``. Values are ``None``
-        if git metadata cannot be determined.
-
-    Notes
-    -----
-    This helper never raises; it returns ``None`` values on failure.
-    """
-    try:
-        mod = importlib.import_module(module_name)
-        mod_path = Path(mod.__file__).resolve()
-    except Exception:
-        return {
-            f"{module_name}_repo_root": None,
-            f"{module_name}_git_commit": None,
-            f"{module_name}_git_branch": None,
-            f"{module_name}_git_dirty": None,
-        }
-
-    repo_root = _find_git_root(mod_path.parent)
-    if repo_root is None:
-        return {
-            f"{module_name}_repo_root": None,
-            f"{module_name}_git_commit": None,
-            f"{module_name}_git_branch": None,
-            f"{module_name}_git_dirty": None,
-        }
-
-    commit = _run_git(repo_root, ["rev-parse", "HEAD"])
-    branch = _run_git(repo_root, ["rev-parse", "--abbrev-ref", "HEAD"])
-    status = _run_git(repo_root, ["status", "--porcelain"])
-    dirty = None if status is None else (len(status) > 0)
-
-    return {
-        f"{module_name}_repo_root": str(repo_root),
-        f"{module_name}_git_commit": commit,
-        f"{module_name}_git_branch": branch,
-        f"{module_name}_git_dirty": dirty,
-    }
-
-
-def make_unique_run_dir(base_out_dir: str | Path, *, git_commit: str | None = None) -> Path:
+def make_unique_run_dir(base_out_dir: str | Path) -> Path:
     """Create a unique run directory under a base output directory.
 
     Parameters
     ----------
     base_out_dir : str or pathlib.Path
         Root output directory.
-    git_commit : str or None, optional
-        Optional git commit hash used to tag the run directory name.
 
     Returns
     -------
@@ -417,16 +363,15 @@ def make_unique_run_dir(base_out_dir: str | Path, *, git_commit: str | None = No
     Notes
     -----
     The directory name encodes a timestamp and a short hash:
-    ``YYYY-MM-DD_HHMMSS__<commit>__<suffix>``.
+    ``YYYY-MM-DD_HHMMSS__<suffix>``.
     """
     base = Path(base_out_dir)
     base.mkdir(parents=True, exist_ok=True)
 
     ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    short = (git_commit or "nogit")[:7]
     suffix = secrets.token_hex(2)  # 4 hex chars
 
-    run_id = f"{ts}__{short}__{suffix}"
+    run_id = f"{ts}__{suffix}"
     out_dir = base / run_id
     out_dir.mkdir(parents=False, exist_ok=False)
     return out_dir
@@ -537,13 +482,9 @@ def write_run_manifest(
     plan_summary : dict[str, Any]
         Small summary of the plan (e.g., number of blocks/trials).
     """
-
-    git_impl = git_info_for_module("comp_model_impl")
-
     manifest = {
         "run_id": out_dir.name,
         "created_at": datetime.now().isoformat(timespec="seconds"),
-        **git_impl,
         "generator": f"{generator.__class__.__module__}.{generator.__class__.__name__}",
         "model": f"{model.__class__.__module__}.{model.__class__.__name__}",
         "estimator": f"{estimator.__class__.__module__}.{estimator.__class__.__name__}",
@@ -783,10 +724,7 @@ def run_parameter_recovery(
 
     subject_ids = list(plan.subjects.keys())
 
-    # Unique output directory (use comp_model_impl git commit if available)
-    git_impl = git_info_for_module("comp_model_impl")
-    git_commit = git_impl.get("comp_model_impl_git_commit")
-    out_dir = make_unique_run_dir(config.output.out_dir, git_commit=git_commit)
+    out_dir = make_unique_run_dir(config.output.out_dir)
 
     # Save config
     if config.output.save_config:

@@ -22,7 +22,7 @@ def test_strip_hat_key() -> None:
 
 def test_make_unique_run_dir_creates_dir(tmp_path: Path) -> None:
     """make_unique_run_dir should create a unique directory."""
-    out_dir = make_unique_run_dir(tmp_path, git_commit="abcdef123456")
+    out_dir = make_unique_run_dir(tmp_path)
     assert out_dir.exists()
     assert out_dir.is_dir()
 
