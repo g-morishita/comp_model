@@ -23,6 +23,44 @@ from comp_model_impl.recovery.parameter.config import (
 )
 
 
+def _require_non_empty_text(value: Any, *, field_name: str) -> str:
+    """Validate and normalize a required non-empty string field."""
+
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string, got {type(value)}")
+    out = value.strip()
+    if out == "":
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return out
+
+
+@dataclass(frozen=True, slots=True)
+class ComponentSpec:
+    """Registry component reference and constructor kwargs."""
+
+    name: str
+    kwargs: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _require_non_empty_text(self.name, field_name="components.*.name")
+        if not isinstance(self.kwargs, Mapping):
+            raise TypeError(f"components.*.kwargs must be a mapping, got {type(self.kwargs)}")
+
+
+@dataclass(frozen=True, slots=True)
+class ModelRecoveryComponents:
+    """Registry-backed components used by model recovery."""
+
+    generator: ComponentSpec
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.generator, ComponentSpec):
+            raise TypeError(
+                "components.generator must be a ComponentSpec "
+                f"(got {type(self.generator)})"
+            )
+
+
 @dataclass(frozen=True, slots=True)
 class GeneratingModelSpec:
     """Specification for one generating model.
@@ -44,6 +82,10 @@ class GeneratingModelSpec:
     model: str
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     sampling: SamplingSpec = field(default_factory=SamplingSpec)
+
+    def __post_init__(self) -> None:
+        _require_non_empty_text(self.name, field_name="generating[].name")
+        _require_non_empty_text(self.model, field_name="generating[].model")
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +117,11 @@ class CandidateModelSpec:
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     estimator_kwargs: dict[str, Any] = field(default_factory=dict)
     fixed_params: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        _require_non_empty_text(self.name, field_name="candidates[].name")
+        _require_non_empty_text(self.model, field_name="candidates[].model")
+        _require_non_empty_text(self.estimator, field_name="candidates[].estimator")
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +180,9 @@ class ModelRecoveryConfig:
         Number of replications per generating model.
     seed : int, default=0
         Base random seed.
+    components : ModelRecoveryComponents or None, default=None
+        Optional registry component references for instantiating the
+        simulation generator from config.
     generating : list[GeneratingModelSpec], default=[]
         Generating model specifications.
     candidates : list[CandidateModelSpec], default=[]
@@ -147,11 +197,21 @@ class ModelRecoveryConfig:
     n_reps: int = 50
     seed: int = 0
 
+    components: ModelRecoveryComponents | None = None
+
     generating: list[GeneratingModelSpec] = field(default_factory=list)
     candidates: list[CandidateModelSpec] = field(default_factory=list)
 
     selection: SelectionSpec = field(default_factory=SelectionSpec)
     output: OutputSpec = field(default_factory=OutputSpec)
+
+    def __post_init__(self) -> None:
+        _require_non_empty_text(self.plan_path, field_name="plan_path")
+        if self.components is not None and not isinstance(self.components, ModelRecoveryComponents):
+            raise TypeError(
+                "components must be a ModelRecoveryComponents or None "
+                f"(got {type(self.components)})"
+            )
 
 
 def _coerce_mapping(raw: Any, *, field_name: str) -> dict[str, Any]:
@@ -227,12 +287,34 @@ def _coerce_component_ref(raw: Any, *, field_name: str) -> str:
 
     if raw is None:
         raise ValueError(f"Missing required field: {field_name}")
-    if not isinstance(raw, str):
-        raise TypeError(f"{field_name} must be a string, got {type(raw)}")
-    out = str(raw).strip()
-    if out == "":
-        raise ValueError(f"{field_name} must be a non-empty string")
-    return out
+    return _require_non_empty_text(raw, field_name=field_name)
+
+
+def _coerce_component_spec(raw: Any, *, field_name: str) -> ComponentSpec:
+    """Parse a component object containing ``name`` and optional ``kwargs``."""
+
+    if not isinstance(raw, Mapping):
+        raise TypeError(f"{field_name} must be a mapping, got {type(raw)}")
+
+    name = _coerce_component_ref(raw.get("name"), field_name=f"{field_name}.name")
+    kwargs = _coerce_mapping(raw.get("kwargs"), field_name=f"{field_name}.kwargs")
+    return ComponentSpec(name=name, kwargs=kwargs)
+
+
+def _coerce_components(raw: Any) -> ModelRecoveryComponents:
+    """Parse the optional ``components`` section."""
+
+    if not isinstance(raw, Mapping):
+        raise TypeError(f"components must be a mapping, got {type(raw)}")
+    if "generator" not in raw:
+        raise ValueError("components missing required 'generator'")
+
+    return ModelRecoveryComponents(
+        generator=_coerce_component_spec(
+            raw.get("generator"),
+            field_name="components.generator",
+        )
+    )
 
 
 def _coerce_sampling_spec(raw: Any) -> SamplingSpec:
@@ -321,6 +403,10 @@ def config_from_raw_dict(raw: Mapping[str, Any]) -> ModelRecoveryConfig:
     if "plan_path" not in raw:
         raise ValueError("Missing required field: plan_path")
 
+    components = None
+    if raw.get("components") is not None:
+        components = _coerce_components(raw.get("components"))
+
     generating_raw = raw.get("generating", []) or []
     candidates_raw = raw.get("candidates", []) or []
 
@@ -403,6 +489,7 @@ def config_from_raw_dict(raw: Mapping[str, Any]) -> ModelRecoveryConfig:
         plan_path=str(raw["plan_path"]),
         n_reps=int(raw.get("n_reps", 50)),
         seed=int(raw.get("seed", 0)),
+        components=components,
         generating=generating,
         candidates=candidates,
         selection=selection,

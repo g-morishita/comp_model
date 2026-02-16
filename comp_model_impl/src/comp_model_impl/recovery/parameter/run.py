@@ -26,11 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
-import inspect
 import json
-import secrets
-import shutil
-import subprocess
 import sys
 import warnings
 
@@ -47,6 +43,14 @@ from comp_model_core.interfaces.model import ComputationalModel
 
 from ...register import make_registry, Registry
 from ...tasks.build import build_runner_for_plan
+from ..common import (
+    build_estimator_checked,
+    build_generator_checked,
+    build_model_checked,
+    make_unique_run_dir,
+    plan_summary as _plan_summary,
+    safe_copy_file as _safe_copy_file,
+)
 
 from ..parameter.analysis import (
     compute_parameter_recovery_metrics,
@@ -377,116 +381,6 @@ def _maybe_compute_population_recovery(
     return pop_df, pop_metrics
 
 
-def make_unique_run_dir(base_out_dir: str | Path) -> Path:
-    """Create a unique run directory under a base output directory.
-
-    Parameters
-    ----------
-    base_out_dir : str or pathlib.Path
-        Root output directory.
-
-    Returns
-    -------
-    pathlib.Path
-        Newly created run directory path.
-
-    Notes
-    -----
-    The directory name encodes a timestamp and a short hash:
-    ``YYYY-MM-DD_HHMMSS__<suffix>``.
-    """
-    base = Path(base_out_dir)
-    base.mkdir(parents=True, exist_ok=True)
-
-    ts = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    suffix = secrets.token_hex(2)  # 4 hex chars
-
-    run_id = f"{ts}__{suffix}"
-    out_dir = base / run_id
-    out_dir.mkdir(parents=False, exist_ok=False)
-    return out_dir
-
-
-def _plan_summary(plan: StudyPlan) -> dict[str, Any]:
-    """Summarize a StudyPlan for run manifests.
-
-    Parameters
-    ----------
-    plan : StudyPlan
-        Study plan containing per-subject block lists.
-
-    Returns
-    -------
-    dict[str, Any]
-        Summary statistics and a small block table.
-    """
-    n_subjects = int(len(plan.subjects))
-
-    blocks_per_subject: list[int] = []
-    trials_per_subject: list[int] = []
-
-    block_trials_by_id: dict[str, list[int]] = {}
-    block_seen_by_subject: dict[str, set[str]] = {}
-
-    # Canonical view: derive block order + trials from first subject
-    canonical_subject_id = next(iter(plan.subjects.keys()))
-    canonical_blocks = list(plan.subjects[canonical_subject_id])
-    canonical_block_ids = [bp.block_id for bp in canonical_blocks]
-    canonical_trials_by_block = [int(bp.n_trials) for bp in canonical_blocks]
-
-    for sid, block_plans in plan.subjects.items():
-        block_plans = list(block_plans)
-        blocks_per_subject.append(int(len(block_plans)))
-
-        tot = 0
-        for bp in block_plans:
-            ntr = int(bp.n_trials)
-            tot += ntr
-
-            block_trials_by_id.setdefault(bp.block_id, []).append(ntr)
-            block_seen_by_subject.setdefault(bp.block_id, set()).add(sid)
-
-        trials_per_subject.append(int(tot))
-
-    n_blocks_unique = int(len(block_trials_by_id))
-
-    bmin = int(min(blocks_per_subject)) if blocks_per_subject else 0
-    bmax = int(max(blocks_per_subject)) if blocks_per_subject else 0
-    bmean = float(np.mean(blocks_per_subject)) if blocks_per_subject else 0.0
-
-    tmin = int(min(trials_per_subject)) if trials_per_subject else 0
-    tmax = int(max(trials_per_subject)) if trials_per_subject else 0
-    tmean = float(np.mean(trials_per_subject)) if trials_per_subject else 0.0
-
-    blocks_table = []
-    for block_id, trials_list in sorted(block_trials_by_id.items(), key=lambda kv: kv[0]):
-        blocks_table.append(
-            {
-                "block_id": block_id,
-                "n_trials_min": int(min(trials_list)),
-                "n_trials_max": int(max(trials_list)),
-                "n_trials_mean": float(np.mean(trials_list)),
-                "n_subjects_with_block": int(len(block_seen_by_subject.get(block_id, set()))),
-            }
-        )
-
-    return {
-        "n_subjects": n_subjects,
-        "n_blocks_unique": n_blocks_unique,
-        "blocks_per_subject_min": bmin,
-        "blocks_per_subject_mean": bmean,
-        "blocks_per_subject_max": bmax,
-        "total_trials_per_subject_min": tmin,
-        "total_trials_per_subject_mean": tmean,
-        "total_trials_per_subject_max": tmax,
-        "total_trials_all_subjects": int(sum(trials_per_subject)),
-        "canonical_subject_id": canonical_subject_id,
-        "canonical_block_ids": canonical_block_ids,
-        "canonical_trials_by_block": canonical_trials_by_block,
-        "blocks_table": blocks_table,
-    }
-
-
 def write_run_manifest(
     out_dir: Path,
     *,
@@ -689,41 +583,6 @@ def _run_single_rep_from_worker(rep: int, rep_seed: int) -> _ReplicationResult:
         subject_block_plans=ctx["subject_block_plans"],
         out_dir=ctx["out_dir"],
     )
-
-
-def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> str | None:
-    """
-    Copy a file into a destination directory if the source file exists.
-
-    Parameters
-    ----------
-    src : str | Path
-        Source file path.
-    dst_dir : str | Path
-        Destination directory path.
-
-    Returns
-    -------
-    str | None
-        Copied filename on success, or ``None`` if ``src`` does not exist or
-        is not a file or the copy operation fails.
-
-    Notes
-    -----
-    This helper does not create ``dst_dir``. The caller is expected to ensure
-    the destination directory already exists.
-    """
-
-    src = Path(src)
-    dst_dir = Path(dst_dir)
-    try:
-        if src.exists() and src.is_file():
-            dst = dst_dir / src.name
-            shutil.copy2(src, dst)
-            return str(dst.name)
-    except Exception:
-        return None
-    return None
 
 
 def _run_parameter_recovery_core(
@@ -1000,80 +859,35 @@ def run_parameter_recovery(
     r = registry or make_registry()
     comp = config.components
 
-    try:
-        generator_cls = r.generators[comp.generator.name]
-    except KeyError as exc:
-        raise ValueError(
-            f"Unknown generator component {comp.generator.name!r}. "
-            f"Available: {', '.join(r.generators.names())}"
-        ) from exc
+    generator_obj = build_generator_checked(
+        comp.generator.name,
+        generator_kwargs=dict(comp.generator.kwargs),
+        registries=r,
+        label="generator",
+    )
 
-    try:
-        generating_model_cls = r.models[comp.generating_model.name]
-    except KeyError as exc:
-        raise ValueError(
-            f"Unknown generating model component {comp.generating_model.name!r}. "
-            f"Available: {', '.join(r.models.names())}"
-        ) from exc
+    generating_model_obj = build_model_checked(
+        comp.generating_model.name,
+        model_kwargs=dict(comp.generating_model.kwargs),
+        registries=r,
+        label="generating model",
+    )
 
-    try:
-        fitting_model_cls = r.models[comp.fitting_model.name]
-    except KeyError as exc:
-        raise ValueError(
-            f"Unknown fitting model component {comp.fitting_model.name!r}. "
-            f"Available: {', '.join(r.models.names())}"
-        ) from exc
+    fitting_model_obj = build_model_checked(
+        comp.fitting_model.name,
+        model_kwargs=dict(comp.fitting_model.kwargs),
+        registries=r,
+        label="fitting model",
+    )
 
-    try:
-        estimator_cls = r.estimators[comp.estimator.name]
-    except KeyError as exc:
-        raise ValueError(
-            f"Unknown estimator component {comp.estimator.name!r}. "
-            f"Available: {', '.join(r.estimators.names())}"
-        ) from exc
-
-    try:
-        generator_obj = generator_cls(**dict(comp.generator.kwargs))
-    except Exception as exc:
-        raise ValueError(
-            f"Failed to instantiate generator {comp.generator.name!r} "
-            f"with kwargs={dict(comp.generator.kwargs)!r}: {exc}"
-        ) from exc
-
-    try:
-        generating_model_obj = generating_model_cls(**dict(comp.generating_model.kwargs))
-    except Exception as exc:
-        raise ValueError(
-            f"Failed to instantiate generating model {comp.generating_model.name!r} "
-            f"with kwargs={dict(comp.generating_model.kwargs)!r}: {exc}"
-        ) from exc
-
-    try:
-        fitting_model_obj = fitting_model_cls(**dict(comp.fitting_model.kwargs))
-    except Exception as exc:
-        raise ValueError(
-            f"Failed to instantiate fitting model {comp.fitting_model.name!r} "
-            f"with kwargs={dict(comp.fitting_model.kwargs)!r}: {exc}"
-        ) from exc
-
-    estimator_kwargs = dict(comp.estimator.kwargs)
-    try:
-        est_params = inspect.signature(estimator_cls).parameters
-    except Exception:
-        est_params = {}
-
-    if "base_model" in est_params:
-        estimator_kwargs.setdefault("base_model", fitting_model_obj)
-    elif "model" in est_params:
-        estimator_kwargs.setdefault("model", fitting_model_obj)
-
-    try:
-        estimator_obj = estimator_cls(**estimator_kwargs)
-    except Exception as exc:
-        raise ValueError(
-            f"Failed to instantiate estimator {comp.estimator.name!r} "
-            f"with kwargs={estimator_kwargs!r}: {exc}"
-        ) from exc
+    estimator_obj = build_estimator_checked(
+        comp.estimator.name,
+        estimator_kwargs=dict(comp.estimator.kwargs),
+        model=fitting_model_obj,
+        registries=r,
+        inject_model="auto",
+        label="estimator",
+    )
 
     return _run_parameter_recovery_core(
         config=config,

@@ -11,10 +11,10 @@ pickled simulated datasets.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 import json
 import time
@@ -30,17 +30,27 @@ from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
 from comp_model_core.interfaces.estimator import Estimator, FitResult
 
-from ...register import make_registry
+from ...register import make_registry, Registry
 from ...tasks.build import build_runner_for_plan
 
-from ..parameter.run import (
+from ..common import (
+    build_estimator as _build_estimator,
+    build_estimator_checked,
+    build_from_reference as _build_from_reference,
+    build_generator as _build_generator,
+    build_generator_checked,
+    build_kwargs as _build_kwargs,
+    build_model as _build_model,
+    build_model_checked,
+    build_nested as _build_nested,
     make_unique_run_dir,
-    _plan_summary,
+    plan_summary as _plan_summary,
+    safe_copy_file as _safe_copy_file,
+    subject_ids_from_plan as _subject_ids_from_plan,
 )
-from .config import ModelRecoveryConfig
+from .config import ModelRecoveryConfig, SamplingSpec
 from .criteria import get_criterion, ModelCriterion
 from .likelihood import compute_likelihood_summary
-from .resolution import resolve_estimator_callable, resolve_model_callable
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +71,25 @@ class ModelRecoveryOutputs:
     out_dir: str
 
 
+@dataclass(frozen=True, slots=True)
+class RuntimeGeneratingModelSpec:
+    """Advanced runtime generating spec using an instantiated model."""
+
+    name: str
+    model: ComputationalModel
+    sampling: SamplingSpec
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeCandidateModelSpec:
+    """Advanced runtime candidate spec using model+estimator objects."""
+
+    name: str
+    model: ComputationalModel
+    estimator: Estimator
+    fixed_params: dict[str, float] = field(default_factory=dict)
+
+
 def write_model_recovery_manifest(
     out_dir: Path,
     *,
@@ -68,6 +97,8 @@ def write_model_recovery_manifest(
     generator: Any,
     plan_path_copied: str | None,
     plan_summary: dict[str, Any],
+    runtime_generating: Sequence[RuntimeGeneratingModelSpec] | None = None,
+    runtime_candidates: Sequence[RuntimeCandidateModelSpec] | None = None,
 ) -> None:
     """Write the model recovery manifest JSON.
 
@@ -83,15 +114,14 @@ def write_model_recovery_manifest(
         Relative path for the copied study plan inside ``out_dir``.
     plan_summary : dict[str, Any]
         Compact summary of the loaded study plan.
+    runtime_generating : Sequence[RuntimeGeneratingModelSpec] or None, default=None
+        Optional explicit generating specs used for this run.
+    runtime_candidates : Sequence[RuntimeCandidateModelSpec] or None, default=None
+        Optional explicit candidate specs used for this run.
     """
 
-    manifest = {
-        "run_id": out_dir.name,
-        "created_at": datetime.now().isoformat(timespec="seconds"),
-        "generator": f"{generator.__class__.__module__}.{generator.__class__.__name__}",
-        "plan_file_copied": plan_path_copied,
-        "plan_summary": plan_summary,
-        "generating_models": [
+    if runtime_generating is None:
+        generating_models = [
             {
                 "name": g.name,
                 "model": g.model,
@@ -99,8 +129,20 @@ def write_model_recovery_manifest(
                 "sampling": "see config_dict",
             }
             for g in config.generating
-        ],
-        "candidate_models": [
+        ]
+    else:
+        generating_models = [
+            {
+                "name": g.name,
+                "model": f"{g.model.__class__.__module__}.{g.model.__class__.__name__}",
+                "model_kwargs": None,
+                "sampling": "runtime override",
+            }
+            for g in runtime_generating
+        ]
+
+    if runtime_candidates is None:
+        candidate_models = [
             {
                 "name": c.name,
                 "model": c.model,
@@ -109,7 +151,27 @@ def write_model_recovery_manifest(
                 "estimator_kwargs": c.estimator_kwargs,
             }
             for c in config.candidates
-        ],
+        ]
+    else:
+        candidate_models = [
+            {
+                "name": c.name,
+                "model": f"{c.model.__class__.__module__}.{c.model.__class__.__name__}",
+                "model_kwargs": None,
+                "estimator": f"{c.estimator.__class__.__module__}.{c.estimator.__class__.__name__}",
+                "estimator_kwargs": None,
+            }
+            for c in runtime_candidates
+        ]
+
+    manifest = {
+        "run_id": out_dir.name,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "generator": f"{generator.__class__.__module__}.{generator.__class__.__name__}",
+        "plan_file_copied": plan_path_copied,
+        "plan_summary": plan_summary,
+        "generating_models": generating_models,
+        "candidate_models": candidate_models,
         "selection": asdict(config.selection) if hasattr(config.selection, "__dataclass_fields__") else None,
         "config_dict": asdict(config) if hasattr(config, "__dataclass_fields__") else None,
     }
@@ -118,196 +180,6 @@ def write_model_recovery_manifest(
         json.dumps(manifest, indent=2, default=str),
         encoding="utf-8",
     )
-
-def _build_nested(value: Any, *, registries: Any) -> Any:
-    """Build nested inline factory mappings found in kwargs.
-
-    Parameters
-    ----------
-    value : Any
-        Raw kwarg value.
-    registries : Any
-        Registry object returned by :func:`comp_model_impl.register.make_registry`.
-
-    Returns
-    -------
-    Any
-        Built value for inline factory mappings; original value otherwise.
-    """
-
-    if isinstance(value, Mapping) and "factory" in value:
-        nested_kwargs_raw = value.get("kwargs", {})
-        if nested_kwargs_raw is None:
-            nested_kwargs: dict[str, Any] = {}
-        elif isinstance(nested_kwargs_raw, Mapping):
-            nested_kwargs = {str(k): v for k, v in nested_kwargs_raw.items()}
-        else:
-            raise TypeError("Inline factory kwargs must be a mapping")
-        return _build_from_reference(
-            reference=str(value["factory"]),
-            kwargs=nested_kwargs,
-            registries=registries,
-            kind="model_or_other",
-        )
-    return value
-
-
-def _build_kwargs(kwargs: Mapping[str, Any] | None, *, registries: Any) -> dict[str, Any]:
-    """Build kwargs recursively.
-
-    Parameters
-    ----------
-    kwargs : Mapping[str, Any] or None
-        Raw kwargs mapping.
-    registries : Any
-        Registry object returned by :func:`comp_model_impl.register.make_registry`.
-
-    Returns
-    -------
-    dict[str, Any]
-        Prepared kwargs dictionary.
-    """
-
-    if kwargs is None:
-        return {}
-    if not isinstance(kwargs, Mapping):
-        raise TypeError(f"kwargs must be a mapping, got {type(kwargs)}")
-
-    out: dict[str, Any] = {}
-    for k, v in kwargs.items():
-        out[str(k)] = _build_nested(v, registries=registries)
-    return out
-
-
-def _build_from_reference(
-    *,
-    reference: str,
-    kwargs: Mapping[str, Any] | None,
-    registries: Any,
-    kind: str,
-) -> Any:
-    """Build an object from a reference string and kwargs.
-
-    Parameters
-    ----------
-    reference : str
-        Registry key.
-    kwargs : Mapping[str, Any] or None
-        Constructor/factory kwargs.
-    registries : Any
-        Registry object returned by :func:`comp_model_impl.register.make_registry`.
-    kind : {"model", "model_or_other", "estimator"}
-        Build mode.
-
-    Returns
-    -------
-    Any
-        Instantiated object.
-    """
-
-    resolved_kwargs = _build_kwargs(kwargs, registries=registries)
-
-    if kind in ("model", "model_or_other"):
-        cls = resolve_model_callable(reference, registries=registries)
-        return cls(**resolved_kwargs)
-
-    if kind == "estimator":
-        cls_or_fn = resolve_estimator_callable(reference, registries=registries)
-        return cls_or_fn(**resolved_kwargs)
-
-    raise ValueError(f"Unknown kind: {kind!r}")
-
-
-def _build_model(model: str, *, model_kwargs: Mapping[str, Any] | None, registries: Any) -> ComputationalModel:
-    """Build a computational model instance.
-
-    Parameters
-    ----------
-    model : str
-        Model registry key.
-    model_kwargs : Mapping[str, Any] or None
-        Model constructor/factory kwargs.
-    registries : Any
-        Registry object returned by :func:`comp_model_impl.register.make_registry`.
-
-    Returns
-    -------
-    ComputationalModel
-        Instantiated model.
-    """
-
-    built = _build_from_reference(
-        reference=str(model),
-        kwargs=model_kwargs,
-        registries=registries,
-        kind="model",
-    )
-    if not isinstance(built, ComputationalModel):
-        raise TypeError(f"Built object is not a ComputationalModel: {type(built)}")
-    return built
-
-
-def _build_estimator(
-    estimator: str,
-    *,
-    estimator_kwargs: Mapping[str, Any] | None,
-    model: ComputationalModel,
-    registries: Any,
-) -> Estimator:
-    """Build an estimator and inject ``model`` when supported.
-
-    Parameters
-    ----------
-    estimator : str
-        Estimator reference.
-    estimator_kwargs : Mapping[str, Any] or None
-        Estimator constructor/factory kwargs.
-    model : ComputationalModel
-        Candidate model instance.
-    registries : Any
-        Registry object returned by :func:`comp_model_impl.register.make_registry`.
-
-    Returns
-    -------
-    Estimator
-        Instantiated estimator.
-    """
-
-    kwargs = _build_kwargs(estimator_kwargs, registries=registries)
-    cls_or_fn = resolve_estimator_callable(str(estimator), registries=registries)
-
-    try:
-        import inspect
-
-        sig = inspect.signature(cls_or_fn)
-        if "model" in sig.parameters and "model" not in kwargs:
-            kwargs["model"] = model
-    except Exception:
-        if "model" not in kwargs:
-            kwargs["model"] = model
-
-    built = cls_or_fn(**kwargs)
-    if not isinstance(built, Estimator):
-        raise TypeError(f"Built object is not an Estimator: {type(built)}")
-    return built
-
-
-def _subject_ids_from_plan(plan: StudyPlan) -> list[str]:
-    """Extract subject identifiers from a study plan.
-
-    Parameters
-    ----------
-    plan : StudyPlan
-        Study plan instance.
-
-    Returns
-    -------
-    list[str]
-        Subject IDs as strings.
-    """
-
-    return [str(sid) for sid in (plan.subjects.keys() if plan.subjects else [])]
-
 
 def _params_hat_by_subject(fit: FitResult, subject_ids: list[str]) -> dict[str, dict[str, float]]:
     """Normalize fit output to a subject-parameter mapping.
@@ -535,7 +407,10 @@ def _select_winner(
 def run_model_recovery(
     *,
     config: ModelRecoveryConfig,
-    generator: Generator,
+    generator: Generator | None = None,
+    generating: Sequence[RuntimeGeneratingModelSpec] | None = None,
+    candidates: Sequence[RuntimeCandidateModelSpec] | None = None,
+    registry: Registry | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> ModelRecoveryOutputs:
     """Run a full model recovery experiment.
@@ -544,44 +419,74 @@ def run_model_recovery(
     ----------
     config : ModelRecoveryConfig
         Model recovery configuration.
-    generator : Generator
-        Generator used to simulate studies (should attach event logs).
+    generator : Generator or None, default=None
+        Optional pre-instantiated generator. If ``None``, the generator is
+        resolved from ``config.components.generator``.
+    generating : Sequence[RuntimeGeneratingModelSpec] or None, default=None
+        Optional explicit generating model specs. When provided, these override
+        ``config.generating``.
+    candidates : Sequence[RuntimeCandidateModelSpec] or None, default=None
+        Optional explicit candidate specs. When provided, these override
+        ``config.candidates``.
+    registry : Registry or None, default=None
+        Optional implementation registry used for resolving all component
+        references.
     progress_callback : callable or None, default=None
-        Optional callback invoked after each replication with (completed, total).
+        Optional callback invoked after each candidate fit attempt with
+        ``(completed, total)``.
 
     Returns
     -------
     ModelRecoveryOutputs
         Fit table, winners table, and output directory.
     """
+    registries = registry or make_registry()
+
+    if generator is None:
+        if config.components is None:
+            raise ValueError(
+                "No generator provided. Pass generator=... or set "
+                "config.components.generator."
+            )
+        gen_component = config.components.generator
+        generator_obj = build_generator_checked(
+            gen_component.name,
+            generator_kwargs=gen_component.kwargs,
+            registries=registries,
+        )
+    else:
+        generator_obj = generator
+
+    effective_generating = list(generating) if generating is not None else list(config.generating)
+    effective_candidates = list(candidates) if candidates is not None else list(config.candidates)
+
     # Load plan
-    plan: StudyPlan = load_study_plan(Path(config.plan_path))
+    plan_path = Path(config.plan_path)
+    plan: StudyPlan = load_study_plan(plan_path)
 
     subject_ids = _subject_ids_from_plan(plan)
     if not subject_ids:
         raise ValueError("Study plan has no subjects.")
 
-    if not config.generating:
+    if not effective_generating:
+        if generating is not None:
+            raise ValueError("explicit generating specs are empty.")
         raise ValueError("config.generating is empty.")
-    if not config.candidates:
+    if not effective_candidates:
+        if candidates is not None:
+            raise ValueError("explicit candidate specs are empty.")
         raise ValueError("config.candidates is empty.")
 
     criterion = get_criterion(config.selection.criterion)
 
     # Registry + block runner builder
-    registries = make_registry()
     block_runner_builder = lambda p: build_runner_for_plan(plan=p, registries=registries)
 
     # Output directory
     out_dir = make_unique_run_dir(config.output.out_dir)
 
-    # Copy plan into output directory (provenance)
-    plan_copy_rel = None
-    try:
-        plan_copy_rel = f"plan{plan_path.suffix.lower()}"
-        (out_dir / plan_copy_rel).write_bytes(plan_path.read_bytes())
-    except Exception:
-        plan_copy_rel = None
+    # Copy plan file into out_dir for reproducibility
+    plan_copied_name: str | None = _safe_copy_file(plan_path, out_dir)
 
     plan_summary = _plan_summary(plan)
     if config.output.save_config:
@@ -589,9 +494,11 @@ def run_model_recovery(
         write_model_recovery_manifest(
             out_dir,
             config=config,
-            generator=generator,
-            plan_path_copied=plan_copy_rel,
+            generator=generator_obj,
+            plan_path_copied=plan_copied_name,
             plan_summary=plan_summary,
+            runtime_generating=list(generating) if generating is not None else None,
+            runtime_candidates=list(candidates) if candidates is not None else None,
         )
 
     # Main loop
@@ -599,14 +506,18 @@ def run_model_recovery(
     winner_rows: list[dict[str, Any]] = []
     diag_rows: list[dict[str, Any]] = []
 
-    total = int(config.n_reps) * int(len(config.generating))
+    total = (
+        int(config.n_reps)
+        * int(len(effective_generating))
+        * int(len(effective_candidates))
+    )
     completed = 0
 
     base_rng = np.random.default_rng(int(config.seed))
 
-    for gen_spec in config.generating:
-        # Build generating model once per generating spec, but fresh per rep for safety.
+    for gen_spec in effective_generating:
         gen_name = str(gen_spec.name)
+        sampling_cfg = gen_spec.sampling
 
         for rep in tqdm(
             range(int(config.n_reps)),
@@ -617,25 +528,28 @@ def run_model_recovery(
             rep_seed = int(base_rng.integers(0, 2**32 - 1))
             rep_rng = np.random.default_rng(rep_seed)
 
-            # Build generating model fresh each replication.
-            gen_model = _build_model(
-                gen_spec.model,
-                model_kwargs=gen_spec.model_kwargs,
-                registries=registries,
-            )
+            if isinstance(gen_spec, RuntimeGeneratingModelSpec):
+                gen_model = gen_spec.model
+            else:
+                # Build generating model fresh each replication.
+                gen_model = build_model_checked(
+                    gen_spec.model,
+                    model_kwargs=gen_spec.model_kwargs,
+                    registries=registries,
+                )
 
             # Sample true params per subject
             subj_true, pop_true = None, None
             from comp_model_impl.recovery.parameter.sampling import sample_subject_params
             subj_true, pop_true = sample_subject_params(
-                cfg=gen_spec.sampling,
+                cfg=sampling_cfg,
                 model=gen_model,
                 subject_ids=subject_ids,
                 rng=rep_rng,
             )
 
             # Simulate study
-            study = generator.simulate_study(
+            study = generator_obj.simulate_study(
                 block_runner_builder=block_runner_builder,
                 model=gen_model,
                 subj_params=subj_true,
@@ -651,33 +565,39 @@ def run_model_recovery(
             # Fit all candidates
             rep_candidate_rows: list[dict[str, Any]] = []
 
-            for cand_spec in config.candidates:
+            for cand_spec in effective_candidates:
                 cand_name = str(cand_spec.name)
                 t0 = time.time()
 
                 try:
-                    cand_model = _build_model(
-                        cand_spec.model,
-                        model_kwargs=cand_spec.model_kwargs,
-                        registries=registries,
-                    )
-                    estimator = _build_estimator(
-                        cand_spec.estimator,
-                        estimator_kwargs=cand_spec.estimator_kwargs,
-                        model=cand_model,
-                        registries=registries,
-                    )
+                    if isinstance(cand_spec, RuntimeCandidateModelSpec):
+                        cand_model = cand_spec.model
+                        estimator = cand_spec.estimator
+                        fixed_params = dict(cand_spec.fixed_params or {})
+                    else:
+                        cand_model = build_model_checked(
+                            cand_spec.model,
+                            model_kwargs=cand_spec.model_kwargs,
+                            registries=registries,
+                        )
+                        estimator = build_estimator_checked(
+                            cand_spec.estimator,
+                            estimator_kwargs=cand_spec.estimator_kwargs,
+                            model=cand_model,
+                            registries=registries,
+                        )
+                        fixed_params = dict(cand_spec.fixed_params or {})
 
                     # Run fit; pass fixed_params if supported
                     fit_kwargs: dict[str, Any] = {"study": study, "rng": rep_rng}
-                    if cand_spec.fixed_params:
+                    if fixed_params:
                         try:
                             import inspect
                             if "fixed_params" in inspect.signature(estimator.fit).parameters:
-                                fit_kwargs["fixed_params"] = dict(cand_spec.fixed_params)
+                                fit_kwargs["fixed_params"] = dict(fixed_params)
                         except Exception:
                             # Safe attempt; estimator.fit may accept **kwargs
-                            fit_kwargs["fixed_params"] = dict(cand_spec.fixed_params)
+                            fit_kwargs["fixed_params"] = dict(fixed_params)
 
                     fit: FitResult = estimator.fit(**fit_kwargs)
 
@@ -692,7 +612,7 @@ def run_model_recovery(
                         model=cand_model,
                         fit=fit,
                         n_subjects=len(subject_ids),
-                        fixed_params=cand_spec.fixed_params,
+                        fixed_params=fixed_params,
                     )
 
                     waic_diag = _extract_waic_from_fit_diagnostics(fit)
@@ -809,6 +729,10 @@ def run_model_recovery(
                             }
                         )
 
+                completed += 1
+                if progress_callback:
+                    progress_callback(completed, total)
+
             # Winner selection for this rep
             winner = _select_winner(
                 rep_candidate_rows,
@@ -824,10 +748,6 @@ def run_model_recovery(
                     **winner,
                 }
             )
-
-            completed += 1
-            if progress_callback:
-                progress_callback(completed, total)
 
     fit_df = pd.DataFrame.from_records(fit_rows)
     winners_df = pd.DataFrame.from_records(winner_rows)

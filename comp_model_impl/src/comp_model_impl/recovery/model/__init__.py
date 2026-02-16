@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from .config import (
     ModelRecoveryConfig,
+    ModelRecoveryComponents,
+    ComponentSpec,
     GeneratingModelSpec,
     CandidateModelSpec,
     SelectionSpec,
@@ -39,6 +41,8 @@ from .criteria import (
 )
 from .run import (
     ModelRecoveryOutputs,
+    RuntimeGeneratingModelSpec,
+    RuntimeCandidateModelSpec,
     run_model_recovery,
 )
 from .analysis import (
@@ -49,6 +53,8 @@ from .analysis import (
 
 __all__ = [
     "ModelRecoveryConfig",
+    "ModelRecoveryComponents",
+    "ComponentSpec",
     "GeneratingModelSpec",
     "CandidateModelSpec",
     "SelectionSpec",
@@ -64,6 +70,8 @@ __all__ = [
     "WAICCriterion",
     "get_criterion",
     "ModelRecoveryOutputs",
+    "RuntimeGeneratingModelSpec",
+    "RuntimeCandidateModelSpec",
     "run_model_recovery",
     "confusion_matrix",
     "recovery_rates",

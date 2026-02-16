@@ -9,8 +9,10 @@ import pytest
 
 from comp_model_impl.recovery.model.config import (
     CandidateModelSpec,
+    ComponentSpec,
     GeneratingModelSpec,
     ModelRecoveryConfig,
+    ModelRecoveryComponents,
     _coerce_component_ref,
     _coerce_float_mapping,
     _coerce_mapping,
@@ -116,6 +118,32 @@ def test_config_from_raw_dict_new_schema() -> None:
     assert isinstance(cfg.candidates[0], CandidateModelSpec)
     assert cfg.candidates[0].estimator.endswith("TransformedMLESubjectwiseEstimator")
     assert cfg.candidates[0].estimator_kwargs["n_starts"] == 2
+
+
+def test_config_from_raw_dict_components_generator() -> None:
+    """Raw config should parse optional components.generator correctly."""
+    raw = _minimal_raw_config()
+    raw["components"] = {
+        "generator": {
+            "name": "EventLogAsocialGenerator",
+            "kwargs": {},
+        }
+    }
+
+    cfg = config_from_raw_dict(raw)
+    assert isinstance(cfg.components, ModelRecoveryComponents)
+    assert isinstance(cfg.components.generator, ComponentSpec)
+    assert cfg.components.generator.name == "EventLogAsocialGenerator"
+    assert cfg.components.generator.kwargs == {}
+
+
+def test_config_from_raw_dict_components_requires_generator() -> None:
+    """Components section should require a generator entry."""
+    raw = _minimal_raw_config()
+    raw["components"] = {}
+
+    with pytest.raises(ValueError, match="components missing required 'generator'"):
+        _ = config_from_raw_dict(raw)
 
 
 def test_config_from_raw_dict_rejects_legacy_factory_schema() -> None:

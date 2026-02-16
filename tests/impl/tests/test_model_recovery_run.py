@@ -20,8 +20,10 @@ from comp_model_core.spec import EnvironmentSpec
 from comp_model_impl.models.qrl.qrl import QRL
 from comp_model_impl.recovery.model.config import (
     CandidateModelSpec,
+    ComponentSpec,
     GeneratingModelSpec,
     ModelRecoveryConfig,
+    ModelRecoveryComponents,
     OutputSpec,
     SelectionSpec,
 )
@@ -146,6 +148,23 @@ def test_resolve_estimator_callable() -> None:
     with pytest.raises(ValueError, match="Could not resolve estimator"):
         _ = resolve_mod.resolve_estimator_callable(
             "DefinitelyUnknownEstimator",
+            registries=registries,
+        )
+
+
+def test_resolve_generator_callable() -> None:
+    """Generator resolver should use generator registry keys."""
+    registries = make_registry()
+
+    cls = resolve_mod.resolve_generator_callable(
+        "EventLogAsocialGenerator",
+        registries=registries,
+    )
+    assert cls.__name__ == "EventLogAsocialGenerator"
+
+    with pytest.raises(ValueError, match="Could not resolve generator"):
+        _ = resolve_mod.resolve_generator_callable(
+            "DefinitelyUnknownGenerator",
             registries=registries,
         )
 
@@ -452,8 +471,8 @@ def test_run_model_recovery_uses_waic_criterion(
     monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
-    monkeypatch.setattr(run_mod, "_build_model", fake_build_model)
-    monkeypatch.setattr(run_mod, "_build_estimator", fake_build_estimator)
+    monkeypatch.setattr(run_mod, "build_model_checked", fake_build_model)
+    monkeypatch.setattr(run_mod, "build_estimator_checked", fake_build_estimator)
     monkeypatch.setattr(run_mod, "compute_likelihood_summary", fake_compute_likelihood_summary)
 
     import comp_model_impl.recovery.parameter.sampling as sampling_mod
@@ -536,8 +555,8 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
-    monkeypatch.setattr(run_mod, "_build_model", fake_build_model)
-    monkeypatch.setattr(run_mod, "_build_estimator", fake_build_estimator)
+    monkeypatch.setattr(run_mod, "build_model_checked", fake_build_model)
+    monkeypatch.setattr(run_mod, "build_estimator_checked", fake_build_estimator)
     monkeypatch.setattr(run_mod, "compute_likelihood_summary", fake_compute_likelihood_summary)
 
     import comp_model_impl.recovery.parameter.sampling as sampling_mod
@@ -550,7 +569,7 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
         progress_callback=lambda done, total: progress_calls.append((done, total)),
     )
 
-    assert progress_calls == [(1, 1)]
+    assert progress_calls == [(1, 2), (2, 2)]
     assert len(out.fit_table) == 2
     assert len(out.winners) == 1
     assert out.winners.iloc[0]["selected_model"] == "good"
@@ -574,6 +593,207 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     diag_lines = (run_dir / "model_recovery_fit_diagnostics.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(diag_lines) == 2
     _ = json.loads(diag_lines[0])
+
+
+def test_run_model_recovery_resolves_generator_from_components(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Runner should build generator from config components when omitted."""
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text("{}", encoding="utf-8")
+    plan = _minimal_plan()
+
+    study = StudyData(subjects=[SubjectData(subject_id="s1", blocks=[])], metadata={})
+    generator_obj = _DummyGenerator(study=study)
+
+    cfg = ModelRecoveryConfig(
+        plan_path=str(plan_path),
+        n_reps=1,
+        seed=123,
+        components=ModelRecoveryComponents(
+            generator=ComponentSpec(
+                name="EventLogAsocialGenerator",
+                kwargs={"demonstrator": {"factory": "FixedSequenceDemonstrator"}},
+            )
+        ),
+        generating=[
+            GeneratingModelSpec(
+                name="gen",
+                model="gen_model",
+                sampling=SamplingSpec(mode="fixed", fixed={"theta": 0.2}),
+            )
+        ],
+        candidates=[
+            CandidateModelSpec(name="good", model="good_model", estimator="ok_est"),
+        ],
+        selection=SelectionSpec(criterion="loglike", tie_break="first"),
+        output=OutputSpec(
+            out_dir=str(tmp_path / "out"),
+            save_format="csv",
+            save_config=False,
+            save_fit_diagnostics=False,
+            save_simulated_study=False,
+        ),
+    )
+
+    captured: dict[str, object] = {}
+
+    def fake_make_unique_run_dir(base: str) -> Path:
+        out = Path(base) / "run_fixed"
+        out.mkdir(parents=True, exist_ok=True)
+        return out
+
+    def fake_build_model(model: str, *, model_kwargs, registries) -> ComputationalModel:
+        return _TinyModel(label=str(model))
+
+    def fake_build_estimator(estimator: str, *, estimator_kwargs, model, registries) -> Estimator:
+        return _DummyEstimator(model=model, should_fail=False)
+
+    def fake_build_generator(generator: str, *, generator_kwargs, registries):
+        captured["generator"] = generator
+        captured["generator_kwargs"] = dict(generator_kwargs or {})
+        return generator_obj
+
+    def fake_sample_subject_params(*, cfg, model, subject_ids, rng):
+        return ({sid: {"theta": 0.2} for sid in subject_ids}, None)
+
+    def fake_compute_likelihood_summary(*, study, model, subject_params):
+        ll = 12.0
+        return LikelihoodSummary(
+            ll_total=ll,
+            ll_by_subject={"s1": ll},
+            n_obs_total=5,
+            n_obs_by_subject={"s1": 5},
+        )
+
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
+    monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
+    monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
+    monkeypatch.setattr(run_mod, "build_model_checked", fake_build_model)
+    monkeypatch.setattr(run_mod, "build_estimator_checked", fake_build_estimator)
+    monkeypatch.setattr(run_mod, "build_generator_checked", fake_build_generator)
+    monkeypatch.setattr(run_mod, "compute_likelihood_summary", fake_compute_likelihood_summary)
+
+    import comp_model_impl.recovery.parameter.sampling as sampling_mod
+
+    monkeypatch.setattr(sampling_mod, "sample_subject_params", fake_sample_subject_params)
+
+    out = run_mod.run_model_recovery(config=cfg)
+
+    assert len(out.fit_table) == 1
+    assert out.winners.iloc[0]["selected_model"] == "good"
+    assert captured["generator"] == "EventLogAsocialGenerator"
+    assert captured["generator_kwargs"] == {"demonstrator": {"factory": "FixedSequenceDemonstrator"}}
+
+
+def test_run_model_recovery_uses_explicit_generating_and_candidates(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Runner should support advanced object-based generating/candidate specs."""
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text("{}", encoding="utf-8")
+    plan = _minimal_plan()
+
+    study = StudyData(subjects=[SubjectData(subject_id="s1", blocks=[])], metadata={})
+    generator = _DummyGenerator(study=study)
+
+    gen_model = _TinyModel(label="gen_runtime")
+    cand_model = _TinyModel(label="cand_runtime")
+    cand_estimator = _DummyEstimator(model=cand_model, should_fail=False)
+
+    cfg = ModelRecoveryConfig(
+        plan_path=str(plan_path),
+        n_reps=1,
+        seed=123,
+        generating=[],
+        candidates=[],
+        selection=SelectionSpec(criterion="loglike", tie_break="first"),
+        output=OutputSpec(
+            out_dir=str(tmp_path / "out"),
+            save_format="csv",
+            save_config=False,
+            save_fit_diagnostics=False,
+            save_simulated_study=False,
+        ),
+    )
+
+    explicit_generating = [
+        run_mod.RuntimeGeneratingModelSpec(
+            name="gen_obj",
+            model=gen_model,
+            sampling=SamplingSpec(mode="fixed", fixed={"theta": 0.2}),
+        )
+    ]
+    explicit_candidates = [
+        run_mod.RuntimeCandidateModelSpec(
+            name="cand_obj",
+            model=cand_model,
+            estimator=cand_estimator,
+        )
+    ]
+
+    def fake_make_unique_run_dir(base: str) -> Path:
+        out = Path(base) / "run_fixed"
+        out.mkdir(parents=True, exist_ok=True)
+        return out
+
+    def fake_sample_subject_params(*, cfg, model, subject_ids, rng):
+        return ({sid: {"theta": 0.2} for sid in subject_ids}, None)
+
+    def fake_compute_likelihood_summary(*, study, model, subject_params):
+        ll = 9.0 if getattr(model, "label", "") == "cand_runtime" else 1.0
+        return LikelihoodSummary(
+            ll_total=ll,
+            ll_by_subject={"s1": ll},
+            n_obs_total=5,
+            n_obs_by_subject={"s1": 5},
+        )
+
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
+    monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
+    monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
+    monkeypatch.setattr(run_mod, "compute_likelihood_summary", fake_compute_likelihood_summary)
+
+    import comp_model_impl.recovery.parameter.sampling as sampling_mod
+
+    monkeypatch.setattr(sampling_mod, "sample_subject_params", fake_sample_subject_params)
+
+    out = run_mod.run_model_recovery(
+        config=cfg,
+        generator=generator,  # type: ignore[arg-type]
+        generating=explicit_generating,
+        candidates=explicit_candidates,
+    )
+
+    assert len(out.fit_table) == 1
+    assert out.fit_table.iloc[0]["candidate_model"] == "cand_obj"
+    assert out.winners.iloc[0]["selected_model"] == "cand_obj"
+
+
+def test_run_model_recovery_requires_generator_or_components(tmp_path: Path) -> None:
+    """Runner should require explicit generator or config.components.generator."""
+    cfg = ModelRecoveryConfig(
+        plan_path=str(tmp_path / "plan.json"),
+        generating=[
+            GeneratingModelSpec(
+                name="gen",
+                model="QRL",
+                sampling=SamplingSpec(mode="fixed", fixed={"alpha": 0.2, "beta": 3.0}),
+            )
+        ],
+        candidates=[
+            CandidateModelSpec(
+                name="cand",
+                model="QRL",
+                estimator="TransformedMLESubjectwiseEstimator",
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="No generator provided"):
+        _ = run_mod.run_model_recovery(config=cfg)
 
 
 def test_run_model_recovery_rejects_bad_plan_extension(tmp_path: Path) -> None:
