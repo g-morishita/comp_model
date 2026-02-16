@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+import inspect
 import json
 import secrets
 import shutil
@@ -44,16 +45,16 @@ from comp_model_core.interfaces.estimator import Estimator, FitResult
 from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
 
-from comp_model_impl.register import make_registry
-from comp_model_impl.tasks.build import build_runner_for_plan
+from ...register import make_registry, Registry
+from ...tasks.build import build_runner_for_plan
 
-from comp_model_impl.recovery.parameter.analysis import (
+from ..parameter.analysis import (
     compute_parameter_recovery_metrics,
     compute_population_recovery_metrics,
 )
-from comp_model_impl.recovery.parameter.config import ParameterRecoveryConfig, save_config_auto
-from comp_model_impl.recovery.parameter.sampling import sample_subject_params
-from comp_model_impl.models.within_subject_shared_delta import (
+from ..parameter.config import ParameterRecoveryConfig, save_config_auto
+from ..parameter.sampling import sample_subject_params
+from ...models.within_subject_shared_delta import (
     ConditionedSharedDeltaModel,
     ConditionedSharedDeltaSocialModel,
     constrained_params_by_condition_from_z,
@@ -773,7 +774,7 @@ def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> str | None:
     return None
 
 
-def run_parameter_recovery(
+def _run_parameter_recovery_core(
     *,
     config: ParameterRecoveryConfig,
     generator: Generator,
@@ -1009,3 +1010,125 @@ def run_parameter_recovery(
         population_records=pop_df,
         population_metrics=pop_metrics,
     )
+
+
+def run_parameter_recovery(
+    *,
+    config: ParameterRecoveryConfig,
+    generator: Generator | None = None,
+    model: ComputationalModel | None = None,
+    estimator: Estimator | None = None,
+    registry: Registry | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> ParameterRecoveryOutputs:
+    """Run parameter recovery using config-driven registry components.
+
+    By default, this function resolves and instantiates generator/model/
+    estimator from ``config.components`` using the implementation registry.
+
+    For advanced use, callers may pass pre-instantiated ``generator``,
+    ``model``, and ``estimator`` objects directly. If one of these three is
+    provided, all three must be provided.
+    """
+    explicit = (generator is not None) or (model is not None) or (estimator is not None)
+    if explicit:
+        if generator is None or model is None or estimator is None:
+            raise ValueError(
+                "If providing explicit components, pass all of: "
+                "generator, model, estimator."
+            )
+        return _run_parameter_recovery_core(
+            config=config,
+            generator=generator,
+            model=model,
+            estimator=estimator,
+            progress_callback=progress_callback,
+        )
+
+    r = registry or make_registry()
+    comp = config.components
+
+    try:
+        generator_cls = r.generators[comp.generator.name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown generator component {comp.generator.name!r}. "
+            f"Available: {', '.join(r.generators.names())}"
+        ) from exc
+
+    try:
+        generating_model_cls = r.models[comp.generating_model.name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown generating model component {comp.generating_model.name!r}. "
+            f"Available: {', '.join(r.models.names())}"
+        ) from exc
+
+    try:
+        fitting_model_cls = r.models[comp.fitting_model.name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown fitting model component {comp.fitting_model.name!r}. "
+            f"Available: {', '.join(r.models.names())}"
+        ) from exc
+
+    try:
+        estimator_cls = r.estimators[comp.estimator.name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unknown estimator component {comp.estimator.name!r}. "
+            f"Available: {', '.join(r.estimators.names())}"
+        ) from exc
+
+    try:
+        generator_obj = generator_cls(**dict(comp.generator.kwargs))
+    except Exception as exc:
+        raise ValueError(
+            f"Failed to instantiate generator {comp.generator.name!r} "
+            f"with kwargs={dict(comp.generator.kwargs)!r}: {exc}"
+        ) from exc
+
+    try:
+        generating_model_obj = generating_model_cls(**dict(comp.generating_model.kwargs))
+    except Exception as exc:
+        raise ValueError(
+            f"Failed to instantiate generating model {comp.generating_model.name!r} "
+            f"with kwargs={dict(comp.generating_model.kwargs)!r}: {exc}"
+        ) from exc
+
+    try:
+        fitting_model_obj = fitting_model_cls(**dict(comp.fitting_model.kwargs))
+    except Exception as exc:
+        raise ValueError(
+            f"Failed to instantiate fitting model {comp.fitting_model.name!r} "
+            f"with kwargs={dict(comp.fitting_model.kwargs)!r}: {exc}"
+        ) from exc
+
+    estimator_kwargs = dict(comp.estimator.kwargs)
+    try:
+        est_params = inspect.signature(estimator_cls).parameters
+    except Exception:
+        est_params = {}
+
+    if "base_model" in est_params:
+        estimator_kwargs.setdefault("base_model", fitting_model_obj)
+    elif "model" in est_params:
+        estimator_kwargs.setdefault("model", fitting_model_obj)
+
+    try:
+        estimator_obj = estimator_cls(**estimator_kwargs)
+    except Exception as exc:
+        raise ValueError(
+            f"Failed to instantiate estimator {comp.estimator.name!r} "
+            f"with kwargs={estimator_kwargs!r}: {exc}"
+        ) from exc
+
+    return _run_parameter_recovery_core(
+        config=config,
+        generator=generator_obj,
+        model=generating_model_obj,
+        estimator=estimator_obj,
+        progress_callback=progress_callback,
+    )
+
+    

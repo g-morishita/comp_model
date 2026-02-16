@@ -20,7 +20,7 @@ Load a recovery config and run a single recovery pass:
 
 >>> from comp_model_impl.recovery.parameter import load_parameter_recovery_config, run_parameter_recovery
 >>> # cfg = load_parameter_recovery_config("recovery_config.yaml")  # doctest: +SKIP
->>> # outputs = run_parameter_recovery(config=cfg, generator=..., model=..., estimator=...)  # doctest: +SKIP
+>>> # outputs = run_parameter_recovery(config=cfg)  # doctest: +SKIP
 
 Compute summary metrics:
 
@@ -35,6 +35,8 @@ comp_model_impl.recovery.parameter.analysis
 
 from .config import (
     DistSpec,
+    ComponentSpec,
+    ParameterRecoveryComponents,
     SamplingSpec,
     OutputSpec,
     ParameterRecoveryConfig,
@@ -45,6 +47,8 @@ from .analysis import compute_parameter_recovery_metrics
 
 __all__ = [
     "DistSpec",
+    "ComponentSpec",
+    "ParameterRecoveryComponents",
     "SamplingSpec",
     "OutputSpec",
     "ParameterRecoveryConfig",

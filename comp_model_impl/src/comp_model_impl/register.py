@@ -2,7 +2,7 @@
 
 This module defines :func:`make_registry`, which returns a
 :class:`comp_model_core.registry.Registry` populated with built-in models,
-estimators, bandit environments, and demonstrators shipped in
+estimators, generators, bandit environments, and demonstrators shipped in
 :mod:`comp_model_impl`.
 
 Notes
@@ -36,6 +36,11 @@ from .models import (
     Vicarious_DB_Stay,
 )
 from .demonstrators import NoisyBestArmDemonstrator, RLDemonstrator, FixedSequenceDemonstrator
+from .generators import (
+    EventLogAsocialGenerator,
+    EventLogSocialPostOutcomeGenerator,
+    EventLogSocialPreChoiceGenerator,
+)
 from .estimators import (
     BoxMLESubjectwiseEstimator,
     TransformedMLESubjectwiseEstimator,
@@ -91,5 +96,10 @@ def make_registry() -> Registry:
         "WithinSubjectSharedDeltaTransformedMLEEstimator",
         WithinSubjectSharedDeltaTransformedMLEEstimator,
     )
+
+    # Generators
+    r.generators.register("EventLogAsocialGenerator", EventLogAsocialGenerator)
+    r.generators.register("EventLogSocialPreChoiceGenerator", EventLogSocialPreChoiceGenerator)
+    r.generators.register("EventLogSocialPostOutcomeGenerator", EventLogSocialPostOutcomeGenerator)
 
     return r

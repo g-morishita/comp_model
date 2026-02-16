@@ -115,17 +115,9 @@ For social blocks, include `demonstrator_type` / `demonstrator_config` and provi
 
 ```python
 from comp_model_impl.recovery.parameter import load_parameter_recovery_config, run_parameter_recovery
-from comp_model_impl.generators.event_log import EventLogAsocialGenerator
-from comp_model_impl.models import QRL
-from comp_model_impl.estimators import BoxMLESubjectwiseEstimator
 
 cfg = load_parameter_recovery_config("recovery_config.yaml")
-outputs = run_parameter_recovery(
-    config=cfg,
-    generator=EventLogAsocialGenerator(),
-    model=QRL(),
-    estimator=BoxMLESubjectwiseEstimator(model=QRL(), n_starts=5),
-)
+outputs = run_parameter_recovery(config=cfg)
 ```
 
 ## Real-data fitting: uncertainty + model comparison

@@ -144,6 +144,44 @@ class OutputSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class ComponentSpec:
+    """Registry component reference and constructor kwargs.
+
+    Parameters
+    ----------
+    name : str
+        Registry key of the component.
+    kwargs : dict[str, Any], optional
+        Keyword arguments passed to the component constructor.
+    """
+
+    name: str
+    kwargs: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class ParameterRecoveryComponents:
+    """Component references used by registry-based parameter recovery.
+
+    Parameters
+    ----------
+    generator : ComponentSpec
+        Generator component reference.
+    generating_model : ComponentSpec
+        Model used to simulate data.
+    fitting_model : ComponentSpec
+        Model used by the estimator when fitting.
+    estimator : ComponentSpec
+        Estimator component reference.
+    """
+
+    generator: ComponentSpec
+    generating_model: ComponentSpec
+    fitting_model: ComponentSpec
+    estimator: ComponentSpec
+
+
+@dataclass(frozen=True, slots=True)
 class ParameterRecoveryConfig:
     """
     Parameter recovery configuration.
@@ -159,20 +197,18 @@ class ParameterRecoveryConfig:
     n_jobs : int
         Number of parallel worker processes for replications.
         Use ``1`` for sequential execution.
+    components : ParameterRecoveryComponents
+        Registry component references for generator/model/estimator.
     sampling : SamplingSpec
         Sampling configuration.
     output : OutputSpec
         Output configuration.
-
-    Examples
-    --------
-    >>> ParameterRecoveryConfig(plan_path="study_plan.yaml", n_reps=10, seed=123, n_jobs=1)
-    ParameterRecoveryConfig(plan_path='study_plan.yaml', n_reps=10, seed=123, n_jobs=1, sampling=SamplingSpec(mode='independent', space='param', individual={}, population={}, individual_sd={}, fixed={}, by_condition={}, clip_to_bounds=True), output=OutputSpec(out_dir='recovery_out', save_format='csv', save_config=True, save_fit_diagnostics=True, save_simulated_study=False))
     """
     plan_path: str
     n_reps: int
     seed: int
     n_jobs: int
+    components: ParameterRecoveryComponents
 
     sampling: SamplingSpec = field(default_factory=SamplingSpec)
     output: OutputSpec = field(default_factory=OutputSpec)
@@ -271,6 +307,79 @@ def _as_mapping(value: Any, *, field_name: str) -> Mapping[str, Any]:
     return value
 
 
+def _require_non_empty_string(raw: Mapping[str, Any], key: str, *, field_name: str) -> str:
+    """Require a non-empty string field from a mapping."""
+    value = _require(raw, key)
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name}.{key} must be a non-empty string.")
+    out = value.strip()
+    if out == "":
+        raise ValueError(f"{field_name}.{key} must be a non-empty string.")
+    return out
+
+
+def _parse_component_spec(raw: Any, *, field_name: str) -> ComponentSpec:
+    """Parse one component spec from a mapping."""
+    comp_raw = _as_mapping(raw, field_name=field_name)
+    name = _require_non_empty_string(comp_raw, "name", field_name=field_name)
+    kwargs_raw = comp_raw.get("kwargs", {})
+    kwargs_mapping = _as_mapping(kwargs_raw, field_name=f"{field_name}.kwargs")
+    kwargs = {str(k): v for k, v in kwargs_mapping.items()}
+    return ComponentSpec(name=name, kwargs=kwargs)
+
+
+def _parse_components_spec(raw: Any) -> ParameterRecoveryComponents:
+    """Parse the required ``components`` section."""
+    comp_root = _as_mapping(raw, field_name="components")
+    return ParameterRecoveryComponents(
+        generator=_parse_component_spec(_require(comp_root, "generator"), field_name="components.generator"),
+        generating_model=_parse_component_spec(
+            _require(comp_root, "generating_model"),
+            field_name="components.generating_model",
+        ),
+        fitting_model=_parse_component_spec(
+            _require(comp_root, "fitting_model"),
+            field_name="components.fitting_model",
+        ),
+        estimator=_parse_component_spec(_require(comp_root, "estimator"), field_name="components.estimator"),
+    )
+
+
+def _validate_components_registered(components: ParameterRecoveryComponents) -> None:
+    """Validate that configured component names exist in the default registry."""
+    from comp_model_impl.register import make_registry
+
+    r = make_registry()
+
+    if components.generator.name not in set(r.generators.names()):
+        available = ", ".join(r.generators.names()) or "<none>"
+        raise ValueError(
+            f"Unknown components.generator.name: {components.generator.name!r}. "
+            f"Available generators: {available}"
+        )
+
+    if components.generating_model.name not in set(r.models.names()):
+        available = ", ".join(r.models.names()) or "<none>"
+        raise ValueError(
+            f"Unknown components.generating_model.name: {components.generating_model.name!r}. "
+            f"Available models: {available}"
+        )
+
+    if components.fitting_model.name not in set(r.models.names()):
+        available = ", ".join(r.models.names()) or "<none>"
+        raise ValueError(
+            f"Unknown components.fitting_model.name: {components.fitting_model.name!r}. "
+            f"Available models: {available}"
+        )
+
+    if components.estimator.name not in set(r.estimators.names()):
+        available = ", ".join(r.estimators.names()) or "<none>"
+        raise ValueError(
+            f"Unknown components.estimator.name: {components.estimator.name!r}. "
+            f"Available estimators: {available}"
+        )
+
+
 def _parse_sampling_spec_strict(samp_raw: Mapping[str, Any]) -> SamplingSpec:
     """
     Parse and validate the ``sampling`` section with no implicit defaults.
@@ -357,7 +466,15 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
     - ``n_reps`` (integer, ``>= 1``)
     - ``seed`` (integer)
     - ``n_jobs`` (integer, ``>= 1``)
+    - ``components``
     - ``sampling``
+
+    The ``components`` section must include:
+
+    - ``generator`` (with ``name`` and optional ``kwargs``)
+    - ``generating_model`` (with ``name`` and optional ``kwargs``)
+    - ``fitting_model`` (with ``name`` and optional ``kwargs``)
+    - ``estimator`` (with ``name`` and optional ``kwargs``)
 
     The ``sampling`` section is validated by
     :func:`_parse_sampling_spec_strict` and must include common keys
@@ -411,6 +528,8 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
     if not isinstance(raw, dict):
         raise ValueError("Config root must be a mapping/object.")
 
+    components = _parse_components_spec(_require(raw, "components"))
+    _validate_components_registered(components)
     sampling = _parse_sampling_spec_strict(_require(raw, "sampling"))
 
     out_raw = raw.get("output", {}) or {}
@@ -433,6 +552,7 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
         n_reps=n_reps,
         seed=seed,
         n_jobs=n_jobs,
+        components=components,
         sampling=sampling,
         output=output,
     )

@@ -20,6 +20,12 @@ def _valid_cfg_dict() -> dict:
         "n_reps": 2,
         "seed": 7,
         "n_jobs": 1,
+        "components": {
+            "generator": {"name": "EventLogAsocialGenerator", "kwargs": {}},
+            "generating_model": {"name": "QRL", "kwargs": {}},
+            "fitting_model": {"name": "QRL", "kwargs": {}},
+            "estimator": {"name": "BoxMLESubjectwiseEstimator", "kwargs": {"n_starts": 5}},
+        },
         "sampling": {
             "mode": "fixed",
             "space": "param",
@@ -39,7 +45,7 @@ def _valid_cfg_dict() -> dict:
 
 def test_load_parameter_recovery_config_requires_all_top_level_fields(tmp_path: Path) -> None:
     """Missing required top-level fields should raise ValueError."""
-    for missing_key in ("plan_path", "n_reps", "sampling"):
+    for missing_key in ("plan_path", "n_reps", "seed", "n_jobs", "components", "sampling"):
         cfg = _valid_cfg_dict()
         cfg.pop(missing_key)
 
@@ -47,6 +53,51 @@ def test_load_parameter_recovery_config_requires_all_top_level_fields(tmp_path: 
         _write_json(cfg_path, cfg)
 
         with pytest.raises(ValueError, match=rf"Missing required field: {missing_key}"):
+            _ = load_parameter_recovery_config(cfg_path)
+
+
+def test_load_parameter_recovery_config_requires_component_fields(tmp_path: Path) -> None:
+    """Components section should require all component entries."""
+    for missing_key in ("generator", "generating_model", "fitting_model", "estimator"):
+        cfg = _valid_cfg_dict()
+        cfg["components"].pop(missing_key)
+
+        cfg_path = tmp_path / f"missing_components_{missing_key}.json"
+        _write_json(cfg_path, cfg)
+
+        with pytest.raises(ValueError, match=rf"Missing required field: {missing_key}"):
+            _ = load_parameter_recovery_config(cfg_path)
+
+
+def test_load_parameter_recovery_config_rejects_invalid_component_name(tmp_path: Path) -> None:
+    """Component names should be non-empty strings."""
+    cfg = _valid_cfg_dict()
+    cfg["components"]["generator"]["name"] = ""
+
+    cfg_path = tmp_path / "bad_component_name.json"
+    _write_json(cfg_path, cfg)
+
+    with pytest.raises(ValueError, match=r"components\.generator\.name must be a non-empty string"):
+        _ = load_parameter_recovery_config(cfg_path)
+
+
+def test_load_parameter_recovery_config_rejects_unknown_component_names(tmp_path: Path) -> None:
+    """Component names should exist in the default implementation registry."""
+    cases = [
+        ("generator", r"Unknown components\.generator\.name"),
+        ("generating_model", r"Unknown components\.generating_model\.name"),
+        ("fitting_model", r"Unknown components\.fitting_model\.name"),
+        ("estimator", r"Unknown components\.estimator\.name"),
+    ]
+
+    for key, msg in cases:
+        cfg = _valid_cfg_dict()
+        cfg["components"][key]["name"] = "NotRegistered"
+
+        cfg_path = tmp_path / f"unknown_components_{key}.json"
+        _write_json(cfg_path, cfg)
+
+        with pytest.raises(ValueError, match=msg):
             _ = load_parameter_recovery_config(cfg_path)
 
 
@@ -125,6 +176,11 @@ def test_load_parameter_recovery_config_accepts_valid_strict_config(tmp_path: Pa
     assert cfg.n_reps == 2
     assert cfg.seed == 7
     assert cfg.n_jobs == 1
+    assert cfg.components.generator.name == "EventLogAsocialGenerator"
+    assert cfg.components.generating_model.name == "QRL"
+    assert cfg.components.fitting_model.name == "QRL"
+    assert cfg.components.estimator.name == "BoxMLESubjectwiseEstimator"
+    assert cfg.components.estimator.kwargs["n_starts"] == 5
     assert cfg.sampling.mode == "fixed"
     assert cfg.sampling.space == "param"
     assert cfg.sampling.fixed["alpha"] == pytest.approx(0.2)

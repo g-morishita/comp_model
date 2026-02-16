@@ -107,18 +107,10 @@ Notes:
 
 ```python
 from comp_model_impl.recovery.parameter import load_parameter_recovery_config, run_parameter_recovery
-from comp_model_impl.generators.event_log import EventLogAsocialGenerator
-from comp_model_impl.models import QRL
-from comp_model_impl.estimators import BoxMLESubjectwiseEstimator
 
 cfg = load_parameter_recovery_config("qrl_recovery.yaml")
 
-outputs = run_parameter_recovery(
-    config=cfg,
-    generator=EventLogAsocialGenerator(),
-    model=QRL(),
-    estimator=BoxMLESubjectwiseEstimator(model=QRL(), n_starts=5),
-)
+outputs = run_parameter_recovery(config=cfg)
 
 print(outputs.out_dir)
 print(outputs.records.head())
@@ -127,11 +119,7 @@ print(outputs.metrics.head())
 
 **Code elements explained**
 - `load_parameter_recovery_config`: parses the YAML into a config object.
-- `EventLogAsocialGenerator`: simulates data with explicit event logs (asocial).
-- `QRL()`: the computational model used to generate and fit data.
-- `BoxMLESubjectwiseEstimator`: MLE optimizer for each subject.
-- `n_starts=5`: number of random restarts for optimization.
-- `run_parameter_recovery`: orchestrates sampling, simulation, fitting, and output writing.
+- `run_parameter_recovery`: resolves configured components and orchestrates sampling, simulation, fitting, and output writing.
 - `outputs.out_dir`: path to the run folder.
 - `outputs.records`: table of true vs. estimated parameters.
 - `outputs.metrics`: recovery summary metrics.
@@ -382,16 +370,8 @@ reg.models.register("MyQModel", MyQModel)
 
 ```python
 from comp_model_impl.recovery.parameter import run_parameter_recovery
-from comp_model_impl.generators.event_log import EventLogAsocialGenerator
-from comp_model_impl.estimators import BoxMLESubjectwiseEstimator
-from my_models import MyQModel
 
-outputs = run_parameter_recovery(
-    config=cfg,
-    generator=EventLogAsocialGenerator(),
-    model=MyQModel(),
-    estimator=BoxMLESubjectwiseEstimator(model=MyQModel(), n_starts=5),
-)
+outputs = run_parameter_recovery(config=cfg)
 ```
 
 **Usage elements explained**
