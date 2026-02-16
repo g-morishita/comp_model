@@ -301,6 +301,98 @@ def study_plan_from_dict(raw: Mapping[str, Any]) -> StudyPlan:
     The returned plan will always have canonical block schedules: each
     :class:`~comp_model_core.plans.block.BlockPlan` will contain a fully-expanded
     ``trial_specs`` list of length ``n_trials``.
+
+    Examples
+    --------
+    Compact/original YAML input:
+
+    .. code-block:: yaml
+
+       subjects: [S1]
+       blocks_template:
+         - block_id: "b_{subject}"
+           condition: "A"
+           n_trials: 3
+           bandit_type: "BernoulliBanditEnv"
+           bandit_config: {probs: [0.2, 0.8]}
+           trial_spec_template:
+             self_outcome: {kind: VERIDICAL}
+             available_actions: [0, 1]
+           trial_spec_overrides:
+             - null
+             - {available_actions: [1]}
+             - null
+
+    Transformed/canonical YAML shape after expansion:
+
+    .. code-block:: yaml
+
+       subjects:
+         S1:
+           - block_id: "b_S1"
+             condition: "A"
+             n_trials: 3
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.2, 0.8]}
+             trial_specs:
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [0, 1]
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [1]
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [0, 1]
+
+    Two-block compact YAML input:
+
+    .. code-block:: yaml
+
+       subjects: [S1]
+       blocks_template:
+         - block_id: "train_{subject}"
+           condition: "A"
+           n_trials: 2
+           bandit_type: "BernoulliBanditEnv"
+           bandit_config: {probs: [0.2, 0.8]}
+           trial_spec_template:
+             self_outcome: {kind: VERIDICAL}
+             available_actions: [0, 1]
+
+         - block_id: "test_{subject}"
+           condition: "B"
+           n_trials: 2
+           bandit_type: "BernoulliBanditEnv"
+           bandit_config: {probs: [0.6, 0.4]}
+           trial_spec_template:
+             self_outcome: {kind: VERIDICAL}
+             available_actions: [0, 1]
+
+    Two-block transformed/canonical YAML shape:
+
+    .. code-block:: yaml
+
+       subjects:
+         S1:
+           - block_id: "train_S1"
+             condition: "A"
+             n_trials: 2
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.2, 0.8]}
+             trial_specs:
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [0, 1]
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [0, 1]
+
+           - block_id: "test_S1"
+             condition: "B"
+             n_trials: 2
+             bandit_type: "BernoulliBanditEnv"
+             bandit_config: {probs: [0.6, 0.4]}
+             trial_specs:
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [0, 1]
+               - self_outcome: {kind: VERIDICAL}
+                 available_actions: [0, 1]
     """
     if "subjects" not in raw:
         raise ValueError("Input must contain key 'subjects'.")
