@@ -449,7 +449,7 @@ def test_run_model_recovery_uses_waic_criterion(
             n_obs_by_subject={"s1": 5},
         )
 
-    monkeypatch.setattr(run_mod, "load_study_plan_json", lambda _: plan)
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
     monkeypatch.setattr(run_mod, "git_info_for_module", lambda _: {"comp_model_impl_git_commit": "abc"})
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
@@ -534,7 +534,7 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
     progress_calls: list[tuple[int, int]] = []
 
-    monkeypatch.setattr(run_mod, "load_study_plan_json", lambda _: plan)
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
     monkeypatch.setattr(run_mod, "git_info_for_module", lambda _: {"comp_model_impl_git_commit": "abc"})
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
@@ -601,7 +601,7 @@ def test_run_model_recovery_rejects_bad_plan_extension(tmp_path: Path) -> None:
         ],
     )
 
-    with pytest.raises(ValueError, match="plan_path must end with"):
+    with pytest.raises(ValueError, match="\\.yaml/.yml or \\.json"):
         _ = run_mod.run_model_recovery(config=cfg, generator=_DummyGenerator(StudyData(subjects=[], metadata={})))  # type: ignore[arg-type]
 
 
@@ -613,7 +613,7 @@ def test_run_model_recovery_requires_nonempty_generating_and_candidates(
     plan_path = tmp_path / "plan.json"
     plan_path.write_text("{}", encoding="utf-8")
     plan = _minimal_plan()
-    monkeypatch.setattr(run_mod, "load_study_plan_json", lambda _: plan)
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
 
     cfg_no_generating = ModelRecoveryConfig(
         plan_path=str(plan_path),

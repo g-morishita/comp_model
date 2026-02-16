@@ -316,7 +316,7 @@ def study_plan_from_dict(raw: Mapping[str, Any]) -> StudyPlan:
     return StudyPlan(subjects=subjects, metadata=metadata if isinstance(metadata, dict) else {})
 
 
-def load_study_plan_json(path: str) -> StudyPlan:
+def load_study_plan_json(path: str | Path) -> StudyPlan:
     """
     Load a study plan from a JSON file.
 
@@ -339,12 +339,12 @@ def load_study_plan_json(path: str) -> StudyPlan:
     ValueError
         If the loaded object is not a valid plan mapping.
     """
-    with open(path, "r", encoding="utf-8") as f:
+    with open(str(path), "r", encoding="utf-8") as f:
         raw = json.load(f)
     return study_plan_from_dict(raw)
 
 
-def load_study_plan_yaml(path: str) -> StudyPlan:
+def load_study_plan_yaml(path: str | Path) -> StudyPlan:
     """
     Load a study plan from a YAML file.
 
@@ -380,13 +380,53 @@ def load_study_plan_yaml(path: str) -> StudyPlan:
     except ImportError as e:
         raise ImportError("PyYAML is required to load YAML plans. Install with: pip install pyyaml") from e
 
-    with open(path, "r", encoding="utf-8") as f:
+    with open(str(path), "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
     if not isinstance(raw, dict):
         raise ValueError("YAML root must be a mapping/object.")
     return study_plan_from_dict(raw)
 
+
+def load_study_plan(path: str | Path) -> StudyPlan:
+    """
+    Load a study plan from a JSON or YAML file.
+
+    Dispatches by file extension (case-insensitive):
+    ``.json`` -> :func:`load_study_plan_json`
+    ``.yaml``/``.yml`` -> :func:`load_study_plan_yaml`.
+
+    Parameters
+    ----------
+    path : str | Path
+        Path to the study plan file.
+
+    Returns
+    -------
+    StudyPlan
+        The loaded study plan.
+
+    Raises
+    ------
+    ValueError
+        If ``path`` does not end with ``.json``, ``.yaml``, or ``.yml``.
+    OSError
+        If the file cannot be opened.
+    ImportError
+        If loading YAML but PyYAML is not installed.
+    json.JSONDecodeError
+        If a JSON file is not valid JSON.
+    """
+    p = Path(path)
+    suffix = p.suffix.lower()
+    # Load plan
+    if suffix in {".yaml", ".yml"}:
+        return load_study_plan_yaml(str(p))
+    if suffix == ".json":
+        return load_study_plan_json(str(p))
+
+    raise ValueError(f"path must end with .yaml/.yml or .json, got: {p.suffix}")
+    
 
 def infer_load_conditions(plan_path: str | Path) -> List[str]:
     """
@@ -397,12 +437,7 @@ def infer_load_conditions(plan_path: str | Path) -> List[str]:
     - raises ValueError if any is missing/blank
     """
     p = Path(plan_path).expanduser().resolve()
-    if p.suffix.lower() in {".yaml", ".yml"}:
-        plan = load_study_plan_yaml(str(p))
-    elif p.suffix.lower() == ".json":
-        plan = load_study_plan_json(str(p))
-    else:
-        raise ValueError(f"Unsupported plan file extension: {p.suffix}")
+    plan = load_study_plan(p)
 
     conditions: list[str] = []
     seen: set[str] = set()

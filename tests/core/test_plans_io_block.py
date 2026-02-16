@@ -312,7 +312,7 @@ def test_infer_load_conditions_variants(tmp_path: Path, monkeypatch):
 
     p2 = tmp_path / "plan.txt"
     p2.write_text("{}", encoding="utf-8")
-    with pytest.raises(ValueError, match="Unsupported plan file extension"):
+    with pytest.raises(ValueError, match="\\.yaml/.yml or \\.json"):
         infer_load_conditions(str(p2))
 
     p3 = tmp_path / "empty.json"

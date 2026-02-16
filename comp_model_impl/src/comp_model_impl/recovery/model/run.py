@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from comp_model_core.plans.io import load_study_plan_yaml, load_study_plan_json
+from comp_model_core.plans.io import load_study_plan
 from comp_model_core.plans.block import StudyPlan
 from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
@@ -558,13 +558,7 @@ def run_model_recovery(
         Fit table, winners table, and output directory.
     """
     # Load plan
-    plan_path = Path(config.plan_path)
-    if plan_path.suffix.lower() in (".yaml", ".yml"):
-        plan: StudyPlan = load_study_plan_yaml(str(plan_path))
-    elif plan_path.suffix.lower() == ".json":
-        plan = load_study_plan_json(str(plan_path))
-    else:
-        raise ValueError("plan_path must end with .yaml/.yml or .json")
+    plan: StudyPlan = load_study_plan(Path(config.plan_path))
 
     subject_ids = _subject_ids_from_plan(plan)
     if not subject_ids:

@@ -38,7 +38,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from comp_model_core.plans.io import load_study_plan_yaml, load_study_plan_json
+from comp_model_core.plans.io import load_study_plan
 from comp_model_core.plans.block import StudyPlan, BlockPlan
 from comp_model_core.data.types import StudyData
 from comp_model_core.interfaces.estimator import Estimator, FitResult
@@ -778,13 +778,8 @@ def run_parameter_recovery(
     ``population_recovery_metrics.csv``.
     """
     # Load study plan FIRST (so we can compute plan summary + copy plan into out_dir)
-    plan_path = Path(config.plan_path)
-    if plan_path.suffix.lower() in (".yaml", ".yml"):
-        plan: StudyPlan = load_study_plan_yaml(str(plan_path))
-    elif plan_path.suffix.lower() == ".json":
-        plan = load_study_plan_json(str(plan_path))
-    else:
-        raise ValueError("plan_path must be .yaml/.yml or .json")
+    plan_path: Path = Path(config.plan_path)
+    plan: StudyPlan = load_study_plan(Path(config.plan_path))
 
     subject_ids = list(plan.subjects.keys())
 
