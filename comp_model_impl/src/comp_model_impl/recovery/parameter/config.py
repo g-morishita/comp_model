@@ -220,8 +220,21 @@ def _parse_dists(d: Any) -> dict[str, DistSpec]:
     Parameters
     ----------
     d : Any
-        Raw mapping from parameter name to dicts of the form
-        ``{"name": <dist>, "args": {...}}``.
+        Expected to be ``None`` or a mapping with the shape::
+
+            {
+              "<param_name>": {"name": "<scipy_dist_name>", "args": {...}},
+              ...
+            }
+
+        where ``args`` is optional (defaults to ``{}``).
+
+        Example::
+
+            {
+              "alpha": {"name": "beta", "args": {"a": 2.0, "b": 2.0}},
+              "beta": {"name": "lognorm", "args": {"s": 0.4, "scale": 4.0}},
+            }
 
     Returns
     -------

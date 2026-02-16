@@ -377,54 +377,6 @@ def _maybe_compute_population_recovery(
     return pop_df, pop_metrics
 
 
-def _find_git_root(start: Path) -> Path | None:
-    """Walk upward until a ``.git`` entry is found.
-
-    Parameters
-    ----------
-    start : pathlib.Path
-        Starting directory for the search.
-
-    Returns
-    -------
-    pathlib.Path or None
-        Repository root if found, otherwise ``None``.
-    """
-    p = start.resolve()
-    for parent in [p, *p.parents]:
-        git_entry = parent / ".git"
-        if git_entry.exists():
-            return parent
-    return None
-
-
-def _run_git(repo_root: Path, args: list[str]) -> str | None:
-    """Run a git command and return its output (or None on failure).
-
-    Parameters
-    ----------
-    repo_root : pathlib.Path
-        Root of the git repository.
-    args : list[str]
-        Git arguments (e.g., ``["rev-parse", "HEAD"]``).
-
-    Returns
-    -------
-    str or None
-        Command output (stripped) or ``None`` if the command fails.
-    """
-    try:
-        out = subprocess.check_output(
-            ["git", *args],
-            cwd=str(repo_root),
-            text=True,
-            stderr=subprocess.DEVNULL,
-        )
-        return out.strip()
-    except Exception:
-        return None
-
-
 def make_unique_run_dir(base_out_dir: str | Path) -> Path:
     """Create a unique run directory under a base output directory.
 

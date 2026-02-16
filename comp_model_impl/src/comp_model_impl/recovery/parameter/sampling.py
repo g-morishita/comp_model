@@ -473,30 +473,6 @@ def sample_subject_params(
     ValueError
         For unknown modes, missing distributions, or missing schema support for
         ``space="z"``.
-
-    Examples
-    --------
-    Independent sampling in parameter space:
-
-    >>> import numpy as np
-    >>> from comp_model_impl.models.qrl.qrl import QRL
-    >>> from comp_model_impl.recovery.parameter.config import SamplingSpec, DistSpec
-    >>> cfg = SamplingSpec(
-    ...     mode="independent",
-    ...     space="param",
-    ...     individual={
-    ...         "alpha": DistSpec(name="norm", args={"loc": 0.2, "scale": 0.05}),
-    ...         "beta": DistSpec(name="norm", args={"loc": 3.0, "scale": 0.5}),
-    ...     },
-    ... )
-    >>> subj_params, pop_params = sample_subject_params(
-    ...     cfg=cfg,
-    ...     model=QRL(),
-    ...     subject_ids=["s1"],
-    ...     rng=np.random.default_rng(0),
-    ... )
-    >>> pop_params is None
-    True
     """
     if cfg.by_condition:
         return _sample_subject_params_by_condition(
