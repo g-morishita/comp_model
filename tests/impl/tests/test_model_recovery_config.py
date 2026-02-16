@@ -120,6 +120,15 @@ def test_config_from_raw_dict_new_schema() -> None:
     assert cfg.candidates[0].estimator_kwargs["n_starts"] == 2
 
 
+def test_config_from_raw_dict_rejects_candidate_fixed_params() -> None:
+    """Model recovery should reject candidate fixed_params settings."""
+    raw = _minimal_raw_config()
+    raw["candidates"][0]["fixed_params"] = {"alpha": 0.2}
+
+    with pytest.raises(ValueError, match="fixed_params is not supported in model recovery"):
+        _ = config_from_raw_dict(raw)
+
+
 def test_config_from_raw_dict_components_generator() -> None:
     """Raw config should parse optional components.generator correctly."""
     raw = _minimal_raw_config()

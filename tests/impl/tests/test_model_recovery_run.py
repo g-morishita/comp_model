@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 import numpy as np
 import pytest
@@ -80,7 +79,6 @@ class _DummyEstimator(Estimator):
         *,
         study: StudyData,
         rng: np.random.Generator,
-        fixed_params: Mapping[str, float] | None = None,
     ) -> FitResult:
         if self.should_fail:
             raise RuntimeError("estimation failed")
@@ -89,7 +87,7 @@ class _DummyEstimator(Estimator):
             value=1.23,
             success=True,
             message="ok",
-            diagnostics={"fixed_params": None if fixed_params is None else dict(fixed_params)},
+            diagnostics={},
         )
 
 
@@ -280,10 +278,9 @@ def test_count_free_params_uses_schema_and_population() -> None:
         model=model,
         fit=fit,
         n_subjects=3,
-        fixed_params={"alpha": 0.2},
     )
-    assert k_per == 1
-    assert k_total == 4
+    assert k_per == 2
+    assert k_total == 7
 
 
 def test_count_free_params_falls_back_to_subject_hats() -> None:
@@ -298,10 +295,9 @@ def test_count_free_params_falls_back_to_subject_hats() -> None:
         model=_NoSchemaModel(),  # type: ignore[arg-type]
         fit=fit,
         n_subjects=2,
-        fixed_params={"a": 0.0},
     )
-    assert k_per == 1
-    assert k_total == 2
+    assert k_per == 2
+    assert k_total == 4
 
 
 def test_extract_waic_from_fit_diagnostics_top_level() -> None:
@@ -431,7 +427,6 @@ def test_run_model_recovery_uses_waic_criterion(
             *,
             study: StudyData,
             rng: np.random.Generator,
-            fixed_params: Mapping[str, float] | None = None,
         ) -> FitResult:
             if getattr(self.model, "label", "") == "low_waic_model":
                 waic = 80.0

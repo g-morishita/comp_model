@@ -106,9 +106,6 @@ class CandidateModelSpec:
         Keyword arguments passed to the model constructor/factory.
     estimator_kwargs : dict[str, Any], default={}
         Keyword arguments passed to the estimator constructor/factory.
-    fixed_params : dict[str, float], default={}
-        Optional fixed parameter values forwarded to ``estimator.fit`` when that
-        method accepts a ``fixed_params`` argument.
     """
 
     name: str
@@ -116,7 +113,6 @@ class CandidateModelSpec:
     estimator: str
     model_kwargs: dict[str, Any] = field(default_factory=dict)
     estimator_kwargs: dict[str, Any] = field(default_factory=dict)
-    fixed_params: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         _require_non_empty_text(self.name, field_name="candidates[].name")
@@ -457,6 +453,10 @@ def config_from_raw_dict(raw: Mapping[str, Any]) -> ModelRecoveryConfig:
             field_name=f"candidates[{i}].estimator",
         )
         estimator_kwargs = _coerce_mapping(c.get("estimator_kwargs"), field_name=f"candidates[{i}].estimator_kwargs")
+        if "fixed_params" in c:
+            raise ValueError(
+                f"candidates[{i}].fixed_params is not supported in model recovery"
+            )
 
         candidates.append(
             CandidateModelSpec(
@@ -465,7 +465,6 @@ def config_from_raw_dict(raw: Mapping[str, Any]) -> ModelRecoveryConfig:
                 model_kwargs=model_kwargs,
                 estimator=estimator_ref,
                 estimator_kwargs=estimator_kwargs,
-                fixed_params=_coerce_float_mapping(c.get("fixed_params"), field_name=f"candidates[{i}].fixed_params"),
             )
         )
 

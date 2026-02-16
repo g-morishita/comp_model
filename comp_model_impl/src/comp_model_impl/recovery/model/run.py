@@ -11,7 +11,7 @@ pickled simulated datasets.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
@@ -87,7 +87,6 @@ class RuntimeCandidateModelSpec:
     name: str
     model: ComputationalModel
     estimator: Estimator
-    fixed_params: dict[str, float] = field(default_factory=dict)
 
 
 def write_model_recovery_manifest(
@@ -212,7 +211,6 @@ def _count_free_params(
     model: ComputationalModel,
     fit: FitResult | None,
     n_subjects: int,
-    fixed_params: Mapping[str, float] | None,
 ) -> tuple[int, int]:
     """Estimate free parameter counts for model selection.
 
@@ -224,23 +222,19 @@ def _count_free_params(
         Fit result used for fallback dimensionality inference.
     n_subjects : int
         Number of subjects.
-    fixed_params : Mapping[str, float] or None
-        Fixed parameter values passed to the estimator.
-
     Returns
     -------
     tuple[int, int]
         ``(k_per_subject, k_total)``.
     """
 
-    fixed = set((fixed_params or {}).keys())
     k_per_sub: int | None = None
 
     schema = getattr(model, "param_schema", None)
     if schema is not None and getattr(schema, "names", None):
         try:
             names = list(schema.names)
-            k_per_sub = int(len([n for n in names if n not in fixed]))
+            k_per_sub = int(len(names))
         except Exception:
             k_per_sub = None
 
@@ -248,7 +242,7 @@ def _count_free_params(
         try:
             sizes = [len(d) for d in (fit.subject_hats or {}).values()]
             if sizes:
-                k_per_sub = int(np.median(sizes)) - int(len(fixed))
+                k_per_sub = int(np.median(sizes))
         except Exception:
             k_per_sub = None
 
@@ -573,7 +567,6 @@ def run_model_recovery(
                     if isinstance(cand_spec, RuntimeCandidateModelSpec):
                         cand_model = cand_spec.model
                         estimator = cand_spec.estimator
-                        fixed_params = dict(cand_spec.fixed_params or {})
                     else:
                         cand_model = build_model_checked(
                             cand_spec.model,
@@ -586,19 +579,8 @@ def run_model_recovery(
                             model=cand_model,
                             registries=registries,
                         )
-                        fixed_params = dict(cand_spec.fixed_params or {})
 
-                    # Run fit; pass fixed_params if supported
                     fit_kwargs: dict[str, Any] = {"study": study, "rng": rep_rng}
-                    if fixed_params:
-                        try:
-                            import inspect
-                            if "fixed_params" in inspect.signature(estimator.fit).parameters:
-                                fit_kwargs["fixed_params"] = dict(fixed_params)
-                        except Exception:
-                            # Safe attempt; estimator.fit may accept **kwargs
-                            fit_kwargs["fixed_params"] = dict(fixed_params)
-
                     fit: FitResult = estimator.fit(**fit_kwargs)
 
                     subj_hat = _params_hat_by_subject(fit, subject_ids)
@@ -612,7 +594,6 @@ def run_model_recovery(
                         model=cand_model,
                         fit=fit,
                         n_subjects=len(subject_ids),
-                        fixed_params=fixed_params,
                     )
 
                     waic_diag = _extract_waic_from_fit_diagnostics(fit)
