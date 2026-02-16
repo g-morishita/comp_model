@@ -1,0 +1,11 @@
+subjects: 30
+blocks_template:
+  - block_id: "block_{sid}_{rep}"
+    repeat: 4
+    condition: "A"
+    n_trials: 200
+    bandit_type: "BernoulliBanditEnv"
+    bandit_config: {probs: [0.2, 0.8]}
+    trial_spec_template:
+      self_outcome: {kind: VERIDICAL}
+      available_actions: [0, 1]

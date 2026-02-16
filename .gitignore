@@ -4,6 +4,7 @@ __pycache__
 .pytest_cache
 .DS_Store
 .venv
+outputs
 
 comp_model_core.egg-info
 comp_model_impl.egg-info

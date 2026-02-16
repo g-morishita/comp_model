@@ -1,0 +1,36 @@
+plan_path: "study_plan.yaml"
+n_reps: 4
+seed: 123
+n_jobs: 4
+
+components:
+  generator:
+    name: "EventLogAsocialGenerator"
+    kwargs: {}
+  generating_model:
+    name: "QRL"
+    kwargs: {}
+  fitting_model:
+    name: "QRL"
+    kwargs: {}
+  estimator:
+    name: "BoxMLESubjectwiseEstimator"
+    kwargs:
+      n_starts: 5
+      maxiter: 50
+
+sampling:
+  mode: "independent"
+  space: "z"
+  individual:
+    alpha: {name: "normal", args: {loc: -1.3863, scale: 1.0}}  # alpha centered at 0.2
+    beta:  {name: "normal", args: {loc: -0.5493, scale: 1.0}}  # beta centered at 5.0
+  by_condition: {}
+  clip_to_bounds: true
+
+output:
+  out_dir: "outputs/qrl_parameter_recovery"
+  save_format: "csv"
+  save_config: true
+  save_fit_diagnostics: true
+  save_simulated_study: false
