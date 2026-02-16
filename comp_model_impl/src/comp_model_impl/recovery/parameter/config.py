@@ -349,16 +349,49 @@ def load_parameter_recovery_config(path: str | Path) -> ParameterRecoveryConfig:
 
     """
     Load a :class:`ParameterRecoveryConfig` from YAML or JSON.
-    
+
+    This loader follows a strict/no-default policy for core run controls and
+    sampling settings. The following top-level fields are required:
+
+    - ``plan_path``
+    - ``n_reps`` (integer, ``>= 1``)
+    - ``seed`` (integer)
+    - ``n_jobs`` (integer, ``>= 1``)
+    - ``sampling``
+
+    The ``sampling`` section is validated by
+    :func:`_parse_sampling_spec_strict` and must include common keys
+    (``mode``, ``space``, ``by_condition``, ``clip_to_bounds``) plus
+    mode-specific keys:
+
+    - ``mode="fixed"`` requires ``fixed``
+    - ``mode="independent"`` requires ``individual``
+    - ``mode="hierarchical"`` requires ``population`` and ``individual_sd``
+
+    The ``output`` section is optional; when omitted, ``OutputSpec`` defaults
+    are applied for output-related fields.
+
     Parameters
     ----------
     path : str or pathlib.Path
         Path to a ``.yaml``/``.yml`` or ``.json`` config file.
-    
+
     Returns
     -------
     ParameterRecoveryConfig
         Parsed configuration.
+
+    Raises
+    ------
+    ImportError
+        If loading YAML but PyYAML is not installed.
+    OSError
+        If the file cannot be opened/read.
+    json.JSONDecodeError
+        If the JSON file is malformed.
+    ValueError
+        If the file extension is unsupported, the root object is not a
+        mapping, required fields are missing, or typed/range checks fail.
     """
 
     path = Path(path)

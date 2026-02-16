@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from comp_model_core.plans.block import BlockPlan, StudyPlan
 from comp_model_impl.recovery.parameter.run import (
+    _compute_fixed_mode_error_summary,
     _plan_summary,
     _strip_hat_key,
     make_unique_run_dir,
@@ -64,3 +67,28 @@ def test_plan_summary_counts_blocks_and_trials() -> None:
     assert blocks_table[0]["block_id"] == "b1"
     assert blocks_table[0]["n_trials_min"] == 2
     assert blocks_table[0]["n_trials_max"] == 3
+
+
+def test_compute_fixed_mode_error_summary_values() -> None:
+    """Fixed-mode summary should report pooled bias/error stats per parameter."""
+    df = pd.DataFrame(
+        {
+            "rep": [0, 0, 1, 1],
+            "subject_id": ["s1", "s2", "s1", "s2"],
+            "param": ["alpha", "alpha", "alpha", "alpha"],
+            "true": [0.2, 0.2, 0.2, 0.2],
+            "hat": [0.1, 0.3, 0.25, 0.2],
+        }
+    )
+
+    out = _compute_fixed_mode_error_summary(df)
+    assert list(out["param"]) == ["alpha"]
+    row = out.iloc[0]
+
+    err = np.array([-0.1, 0.1, 0.05, 0.0], dtype=float)
+    assert int(row["n"]) == 4
+    assert int(row["true_unique"]) == 1
+    assert row["bias_mean"] == pytest.approx(float(np.mean(err)))
+    assert row["mae"] == pytest.approx(float(np.mean(np.abs(err))))
+    assert row["mse"] == pytest.approx(float(np.mean(err ** 2)))
+    assert row["rmse"] == pytest.approx(float(np.sqrt(np.mean(err ** 2))))

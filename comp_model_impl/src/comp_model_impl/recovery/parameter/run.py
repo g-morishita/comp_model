@@ -98,6 +98,84 @@ class _ReplicationResult:
 _WORKER_CONTEXT: dict[str, Any] | None = None
 
 
+def _compute_fixed_mode_error_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """Summarize fixed-mode recovery errors pooled across reps/subjects.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Tidy records table with at least ``param``, ``true``, and ``hat``.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Per-parameter pooled error summary with bias and absolute/squared error
+        statistics. If no usable rows are available, returns an empty table with
+        the expected columns.
+    """
+    columns = [
+        "param",
+        "n",
+        "true_unique",
+        "mean_true",
+        "mean_hat",
+        "bias_mean",
+        "bias_std",
+        "mae",
+        "mse",
+        "rmse",
+        "median_abs_error",
+    ]
+
+    if df.empty or not {"param", "true", "hat"}.issubset(df.columns):
+        return pd.DataFrame(columns=columns)
+
+    rows: list[dict[str, Any]] = []
+    for param, g in df.groupby("param", sort=True):
+        g2 = g.dropna(subset=["true", "hat"])
+        if len(g2) == 0:
+            rows.append(
+                {
+                    "param": param,
+                    "n": 0,
+                    "true_unique": 0,
+                    "mean_true": np.nan,
+                    "mean_hat": np.nan,
+                    "bias_mean": np.nan,
+                    "bias_std": np.nan,
+                    "mae": np.nan,
+                    "mse": np.nan,
+                    "rmse": np.nan,
+                    "median_abs_error": np.nan,
+                }
+            )
+            continue
+
+        x = g2["true"].to_numpy(dtype=float)
+        y = g2["hat"].to_numpy(dtype=float)
+        err = y - x
+        abs_err = np.abs(err)
+        sq_err = err ** 2
+
+        rows.append(
+            {
+                "param": str(param),
+                "n": int(len(g2)),
+                "true_unique": int(np.unique(x).size),
+                "mean_true": float(np.mean(x)),
+                "mean_hat": float(np.mean(y)),
+                "bias_mean": float(np.mean(err)),
+                "bias_std": float(np.std(err, ddof=0)),
+                "mae": float(np.mean(abs_err)),
+                "mse": float(np.mean(sq_err)),
+                "rmse": float(np.sqrt(np.mean(sq_err))),
+                "median_abs_error": float(np.median(abs_err)),
+            }
+        )
+
+    return pd.DataFrame(rows, columns=columns).sort_values("param").reset_index(drop=True)
+
+
 def _strip_hat_key(name: str) -> str:
     """Strip a trailing ``_hat`` suffix from a parameter name.
 
@@ -660,7 +738,7 @@ def _run_single_rep_from_worker(rep: int, rep_seed: int) -> _ReplicationResult:
     )
 
 
-def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> Path | None:
+def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> str | None:
     """
     Copy a file into a destination directory if the source file exists.
 
@@ -674,8 +752,8 @@ def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> Path | None:
     Returns
     -------
     str | None
-        Copied filename (or path, depending on your return choice) on success,
-        or ``None`` if ``src`` does not exist or is not a file.
+        Copied filename on success, or ``None`` if ``src`` does not exist or
+        is not a file or the copy operation fails.
 
     Notes
     -----
@@ -689,9 +767,10 @@ def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> Path | None:
         if src.exists() and src.is_file():
             dst = dst_dir / src.name
             shutil.copy2(src, dst)
-            return dst
-    except:
-        return
+            return str(dst.name)
+    except Exception:
+        return None
+    return None
 
 
 def run_parameter_recovery(
@@ -743,10 +822,14 @@ def run_parameter_recovery(
       * collect true vs. estimated parameters (subject-level or within-subject
         constrained parameters, depending on the model wrapper)
     - Write records/metrics tables and optional diagnostics.
+    - When ``sampling.mode="fixed"``, write pooled fixed-mode error summaries
+      and set correlation metrics to ``NaN`` (correlation is not interpretable
+      without true-parameter variation).
 
     Output files include (when enabled):
     ``parameter_recovery_records.(csv|parquet)``,
     ``parameter_recovery_metrics.csv``,
+    ``parameter_recovery_fixed_mode_error_summary.csv`` (fixed mode only),
     ``parameter_recovery_fit_diagnostics.jsonl``,
     ``population_recovery_records.csv``,
     ``population_recovery_metrics.csv``.
@@ -764,7 +847,7 @@ def run_parameter_recovery(
         save_config_auto(cfg=config, out_dir=out_dir, stem="parameter_recovery_config")
 
     # Copy plan file into out_dir for reproducibility
-    plan_copied_name: str | None = _safe_copy_file(plan_path, out_dir / plan_path.name)
+    plan_copied_name: str | None = _safe_copy_file(plan_path, out_dir)
 
     # Manifest: plan summary + copied plan path
     plan_summary = _plan_summary(plan)
@@ -899,6 +982,14 @@ def run_parameter_recovery(
                 f.write(json.dumps(row, default=str) + "\n")
 
     metrics = compute_parameter_recovery_metrics(df)
+    if str(config.sampling.mode).lower() == "fixed":
+        # In fixed mode true values are constant, so corr is undefined/uninformative.
+        if "corr" in metrics.columns:
+            metrics = metrics.copy()
+            metrics["corr"] = np.nan
+        fixed_summary = _compute_fixed_mode_error_summary(df)
+        fixed_summary.to_csv(out_dir / "parameter_recovery_fixed_mode_error_summary.csv", index=False)
+
     metrics.to_csv(out_dir / "parameter_recovery_metrics.csv", index=False)
 
     # Population-level recovery (hierarchical runs only)
