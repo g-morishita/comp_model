@@ -1130,5 +1130,3 @@ def run_parameter_recovery(
         estimator=estimator_obj,
         progress_callback=progress_callback,
     )
-
-    

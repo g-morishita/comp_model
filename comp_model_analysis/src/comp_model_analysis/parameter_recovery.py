@@ -75,7 +75,13 @@ def _scatter_true_hat(df, *, title: str, out_path: Path, max_points: int, alpha:
     plt.close(fig)
 
 
-def _bar_metrics(metrics, *, title: str, out_path: Path) -> None:
+def _bar_metrics(
+    metrics,
+    *,
+    title: str,
+    out_path: Path,
+    include_corr: bool = True,
+) -> None:
     import matplotlib.pyplot as plt  # optional dependency
     import numpy as np
 
@@ -94,17 +100,30 @@ def _bar_metrics(metrics, *, title: str, out_path: Path) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
     x = np.arange(len(params))
 
-    axes[0].bar(x, agg["corr"].to_numpy())
-    axes[0].set_title("corr (mean)")
-    axes[0].set_xticks(x, params, rotation=45, ha="right")
+    if include_corr:
+        axes[0].bar(x, agg["corr"].to_numpy())
+        axes[0].set_title("corr (mean)")
+        axes[0].set_xticks(x, params, rotation=45, ha="right")
 
-    axes[1].bar(x, agg["rmse"].to_numpy())
-    axes[1].set_title("rmse (mean)")
-    axes[1].set_xticks(x, params, rotation=45, ha="right")
+        axes[1].bar(x, agg["rmse"].to_numpy())
+        axes[1].set_title("rmse (mean)")
+        axes[1].set_xticks(x, params, rotation=45, ha="right")
 
-    axes[2].bar(x, agg["mae"].to_numpy())
-    axes[2].set_title("mae (mean)")
-    axes[2].set_xticks(x, params, rotation=45, ha="right")
+        axes[2].bar(x, agg["mae"].to_numpy())
+        axes[2].set_title("mae (mean)")
+        axes[2].set_xticks(x, params, rotation=45, ha="right")
+    else:
+        axes[0].bar(x, agg["rmse"].to_numpy())
+        axes[0].set_title("rmse (mean)")
+        axes[0].set_xticks(x, params, rotation=45, ha="right")
+
+        axes[1].bar(x, agg["mae"].to_numpy())
+        axes[1].set_title("mae (mean)")
+        axes[1].set_xticks(x, params, rotation=45, ha="right")
+
+        axes[2].bar(x, agg["bias"].to_numpy())
+        axes[2].set_title("bias (mean)")
+        axes[2].set_xticks(x, params, rotation=45, ha="right")
 
     fig.suptitle(title)
     _savefig(fig, out_path)
@@ -145,6 +164,125 @@ def _corr_hist(metrics, *, title: str, out_path: Path) -> None:
     plt.close(fig)
 
 
+def _is_fixed_sampling_records(df) -> bool:
+    if df is None or df.empty:
+        return False
+    if not {"param", "true", "hat"}.issubset(df.columns):
+        return False
+    true_unique = (
+        df.dropna(subset=["param", "true"])
+        .groupby("param", sort=False)["true"]
+        .nunique(dropna=True)
+    )
+    if true_unique.empty:
+        return False
+    return bool((true_unique <= 1).all())
+
+
+def _fixed_hat_hist(
+    records,
+    *,
+    title: str,
+    out_path: Path,
+    bins: int,
+    max_points: int,
+) -> None:
+    import matplotlib.pyplot as plt  # optional dependency
+    import numpy as np
+
+    if records is None or records.empty:
+        return
+
+    df = records.dropna(subset=["param", "true", "hat"]).copy()
+    params = sorted(df["param"].unique())
+    if len(params) == 0:
+        return
+
+    ncols = min(3, len(params))
+    nrows = int(np.ceil(len(params) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
+
+    for i, p in enumerate(params):
+        ax = axes[i // ncols][i % ncols]
+        sub = df[df["param"] == p]
+        if len(sub) > max_points:
+            sub = sub.sample(n=max_points, random_state=0)
+        hats = sub["hat"].to_numpy(dtype=float)
+        ax.hist(hats, bins=bins, color="steelblue", edgecolor="black", alpha=0.85)
+        if len(sub) > 0:
+            true_val = float(sub["true"].iloc[0])
+            if np.isfinite(true_val):
+                ax.axvline(
+                    true_val,
+                    color="crimson",
+                    linestyle="--",
+                    linewidth=1.5,
+                    label=f"true={true_val:.3g}",
+                )
+                ax.legend(fontsize=8)
+        ax.set_title(str(p))
+        ax.set_xlabel("hat")
+        ax.set_ylabel("count")
+
+    for j in range(len(params), nrows * ncols):
+        axes[j // ncols][j % ncols].axis("off")
+
+    fig.suptitle(title)
+    _savefig(fig, out_path)
+    plt.close(fig)
+
+
+def _fixed_error_hist(
+    records,
+    *,
+    title: str,
+    out_path: Path,
+    bins: int,
+    max_points: int,
+) -> None:
+    import matplotlib.pyplot as plt  # optional dependency
+    import numpy as np
+
+    if records is None or records.empty:
+        return
+
+    df = records.dropna(subset=["param", "true", "hat"]).copy()
+    df["error"] = df["hat"] - df["true"]
+    params = sorted(df["param"].unique())
+    if len(params) == 0:
+        return
+
+    ncols = min(3, len(params))
+    nrows = int(np.ceil(len(params) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
+
+    for i, p in enumerate(params):
+        ax = axes[i // ncols][i % ncols]
+        sub = df[df["param"] == p]
+        if len(sub) > max_points:
+            sub = sub.sample(n=max_points, random_state=0)
+        errs = sub["error"].to_numpy(dtype=float)
+        ax.hist(errs, bins=bins, color="darkorange", edgecolor="black", alpha=0.85)
+        ax.axvline(
+            0.0,
+            color="black",
+            linestyle="--",
+            linewidth=1.5,
+            label="zero error",
+        )
+        ax.legend(fontsize=8)
+        ax.set_title(str(p))
+        ax.set_xlabel("hat - true")
+        ax.set_ylabel("count")
+
+    for j in range(len(params), nrows * ncols):
+        axes[j // ncols][j % ncols].axis("off")
+
+    fig.suptitle(title)
+    _savefig(fig, out_path)
+    plt.close(fig)
+
+
 def plot_parameter_recovery(
     *,
     outputs: Any | None = None,
@@ -153,6 +291,7 @@ def plot_parameter_recovery(
     max_points: int = 50000,
     scatter_alpha: float = 0.6,
     split_by_rep: bool = False,
+    fixed_hist_bins: int = 20,
 ) -> dict[str, Path]:
     """
     Plot parameter recovery for subject- and population-level records.
@@ -172,6 +311,8 @@ def plot_parameter_recovery(
     split_by_rep:
         If True, generate separate subject-level scatter plots per replication.
         Population-level scatter plots are always combined across replications.
+    fixed_hist_bins:
+        Number of bins for fixed-sampling histograms (hat and hat-true).
 
     Returns
     -------
@@ -219,7 +360,9 @@ def plot_parameter_recovery(
     pop_records = tables.get("population_records")
     pop_metrics = tables.get("population_metrics")
 
+    is_fixed_sampling = False
     if isinstance(records, pd.DataFrame) and not records.empty:
+        is_fixed_sampling = _is_fixed_sampling_records(records)
         if split_by_rep and "rep" in records.columns:
             for rep, sub in records.groupby("rep", sort=True):
                 rep_label = _rep_label(rep)
@@ -243,15 +386,45 @@ def plot_parameter_recovery(
             )
             paths["recovery_scatter"] = p
 
+        if is_fixed_sampling:
+            p = base_out_dir / "fixed_sampling_hat_hist.png"
+            _fixed_hat_hist(
+                records,
+                title="Fixed-sampling recovery: estimated parameter histogram",
+                out_path=p,
+                bins=int(fixed_hist_bins),
+                max_points=max_points,
+            )
+            if p.exists():
+                paths["fixed_sampling_hat_hist"] = p
+
+            p = base_out_dir / "fixed_sampling_error_hist.png"
+            _fixed_error_hist(
+                records,
+                title="Fixed-sampling recovery: estimation error histogram",
+                out_path=p,
+                bins=int(fixed_hist_bins),
+                max_points=max_points,
+            )
+            if p.exists():
+                paths["fixed_sampling_error_hist"] = p
+
     if isinstance(metrics, pd.DataFrame) and not metrics.empty:
         p = base_out_dir / "recovery_metrics.png"
-        _bar_metrics(metrics, title="Recovery metrics (mean over reps)", out_path=p)
+        _bar_metrics(
+            metrics,
+            title="Recovery metrics (mean over reps)",
+            out_path=p,
+            include_corr=not is_fixed_sampling,
+        )
         paths["recovery_metrics"] = p
 
-        p = base_out_dir / "recovery_corr_hist.png"
-        _corr_hist(metrics, title="Correlation across reps", out_path=p)
-        if p.exists():
-            paths["recovery_corr_hist"] = p
+        has_corr_values = ("corr" in metrics.columns) and bool(metrics["corr"].notna().any())
+        if (not is_fixed_sampling) and has_corr_values:
+            p = base_out_dir / "recovery_corr_hist.png"
+            _corr_hist(metrics, title="Correlation across reps", out_path=p)
+            if p.exists():
+                paths["recovery_corr_hist"] = p
 
     if isinstance(pop_records, pd.DataFrame) and not pop_records.empty:
         p = base_out_dir / "population_recovery_scatter.png"
