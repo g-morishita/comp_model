@@ -26,7 +26,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
-import importlib
 import json
 import secrets
 import shutil
@@ -52,7 +51,7 @@ from comp_model_impl.recovery.parameter.analysis import (
     compute_parameter_recovery_metrics,
     compute_population_recovery_metrics,
 )
-from comp_model_impl.recovery.parameter.config import ParameterRecoveryConfig, config_to_json
+from comp_model_impl.recovery.parameter.config import ParameterRecoveryConfig, save_config_auto
 from comp_model_impl.recovery.parameter.sampling import sample_subject_params
 from comp_model_impl.models.within_subject_shared_delta import (
     ConditionedSharedDeltaModel,
@@ -661,6 +660,40 @@ def _run_single_rep_from_worker(rep: int, rep_seed: int) -> _ReplicationResult:
     )
 
 
+def _safe_copy_file(src: str | Path, dst_dir: str | Path) -> Path | None:
+    """
+    Copy a file into a destination directory if the source file exists.
+
+    Parameters
+    ----------
+    src : str | Path
+        Source file path.
+    dst_dir : str | Path
+        Destination directory path.
+
+    Returns
+    -------
+    str | None
+        Copied filename (or path, depending on your return choice) on success,
+        or ``None`` if ``src`` does not exist or is not a file.
+
+    Notes
+    -----
+    This helper does not create ``dst_dir``. The caller is expected to ensure
+    the destination directory already exists.
+    """
+
+    src = Path(src)
+    dst_dir = Path(dst_dir)
+    try:
+        if src.exists() and src.is_file():
+            dst = dst_dir / src.name
+            shutil.copy2(src, dst)
+            return dst
+    except:
+        return
+
+
 def run_parameter_recovery(
     *,
     config: ParameterRecoveryConfig,
@@ -726,24 +759,14 @@ def run_parameter_recovery(
 
     out_dir = make_unique_run_dir(config.output.out_dir)
 
-    # Save config
+    # Save config (YAML)
     if config.output.save_config:
-        (out_dir / "parameter_recovery_config.json").write_text(
-            config_to_json(config),
-            encoding="utf-8",
-        )
+        save_config_auto(cfg=config, out_dir=out_dir, stem="parameter_recovery_config")
 
     # Copy plan file into out_dir for reproducibility
-    plan_copied_name: str | None = None
-    try:
-        if plan_path.exists() and plan_path.is_file():
-            dest = out_dir / plan_path.name
-            shutil.copy2(plan_path, dest)
-            plan_copied_name = dest.name
-    except Exception:
-        plan_copied_name = None
+    plan_copied_name: str | None = _safe_copy_file(plan_path, out_dir / plan_path.name)
 
-    # Manifest: git + plan summary + copied plan path
+    # Manifest: plan summary + copied plan path
     plan_summary = _plan_summary(plan)
     write_run_manifest(
         out_dir,

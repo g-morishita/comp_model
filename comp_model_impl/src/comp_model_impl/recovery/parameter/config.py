@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import json
+import importlib.util
 
 
 @dataclass(frozen=True, slots=True)
@@ -330,13 +331,70 @@ def config_to_json(cfg: ParameterRecoveryConfig) -> str:
     -------
     str
         Pretty-printed JSON string.
-
-    Examples
-    --------
-    >>> cfg = ParameterRecoveryConfig(plan_path="study_plan.yaml")
-    >>> s = config_to_json(cfg)
-    >>> '"plan_path"' in s
-    True
     """
 
     return json.dumps(asdict(cfg), indent=2)
+
+
+def config_to_yaml(cfg: ParameterRecoveryConfig) -> str:
+    """
+    Serialize a :class:`ParameterRecoveryConfig` to YAML.
+
+    Parameters
+    ----------
+    cfg : ParameterRecoveryConfig
+        Configuration to serialize.
+
+    Returns
+    -------
+    str
+        YAML string.
+    """
+    try:
+        import yaml  # type: ignore
+    except ImportError as e:
+        raise ImportError("PyYAML is required. Install with: pip install pyyaml") from e
+
+    return yaml.safe_dump(asdict(cfg), sort_keys=False)
+
+
+def save_config_auto(cfg: ParameterRecoveryConfig, out_dir: Path, stem: str) -> Path:
+    """
+    Save a parameter-recovery config using the best available text format.
+
+    The function prefers YAML for readability when PyYAML is installed.
+    If PyYAML is unavailable, it falls back to JSON.
+
+    Parameters
+    ----------
+    cfg : ParameterRecoveryConfig
+        Configuration object to serialize.
+    out_dir : Path
+        Directory where the config file will be written.
+    stem : str, default="parameter_recovery_config"
+        Output filename stem (extension is chosen automatically).
+
+    Returns
+    -------
+    Path
+        Path to the written config file (``.yaml`` or ``.json``).
+
+    Raises
+    ------
+    OSError
+        If writing the output file fails.
+
+    Notes
+    -----
+    Uses :func:`config_to_yaml` when PyYAML is importable, otherwise
+    :func:`config_to_json`.
+    """
+    if importlib.util.find_spec("yaml") is not None:
+        text = config_to_yaml(cfg)
+        path = out_dir / f"{stem}.yaml"
+    else:
+        text = config_to_json(cfg)
+        path = out_dir / f"{stem}.json"
+
+    path.write_text(text, encoding="utf-8")
+    return path
