@@ -582,7 +582,6 @@ def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     assert (run_dir / "model_recovery_manifest.json").exists()
     assert (run_dir / "config.json").exists()
     assert (run_dir / "model_recovery_confusion_matrix.csv").exists()
-    assert (run_dir / "model_recovery_recovery_rates.csv").exists()
 
     fit_rows = (run_dir / "model_recovery_fit_table.csv").read_text(encoding="utf-8").splitlines()
     assert len(fit_rows) == 3

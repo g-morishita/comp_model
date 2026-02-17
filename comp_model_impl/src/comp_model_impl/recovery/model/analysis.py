@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 import pandas as pd
 
@@ -35,60 +33,6 @@ def confusion_matrix(winners: pd.DataFrame) -> pd.DataFrame:
         colnames=["selected_model"],
         dropna=False,
     )
-
-
-def recovery_rates(winners: pd.DataFrame) -> pd.DataFrame:
-    """Compute per-generating-model recovery rates.
-
-    Parameters
-    ----------
-    winners : pandas.DataFrame
-        Winners table with
-        ``generating_model``, ``generating_model_key``,
-        ``selected_model``, and ``selected_model_key``.
-
-    Returns
-    -------
-    pandas.DataFrame
-        Tidy table with columns
-        ``generating_model``, ``generating_model_key``,
-        ``n``, ``n_correct``, and ``recovery_rate``.
-    """
-    if winners.empty:
-        return pd.DataFrame(
-            columns=[
-                "generating_model",
-                "generating_model_key",
-                "n",
-                "n_correct",
-                "recovery_rate",
-            ]
-        )
-
-    required = {"generating_model", "generating_model_key", "selected_model_key"}
-    missing = [c for c in required if c not in winners.columns]
-    if missing:
-        raise ValueError(
-            "winners table missing required columns for recovery_rates: "
-            + ", ".join(missing)
-        )
-
-    g = winners.groupby(["generating_model", "generating_model_key"], dropna=False)
-    rows: list[dict[str, Any]] = []
-    for (gen, gen_key), df in g:
-        n = int(len(df))
-        n_correct = int((df["selected_model_key"].astype(str) == str(gen_key)).sum())
-        rows.append(
-            {
-                "generating_model": gen,
-                "generating_model_key": str(gen_key),
-                "n": n,
-                "n_correct": n_correct,
-                "recovery_rate": float(n_correct / max(n, 1)),
-            }
-        )
-    return pd.DataFrame(rows).sort_values("generating_model").reset_index(drop=True)
-
 
 def summarize_delta_scores(winners: pd.DataFrame) -> pd.DataFrame:
     """Summarize winner-vs-second score gaps by generating model.
