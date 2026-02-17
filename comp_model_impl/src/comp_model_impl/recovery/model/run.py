@@ -504,7 +504,7 @@ def run_model_recovery(
         - optional diagnostics JSONL,
         - optional simulated studies (pickle),
         - optional config/manifest snapshots,
-        - optional confusion matrix and recovery-rate summaries.
+        - optional confusion matrix and delta-score summaries.
 
     Failure handling
         Candidate-level fit exceptions are caught and recorded as failed rows;
@@ -897,14 +897,20 @@ def run_model_recovery(
             for row in diag_rows:
                 f.write(json.dumps(row, default=str) + "\n")
 
-    # Save a small summary file
+    # Save small summary files.
     try:
-        from .analysis import confusion_matrix, recovery_rates
+        from .analysis import confusion_matrix
 
         cm = confusion_matrix(winners_df)
-        rr = recovery_rates(winners_df)
         cm.to_csv(out_dir / "model_recovery_confusion_matrix.csv")
-        rr.to_csv(out_dir / "model_recovery_recovery_rates.csv", index=False)
+    except Exception:
+        pass
+
+    try:
+        from .analysis import summarize_delta_scores
+
+        delta_summary = summarize_delta_scores(winners_df)
+        delta_summary.to_csv(out_dir / "model_recovery_delta_scores.csv", index=False)
     except Exception:
         pass
 
