@@ -683,6 +683,133 @@ def test_run_model_recovery_resolves_generator_from_components(
     assert captured["generator_kwargs"] == {"demonstrator": {"factory": "FixedSequenceDemonstrator"}}
 
 
+def test_run_model_recovery_parallel_config_specs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Model recovery should use parallel path when n_jobs > 1 for config specs."""
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text("{}", encoding="utf-8")
+    plan = _minimal_plan()
+
+    cfg = ModelRecoveryConfig(
+        plan_path=str(plan_path),
+        n_reps=2,
+        seed=11,
+        n_jobs=2,
+        components=ModelRecoveryComponents(
+            generator=ComponentSpec(name="EventLogAsocialGenerator", kwargs={})
+        ),
+        generating=[
+            GeneratingModelSpec(
+                name="gen",
+                model="gen_model",
+                sampling=SamplingSpec(mode="fixed", fixed={"theta": 0.2}),
+            )
+        ],
+        candidates=[
+            CandidateModelSpec(name="good", model="good_model", estimator="ok_est"),
+        ],
+        selection=SelectionSpec(criterion="loglike", tie_break="first"),
+        output=OutputSpec(
+            out_dir=str(tmp_path / "out_parallel"),
+            save_format="csv",
+            save_config=False,
+            save_fit_diagnostics=False,
+            save_simulated_study=False,
+        ),
+    )
+
+    def fake_make_unique_run_dir(base: str) -> Path:
+        out = Path(base) / "run_fixed"
+        out.mkdir(parents=True, exist_ok=True)
+        return out
+
+    class _ImmediateFuture:
+        def __init__(self, result):
+            self._result = result
+
+        def result(self):
+            return self._result
+
+    class _FakeExecutor:
+        def __init__(self, max_workers: int):
+            self.max_workers = max_workers
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def submit(self, fn, /, *args, **kwargs):
+            return _ImmediateFuture(fn(*args, **kwargs))
+
+    rep_calls: list[int] = []
+
+    def fake_run_single_rep(**kwargs):
+        rep = int(kwargs["rep"])
+        rep_seed = int(kwargs["rep_seed"])
+        gen_name = str(kwargs["gen_name"])
+        gen_model_key = str(kwargs["gen_model_key"])
+        rep_calls.append(rep)
+
+        row = {
+            "rep": rep,
+            "rep_seed": rep_seed,
+            "generating_model": gen_name,
+            "generating_model_key": gen_model_key,
+            "candidate_model": "good",
+            "candidate_model_key": "good_model",
+            "criterion": "loglike",
+            "success": True,
+            "message": "",
+            "fit_value": 1.0,
+            "ll_total": 12.0,
+            "n_obs_total": 5,
+            "k_per_subject": 1,
+            "k_total": 1,
+            "score": 12.0,
+            "runtime_s": 0.01,
+        }
+        winner = {
+            "rep": rep,
+            "rep_seed": rep_seed,
+            "generating_model": gen_name,
+            "generating_model_key": gen_model_key,
+            "selected_model": "good",
+            "selected_model_key": "good_model",
+            "winner_score": 12.0,
+            "second_best_model": None,
+            "second_best_model_key": None,
+            "second_best_score": np.nan,
+            "delta_to_second": np.nan,
+            "winner_ll_total": 12.0,
+            "winner_k_total": 1,
+        }
+        return run_mod._ReplicationRunResult(rep=rep, fit_rows=[row], winner_row=winner, diag_rows=[])
+
+    progress_calls: list[tuple[int, int]] = []
+
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
+    monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
+    monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
+    monkeypatch.setattr(run_mod, "build_generator_checked", lambda *a, **k: _DummyGenerator(StudyData(subjects=[], metadata={})))
+    monkeypatch.setattr(run_mod, "ProcessPoolExecutor", _FakeExecutor)
+    monkeypatch.setattr(run_mod, "as_completed", lambda futures: futures)
+    monkeypatch.setattr(run_mod, "_run_single_rep_config_only", fake_run_single_rep)
+
+    out = run_mod.run_model_recovery(
+        config=cfg,
+        progress_callback=lambda done, total: progress_calls.append((done, total)),
+    )
+
+    assert sorted(rep_calls) == [0, 1]
+    assert progress_calls == [(1, 2), (2, 2)]
+    assert len(out.fit_table) == 2
+    assert len(out.winners) == 2
+
+
 def test_run_model_recovery_uses_explicit_generating_and_candidates(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

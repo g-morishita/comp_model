@@ -15,17 +15,19 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import json
 import time
 import sys
+import warnings
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
 from comp_model_core.plans.io import load_study_plan
-from comp_model_core.plans.block import StudyPlan
+from comp_model_core.plans.block import BlockPlan, StudyPlan
 from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
 from comp_model_core.interfaces.estimator import Estimator, FitResult
@@ -48,7 +50,7 @@ from ..common import (
     safe_copy_file as _safe_copy_file,
     subject_ids_from_plan as _subject_ids_from_plan,
 )
-from .config import ModelRecoveryConfig, SamplingSpec
+from .config import CandidateModelSpec, ModelRecoveryConfig, SamplingSpec
 from .criteria import get_criterion, ModelCriterion
 from .likelihood import compute_likelihood_summary
 
@@ -87,6 +89,254 @@ class RuntimeCandidateModelSpec:
     name: str
     model: ComputationalModel
     estimator: Estimator
+
+
+@dataclass(frozen=True, slots=True)
+class _ReplicationRunResult:
+    """Per-replication outputs for sequential/parallel execution."""
+
+    rep: int
+    fit_rows: list[dict[str, Any]]
+    winner_row: dict[str, Any]
+    diag_rows: list[dict[str, Any]]
+
+
+def _run_single_rep_config_only(
+    *,
+    rep: int,
+    rep_seed: int,
+    out_dir: str,
+    subject_ids: list[str],
+    subject_block_plans: Mapping[str, Sequence[BlockPlan]],
+    generator_name: str,
+    generator_kwargs: Mapping[str, Any] | None,
+    gen_name: str,
+    gen_model_key: str,
+    gen_model_ref: str,
+    gen_model_kwargs: Mapping[str, Any] | None,
+    sampling_cfg: SamplingSpec,
+    candidate_specs: Sequence[CandidateModelSpec],
+    criterion_name: str,
+    tie_break: str,
+    atol: float,
+    save_fit_diagnostics: bool,
+    save_simulated_study: bool,
+) -> _ReplicationRunResult:
+    """Run one model-recovery replication for config-backed specs."""
+    registries = make_registry()
+    generator_obj = build_generator_checked(
+        generator_name,
+        generator_kwargs=generator_kwargs,
+        registries=registries,
+    )
+    block_runner_builder = _make_block_runner_builder(registries=registries)
+    criterion = get_criterion(criterion_name)
+
+    rep_rng = np.random.default_rng(int(rep_seed))
+    gen_model = build_model_checked(
+        gen_model_ref,
+        model_kwargs=gen_model_kwargs,
+        registries=registries,
+    )
+
+    from comp_model_impl.recovery.parameter.sampling import sample_subject_params
+
+    subj_true, pop_true = sample_subject_params(
+        cfg=sampling_cfg,
+        model=gen_model,
+        subject_ids=subject_ids,
+        rng=rep_rng,
+    )
+
+    study = generator_obj.simulate_study(
+        block_runner_builder=block_runner_builder,
+        model=gen_model,
+        subj_params=subj_true,
+        subject_block_plans=subject_block_plans,
+        rng=rep_rng,
+    )
+
+    if save_simulated_study:
+        import pickle
+
+        with (Path(out_dir) / f"study_{gen_name}_rep_{rep:04d}.pkl").open("wb") as f:
+            pickle.dump(study, f)
+
+    fit_rows: list[dict[str, Any]] = []
+    rep_candidate_rows: list[dict[str, Any]] = []
+    diag_rows: list[dict[str, Any]] = []
+
+    for cand_spec in candidate_specs:
+        cand_name = str(cand_spec.name)
+        t0 = time.time()
+        try:
+            cand_model = build_model_checked(
+                cand_spec.model,
+                model_kwargs=cand_spec.model_kwargs,
+                registries=registries,
+            )
+            estimator = build_estimator_checked(
+                cand_spec.estimator,
+                estimator_kwargs=cand_spec.estimator_kwargs,
+                model=cand_model,
+                registries=registries,
+            )
+            cand_model_key = str(cand_spec.model)
+
+            fit: FitResult = estimator.fit(study=study, rng=rep_rng)
+            subj_hat = _params_hat_by_subject(fit, subject_ids)
+            ll_summary = compute_likelihood_summary(
+                study=study,
+                model=cand_model,
+                subject_params=subj_hat,
+            )
+
+            k_per_sub, k_total = _count_free_params(
+                model=cand_model,
+                fit=fit,
+                n_subjects=len(subject_ids),
+            )
+
+            waic_diag = _extract_waic_from_fit_diagnostics(fit)
+            waic_value = None
+            if waic_diag is not None and "waic" in waic_diag:
+                waic_value = float(waic_diag["waic"])
+
+            score = criterion.score(
+                ll=ll_summary.ll_total,
+                k=k_total,
+                n_obs=ll_summary.n_obs_total,
+                waic=waic_value,
+            )
+
+            missing_waic = str(criterion.name).lower() == "waic" and not np.isfinite(float(score))
+            success = bool(getattr(fit, "success", True)) and np.isfinite(score)
+            message = str(getattr(fit, "message", ""))
+            if missing_waic:
+                message = f"{message} | WAIC unavailable" if message else "WAIC unavailable"
+            value = float(getattr(fit, "value", np.nan)) if getattr(fit, "value", None) is not None else np.nan
+            runtime_s = float(time.time() - t0)
+
+            row = {
+                "rep": int(rep),
+                "rep_seed": int(rep_seed),
+                "generating_model": gen_name,
+                "generating_model_key": gen_model_key,
+                "candidate_model": cand_name,
+                "candidate_model_key": cand_model_key,
+                "criterion": str(criterion.name),
+                "success": bool(success),
+                "message": message,
+                "fit_value": value,
+                "ll_total": float(ll_summary.ll_total),
+                "n_obs_total": int(ll_summary.n_obs_total),
+                "k_per_subject": int(k_per_sub),
+                "k_total": int(k_total),
+                "score": float(score),
+                "runtime_s": runtime_s,
+            }
+            if waic_diag is not None:
+                row.update(waic_diag)
+            fit_rows.append(row)
+            rep_candidate_rows.append(row)
+
+            if save_fit_diagnostics:
+                diag_rows.append(
+                    {
+                        "rep": int(rep),
+                        "rep_seed": int(rep_seed),
+                        "generating_model": gen_name,
+                        "generating_model_key": gen_model_key,
+                        "candidate_model": cand_name,
+                        "candidate_model_key": cand_model_key,
+                        "true_params": subj_true,
+                        "population_true": pop_true,
+                        "success": bool(getattr(fit, "success", True)),
+                        "message": str(getattr(fit, "message", "")),
+                        "fit_value": value if np.isfinite(value) else None,
+                        "fit_diagnostics": getattr(fit, "diagnostics", None),
+                        "params_hat_by_subject": subj_hat,
+                        "ll_by_subject": ll_summary.ll_by_subject,
+                        "n_obs_by_subject": ll_summary.n_obs_by_subject,
+                        "ll_total": float(ll_summary.ll_total),
+                        "n_obs_total": int(ll_summary.n_obs_total),
+                        "k_total": int(k_total),
+                        "score": float(score),
+                        "criterion": str(criterion.name),
+                        "runtime_s": runtime_s,
+                    }
+                )
+        except Exception as e:
+            runtime_s = float(time.time() - t0)
+            cand_model_key = str(cand_spec.model)
+            row = {
+                "rep": int(rep),
+                "rep_seed": int(rep_seed),
+                "generating_model": gen_name,
+                "generating_model_key": gen_model_key,
+                "candidate_model": cand_name,
+                "candidate_model_key": cand_model_key,
+                "criterion": str(criterion.name),
+                "success": False,
+                "message": f"EXCEPTION: {type(e).__name__}: {e}",
+                "fit_value": np.nan,
+                "ll_total": float("-inf"),
+                "n_obs_total": np.nan,
+                "k_per_subject": np.nan,
+                "k_total": np.nan,
+                "score": float("inf") if not criterion.higher_is_better() else float("-inf"),
+                "runtime_s": runtime_s,
+            }
+            fit_rows.append(row)
+            rep_candidate_rows.append(row)
+
+            if save_fit_diagnostics:
+                diag_rows.append(
+                    {
+                        "rep": int(rep),
+                        "rep_seed": int(rep_seed),
+                        "generating_model": gen_name,
+                        "generating_model_key": gen_model_key,
+                        "candidate_model": cand_name,
+                        "candidate_model_key": cand_model_key,
+                        "true_params": subj_true,
+                        "population_true": pop_true,
+                        "success": False,
+                        "message": row["message"],
+                        "fit_value": None,
+                        "fit_diagnostics": None,
+                        "params_hat_by_subject": None,
+                        "ll_by_subject": None,
+                        "n_obs_by_subject": None,
+                        "ll_total": float("-inf"),
+                        "n_obs_total": None,
+                        "k_total": None,
+                        "score": row["score"],
+                        "criterion": str(criterion.name),
+                        "runtime_s": runtime_s,
+                    }
+                )
+
+    winner = _select_winner(
+        rep_candidate_rows,
+        criterion=criterion,
+        tie_break=tie_break,
+        atol=float(atol),
+    )
+    winner_row = {
+        "rep": int(rep),
+        "rep_seed": int(rep_seed),
+        "generating_model": gen_name,
+        "generating_model_key": gen_model_key,
+        **winner,
+    }
+
+    return _ReplicationRunResult(
+        rep=int(rep),
+        fit_rows=fit_rows,
+        winner_row=winner_row,
+        diag_rows=diag_rows,
+    )
 
 
 def write_model_recovery_manifest(
@@ -439,6 +689,9 @@ def run_model_recovery(
           Path to a study plan YAML/JSON used to define subjects/blocks/trials.
         - ``n_reps``, ``seed``:
           Number of replications per generating model and base RNG seed.
+        - ``n_jobs``:
+          Number of worker processes for parallel replications (config-backed
+          runs only; runtime object overrides execute sequentially).
         - ``components.generator``:
           Registry-backed generator reference (used when ``generator`` is not
           passed directly).
@@ -504,7 +757,7 @@ def run_model_recovery(
         - optional diagnostics JSONL,
         - optional simulated studies (pickle),
         - optional config/manifest snapshots,
-        - optional confusion matrix and delta-score summaries.
+        - optional confusion matrix.
 
     Failure handling
         Candidate-level fit exceptions are caught and recorded as failed rows;
@@ -636,14 +889,109 @@ def run_model_recovery(
     completed = 0
 
     base_rng = np.random.default_rng(int(config.seed))
+    n_jobs = max(1, int(config.n_jobs))
+    can_parallel = (
+        n_jobs > 1
+        and int(config.n_reps) > 1
+        and generator is None
+        and generating is None
+        and candidates is None
+        and all(not isinstance(g, RuntimeGeneratingModelSpec) for g in effective_generating)
+        and all(not isinstance(c, RuntimeCandidateModelSpec) for c in effective_candidates)
+    )
+    if n_jobs > 1 and not can_parallel:
+        warnings.warn(
+            (
+                "Parallel model recovery is enabled via n_jobs, but this run uses "
+                "runtime generator/model/estimator objects. Falling back to "
+                "sequential execution."
+            ),
+            RuntimeWarning,
+            stacklevel=2,
+        )
 
     for gen_spec in effective_generating:
         gen_name = str(gen_spec.name)
-        if isinstance(gen_spec, RuntimeGeneratingModelSpec):
-            gen_model_key = f"{gen_spec.model.__class__.__name__}"
-        else:
-            gen_model_key = str(gen_spec.model)
+        gen_model_key = (
+            f"{gen_spec.model.__class__.__name__}"
+            if isinstance(gen_spec, RuntimeGeneratingModelSpec)
+            else str(gen_spec.model)
+        )
         sampling_cfg = gen_spec.sampling
+        rep_seeds = [int(base_rng.integers(0, 2**32 - 1)) for _ in range(int(config.n_reps))]
+
+        if can_parallel:
+            assert config.components is not None
+            generator_name = str(config.components.generator.name)
+            generator_kwargs = dict(config.components.generator.kwargs)
+            assert not isinstance(gen_spec, RuntimeGeneratingModelSpec)
+            config_candidates = [c for c in effective_candidates if isinstance(c, CandidateModelSpec)]
+
+            max_workers = min(n_jobs, int(config.n_reps))
+            pbar = None
+            if progress_callback is None:
+                pbar = tqdm(
+                    total=int(config.n_reps),
+                    desc=f"Model recovery: gen={gen_name}",
+                    leave=False,
+                    disable=not sys.stderr.isatty(),
+                )
+
+            try:
+                try:
+                    executor = ProcessPoolExecutor(max_workers=max_workers)
+                except (PermissionError, OSError) as exc:
+                    warnings.warn(
+                        (
+                            f"Parallel model recovery unavailable ({exc}). "
+                            "Falling back to sequential execution."
+                        ),
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    executor = None
+
+                if executor is not None:
+                    with executor as ex:
+                        futures = [
+                            ex.submit(
+                                _run_single_rep_config_only,
+                                rep=rep,
+                                rep_seed=rep_seeds[rep],
+                                out_dir=str(out_dir),
+                                subject_ids=list(subject_ids),
+                                subject_block_plans=plan.subjects,
+                                generator_name=generator_name,
+                                generator_kwargs=generator_kwargs,
+                                gen_name=gen_name,
+                                gen_model_key=gen_model_key,
+                                gen_model_ref=str(gen_spec.model),
+                                gen_model_kwargs=dict(gen_spec.model_kwargs),
+                                sampling_cfg=sampling_cfg,
+                                candidate_specs=config_candidates,
+                                criterion_name=str(config.selection.criterion),
+                                tie_break=str(config.selection.tie_break),
+                                atol=float(config.selection.atol),
+                                save_fit_diagnostics=bool(config.output.save_fit_diagnostics),
+                                save_simulated_study=bool(config.output.save_simulated_study),
+                            )
+                            for rep in range(int(config.n_reps))
+                        ]
+                        for fut in as_completed(futures):
+                            rep_result = fut.result()
+                            fit_rows.extend(rep_result.fit_rows)
+                            winner_rows.append(rep_result.winner_row)
+                            if config.output.save_fit_diagnostics:
+                                diag_rows.extend(rep_result.diag_rows)
+                            completed += len(rep_result.fit_rows)
+                            if progress_callback:
+                                progress_callback(completed, total)
+                            if pbar is not None:
+                                pbar.update(1)
+                    continue
+            finally:
+                if pbar is not None:
+                    pbar.close()
 
         for rep in tqdm(
             range(int(config.n_reps)),
@@ -651,7 +999,7 @@ def run_model_recovery(
             leave=False,
             disable=not sys.stderr.isatty(),
         ):
-            rep_seed = int(base_rng.integers(0, 2**32 - 1))
+            rep_seed = rep_seeds[rep]
             rep_rng = np.random.default_rng(rep_seed)
 
             if isinstance(gen_spec, RuntimeGeneratingModelSpec):
@@ -667,6 +1015,7 @@ def run_model_recovery(
             # Sample true params per subject
             subj_true, pop_true = None, None
             from comp_model_impl.recovery.parameter.sampling import sample_subject_params
+
             subj_true, pop_true = sample_subject_params(
                 cfg=sampling_cfg,
                 model=gen_model,
@@ -685,6 +1034,7 @@ def run_model_recovery(
 
             if config.output.save_simulated_study:
                 import pickle
+
                 with (out_dir / f"study_{gen_name}_rep_{rep:04d}.pkl").open("wb") as f:
                     pickle.dump(study, f)
 
@@ -903,14 +1253,6 @@ def run_model_recovery(
 
         cm = confusion_matrix(winners_df)
         cm.to_csv(out_dir / "model_recovery_confusion_matrix.csv")
-    except Exception:
-        pass
-
-    try:
-        from .analysis import summarize_delta_scores
-
-        delta_summary = summarize_delta_scores(winners_df)
-        delta_summary.to_csv(out_dir / "model_recovery_delta_scores.csv", index=False)
     except Exception:
         pass
 

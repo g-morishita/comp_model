@@ -47,7 +47,6 @@ from .run import (
 )
 from .analysis import (
     confusion_matrix,
-    summarize_delta_scores,
 )
 
 __all__ = [
@@ -73,5 +72,4 @@ __all__ = [
     "RuntimeCandidateModelSpec",
     "run_model_recovery",
     "confusion_matrix",
-    "summarize_delta_scores",
 ]
