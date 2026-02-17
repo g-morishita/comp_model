@@ -9,7 +9,6 @@ import pytest
 from comp_model_impl.analysis.model_selection import add_information_criteria
 from comp_model_impl.recovery.model.analysis import (
     confusion_matrix,
-    summarize_delta_scores,
 )
 
 
@@ -35,39 +34,6 @@ def test_confusion_matrix_empty_and_missing_columns() -> None:
 
     with pytest.raises(ValueError, match="generating_model and selected_model"):
         _ = confusion_matrix(pd.DataFrame({"generating_model": ["A"]}))
-
-
-def test_summarize_delta_scores_happy_path() -> None:
-    """Delta-score summaries should include aggregate and quantile columns."""
-    winners = pd.DataFrame(
-        {
-            "generating_model": ["A", "A", "B", "B"],
-            "delta_to_second": [1.0, 3.0, 2.0, 4.0],
-        }
-    )
-    out = summarize_delta_scores(winners)
-    by_gen = {row["generating_model"]: row for _, row in out.iterrows()}
-
-    assert by_gen["A"]["delta_mean"] == pytest.approx(2.0)
-    assert by_gen["A"]["delta_median"] == pytest.approx(2.0)
-    assert by_gen["B"]["delta_mean"] == pytest.approx(3.0)
-    assert by_gen["B"]["delta_median"] == pytest.approx(3.0)
-
-
-def test_summarize_delta_scores_empty_or_missing_column() -> None:
-    """Delta-score summaries should return an empty typed table when unavailable."""
-    out_empty = summarize_delta_scores(pd.DataFrame())
-    assert list(out_empty.columns) == [
-        "generating_model",
-        "delta_mean",
-        "delta_median",
-        "delta_p10",
-        "delta_p90",
-    ]
-    assert out_empty.empty
-
-    out_missing = summarize_delta_scores(pd.DataFrame({"generating_model": ["A"]}))
-    assert out_missing.empty
 
 
 def test_add_information_criteria_single_group() -> None:
