@@ -36,8 +36,6 @@ class Vicarious_DB_Stay(SocialComputationalModel):
         Inverse temperature.
     kappa : float, optional
         Perseveration parameter.
-    beta_max : float, optional
-        Maximum allowed beta.
     kappa_abs_max : float, optional
         Maximum absolute kappa.
 
@@ -89,7 +87,6 @@ class Vicarious_DB_Stay(SocialComputationalModel):
     kappa: float = 0.0
 
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 5.0
     demo_bias_abs_max: float = 5.0
 
@@ -128,7 +125,6 @@ class Vicarious_DB_Stay(SocialComputationalModel):
             beta_default=float(self.beta),
             kappa_default=float(self.kappa),
             demo_bias_abs_max=float(self.demo_bias_abs_max),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max),
         )
 

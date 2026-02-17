@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from comp_model_core.params import Bound, ParamDef, ParameterSchema, Sigmoid, BoundedTanh
+from comp_model_core.params import Bound, BoundedTanh, LowerBoundedSoftplus, ParamDef, ParameterSchema, Sigmoid
 
 
 def vicarious_db_stay_schema(
@@ -13,13 +13,12 @@ def vicarious_db_stay_schema(
     beta_default: float = 3.0,
     kappa_default: float = 0.0,
     demo_bias_abs_max: float = 5.0,
-    beta_max: float = 20.0,
     kappa_abs_max: float = 5.0,
 ) -> ParameterSchema:
 
     """
     Construct the Vicarious DB-Stay parameter schema.
-    
+
     Parameters
     ----------
     alpha_o_default : float, optional
@@ -32,11 +31,8 @@ def vicarious_db_stay_schema(
         Default perseveration parameter.
     demo_bias_abs_max : float, optional
         Maximum absolute value for the demonstrator-choice bias parameter.
-    beta_max : float, optional
-        Maximum allowed beta.
     kappa_abs_max : float, optional
         Maximum absolute kappa.
-    
     Returns
     -------
     comp_model_core.params.ParameterSchema
@@ -52,8 +48,8 @@ def vicarious_db_stay_schema(
                 Bound(-float(demo_bias_abs_max), float(demo_bias_abs_max)),
                 transform=BoundedTanh(-float(demo_bias_abs_max), float(demo_bias_abs_max)),
             ),
-            ParamDef("beta", float(beta_default), Bound(1e-6, float(beta_max)),
-                     transform=BoundedTanh(1e-6, float(beta_max))),
+            ParamDef("beta", float(beta_default), Bound(1e-6, float("inf")),
+                     transform=LowerBoundedSoftplus(1e-6)),
             ParamDef("kappa", float(kappa_default), Bound(-float(kappa_abs_max), float(kappa_abs_max)),
                      transform=BoundedTanh(-float(kappa_abs_max), float(kappa_abs_max))),
         )

@@ -27,10 +27,6 @@ class AP_RL_NoStay(SocialComputationalModel):
 
     alpha_a: float = 0.2
     beta: float = 6.0
-
-    # config (not estimated)
-    beta_max: float = 20.0
-
     _demo_pi: Sequence[float] = field(default_factory=list)
 
     @classmethod
@@ -45,7 +41,6 @@ class AP_RL_NoStay(SocialComputationalModel):
         return ap_rl_nostay_schema(
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),
-            beta_max=float(self.beta_max),
         )
 
     def supports(self, spec: EnvironmentSpec) -> bool:

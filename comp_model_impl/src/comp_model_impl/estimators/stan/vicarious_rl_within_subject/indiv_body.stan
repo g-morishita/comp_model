@@ -21,7 +21,6 @@ data {
   array[E] int<lower=1,upper=C> cond;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
 
   // priors on z-scale (configurable)
   int<lower=1,upper=8> alpha_o__shared_prior_family;
@@ -67,8 +66,8 @@ transformed parameters {
   }
 
   vector<lower=0,upper=1>[C] alpha_o = inv_logit(alpha_o_z);
-  vector<lower=beta_lower,upper=beta_upper>[C] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(beta_z);
+  vector<lower=beta_lower>[C] beta =
+    beta_lower + exp(beta_z);
 }
 model {
   target += prior_lpdf(alpha_o__shared_z | alpha_o__shared_prior_family, alpha_o__shared_prior_p1, alpha_o__shared_prior_p2, alpha_o__shared_prior_p3);

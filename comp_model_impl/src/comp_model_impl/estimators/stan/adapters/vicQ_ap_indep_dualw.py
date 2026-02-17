@@ -52,7 +52,6 @@ class VicQAPIndepDualWStanAdapter(StanAdapter):
 
     def augment_subject_data(self, data: dict[str, Any]) -> None:
         data["beta_lower"] = 1e-6
-        data["beta_upper"] = float(getattr(self.model, "beta_max", 20.0))
         data["kappa_abs_max"] = float(getattr(self.model, "kappa_abs_max", 5.0))
 
     def augment_study_data(self, data: dict[str, Any]) -> None:

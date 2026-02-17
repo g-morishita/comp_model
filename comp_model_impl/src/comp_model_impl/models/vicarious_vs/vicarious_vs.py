@@ -44,8 +44,6 @@ class Vicarious_VS(SocialComputationalModel):
         Softmax inverse temperature.
     pseudo_reward : float
         Target used on demonstrations (default 1.0).
-    beta_max : float
-        Upper bound used by estimators (not estimated directly).
 
     Notes
     -----
@@ -95,10 +93,6 @@ class Vicarious_VS(SocialComputationalModel):
     alpha_a: float = 0.2
     beta: float = 3.0
     pseudo_reward: float = 1.0  # not estimated by default
-    
-    # config (not estimated)
-    beta_max: float = 20.0
-
     def __post_init__(self) -> None:
         """Initialize latent state containers."""
         self._q: list[np.ndarray] = []
@@ -132,7 +126,6 @@ class Vicarious_VS(SocialComputationalModel):
             alpha_o_default=float(self.alpha_o),
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),
-            beta_max=float(self.beta_max),
         )
 
     def supports(self, spec: EnvironmentSpec) -> bool:

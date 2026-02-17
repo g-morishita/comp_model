@@ -31,7 +31,6 @@ class AP_RL_Stay(SocialComputationalModel):
     kappa: float = 0.0
 
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 5.0
 
     _demo_pi: Sequence[float] = field(default_factory=list)
@@ -50,7 +49,6 @@ class AP_RL_Stay(SocialComputationalModel):
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),
             kappa_default=float(self.kappa),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max),
         )
 

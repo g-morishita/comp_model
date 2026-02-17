@@ -51,3 +51,22 @@ def test_parameter_bounds_space_sample_init_within_bounds():
         assert 0.0 <= x[0] <= 1.0
         assert -2.0 <= x[1] <= 2.0
         assert 5.0 <= x[2] <= 6.0
+
+
+def test_parameter_bounds_space_sample_init_with_infinite_bounds():
+    rng = np.random.default_rng(1)
+    space = ParameterBoundsSpace(
+        names=("u", "lo_only", "hi_only"),
+        bounds={
+            "u": Bound(-np.inf, np.inf),
+            "lo_only": Bound(0.0, np.inf),
+            "hi_only": Bound(-np.inf, 1.0),
+        },
+    )
+
+    for _ in range(100):
+        x = space.sample_init(rng)
+        assert x.shape == (3,)
+        assert np.isfinite(x[0])
+        assert x[1] >= 0.0
+        assert x[2] <= 1.0

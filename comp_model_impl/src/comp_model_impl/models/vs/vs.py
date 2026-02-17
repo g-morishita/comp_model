@@ -46,8 +46,6 @@ class VS(SocialComputationalModel):
         Perseveration strength: +kappa bonus to repeating last private choice.
     pseudo_reward : float
         Target used on demonstrations (default 1.0).
-    beta_max : float
-        Upper bound used by estimators (not estimated directly).
     kappa_abs_max : float
         Absolute bound for ``kappa`` used by estimators.
 
@@ -78,7 +76,6 @@ class VS(SocialComputationalModel):
     pseudo_reward: float = 1.0  # not estimated by default
     
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 1.0
     _init_q_value: float = 0.0
     _q: List[float] = field(default_factory=list)
@@ -113,7 +110,6 @@ class VS(SocialComputationalModel):
             alpha_i_default=float(self.alpha_i),
             beta_default=float(self.beta),
             kappa_default=float(self.kappa),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max),
         )
 

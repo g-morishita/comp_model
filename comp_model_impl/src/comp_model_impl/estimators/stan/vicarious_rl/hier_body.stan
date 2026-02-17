@@ -17,7 +17,6 @@ data {
   array[E] int<lower=0, upper=1> has_demo_outcome;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
 
   // hyperpriors
   int<lower=1, upper=8> mu_alpha_o_prior_family; real mu_alpha_o_prior_p1; real mu_alpha_o_prior_p2; real mu_alpha_o_prior_p3;
@@ -32,8 +31,8 @@ parameters {
 }
 transformed parameters {
   vector<lower=0, upper=1>[N] alpha_o = inv_logit(mu_alpha_o + sd_alpha_o * z_alpha_o);
-  vector<lower=beta_lower, upper=beta_upper>[N] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta + sd_beta * z_beta);
+  vector<lower=beta_lower>[N] beta =
+    beta_lower + exp(mu_beta + sd_beta * z_beta);
 }
 model {
   z_alpha_o ~ normal(0, 1);
@@ -103,7 +102,7 @@ generated quantities {
   real alpha_o_pop = inv_logit(mu_alpha_o);
 
   real beta_pop =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta);
+    beta_lower + exp(mu_beta);
 
   real mu_alpha_o_hat = mu_alpha_o;
   real sd_alpha_o_hat = sd_alpha_o;

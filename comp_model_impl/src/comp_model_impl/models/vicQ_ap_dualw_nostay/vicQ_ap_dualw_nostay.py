@@ -32,7 +32,6 @@ class VicQ_AP_DualW_NoStay(SocialComputationalModel):
     w: float = 0.5
 
     # config (not estimated)
-    beta_max: float = 20.0
     initial_q: float = 0.0
 
     _init_q_value: float = 0.0
@@ -54,7 +53,6 @@ class VicQ_AP_DualW_NoStay(SocialComputationalModel):
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),
             w_default=float(self.w),
-            beta_max=float(self.beta_max),
         )
 
     def supports(self, spec: EnvironmentSpec) -> bool:

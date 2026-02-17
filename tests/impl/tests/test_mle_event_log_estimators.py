@@ -199,6 +199,53 @@ class BernoulliChoiceModel(ComputationalModel):
         return
 
 
+class InfBoundLogitBernoulliChoiceModel(ComputationalModel):
+    """Minimal Bernoulli model with explicit infinite bounds."""
+
+    def __init__(self, logit_theta: float = 0.0) -> None:
+        self.logit_theta = float(logit_theta)
+        self._schema = ParameterSchema(
+            params=(
+                ParamDef(
+                    "logit_theta",
+                    float(logit_theta),
+                    bound=Bound(-np.inf, np.inf),
+                ),
+            )
+        )
+
+    @property
+    def param_schema(self) -> ParameterSchema:
+        """Return the parameter schema for the model."""
+        return self._schema
+
+    @classmethod
+    def requirements(cls):  # type: ignore[override]
+        """Return empty requirements for plan validation."""
+        return ()
+
+    def set_params(self, params, **kwargs):  # type: ignore[override]
+        """Set model parameters from a mapping."""
+        self.logit_theta = float(params["logit_theta"])
+
+    def supports(self, spec: EnvironmentSpec) -> bool:
+        """Return ``True`` if the environment has at least 2 actions."""
+        return int(spec.n_actions) >= 2
+
+    def reset_block(self, *, spec: EnvironmentSpec) -> None:
+        """Reset any block-level state (no-op)."""
+        return
+
+    def action_probs(self, *, state, spec: EnvironmentSpec) -> np.ndarray:
+        """Return Bernoulli action probabilities from a logit parameter."""
+        p = float(1.0 / (1.0 + np.exp(-float(self.logit_theta))))
+        return np.array([1.0 - p, p], dtype=float)
+
+    def update(self, *, state, action, outcome, spec: EnvironmentSpec, info=None, rng=None) -> None:
+        """Update the model (no-op)."""
+        return
+
+
 def _make_deterministic_choice_study(*, n_trials: int, n_ones: int) -> StudyData:
     """Create a study with a fixed number of action-1 choices.
 
@@ -290,6 +337,21 @@ def test_mle_recovers_bernoulli_choice_rate():
 
     assert theta_hat_box == pytest.approx(empirical, abs=1e-2)
     assert theta_hat_trans == pytest.approx(empirical, abs=1e-2)
+
+
+def test_box_mle_supports_infinite_bounds():
+    """Box MLE should handle parameters bounded by +/-inf."""
+    study = _make_deterministic_choice_study(n_trials=50, n_ones=30)
+    empirical = 30 / 50
+    est = BoxMLESubjectwiseEstimator(
+        model=InfBoundLogitBernoulliChoiceModel(logit_theta=0.0),
+        n_starts=3,
+        maxiter=200,
+    )
+    res = est.fit(study=study, rng=np.random.default_rng(2))
+    logit_hat = float(res.subject_hats["s1"]["logit_theta"])
+    theta_hat = float(1.0 / (1.0 + np.exp(-logit_hat)))
+    assert theta_hat == pytest.approx(empirical, abs=1e-2)
 
 
 @pytest.mark.parametrize(

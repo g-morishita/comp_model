@@ -18,7 +18,15 @@ import numpy as np
 
 from ..errors import ParameterValidationError
 from .bounds import Bound, ParameterBoundsSpace
-from .transforms import Transform, Identity, Sigmoid, Softplus, BoundedTanh
+from .transforms import (
+    Transform,
+    Identity,
+    Sigmoid,
+    Softplus,
+    LowerBoundedSoftplus,
+    UpperBoundedSoftplus,
+    BoundedTanh,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,7 +77,10 @@ class ParamDef:
         - No bound -> :class:`~comp_model_core.params.transforms.Identity`
         - (0, 1) -> :class:`~comp_model_core.params.transforms.Sigmoid`
         - Finite (lo, hi) -> :class:`~comp_model_core.params.transforms.BoundedTanh`
-        - Semi-infinite bounds (future-proofing) -> :class:`~comp_model_core.params.transforms.Softplus`
+        - (0, +inf) -> :class:`~comp_model_core.params.transforms.Softplus`
+        - (lo, +inf) -> :class:`~comp_model_core.params.transforms.LowerBoundedSoftplus`
+        - (-inf, hi) -> :class:`~comp_model_core.params.transforms.UpperBoundedSoftplus`
+        - (-inf, +inf) -> :class:`~comp_model_core.params.transforms.Identity`
         """
         # If user provided a transform, respect it.
         if self.transform is not None:
@@ -89,9 +100,19 @@ class ParamDef:
         if np.isfinite(lo) and np.isfinite(hi):
             return BoundedTanh(lo=lo, hi=hi)
 
-        # Semi-infinite bounds (future-proofing; Bound is currently finite-only)
+        # Lower-bounded half-line.
         if np.isfinite(lo) and not np.isfinite(hi):
-            return Softplus()
+            if lo == 0.0:
+                return Softplus()
+            return LowerBoundedSoftplus(lo=lo)
+
+        # Upper-bounded half-line.
+        if not np.isfinite(lo) and np.isfinite(hi):
+            return UpperBoundedSoftplus(hi=hi)
+
+        # Fully unbounded.
+        if not np.isfinite(lo) and not np.isfinite(hi):
+            return Identity()
 
         return Identity()
 

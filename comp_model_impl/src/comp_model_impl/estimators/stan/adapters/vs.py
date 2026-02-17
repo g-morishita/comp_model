@@ -118,14 +118,13 @@ class VSStanAdapter(StanAdapter):
 
         Notes
         -----
-        - ``beta_lower``/``beta_upper`` bound the inverse-temperature parameter
+        - ``beta_lower`` lower-bounds the inverse-temperature parameter
           to avoid numerical issues and extreme softmax temperatures.
         - ``kappa_abs_max`` bounds the perseveration term ``kappa``.
         - ``pseudo_reward`` is the reward used for vicarious updates when
           demonstrator outcomes are observed.
         """
         data["beta_lower"] = 1e-6
-        data["beta_upper"] = float(getattr(self.model, "beta_max"))
         data["kappa_abs_max"] = float(getattr(self.model, "kappa_abs_max"))
         data["pseudo_reward"] = float(getattr(self.model, "pseudo_reward"))
 

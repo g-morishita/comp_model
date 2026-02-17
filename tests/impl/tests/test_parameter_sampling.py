@@ -49,17 +49,17 @@ def test_rvs_returns_float_array() -> None:
 
 def test_param_helpers_bounds_and_clip() -> None:
     """Parameter helpers should resolve names, bounds, and clipping."""
-    model = QRL(beta_max=5.0)
+    model = QRL()
     names = _param_names_from_model(model)
     assert names == ["alpha", "beta"]
 
     bounds = _param_bounds_from_model(model)
     assert bounds["alpha"] == (0.0, 1.0)
-    assert bounds["beta"][1] == pytest.approx(5.0)
+    assert np.isinf(bounds["beta"][1])
 
-    clipped = _clip_params({"alpha": 2.0, "beta": 10.0}, bounds)
+    clipped = _clip_params({"alpha": 2.0, "beta": 30.0}, bounds)
     assert clipped["alpha"] == pytest.approx(1.0)
-    assert clipped["beta"] == pytest.approx(5.0)
+    assert clipped["beta"] == pytest.approx(30.0)
 
 
 def test_param_names_missing_raises() -> None:
@@ -75,10 +75,10 @@ def test_sample_subject_params_fixed_and_clipped() -> None:
     """Fixed sampling should clip values into bounds when requested."""
     cfg = SamplingSpec(
         mode="fixed",
-        fixed={"alpha": 2.0, "beta": 10.0},
+        fixed={"alpha": 2.0, "beta": 30.0},
         clip_to_bounds=True,
     )
-    model = QRL(beta_max=2.0)
+    model = QRL()
     subj_params, pop_params = sample_subject_params(
         cfg=cfg,
         model=model,
@@ -87,9 +87,9 @@ def test_sample_subject_params_fixed_and_clipped() -> None:
     )
     assert pop_params is None
     assert subj_params["s1"]["alpha"] == pytest.approx(1.0)
-    assert subj_params["s1"]["beta"] == pytest.approx(2.0)
+    assert subj_params["s1"]["beta"] == pytest.approx(30.0)
     assert subj_params["s2"]["alpha"] == pytest.approx(1.0)
-    assert subj_params["s2"]["beta"] == pytest.approx(2.0)
+    assert subj_params["s2"]["beta"] == pytest.approx(30.0)
 
 
 def test_sample_subject_params_independent_param_space_is_deterministic() -> None:

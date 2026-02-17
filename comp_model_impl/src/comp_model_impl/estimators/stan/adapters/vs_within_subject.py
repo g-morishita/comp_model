@@ -188,14 +188,12 @@ class VSWithinSubjectStanAdapter(StanAdapter):
         Notes
         -----
         Mirrors :class:`VSStanAdapter`:
-        - ``beta_lower``/``beta_upper`` bound the inverse-temperature parameter.
+        - ``beta_lower`` lower-bounds the inverse-temperature parameter.
         - ``kappa_abs_max`` bounds the perseveration term ``kappa``.
         - ``pseudo_reward`` is used for vicarious updates when demonstrator
           outcomes are observed.
         """
-        beta_max = float(getattr(self.base_model, "beta_max"))
         data["beta_lower"] = float(1e-6)
-        data["beta_upper"] = float(beta_max)
         data["kappa_abs_max"] = float(getattr(self.base_model, "kappa_abs_max"))
         data["pseudo_reward"] = float(getattr(self.base_model, "pseudo_reward"))
 

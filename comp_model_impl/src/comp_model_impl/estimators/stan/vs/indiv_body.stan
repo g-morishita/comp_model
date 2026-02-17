@@ -17,7 +17,6 @@ data {
 
   real pseudo_reward;
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
 
   // priors (configurable)
@@ -44,7 +43,7 @@ data {
 parameters {
   real<lower=0,upper=1> alpha_p;
   real<lower=0,upper=1> alpha_i;
-  real<lower=beta_lower,upper=beta_upper> beta;
+  real<lower=beta_lower> beta;
   real<lower=-kappa_abs_max,upper=kappa_abs_max> kappa;
 }
 model {

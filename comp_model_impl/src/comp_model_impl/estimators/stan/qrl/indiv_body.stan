@@ -12,7 +12,6 @@ data {
   array[E] vector<lower=0,upper=1>[A] avail_mask;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
 
   // priors
   int<lower=1,upper=8> alpha_prior_family;
@@ -27,7 +26,7 @@ data {
 }
 parameters {
   real<lower=0,upper=1> alpha;
-  real<lower=beta_lower,upper=beta_upper> beta;
+  real<lower=beta_lower> beta;
 }
 model {
   target += prior_lpdf(alpha | alpha_prior_family, alpha_prior_p1, alpha_prior_p2, alpha_prior_p3);

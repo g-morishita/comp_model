@@ -23,7 +23,6 @@ data {
   array[E] int<lower=1, upper=C> cond;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
   real<lower=0> demo_bias_abs_max;
 
@@ -112,8 +111,8 @@ transformed parameters {
   matrix<lower=-demo_bias_abs_max, upper=demo_bias_abs_max>[N, C] demo_bias =
     demo_bias_abs_max * (2 * inv_logit(demo_bias_z) - 1);
 
-  matrix<lower=beta_lower, upper=beta_upper>[N, C] beta =
-    beta_lower + (beta_upper - beta_lower) .* inv_logit(beta_z);
+  matrix<lower=beta_lower>[N, C] beta =
+    beta_lower + exp(beta_z);
 
   matrix<lower=-kappa_abs_max, upper=kappa_abs_max>[N, C] kappa =
     kappa_abs_max * (2 * inv_logit(kappa_z) - 1);
@@ -128,13 +127,13 @@ transformed parameters {
     if (c == baseline_cond) {
       alpha_o_pop[c] = inv_logit(mu_alpha_o__shared);
       demo_bias_pop[c] = demo_bias_abs_max * (2 * inv_logit(mu_demo_bias__shared) - 1);
-      beta_pop[c] = beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta__shared);
+      beta_pop[c] = beta_lower + exp(mu_beta__shared);
       kappa_pop[c] = kappa_abs_max * (2 * inv_logit(mu_kappa__shared) - 1);
     } else {
       int idx = (c < baseline_cond) ? c : (c - 1);
       alpha_o_pop[c] = inv_logit(mu_alpha_o__shared + mu_alpha_o__delta[idx]);
       demo_bias_pop[c] = demo_bias_abs_max * (2 * inv_logit(mu_demo_bias__shared + mu_demo_bias__delta[idx]) - 1);
-      beta_pop[c] = beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta__shared + mu_beta__delta[idx]);
+      beta_pop[c] = beta_lower + exp(mu_beta__shared + mu_beta__delta[idx]);
       kappa_pop[c] = kappa_abs_max * (2 * inv_logit(mu_kappa__shared + mu_kappa__delta[idx]) - 1);
     }
   }

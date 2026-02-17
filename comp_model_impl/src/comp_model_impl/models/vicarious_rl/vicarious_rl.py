@@ -44,8 +44,6 @@ class Vicarious_RL(SocialComputationalModel):
         Vicarious outcome learning rate (demonstrator outcomes).
     beta : float
         Softmax inverse temperature.
-    beta_max : float
-        Upper bound used by estimators (not estimated directly).
 
     Notes
     -----
@@ -96,10 +94,6 @@ class Vicarious_RL(SocialComputationalModel):
     """
     alpha_o: float = 0.2
     beta: float = 3.0
-    
-    # config (not estimated)
-    beta_max: float = 20.0
-
     def __post_init__(self) -> None:
         """Initialize latent state containers."""
         self._q: list[np.ndarray] = []
@@ -132,7 +126,6 @@ class Vicarious_RL(SocialComputationalModel):
         return vicarious_rl_schema(
             alpha_o_default=float(self.alpha_o),
             beta_default=float(self.beta),
-            beta_max=float(self.beta_max),
         )
 
     def supports(self, spec: EnvironmentSpec) -> bool:

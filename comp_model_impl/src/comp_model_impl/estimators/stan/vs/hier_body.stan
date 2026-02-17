@@ -20,7 +20,6 @@ data {
 
   real pseudo_reward;
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
 
   // hyperpriors (configurable)
@@ -49,8 +48,8 @@ transformed parameters {
   vector<lower=0,upper=1>[N] alpha_p = inv_logit(mu_alpha_p + sd_alpha_p * z_alpha_p);
   vector<lower=0,upper=1>[N] alpha_i = inv_logit(mu_alpha_i + sd_alpha_i * z_alpha_i);
 
-  vector<lower=beta_lower,upper=beta_upper>[N] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta + sd_beta * z_beta);
+  vector<lower=beta_lower>[N] beta =
+    beta_lower + exp(mu_beta + sd_beta * z_beta);
 
   vector<lower=-kappa_abs_max,upper=kappa_abs_max>[N] kappa =
     kappa_abs_max * (2 * inv_logit(mu_kappa + sd_kappa * z_kappa) - 1);
@@ -163,7 +162,7 @@ generated quantities {
   real alpha_i_pop = inv_logit(mu_alpha_i);
 
   real beta_pop =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta);
+    beta_lower + exp(mu_beta);
 
   real kappa_pop =
     kappa_abs_max * (2 * inv_logit(mu_kappa) - 1);

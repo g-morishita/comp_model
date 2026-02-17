@@ -21,7 +21,6 @@ data {
 
   real pseudo_reward;
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
 
   // priors on z-scale (configurable)
@@ -102,8 +101,8 @@ transformed parameters {
   vector<lower=0, upper=1>[C] alpha_p = inv_logit(alpha_p_z);
   vector<lower=0, upper=1>[C] alpha_i = inv_logit(alpha_i_z);
 
-  vector<lower=beta_lower, upper=beta_upper>[C] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(beta_z);
+  vector<lower=beta_lower>[C] beta =
+    beta_lower + exp(beta_z);
 
   vector<lower=-kappa_abs_max, upper=kappa_abs_max>[C] kappa =
     kappa_abs_max * (2 * inv_logit(kappa_z) - 1);

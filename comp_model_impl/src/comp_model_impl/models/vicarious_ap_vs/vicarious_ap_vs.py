@@ -62,8 +62,6 @@ class Vicarious_AP_VS(SocialComputationalModel):
         Perseveration parameter.
     pseudo_reward : float
         Target used on demonstrations (default 1.0).
-    beta_max : float, optional
-        Maximum allowed beta.
     kappa_abs_max : float, optional
         Maximum absolute kappa.
 
@@ -98,7 +96,6 @@ class Vicarious_AP_VS(SocialComputationalModel):
     pseudo_reward: float = 1.0  # not estimated by default
 
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 5.0
     _init_q_value: float = 0.0
     _q: Sequence[float] = field(default_factory=list)
@@ -135,7 +132,6 @@ class Vicarious_AP_VS(SocialComputationalModel):
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),
             kappa_default=float(self.kappa),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max),
         )
     

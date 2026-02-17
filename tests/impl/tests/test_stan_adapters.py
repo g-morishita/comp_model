@@ -52,7 +52,7 @@ from comp_model_impl.models.within_subject_shared_delta import wrap_model_with_s
 
 def test_vs_adapter_adds_constants_and_priors():
     """VS adapter exposes expected priors and data constants."""
-    model = VS(beta_max=20.0, kappa_abs_max=1.0, pseudo_reward=1.0)
+    model = VS(kappa_abs_max=1.0, pseudo_reward=1.0)
     adapter = VSStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vs"
@@ -62,14 +62,14 @@ def test_vs_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(20.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.0)
     assert data["pseudo_reward"] == pytest.approx(1.0)
 
 
 def test_vicarious_vs_adapter_adds_constants_and_priors():
     """Vicarious-VS adapter exposes expected priors and data constants."""
-    model = Vicarious_VS(beta_max=15.0, pseudo_reward=0.7)
+    model = Vicarious_VS(pseudo_reward=0.7)
     adapter = VicariousVSStanAdapter(model=model)
 
     assert adapter.program("hier").key == "vicarious_vs"
@@ -80,12 +80,12 @@ def test_vicarious_vs_adapter_adds_constants_and_priors():
     adapter.augment_subject_data(data)
     assert data["pseudo_reward"] == pytest.approx(0.7)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(15.0)
+    assert "beta_upper" not in data
 
 
 def test_vicarious_vs_stay_adapter_adds_constants_and_priors():
     """Vicarious-VS-Stay adapter exposes expected priors and data constants."""
-    model = Vicarious_VS_Stay(beta_max=14.0, kappa_max=1.5, pseudo_reward=0.6)
+    model = Vicarious_VS_Stay(kappa_max=1.5, pseudo_reward=0.6)
     adapter = VicariousVSStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_vs_stay"
@@ -96,13 +96,13 @@ def test_vicarious_vs_stay_adapter_adds_constants_and_priors():
     adapter.augment_subject_data(data)
     assert data["pseudo_reward"] == pytest.approx(0.6)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(14.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.5)
 
 
 def test_vicarious_ap_vs_adapter_adds_constants_and_priors():
     """Vicarious-AP-VS adapter exposes expected priors and data constants."""
-    model = Vicarious_AP_VS(beta_max=17.0, kappa_abs_max=2.5, pseudo_reward=0.8)
+    model = Vicarious_AP_VS(kappa_abs_max=2.5, pseudo_reward=0.8)
     adapter = VicariousAPVSStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_ap_vs"
@@ -113,13 +113,13 @@ def test_vicarious_ap_vs_adapter_adds_constants_and_priors():
     adapter.augment_subject_data(data)
     assert data["pseudo_reward"] == pytest.approx(0.8)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(17.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(2.5)
 
 
 def test_vicarious_ap_db_stay_adapter_adds_constants_and_priors():
     """Vicarious-AP-DB-Stay adapter exposes expected priors and data constants."""
-    model = Vicarious_AP_DB_STAY(beta_max=13.0, kappa_abs_max=2.0, demo_bias_abs_max=4.0)
+    model = Vicarious_AP_DB_STAY(kappa_abs_max=2.0, demo_bias_abs_max=4.0)
     adapter = VicariousAPDBStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_ap_db_stay"
@@ -129,14 +129,14 @@ def test_vicarious_ap_db_stay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(13.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(2.0)
     assert data["demo_bias_rel_abs_max"] == pytest.approx(4.0)
 
 
 def test_vicq_ap_dualw_stay_adapter_adds_constants_and_priors():
     """VicQ-AP-DualW-Stay adapter exposes expected priors and data constants."""
-    model = VicQ_AP_DualW_Stay(beta_max=19.0, kappa_abs_max=1.75)
+    model = VicQ_AP_DualW_Stay(kappa_abs_max=1.75)
     adapter = VicQAPDualWStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicQ_ap_dualw_stay"
@@ -147,13 +147,13 @@ def test_vicq_ap_dualw_stay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(19.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.75)
 
 
 def test_vicq_ap_dualw_nostay_adapter_adds_constants_and_priors():
     """VicQ-AP-DualW-NoStay adapter exposes expected priors and data constants."""
-    model = VicQ_AP_DualW_NoStay(beta_max=19.0)
+    model = VicQ_AP_DualW_NoStay()
     adapter = VicQAPDualWNoStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicQ_ap_dualw_nostay"
@@ -164,12 +164,12 @@ def test_vicq_ap_dualw_nostay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(19.0)
+    assert "beta_upper" not in data
 
 
 def test_vicq_ap_indep_dualw_adapter_adds_constants_and_priors():
     """Independent VicQ-AP-DualW adapter exposes expected priors and constants."""
-    model = VicQ_AP_IndepDualW(beta_max=19.0, kappa_abs_max=1.75)
+    model = VicQ_AP_IndepDualW(kappa_abs_max=1.75)
     adapter = VicQAPIndepDualWStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicQ_ap_indep_dualw"
@@ -180,13 +180,13 @@ def test_vicq_ap_indep_dualw_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(19.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.75)
 
 
 def test_vicarious_dir_db_stay_adapter_adds_constants_and_priors():
     """Vicarious-Dirichlet-DB-Stay adapter exposes expected priors and data constants."""
-    model = Vicarious_Dir_DB_Stay(beta_max=11.0, kappa_abs_max=1.5, demo_bias_abs_max=3.5, demo_dirichlet_prior=1.25)
+    model = Vicarious_Dir_DB_Stay(kappa_abs_max=1.5, demo_bias_abs_max=3.5, demo_dirichlet_prior=1.25)
     adapter = VicariousDirDBStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_dir_db_stay"
@@ -196,7 +196,7 @@ def test_vicarious_dir_db_stay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(11.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.5)
     assert data["demo_bias_rel_abs_max"] == pytest.approx(3.5)
     assert data["demo_dirichlet_prior"] == pytest.approx(1.25)
@@ -204,7 +204,7 @@ def test_vicarious_dir_db_stay_adapter_adds_constants_and_priors():
 
 def test_vicarious_db_stay_adapter_adds_constants_and_priors():
     """Vicarious-DB-Stay adapter exposes expected priors and data constants."""
-    model = Vicarious_DB_Stay(beta_max=9.5, kappa_abs_max=1.2, demo_bias_abs_max=2.25)
+    model = Vicarious_DB_Stay(kappa_abs_max=1.2, demo_bias_abs_max=2.25)
     adapter = VicariousDBStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_db_stay"
@@ -214,14 +214,14 @@ def test_vicarious_db_stay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(9.5)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.2)
     assert data["demo_bias_abs_max"] == pytest.approx(2.25)
 
 
 def test_vicarious_rl_adapter_adds_constants_and_priors():
     """Vicarious-RL adapter exposes expected priors and data constants."""
-    model = Vicarious_RL(beta_max=12.0)
+    model = Vicarious_RL()
     adapter = VicariousRLStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_rl"
@@ -231,12 +231,12 @@ def test_vicarious_rl_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(12.0)
+    assert "beta_upper" not in data
 
 
 def test_vicarious_rl_stay_adapter_adds_constants_and_priors():
     """Vicarious-RL-Stay adapter exposes expected priors and data constants."""
-    model = Vicarious_RL_Stay(beta_max=12.0, kappa_abs_max=1.5)
+    model = Vicarious_RL_Stay(kappa_abs_max=1.5)
     adapter = VicariousRLStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "vicarious_rl_stay"
@@ -253,13 +253,13 @@ def test_vicarious_rl_stay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(12.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.5)
 
 
 def test_ap_rl_stay_adapter_adds_constants_and_priors():
     """AP-RL-Stay adapter exposes expected priors and data constants."""
-    model = AP_RL_Stay(beta_max=12.0, kappa_abs_max=1.5)
+    model = AP_RL_Stay(kappa_abs_max=1.5)
     adapter = APRLStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "ap_rl_stay"
@@ -276,13 +276,13 @@ def test_ap_rl_stay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(12.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.5)
 
 
 def test_ap_rl_nostay_adapter_adds_constants_and_priors():
     """AP-RL-NoStay adapter exposes expected priors and data constants."""
-    model = AP_RL_NoStay(beta_max=12.0)
+    model = AP_RL_NoStay()
     adapter = APRLNoStayStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "ap_rl_nostay"
@@ -292,12 +292,12 @@ def test_ap_rl_nostay_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(12.0)
+    assert "beta_upper" not in data
 
 
 def test_qrl_adapter_adds_constants_and_priors():
     """QRL adapter exposes expected priors and beta bounds."""
-    model = QRL(beta_max=9.0)
+    model = QRL()
     adapter = QRLStanAdapter(model=model)
 
     assert adapter.program("indiv").key == "qrl"
@@ -307,13 +307,13 @@ def test_qrl_adapter_adds_constants_and_priors():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(9.0)
+    assert "beta_upper" not in data
 
 
 def test_vs_within_subject_adapter_uses_base_model_constants():
     """Within-subject VS adapter mirrors base-model constants."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=VS(beta_max=25.0, kappa_abs_max=2.0, pseudo_reward=0.5),
+        model=VS(kappa_abs_max=2.0, pseudo_reward=0.5),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -324,7 +324,7 @@ def test_vs_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(25.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(2.0)
     assert data["pseudo_reward"] == pytest.approx(0.5)
 
@@ -332,7 +332,7 @@ def test_vs_within_subject_adapter_uses_base_model_constants():
 def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():
     """Within-subject Vicarious-RL adapter uses base-model beta bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=Vicarious_RL(beta_max=18.0),
+        model=Vicarious_RL(),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -359,18 +359,18 @@ def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(18.0)
+    assert "beta_upper" not in data
 
     hier_data = {}
     adapter.augment_study_data(hier_data)
     assert hier_data["beta_lower"] == pytest.approx(1e-6)
-    assert hier_data["beta_upper"] == pytest.approx(18.0)
+    assert "beta_upper" not in hier_data
 
 
 def test_vicarious_rl_stay_within_subject_adapter_uses_base_model_constants():
     """Within-subject Vicarious-RL-Stay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=Vicarious_RL_Stay(beta_max=18.0, kappa_abs_max=1.3),
+        model=Vicarious_RL_Stay(kappa_abs_max=1.3),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -381,14 +381,14 @@ def test_vicarious_rl_stay_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(18.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.3)
 
 
 def test_ap_rl_stay_within_subject_adapter_uses_base_model_constants():
     """Within-subject AP-RL-Stay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=AP_RL_Stay(beta_max=18.0, kappa_abs_max=1.3),
+        model=AP_RL_Stay(kappa_abs_max=1.3),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -399,14 +399,14 @@ def test_ap_rl_stay_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(18.0)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.3)
 
 
 def test_ap_rl_nostay_within_subject_adapter_uses_base_model_constants():
     """Within-subject AP-RL-NoStay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=AP_RL_NoStay(beta_max=18.0),
+        model=AP_RL_NoStay(),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -417,13 +417,13 @@ def test_ap_rl_nostay_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(18.0)
+    assert "beta_upper" not in data
 
 
 def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
     """Within-subject Vicarious-DB-Stay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=Vicarious_DB_Stay(beta_max=7.5, kappa_abs_max=1.1, demo_bias_abs_max=2.2),
+        model=Vicarious_DB_Stay(kappa_abs_max=1.1, demo_bias_abs_max=2.2),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -434,7 +434,7 @@ def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(7.5)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.1)
     assert data["demo_bias_abs_max"] == pytest.approx(2.2)
 
@@ -442,7 +442,7 @@ def test_vicarious_db_stay_within_subject_adapter_uses_base_model_constants():
 def test_vicq_ap_dualw_stay_within_subject_adapter_uses_base_model_constants():
     """Within-subject VicQ-AP-DualW-Stay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=VicQ_AP_DualW_Stay(beta_max=17.5, kappa_abs_max=1.7),
+        model=VicQ_AP_DualW_Stay(kappa_abs_max=1.7),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -453,14 +453,14 @@ def test_vicq_ap_dualw_stay_within_subject_adapter_uses_base_model_constants():
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(17.5)
+    assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(1.7)
 
 
 def test_vicq_ap_dualw_nostay_within_subject_adapter_uses_base_model_constants():
     """Within-subject VicQ-AP-DualW-NoStay adapter uses base-model bounds."""
     wrapped = wrap_model_with_shared_delta_conditions(
-        model=VicQ_AP_DualW_NoStay(beta_max=17.5),
+        model=VicQ_AP_DualW_NoStay(),
         conditions=["A", "B"],
         baseline_condition="A",
     )
@@ -471,7 +471,7 @@ def test_vicq_ap_dualw_nostay_within_subject_adapter_uses_base_model_constants()
     data = {}
     adapter.augment_subject_data(data)
     assert data["beta_lower"] == pytest.approx(1e-6)
-    assert data["beta_upper"] == pytest.approx(17.5)
+    assert "beta_upper" not in data
 
 
 def test_resolve_stan_adapter_for_base_models():

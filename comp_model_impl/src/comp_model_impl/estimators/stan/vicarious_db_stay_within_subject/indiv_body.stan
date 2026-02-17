@@ -20,7 +20,6 @@ data {
   array[E] int<lower=1, upper=C> cond;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
   real<lower=0> demo_bias_abs_max;
 
@@ -103,8 +102,8 @@ transformed parameters {
   vector<lower=-demo_bias_abs_max, upper=demo_bias_abs_max>[C] demo_bias =
     demo_bias_abs_max * (2 * inv_logit(demo_bias_z) - 1);
 
-  vector<lower=beta_lower, upper=beta_upper>[C] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(beta_z);
+  vector<lower=beta_lower>[C] beta =
+    beta_lower + exp(beta_z);
 
   vector<lower=-kappa_abs_max, upper=kappa_abs_max>[C] kappa =
     kappa_abs_max * (2 * inv_logit(kappa_z) - 1);

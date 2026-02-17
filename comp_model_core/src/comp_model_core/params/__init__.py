@@ -19,7 +19,15 @@ comp_model_core.params.transforms
 
 from .bounds import Bound, ParameterBoundsSpace
 from .schema import ParamDef, ParameterSchema
-from .transforms import Transform, Identity, Sigmoid, Softplus, BoundedTanh
+from .transforms import (
+    Transform,
+    Identity,
+    Sigmoid,
+    Softplus,
+    LowerBoundedSoftplus,
+    UpperBoundedSoftplus,
+    BoundedTanh,
+)
 
 __all__ = [
     "Bound",
@@ -30,5 +38,7 @@ __all__ = [
     "Identity",
     "Sigmoid",
     "Softplus",
+    "LowerBoundedSoftplus",
+    "UpperBoundedSoftplus",
     "BoundedTanh",
 ]

@@ -17,7 +17,6 @@ data {
   array[E] int<lower=0,upper=1> has_demo_outcome;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
 
   // priors
   int<lower=1,upper=8> alpha_o_prior_family;
@@ -32,7 +31,7 @@ data {
 }
 parameters {
   real<lower=0,upper=1> alpha_o;
-  real<lower=beta_lower,upper=beta_upper> beta;
+  real<lower=beta_lower> beta;
 }
 model {
   target += prior_lpdf(alpha_o | alpha_o_prior_family, alpha_o_prior_p1, alpha_o_prior_p2, alpha_o_prior_p3);

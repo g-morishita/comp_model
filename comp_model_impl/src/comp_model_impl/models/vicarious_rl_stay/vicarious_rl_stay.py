@@ -32,7 +32,6 @@ class Vicarious_RL_Stay(SocialComputationalModel):
     kappa: float = 0.0
 
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 5.0
 
     def __post_init__(self) -> None:
@@ -53,7 +52,6 @@ class Vicarious_RL_Stay(SocialComputationalModel):
             alpha_o_default=float(self.alpha_o),
             beta_default=float(self.beta),
             kappa_default=float(self.kappa),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max),
         )
 

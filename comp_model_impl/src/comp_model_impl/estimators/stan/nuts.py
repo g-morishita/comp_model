@@ -12,15 +12,6 @@ Notes
 -----
 Stan programs are selected through :class:`StanAdapter` implementations. The
 adapter maps a model to a Stan program family and provides prior requirements.
-
-Examples
---------
-Subject-wise NUTS:
-
->>> from comp_model_impl.models import QRL
->>> from comp_model_impl.estimators.stan.nuts import StanNUTSSubjectwiseEstimator
->>> est = StanNUTSSubjectwiseEstimator(model=QRL(), priors={"alpha": {"family": "beta", "a": 2, "b": 2}})
->>> # est.fit(study=study, rng=np.random.default_rng(0))  # doctest: +SKIP
 """
 
 from __future__ import annotations
@@ -565,7 +556,7 @@ class StanNUTSSubjectwiseEstimator(Estimator):
     priors: Mapping[str, Any] | str
 
     chains: int = 4
-    iter_warmup: int = 500
+    iter_warmup: int = 1000
     iter_sampling: int = 1000
     adapt_delta: float = 0.9
     max_treedepth: int = 12

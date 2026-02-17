@@ -185,9 +185,7 @@ class VicariousDBStayWithinSubjectStanAdapter(StanAdapter):
         data : dict[str, Any]
             Stan data dictionary to mutate in-place.
         """
-        beta_max = float(getattr(self.base_model, "beta_max"))
         data["beta_lower"] = float(1e-6)
-        data["beta_upper"] = float(beta_max)
         data["kappa_abs_max"] = float(getattr(self.base_model, "kappa_abs_max"))
         data["demo_bias_abs_max"] = float(getattr(self.base_model, "demo_bias_abs_max"))
 

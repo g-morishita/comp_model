@@ -54,8 +54,6 @@ class VicQ_AP_DualW_Stay(SocialComputationalModel):
         The action-policy evidence is weighted by ``(1 - w)``.
     kappa : float, optional
         Perseveration parameter.
-    beta_max : float, optional
-        Upper bound used by estimators (not estimated directly).
     kappa_abs_max : float, optional
         Maximum absolute kappa.
         
@@ -120,7 +118,6 @@ class VicQ_AP_DualW_Stay(SocialComputationalModel):
     kappa: float = 3.0
     
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 5.0
     initial_q: float = 0.0
 
@@ -159,7 +156,6 @@ class VicQ_AP_DualW_Stay(SocialComputationalModel):
             beta_default=float(self.beta),
             w_default=float(self.w),
             kappa_default=float(self.kappa),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max)
         )
 

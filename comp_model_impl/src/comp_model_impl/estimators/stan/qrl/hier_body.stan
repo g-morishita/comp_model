@@ -15,7 +15,6 @@ data {
   array[E] vector<lower=0,upper=1>[A] avail_mask;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
 
   // hyperpriors
   int<lower=1, upper=8> mu_alpha_prior_family; real mu_alpha_prior_p1; real mu_alpha_prior_p2; real mu_alpha_prior_p3;
@@ -30,8 +29,8 @@ parameters {
 }
 transformed parameters {
   vector<lower=0, upper=1>[N] alpha = inv_logit(mu_alpha + sd_alpha * z_alpha);
-  vector<lower=beta_lower, upper=beta_upper>[N] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta + sd_beta * z_beta);
+  vector<lower=beta_lower>[N] beta =
+    beta_lower + exp(mu_beta + sd_beta * z_beta);
 }
 model {
   z_alpha ~ normal(0, 1);
@@ -100,7 +99,7 @@ generated quantities {
   }
   real alpha_pop = inv_logit(mu_alpha);
   real beta_pop =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta);
+    beta_lower + exp(mu_beta);
 
   real mu_alpha_hat = mu_alpha;
   real sd_alpha_hat = sd_alpha;

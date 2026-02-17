@@ -56,8 +56,6 @@ class VicQ_AP_IndepDualW(SocialComputationalModel):
         Weight of learning from the dmeonstartor's actions
     kappa : float, optional
         Perseveration parameter.
-    beta_max : float, optional
-        Upper bound used by estimators (not estimated directly).
     kappa_abs_max : float, optional
         Maximum absolute kappa.
         
@@ -124,7 +122,6 @@ class VicQ_AP_IndepDualW(SocialComputationalModel):
     kappa: float = 3.0
     
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_abs_max: float = 5.0
     initial_q: float = 0.0
 
@@ -163,7 +160,6 @@ class VicQ_AP_IndepDualW(SocialComputationalModel):
             beta_q_default=float(self.beta_q),
             beta_a_default=float(self.beta_a),
             kappa_default=float(self.kappa),
-            beta_max=float(self.beta_max),
             kappa_abs_max=float(self.kappa_abs_max)
         )
 

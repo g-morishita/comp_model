@@ -173,12 +173,10 @@ class VicariousRLWithinSubjectStanAdapter(StanAdapter):
 
         Notes
         -----
-        ``beta_lower``/``beta_upper`` bound the inverse-temperature parameter
+        ``beta_lower`` lower-bounds the inverse-temperature parameter
         for numerical stability and are derived from the base model.
         """
-        beta_max = float(getattr(self.base_model, "beta_max"))
         data["beta_lower"] = float(1e-6)
-        data["beta_upper"] = float(beta_max)
 
     def augment_study_data(self, data: dict[str, Any]) -> None:
         """Add model-specific constants to hierarchical Stan data.

@@ -17,7 +17,6 @@ data {
   array[E] int<lower=0,upper=1> has_demo_outcome;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
 
   // priors
@@ -49,7 +48,7 @@ data {
 parameters {
   real<lower=0,upper=1> alpha_o;
   real<lower=0,upper=1> alpha_a;
-  real<lower=beta_lower,upper=beta_upper> beta;
+  real<lower=beta_lower> beta;
   real<lower=0,upper=1> w;
   real<lower=-kappa_abs_max,upper=kappa_abs_max> kappa;
 }

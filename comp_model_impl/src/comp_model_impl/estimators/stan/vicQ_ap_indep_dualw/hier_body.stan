@@ -19,7 +19,6 @@ data {
   array[E] int<lower=0,upper=1> has_demo_outcome;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
 
   // hyperpriors
@@ -49,11 +48,11 @@ transformed parameters {
   vector<lower=0,upper=1>[N] alpha_o = inv_logit(mu_alpha_o + sd_alpha_o * z_alpha_o);
   vector<lower=0,upper=1>[N] alpha_a = inv_logit(mu_alpha_a + sd_alpha_a * z_alpha_a);
 
-  vector<lower=beta_lower,upper=beta_upper>[N] beta_q =
-    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_q + sd_beta_q * z_beta_q) + 1) * 0.5;
+  vector<lower=beta_lower>[N] beta_q =
+    beta_lower + exp(mu_beta_q + sd_beta_q * z_beta_q);
 
-  vector<lower=beta_lower,upper=beta_upper>[N] beta_a =
-    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_a + sd_beta_a * z_beta_a) + 1) * 0.5;
+  vector<lower=beta_lower>[N] beta_a =
+    beta_lower + exp(mu_beta_a + sd_beta_a * z_beta_a);
 
   vector<lower=-kappa_abs_max,upper=kappa_abs_max>[N] kappa =
     kappa_abs_max * tanh(mu_kappa + sd_kappa * z_kappa);
@@ -186,10 +185,10 @@ generated quantities {
   real alpha_a_pop = inv_logit(mu_alpha_a);
 
   real beta_q_pop =
-    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_q) + 1) * 0.5;
+    beta_lower + exp(mu_beta_q);
 
   real beta_a_pop =
-    beta_lower + (beta_upper - beta_lower) * (tanh(mu_beta_a) + 1) * 0.5;
+    beta_lower + exp(mu_beta_a);
 
   real kappa_pop =
     kappa_abs_max * tanh(mu_kappa);

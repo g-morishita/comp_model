@@ -24,7 +24,6 @@ data {
 
   real pseudo_reward;
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
   real<lower=0> kappa_abs_max;
 
   // hyperpriors on z-scale (shared)
@@ -111,8 +110,8 @@ transformed parameters {
   matrix<lower=0, upper=1>[N, C] alpha_p = inv_logit(alpha_p_z);
   matrix<lower=0, upper=1>[N, C] alpha_i = inv_logit(alpha_i_z);
 
-  matrix<lower=beta_lower, upper=beta_upper>[N, C] beta =
-    beta_lower + (beta_upper - beta_lower) .* inv_logit(beta_z);
+  matrix<lower=beta_lower>[N, C] beta =
+    beta_lower + exp(beta_z);
 
   matrix<lower=-kappa_abs_max, upper=kappa_abs_max>[N, C] kappa =
     kappa_abs_max * (2 * inv_logit(kappa_z) - 1);
@@ -127,13 +126,13 @@ transformed parameters {
     if (c == baseline_cond) {
       alpha_p__pop[c] = inv_logit(mu_alpha_p__shared);
       alpha_i__pop[c] = inv_logit(mu_alpha_i__shared);
-      beta__pop[c] = beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta__shared);
+      beta__pop[c] = beta_lower + exp(mu_beta__shared);
       kappa__pop[c] = kappa_abs_max * (2 * inv_logit(mu_kappa__shared) - 1);
     } else {
       int idx = (c < baseline_cond) ? c : (c - 1);
       alpha_p__pop[c] = inv_logit(mu_alpha_p__shared + mu_alpha_p__delta[idx]);
       alpha_i__pop[c] = inv_logit(mu_alpha_i__shared + mu_alpha_i__delta[idx]);
-      beta__pop[c] = beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta__shared + mu_beta__delta[idx]);
+      beta__pop[c] = beta_lower + exp(mu_beta__shared + mu_beta__delta[idx]);
       kappa__pop[c] = kappa_abs_max * (2 * inv_logit(mu_kappa__shared + mu_kappa__delta[idx]) - 1);
     }
   }

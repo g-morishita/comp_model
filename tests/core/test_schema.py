@@ -4,6 +4,11 @@ import pytest
 from comp_model_core.errors import ParameterValidationError
 from comp_model_core.params.bounds import Bound
 from comp_model_core.params.schema import ParamDef, ParameterSchema
+from comp_model_core.params.transforms import (
+    Identity,
+    LowerBoundedSoftplus,
+    UpperBoundedSoftplus,
+)
 
 
 def test_schema_names_defaults():
@@ -80,3 +85,25 @@ def test_schema_sample_z_init_shapes():
 
     with pytest.raises(ValueError):
         schema.sample_z_init(rng, center="nope")
+
+
+def test_schema_infers_semi_infinite_and_unbounded_transforms():
+    schema = ParameterSchema(
+        params=(
+            ParamDef("lo_only", default=1.0, bound=Bound(0.7, np.inf)),
+            ParamDef("hi_only", default=-1.0, bound=Bound(-np.inf, 2.3)),
+            ParamDef("free", default=0.0, bound=Bound(-np.inf, np.inf)),
+        )
+    )
+
+    t_lo, t_hi, t_free = schema.transforms()
+    assert isinstance(t_lo, LowerBoundedSoftplus)
+    assert isinstance(t_hi, UpperBoundedSoftplus)
+    assert isinstance(t_free, Identity)
+
+    params = {"lo_only": 2.1, "hi_only": -0.4, "free": 3.3}
+    z = schema.z_from_params(params)
+    params2 = schema.params_from_z(z)
+    assert np.isclose(params2["lo_only"], params["lo_only"], rtol=1e-7, atol=1e-7)
+    assert np.isclose(params2["hi_only"], params["hi_only"], rtol=1e-7, atol=1e-7)
+    assert np.isclose(params2["free"], params["free"], rtol=1e-7, atol=1e-7)

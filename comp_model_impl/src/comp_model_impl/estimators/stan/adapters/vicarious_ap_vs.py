@@ -118,13 +118,12 @@ class VicariousAPVSStanAdapter(StanAdapter):
         Notes
         -----
         - ``pseudo_reward`` is used for value shaping updates.
-        - ``beta_lower``/``beta_upper`` bound the inverse-temperature parameter
+        - ``beta_lower`` lower-bounds the inverse-temperature parameter
           for numerical stability and to avoid extreme softmax temperatures.
         - ``kappa_abs_max`` bounds the perseveration term ``kappa``.
         """
         data["pseudo_reward"] = float(getattr(self.model, "pseudo_reward", 1.0))
         data["beta_lower"] = 1e-6
-        data["beta_upper"] = float(getattr(self.model, "beta_max", 20.0))
         data["kappa_abs_max"] = float(getattr(self.model, "kappa_abs_max", 5.0))
 
     def augment_study_data(self, data: dict[str, Any]) -> None:

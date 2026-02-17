@@ -70,7 +70,6 @@ class APRLNoStayWithinSubjectStanAdapter(StanAdapter):
 
     def augment_subject_data(self, data: dict[str, Any]) -> None:
         data["beta_lower"] = float(1e-6)
-        data["beta_upper"] = float(getattr(self.base_model, "beta_max"))
 
     def augment_study_data(self, data: dict[str, Any]) -> None:
         self.augment_subject_data(data)

@@ -172,8 +172,9 @@ def _param_bounds_from_model(model: ComputationalModel) -> dict[str, tuple[float
     Returns
     -------
     dict[str, tuple[float, float]]
-        Mapping from parameter name to (lo, hi) bounds. Returns an empty dict
-        if bounds are unavailable.
+        Mapping from parameter name to (lo, hi) bounds. Missing lower/upper
+        bounds are represented as ``-inf``/``+inf``. Returns an empty dict if
+        bounds are unavailable.
     """
     bounds: dict[str, tuple[float, float]] = {}
     schema = getattr(model, "param_schema", None)
@@ -189,8 +190,10 @@ def _param_bounds_from_model(model: ComputationalModel) -> dict[str, tuple[float
         b = getattr(p, "bound", None)
         if name is None or b is None:
             continue
-        lo = float(getattr(b, "lo"))
-        hi = float(getattr(b, "hi"))
+        lo_raw = getattr(b, "lo", None)
+        hi_raw = getattr(b, "hi", None)
+        lo = float(lo_raw) if lo_raw is not None else float("-inf")
+        hi = float(hi_raw) if hi_raw is not None else float("inf")
         bounds[str(name)] = (lo, hi)
 
     return bounds

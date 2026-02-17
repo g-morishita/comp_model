@@ -27,6 +27,16 @@ from scipy.special import expit, logit, logsumexp
 from ..errors import ParameterValidationError
 
 
+def _softplus_inverse_positive(y: float, *, eps: float) -> float:
+    """Stable inverse of softplus for strictly positive ``y``."""
+    y = float(y)
+    if y <= 0.0:
+        raise ParameterValidationError(f"Softplus inverse requires y>0, got {y}.")
+    if y > 30.0:
+        return float(y)
+    return float(np.log(np.expm1(max(y, float(eps)))))
+
+
 class Transform(Protocol):
     """
     Protocol for parameter transforms.
@@ -216,11 +226,69 @@ class Softplus:
         - For large ``x``: approximately ``x``.
         """
         x = float(x)
-        if x <= 0:
-            raise ParameterValidationError(f"Softplus inverse requires x>0, got {x}.")
-        if x > 30:
-            return float(x)
-        return float(np.log(np.expm1(max(x, self.eps))))
+        return _softplus_inverse_positive(x, eps=self.eps)
+
+
+@dataclass(frozen=True, slots=True)
+class LowerBoundedSoftplus:
+    r"""
+    Smooth transform mapping :math:`\mathbb{R} \to (lo, \infty)`.
+
+    Parameters
+    ----------
+    lo : float
+        Lower bound.
+    eps : float, optional
+        Small epsilon used in the inverse for stability.
+    """
+
+    lo: float
+    eps: float = 1e-12
+
+    def forward(self, z: float) -> float:
+        r"""
+        Map :math:`z \in \mathbb{R}` to :math:`x \in (lo, \infty)`.
+        """
+        z = float(z)
+        return float(self.lo + logsumexp([0.0, z]))
+
+    def inverse(self, x: float) -> float:
+        r"""
+        Map :math:`x \in (lo, \infty)` to :math:`z \in \mathbb{R}`.
+        """
+        x = float(x)
+        return _softplus_inverse_positive(x - float(self.lo), eps=self.eps)
+
+
+@dataclass(frozen=True, slots=True)
+class UpperBoundedSoftplus:
+    r"""
+    Smooth transform mapping :math:`\mathbb{R} \to (-\infty, hi)`.
+
+    Parameters
+    ----------
+    hi : float
+        Upper bound.
+    eps : float, optional
+        Small epsilon used in the inverse for stability.
+    """
+
+    hi: float
+    eps: float = 1e-12
+
+    def forward(self, z: float) -> float:
+        r"""
+        Map :math:`z \in \mathbb{R}` to :math:`x \in (-\infty, hi)`.
+        """
+        z = float(z)
+        return float(self.hi - logsumexp([0.0, z]))
+
+    def inverse(self, x: float) -> float:
+        r"""
+        Map :math:`x \in (-\infty, hi)` to :math:`z \in \mathbb{R}`.
+        """
+        x = float(x)
+        return _softplus_inverse_positive(float(self.hi) - x, eps=self.eps)
 
 
 @dataclass(frozen=True, slots=True)

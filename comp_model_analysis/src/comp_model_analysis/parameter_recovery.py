@@ -290,7 +290,7 @@ def plot_parameter_recovery(
     out_dir: str | Path | None = None,
     max_points: int = 50000,
     scatter_alpha: float = 0.6,
-    split_by_rep: bool = False,
+    split_by_rep: bool = True,
     fixed_hist_bins: int = 20,
 ) -> dict[str, Path]:
     """

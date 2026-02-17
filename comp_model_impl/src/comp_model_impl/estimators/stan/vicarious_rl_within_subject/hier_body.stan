@@ -21,7 +21,6 @@ data {
   array[E] int<lower=1, upper=C> cond;
 
   real<lower=1e-6> beta_lower;
-  real<lower=1e-6> beta_upper;
 
   // hyperpriors on z-scale (shared)
   int<lower=1, upper=8> mu_alpha_o__shared_prior_family; real mu_alpha_o__shared_prior_p1; real mu_alpha_o__shared_prior_p2; real mu_alpha_o__shared_prior_p3;
@@ -87,8 +86,8 @@ transformed parameters {
   }
 
   matrix<lower=0, upper=1>[N, C] alpha_o = inv_logit(alpha_o_z);
-  matrix<lower=beta_lower, upper=beta_upper>[N, C] beta =
-    beta_lower + (beta_upper - beta_lower) * inv_logit(beta_z);
+  matrix<lower=beta_lower>[N, C] beta =
+    beta_lower + exp(beta_z);
 
   vector[C] alpha_o_pop;
   vector[C] beta_pop;
@@ -96,11 +95,11 @@ transformed parameters {
   for (c in 1:C) {
     if (c == baseline_cond) {
       alpha_o_pop[c] = inv_logit(mu_alpha_o__shared);
-      beta_pop[c] = beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta__shared);
+      beta_pop[c] = beta_lower + exp(mu_beta__shared);
     } else {
       int idx = (c < baseline_cond) ? c : (c - 1);
       alpha_o_pop[c] = inv_logit(mu_alpha_o__shared + mu_alpha_o__delta[idx]);
-      beta_pop[c] = beta_lower + (beta_upper - beta_lower) * inv_logit(mu_beta__shared + mu_beta__delta[idx]);
+      beta_pop[c] = beta_lower + exp(mu_beta__shared + mu_beta__delta[idx]);
     }
   }
 }

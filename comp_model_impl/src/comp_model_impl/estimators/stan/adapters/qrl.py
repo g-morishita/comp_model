@@ -104,11 +104,10 @@ class QRLStanAdapter(StanAdapter):
 
         Notes
         -----
-        ``beta_lower`` and ``beta_upper`` define the admissible range for the
+        ``beta_lower`` defines the lower bound for the
         inverse-temperature parameter ``beta`` in the Stan template.
         """
         data["beta_lower"] = 1e-6
-        data["beta_upper"] = float(getattr(self.model, "beta_max", 20.0))
 
     def augment_study_data(self, data: dict[str, Any]) -> None:
         """Add model-specific constants to hierarchical Stan data.

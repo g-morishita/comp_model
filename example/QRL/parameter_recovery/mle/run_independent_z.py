@@ -4,14 +4,12 @@ from comp_model_impl.recovery.parameter.run import run_parameter_recovery
 
 
 def main():
+    # Load parameter recovery configure
     param_config = load_parameter_recovery_config("param_recovery_configs/independent_z.yaml")
+    # Run the parameter recovery analysis
     results = run_parameter_recovery(config=param_config)
-    plot_paths = plot_parameter_recovery(outputs=results, out_dir=f"{results.out_dir}/plots")
-    if plot_paths:
-        print("Saved recovery plots:")
-        for key, path in plot_paths.items():
-            print(f"- {key}: {path}")
-    return results
+    # Plot the results
+    plot_parameter_recovery(outputs=results, out_dir=f"{results.out_dir}/plots", split_by_rep=True)
 
 
 if __name__ == "__main__":

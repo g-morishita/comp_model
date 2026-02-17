@@ -40,8 +40,6 @@ class Vicarious_VS_Stay(SocialComputationalModel):
         Perseveration strength: +kappa bonus to repeating last private choice.
     pseudo_reward : float
         Target used on demonstrations (default 1.0).
-    beta_max : float
-        Upper bound used by estimators (not estimated directly).
     kappa_abs_max : float
         Absolute bound for ``kappa`` used by estimators.
 
@@ -66,7 +64,6 @@ class Vicarious_VS_Stay(SocialComputationalModel):
     pseudo_reward: float = 1.0  # not estimated by default
     
     # config (not estimated)
-    beta_max: float = 20.0
     kappa_max: float = 1.0
     _init_q_val: float = 0.0
 
@@ -102,7 +99,6 @@ class Vicarious_VS_Stay(SocialComputationalModel):
             alpha_o_default=float(self.alpha_o),
             alpha_a_default=float(self.alpha_a),
             beta_default=float(self.beta),
-            beta_max=float(self.beta_max),
         )
 
     def supports(self, spec: EnvironmentSpec) -> bool:

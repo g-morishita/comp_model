@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from comp_model_core.params import Bound, BoundedTanh, ParamDef, ParameterSchema, Sigmoid
+from comp_model_core.params import Bound, LowerBoundedSoftplus, ParamDef, ParameterSchema, Sigmoid
 
 
 def vicQ_ap_dualw_nostay_schema(
@@ -11,7 +11,6 @@ def vicQ_ap_dualw_nostay_schema(
     alpha_a_default: float = 0.2,
     beta_default: float = 6.0,
     w_default: float = 0.5,
-    beta_max: float = 20.0,
 ) -> ParameterSchema:
     """Construct the VicQ_AP_DualW_NoStay (beta-mix) parameter schema."""
 
@@ -22,8 +21,8 @@ def vicQ_ap_dualw_nostay_schema(
             ParamDef(
                 "beta",
                 float(beta_default),
-                Bound(1e-6, float(beta_max)),
-                transform=BoundedTanh(1e-6, float(beta_max)),
+                Bound(1e-6, float("inf")),
+                transform=LowerBoundedSoftplus(1e-6),
             ),
             ParamDef("w", float(w_default), Bound(0.0, 1.0), transform=Sigmoid()),
         )

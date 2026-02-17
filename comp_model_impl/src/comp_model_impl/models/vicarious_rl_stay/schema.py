@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from comp_model_core.params import Bound, BoundedTanh, ParamDef, ParameterSchema, Sigmoid
+from comp_model_core.params import Bound, BoundedTanh, LowerBoundedSoftplus, ParamDef, ParameterSchema, Sigmoid
 
 
 def vicarious_rl_stay_schema(
@@ -10,7 +10,6 @@ def vicarious_rl_stay_schema(
     alpha_o_default: float = 0.2,
     beta_default: float = 5.0,
     kappa_default: float = 0.0,
-    beta_max: float = 20.0,
     kappa_abs_max: float = 5.0,
 ) -> ParameterSchema:
     """Construct the Vicarious_RL_Stay parameter schema."""
@@ -21,8 +20,8 @@ def vicarious_rl_stay_schema(
             ParamDef(
                 "beta",
                 float(beta_default),
-                Bound(1e-6, float(beta_max)),
-                transform=BoundedTanh(1e-6, float(beta_max)),
+                Bound(1e-6, float("inf")),
+                transform=LowerBoundedSoftplus(1e-6),
             ),
             ParamDef(
                 "kappa",

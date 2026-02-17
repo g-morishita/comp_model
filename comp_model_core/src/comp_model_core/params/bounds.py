@@ -137,7 +137,7 @@ class ParameterBoundsSpace:
 
     def sample_init(self, rng: np.random.Generator) -> np.ndarray:
         """
-        Sample a random initialization uniformly within bounds.
+        Sample a random initialization within bounds.
 
         Parameters
         ----------
@@ -148,10 +148,28 @@ class ParameterBoundsSpace:
         -------
         numpy.ndarray
             Random vector of shape ``(dim,)`` with each component sampled from
-            ``Uniform(lo, hi)``.
+            one of:
+
+            - ``Uniform(lo, hi)`` for finite bounds,
+            - ``Normal(0, 1)`` for ``(-inf, +inf)``,
+            - ``lo + exp(Normal(0,1))`` for ``(lo, +inf)``,
+            - ``hi - exp(Normal(0,1))`` for ``(-inf, hi)``.
         """
         x = np.empty((self.dim,), dtype=float)
         for i, name in enumerate(self.names):
             b = self.bounds[name]
-            x[i] = float(rng.uniform(b.lo, b.hi))
+            lo = float(b.lo)
+            hi = float(b.hi)
+            lo_finite = bool(np.isfinite(lo))
+            hi_finite = bool(np.isfinite(hi))
+            if lo_finite and hi_finite:
+                x[i] = float(rng.uniform(lo, hi))
+            elif (not lo_finite) and (not hi_finite):
+                x[i] = float(rng.normal(loc=0.0, scale=1.0))
+            elif lo_finite and (not hi_finite):
+                step = float(np.exp(np.clip(rng.normal(loc=0.0, scale=1.0), -20.0, 20.0)))
+                x[i] = float(lo + step)
+            else:  # -inf < x < hi
+                step = float(np.exp(np.clip(rng.normal(loc=0.0, scale=1.0), -20.0, 20.0)))
+                x[i] = float(hi - step)
         return x
