@@ -43,25 +43,45 @@ def recovery_rates(winners: pd.DataFrame) -> pd.DataFrame:
     Parameters
     ----------
     winners : pandas.DataFrame
-        Winners table with at least ``generating_model`` and ``selected_model``.
+        Winners table with
+        ``generating_model``, ``generating_model_key``,
+        ``selected_model``, and ``selected_model_key``.
 
     Returns
     -------
     pandas.DataFrame
         Tidy table with columns
-        ``generating_model``, ``n``, ``n_correct``, and ``recovery_rate``.
+        ``generating_model``, ``generating_model_key``,
+        ``n``, ``n_correct``, and ``recovery_rate``.
     """
     if winners.empty:
-        return pd.DataFrame(columns=["generating_model", "n", "n_correct", "recovery_rate"])
+        return pd.DataFrame(
+            columns=[
+                "generating_model",
+                "generating_model_key",
+                "n",
+                "n_correct",
+                "recovery_rate",
+            ]
+        )
 
-    g = winners.groupby("generating_model", dropna=False)
+    required = {"generating_model", "generating_model_key", "selected_model_key"}
+    missing = [c for c in required if c not in winners.columns]
+    if missing:
+        raise ValueError(
+            "winners table missing required columns for recovery_rates: "
+            + ", ".join(missing)
+        )
+
+    g = winners.groupby(["generating_model", "generating_model_key"], dropna=False)
     rows: list[dict[str, Any]] = []
-    for gen, df in g:
+    for (gen, gen_key), df in g:
         n = int(len(df))
-        n_correct = int((df["selected_model"] == gen).sum())
+        n_correct = int((df["selected_model_key"].astype(str) == str(gen_key)).sum())
         rows.append(
             {
                 "generating_model": gen,
+                "generating_model_key": str(gen_key),
                 "n": n,
                 "n_correct": n_correct,
                 "recovery_rate": float(n_correct / max(n, 1)),

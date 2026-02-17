@@ -389,8 +389,14 @@ def _select_winner(
 
     return {
         "selected_model": str(best["candidate_model"]),
+        "selected_model_key": str(best["candidate_model_key"]),
         "winner_score": float(best.get("score", np.nan)),
         "second_best_model": second_name,
+        "second_best_model_key": (
+            str(second["candidate_model_key"])
+            if second is not None
+            else None
+        ),
         "second_best_score": float(second_score),
         "delta_to_second": float(delta),
         "winner_ll_total": float(best.get("ll_total", np.nan)),
@@ -633,6 +639,10 @@ def run_model_recovery(
 
     for gen_spec in effective_generating:
         gen_name = str(gen_spec.name)
+        if isinstance(gen_spec, RuntimeGeneratingModelSpec):
+            gen_model_key = f"{gen_spec.model.__class__.__name__}"
+        else:
+            gen_model_key = str(gen_spec.model)
         sampling_cfg = gen_spec.sampling
 
         for rep in tqdm(
@@ -689,6 +699,7 @@ def run_model_recovery(
                     if isinstance(cand_spec, RuntimeCandidateModelSpec):
                         cand_model = cand_spec.model
                         estimator = cand_spec.estimator
+                        cand_model_key = f"{cand_model.__class__.__name__}"
                     else:
                         cand_model = build_model_checked(
                             cand_spec.model,
@@ -701,6 +712,7 @@ def run_model_recovery(
                             model=cand_model,
                             registries=registries,
                         )
+                        cand_model_key = str(cand_spec.model)
 
                     fit_kwargs: dict[str, Any] = {"study": study, "rng": rep_rng}
                     fit: FitResult = estimator.fit(**fit_kwargs)
@@ -744,7 +756,9 @@ def run_model_recovery(
                         "rep": int(rep),
                         "rep_seed": int(rep_seed),
                         "generating_model": gen_name,
+                        "generating_model_key": gen_model_key,
                         "candidate_model": cand_name,
+                        "candidate_model_key": cand_model_key,
                         "criterion": str(criterion.name),
                         "success": bool(success),
                         "message": message,
@@ -767,7 +781,9 @@ def run_model_recovery(
                                 "rep": int(rep),
                                 "rep_seed": int(rep_seed),
                                 "generating_model": gen_name,
+                                "generating_model_key": gen_model_key,
                                 "candidate_model": cand_name,
+                                "candidate_model_key": cand_model_key,
                                 "true_params": subj_true,
                                 "population_true": pop_true,
                                 "success": bool(getattr(fit, "success", True)),
@@ -788,11 +804,18 @@ def run_model_recovery(
 
                 except Exception as e:
                     runtime_s = float(time.time() - t0)
+                    cand_model_key = (
+                        f"{cand_spec.model.__class__.__name__}"
+                        if isinstance(cand_spec, RuntimeCandidateModelSpec)
+                        else str(cand_spec.model)
+                    )
                     row = {
                         "rep": int(rep),
                         "rep_seed": int(rep_seed),
                         "generating_model": gen_name,
+                        "generating_model_key": gen_model_key,
                         "candidate_model": cand_name,
+                        "candidate_model_key": cand_model_key,
                         "criterion": str(criterion.name),
                         "success": False,
                         "message": f"EXCEPTION: {type(e).__name__}: {e}",
@@ -813,7 +836,9 @@ def run_model_recovery(
                                 "rep": int(rep),
                                 "rep_seed": int(rep_seed),
                                 "generating_model": gen_name,
+                                "generating_model_key": gen_model_key,
                                 "candidate_model": cand_name,
+                                "candidate_model_key": cand_model_key,
                                 "true_params": subj_true,
                                 "population_true": pop_true,
                                 "success": False,
@@ -848,6 +873,7 @@ def run_model_recovery(
                     "rep": int(rep),
                     "rep_seed": int(rep_seed),
                     "generating_model": gen_name,
+                    "generating_model_key": gen_model_key,
                     **winner,
                 }
             )

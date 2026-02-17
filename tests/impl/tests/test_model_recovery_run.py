@@ -347,8 +347,8 @@ def test_extract_waic_from_fit_diagnostics_missing_returns_none() -> None:
 def test_select_winner_logic() -> None:
     """Winner selection should respect criterion direction and tie strategy."""
     rows = [
-        {"candidate_model": "A", "score": 10.0, "k_total": 3, "ll_total": 10.0},
-        {"candidate_model": "B", "score": 8.0, "k_total": 1, "ll_total": 8.0},
+        {"candidate_model": "A", "candidate_model_key": "A_key", "score": 10.0, "k_total": 3, "ll_total": 10.0},
+        {"candidate_model": "B", "candidate_model_key": "B_key", "score": 8.0, "k_total": 1, "ll_total": 8.0},
     ]
     out = run_mod._select_winner(
         rows,
@@ -357,12 +357,14 @@ def test_select_winner_logic() -> None:
         atol=1e-9,
     )
     assert out["selected_model"] == "A"
+    assert out["selected_model_key"] == "A_key"
     assert out["second_best_model"] == "B"
+    assert out["second_best_model_key"] == "B_key"
     assert out["delta_to_second"] == pytest.approx(2.0)
 
     tie_rows = [
-        {"candidate_model": "A", "score": 1.0, "k_total": 4, "ll_total": -1.0},
-        {"candidate_model": "B", "score": 1.0, "k_total": 2, "ll_total": -1.0},
+        {"candidate_model": "A", "candidate_model_key": "A_key", "score": 1.0, "k_total": 4, "ll_total": -1.0},
+        {"candidate_model": "B", "candidate_model_key": "B_key", "score": 1.0, "k_total": 2, "ll_total": -1.0},
     ]
     out_simpler = run_mod._select_winner(
         tie_rows,
