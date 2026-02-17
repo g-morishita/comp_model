@@ -34,6 +34,8 @@ from .models import (
     Vicarious_AP_DB_STAY,
     Vicarious_Dir_DB_Stay,
     Vicarious_DB_Stay,
+    ConditionedSharedDeltaModel,
+    ConditionedSharedDeltaSocialModel,
 )
 from .demonstrators import NoisyBestArmDemonstrator, RLDemonstrator, FixedSequenceDemonstrator
 from .generators import (
@@ -78,6 +80,8 @@ def make_registry() -> Registry:
     r.models.register("VicQ_AP_IndepDualW", VicQ_AP_IndepDualW)
     r.models.register("AP_RL_Stay", AP_RL_Stay)
     r.models.register("AP_RL_NoStay", AP_RL_NoStay)
+    r.models.register("ConditionedSharedDeltaModel", ConditionedSharedDeltaModel)
+    r.models.register("ConditionedSharedDeltaSocialModel", ConditionedSharedDeltaSocialModel)
 
     # Bandit environments
     r.bandits.register("BernoulliBanditEnv", BernoulliBanditEnv)

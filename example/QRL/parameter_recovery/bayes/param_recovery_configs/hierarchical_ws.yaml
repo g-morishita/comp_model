@@ -1,0 +1,64 @@
+plan_path: "study_plan_ws.yaml"
+n_reps: 1
+seed: 123
+n_jobs: 1
+
+components:
+  generator:
+    name: "EventLogAsocialGenerator"
+    kwargs: {}
+  generating_model:
+    name: "ConditionedSharedDeltaModel"
+    kwargs:
+      base_model: {factory: "QRL", kwargs: {}}
+      conditions: ["A", "B"]
+      baseline_condition: "A"
+  fitting_model:
+    name: "ConditionedSharedDeltaModel"
+    kwargs:
+      base_model: {factory: "QRL", kwargs: {}}
+      conditions: ["A", "B"]
+      baseline_condition: "A"
+  estimator:
+    name: "StanHierarchicalNUTSEstimator"
+    kwargs:
+      hyper_priors:
+        mu_alpha__shared: {family: "normal", mu: 0.0, sigma: 1.0}
+        sd_alpha__shared: {family: "half-normal", sigma: 1.0}
+        mu_beta__shared: {family: "normal", mu: 0.0, sigma: 1.0}
+        sd_beta__shared: {family: "half-normal", sigma: 1.0}
+        mu_alpha__delta: {family: "normal", mu: 0.0, sigma: 1.0}
+        sd_alpha__delta: {family: "half-normal", sigma: 1.0}
+        mu_beta__delta: {family: "normal", mu: 0.0, sigma: 1.0}
+        sd_beta__delta: {family: "half-normal", sigma: 1.0}
+      show_progress: true
+
+sampling:
+  mode: "hierarchical"
+  space: "param"
+  population: {}
+  individual_sd: {}
+  by_condition:
+    A:
+      population:
+        alpha: {name: "beta", args: {a: 2.0, b: 2.0}}
+        beta: {name: "lognorm", args: {s: 0.4, scale: 3.0}}
+      individual_sd:
+        alpha: 0.08
+        beta: 0.60
+    B:
+      population:
+        alpha: {name: "beta", args: {a: 2.5, b: 2.5}}
+        beta: {name: "lognorm", args: {s: 0.4, scale: 4.0}}
+      individual_sd:
+        alpha: 0.08
+        beta: 0.60
+  clip_to_bounds: true
+
+output:
+  out_dir: "outputs/qrl_parameter_recovery_hierarchical_ws"
+  save_format: "csv"
+  save_config: true
+  save_fit_diagnostics: true
+  save_simulated_study: false
+

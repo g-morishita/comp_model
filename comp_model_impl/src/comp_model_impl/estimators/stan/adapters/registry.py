@@ -44,6 +44,7 @@ from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAd
 from .vicQ_ap_dualw_stay_within_subject import VicQAPDualWStayWithinSubjectStanAdapter
 from .vicQ_ap_dualw_nostay_within_subject import VicQAPDualWNoStayWithinSubjectStanAdapter
 from .vs_within_subject import VSWithinSubjectStanAdapter
+from .qrl_within_subject import QRLWithinSubjectStanAdapter
 from .base import StanAdapter
 from .qrl import QRLStanAdapter
 from .vicarious_rl import VicariousRLStanAdapter
@@ -84,6 +85,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
     # Within-subject wrapper models
     if isinstance(model, (ConditionedSharedDeltaModel, ConditionedSharedDeltaSocialModel)):
         base = getattr(model, "base_model", None)
+        if isinstance(base, QRL):
+            return QRLWithinSubjectStanAdapter(model)
         if isinstance(base, VS):
             return VSWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_RL):

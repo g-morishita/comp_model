@@ -10,6 +10,7 @@ from comp_model_impl.estimators.stan.adapters import (
     APRLStayStanAdapter,
     APRLStayWithinSubjectStanAdapter,
     QRLStanAdapter,
+    QRLWithinSubjectStanAdapter,
     VicQAPDualWStayStanAdapter,
     VicQAPDualWStayWithinSubjectStanAdapter,
     VicQAPDualWNoStayStanAdapter,
@@ -327,6 +328,44 @@ def test_vs_within_subject_adapter_uses_base_model_constants():
     assert "beta_upper" not in data
     assert data["kappa_abs_max"] == pytest.approx(2.0)
     assert data["pseudo_reward"] == pytest.approx(0.5)
+
+
+def test_qrl_within_subject_adapter_uses_base_model_constants():
+    """Within-subject QRL adapter uses base-model lower beta bound."""
+    wrapped = wrap_model_with_shared_delta_conditions(
+        model=QRL(),
+        conditions=["A", "B"],
+        baseline_condition="A",
+    )
+    adapter = resolve_stan_adapter(wrapped)
+    assert isinstance(adapter, QRLWithinSubjectStanAdapter)
+    assert adapter.program("indiv").key == "qrl_within_subject"
+    assert adapter.required_priors("indiv") == [
+        "alpha__shared",
+        "alpha__delta",
+        "beta__shared",
+        "beta__delta",
+    ]
+    assert adapter.required_priors("hier") == [
+        "mu_alpha__shared",
+        "sd_alpha__shared",
+        "mu_beta__shared",
+        "sd_beta__shared",
+        "mu_alpha__delta",
+        "sd_alpha__delta",
+        "mu_beta__delta",
+        "sd_beta__delta",
+    ]
+
+    data = {}
+    adapter.augment_subject_data(data)
+    assert data["beta_lower"] == pytest.approx(1e-6)
+    assert "beta_upper" not in data
+
+    hier_data = {}
+    adapter.augment_study_data(hier_data)
+    assert hier_data["beta_lower"] == pytest.approx(1e-6)
+    assert "beta_upper" not in hier_data
 
 
 def test_vicarious_rl_within_subject_adapter_uses_base_model_constants():

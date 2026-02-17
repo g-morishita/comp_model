@@ -13,22 +13,6 @@ The fitted parameters live in unconstrained z-space for the shared and delta
 terms (Identity transforms). For convenience, constrained parameters for each
 condition are derived and returned in :attr:`FitResult.diagnostics`.
 
-Examples
---------
-Fit a within-subject model from event logs:
-
->>> import numpy as np
->>> from comp_model_impl.models import VS
->>> from comp_model_impl.estimators.within_subject_shared_delta import (
-...     WithinSubjectSharedDeltaTransformedMLEEstimator,
-... )
->>> est = WithinSubjectSharedDeltaTransformedMLEEstimator(
-...     base_model=VS(),
-...     baseline_condition="A",
-...     conditions=["A", "B"],
-... )
->>> # est.fit(study=study, rng=np.random.default_rng(0))  # doctest: +SKIP
-
 See Also
 --------
 comp_model_impl.models.within_subject_shared_delta.wrap_model_with_shared_delta_conditions

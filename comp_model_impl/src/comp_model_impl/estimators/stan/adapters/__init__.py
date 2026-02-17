@@ -25,6 +25,7 @@ from .vicarious_dir_db_stay import VicariousDirDBStayStanAdapter
 from .vicarious_db_stay import VicariousDBStayStanAdapter
 from .vicarious_db_stay_within_subject import VicariousDBStayWithinSubjectStanAdapter
 from .qrl import QRLStanAdapter
+from .qrl_within_subject import QRLWithinSubjectStanAdapter
 from .vs import VSStanAdapter
 from .vicarious_vs import VicariousVSStanAdapter
 from .vicarious_vs_stay import VicariousVSStayStanAdapter
@@ -43,6 +44,7 @@ from .base import StanAdapter
 __all__ = [
     "StanAdapter",
     "QRLStanAdapter",
+    "QRLWithinSubjectStanAdapter",
     "VicariousRLStanAdapter",
     "VicariousRLStayStanAdapter",
     "APRLStayStanAdapter",
