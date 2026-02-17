@@ -1,0 +1,36 @@
+plan_path: "study_plan.yaml"
+n_reps: 4
+seed: 123
+n_jobs: 4
+
+components:
+  generator:
+    name: "EventLogSocialPreChoiceGenerator"
+    kwargs: {}
+  generating_model:
+    name: "Vicarious_RL"
+    kwargs: {}
+  fitting_model:
+    name: "Vicarious_RL"
+    kwargs: {}
+  estimator:
+    name: "BoxMLESubjectwiseEstimator"
+    kwargs:
+      n_starts: 5
+      maxiter: 50
+
+sampling:
+  mode: "independent"
+  space: "z"
+  individual:
+    alpha_o: {name: "normal", args: {loc: -1.3863, scale: 1.0}}  # alpha_o centered at 0.2
+    beta: {name: "normal", args: {loc: 2.9489, scale: 1.0}}      # beta centered at 3.0 (softplus z-space)
+  by_condition: {}
+  clip_to_bounds: true
+
+output:
+  out_dir: "outputs/vicarious_rl_parameter_recovery"
+  save_format: "csv"
+  save_config: true
+  save_fit_diagnostics: true
+  save_simulated_study: false
