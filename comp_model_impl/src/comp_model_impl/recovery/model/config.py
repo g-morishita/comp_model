@@ -320,11 +320,25 @@ def _coerce_sampling_spec(raw: Any) -> SamplingSpec:
     ----------
     raw : Any
         ``SamplingSpec`` instance or raw mapping.
+        When a mapping is provided, supported keys include:
+
+        - ``mode``: sampling mode (e.g., ``"fixed"``, ``"independent"``,
+          ``"hierarchical"``)
+        - ``space``: parameter space (e.g., ``"param"`` or ``"z"``)
+        - ``individual`` / ``population`` / ``individual_sd`` / ``fixed``:
+          top-level sampling definitions
+        - ``by_condition``:
+          optional per-condition overrides. This enables sampling to differ by
+          condition label (for example ``A`` vs ``B``), and is primarily used
+          with within-subject shared+delta models.
+
+          Each condition override may define its own ``individual``,
+          ``population``, ``individual_sd``, and ``fixed`` entries.
 
     Returns
     -------
     SamplingSpec
-        Parsed sampling spec.
+        Parsed sampling spec with top-level and condition-specific settings.
     """
 
     if isinstance(raw, SamplingSpec):
