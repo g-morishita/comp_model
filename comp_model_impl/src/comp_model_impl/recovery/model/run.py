@@ -31,7 +31,6 @@ from comp_model_core.interfaces.model import ComputationalModel
 from comp_model_core.interfaces.estimator import Estimator, FitResult
 
 from ...register import make_registry, Registry
-from ...tasks.build import build_runner_for_plan
 
 from ..common import (
     build_estimator as _build_estimator,
@@ -43,6 +42,7 @@ from ..common import (
     build_model as _build_model,
     build_model_checked,
     build_nested as _build_nested,
+    make_block_runner_builder as _make_block_runner_builder,
     make_unique_run_dir,
     plan_summary as _plan_summary,
     safe_copy_file as _safe_copy_file,
@@ -474,7 +474,7 @@ def run_model_recovery(
     criterion = get_criterion(config.selection.criterion)
 
     # Registry + block runner builder
-    block_runner_builder = lambda p: build_runner_for_plan(plan=p, registries=registries)
+    block_runner_builder = _make_block_runner_builder(registries=registries)
 
     # Output directory
     out_dir = make_unique_run_dir(config.output.out_dir)

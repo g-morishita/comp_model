@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 import inspect
 import secrets
@@ -13,9 +13,12 @@ import shutil
 import numpy as np
 
 from comp_model_core.interfaces.estimator import Estimator
+from comp_model_core.interfaces.block_runner import BlockRunner
 from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
-from comp_model_core.plans.block import StudyPlan
+from comp_model_core.plans.block import BlockPlan, StudyPlan
+
+from ..tasks.build import build_runner_for_plan
 
 
 def make_unique_run_dir(base_out_dir: str | Path) -> Path:
@@ -121,6 +124,15 @@ def subject_ids_from_plan(plan: StudyPlan) -> list[str]:
     """Extract subject identifiers from a study plan."""
 
     return [str(sid) for sid in (plan.subjects.keys() if plan.subjects else [])]
+
+
+def make_block_runner_builder(*, registries: Any) -> Callable[[BlockPlan], BlockRunner]:
+    """Create a ``BlockRunnerBuilder`` bound to the provided registries."""
+
+    def _builder(block_plan: BlockPlan) -> BlockRunner:
+        return build_runner_for_plan(plan=block_plan, registries=registries)
+
+    return _builder
 
 
 def _resolve_registry_component(

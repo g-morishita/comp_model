@@ -42,11 +42,11 @@ from comp_model_core.interfaces.generator import Generator
 from comp_model_core.interfaces.model import ComputationalModel
 
 from ...register import make_registry, Registry
-from ...tasks.build import build_runner_for_plan
 from ..common import (
     build_estimator_checked,
     build_generator_checked,
     build_model_checked,
+    make_block_runner_builder as _make_block_runner_builder,
     make_unique_run_dir,
     plan_summary as _plan_summary,
     safe_copy_file as _safe_copy_file,
@@ -445,6 +445,7 @@ def _run_single_rep(
     generator: Generator,
     model: ComputationalModel,
     estimator: Estimator,
+    registries: Registry,
     subject_ids: Sequence[str],
     subject_block_plans: Mapping[str, Sequence[BlockPlan]],
     out_dir: str,
@@ -459,10 +460,7 @@ def _run_single_rep(
         rng=rep_rng,
     )
 
-    r = make_registry()
-
-    def block_runner_builder(block_plan: BlockPlan):
-        return build_runner_for_plan(plan=block_plan, registries=r)
+    block_runner_builder = _make_block_runner_builder(registries=registries)
 
     study: StudyData = generator.simulate_study(
         block_runner_builder=block_runner_builder,
@@ -550,6 +548,7 @@ def _init_worker_context(
     generator: Generator,
     model: ComputationalModel,
     estimator: Estimator,
+    registries: Registry,
     subject_ids: list[str],
     subject_block_plans: dict[str, list[BlockPlan]],
     out_dir: str,
@@ -561,6 +560,7 @@ def _init_worker_context(
         "generator": generator,
         "model": model,
         "estimator": estimator,
+        "registries": registries,
         "subject_ids": subject_ids,
         "subject_block_plans": subject_block_plans,
         "out_dir": out_dir,
@@ -579,6 +579,7 @@ def _run_single_rep_from_worker(rep: int, rep_seed: int) -> _ReplicationResult:
         generator=ctx["generator"],
         model=ctx["model"],
         estimator=ctx["estimator"],
+        registries=ctx["registries"],
         subject_ids=ctx["subject_ids"],
         subject_block_plans=ctx["subject_block_plans"],
         out_dir=ctx["out_dir"],
@@ -591,6 +592,7 @@ def _run_parameter_recovery_core(
     generator: Generator,
     model: ComputationalModel,
     estimator: Estimator,
+    registries: Registry,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> ParameterRecoveryOutputs:
     """Run a full parameter recovery experiment.
@@ -605,6 +607,8 @@ def _run_parameter_recovery_core(
         Computational model used for simulation and fitting.
     estimator : Estimator
         Estimator used to fit the model to simulated data.
+    registries : Registry
+        Registry used to build per-block runners during simulation.
     progress_callback : Callable[[int, int], None] or None, optional
         Optional callback invoked after each replication with
         ``(completed, total)`` to report progress.
@@ -716,6 +720,7 @@ def _run_parameter_recovery_core(
                 generator=generator,
                 model=model,
                 estimator=estimator,
+                registries=registries,
                 subject_ids=subject_ids,
                 subject_block_plans=plan.subjects,
                 out_dir=str(out_dir),
@@ -741,6 +746,7 @@ def _run_parameter_recovery_core(
                         generator,
                         model,
                         estimator,
+                        registries,
                         subject_ids,
                         plan.subjects,
                         str(out_dir),
@@ -841,6 +847,8 @@ def run_parameter_recovery(
     ``model``, and ``estimator`` objects directly. If one of these three is
     provided, all three must be provided.
     """
+    r = registry or make_registry()
+
     explicit = (generator is not None) or (model is not None) or (estimator is not None)
     if explicit:
         if generator is None or model is None or estimator is None:
@@ -853,10 +861,10 @@ def run_parameter_recovery(
             generator=generator,
             model=model,
             estimator=estimator,
+            registries=r,
             progress_callback=progress_callback,
         )
 
-    r = registry or make_registry()
     comp = config.components
 
     generator_obj = build_generator_checked(
@@ -894,5 +902,6 @@ def run_parameter_recovery(
         generator=generator_obj,
         model=generating_model_obj,
         estimator=estimator_obj,
+        registries=r,
         progress_callback=progress_callback,
     )
