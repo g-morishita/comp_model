@@ -20,6 +20,7 @@ from comp_model_core.registry import Registry
 from .bandits.bernoulli import BernoulliBanditEnv
 from .models import (
     QRL,
+    QRL_Stay,
     VS,
     VicQ_AP_DualW_Stay,
     VicQ_AP_DualW_NoStay,
@@ -66,6 +67,7 @@ def make_registry() -> Registry:
 
     # Models
     r.models.register("QRL", QRL)
+    r.models.register("QRL_Stay", QRL_Stay)
     r.models.register("VS", VS)
     r.models.register("Vicarious_RL", Vicarious_RL)
     r.models.register("Vicarious_RL_Stay", Vicarious_RL_Stay)

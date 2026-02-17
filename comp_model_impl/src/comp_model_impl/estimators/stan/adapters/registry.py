@@ -18,6 +18,7 @@ from comp_model_core.interfaces.model import ComputationalModel
 
 from ....models import (
     QRL,
+    QRL_Stay,
     VS,
     AP_RL_Stay,
     AP_RL_NoStay,
@@ -45,8 +46,10 @@ from .vicQ_ap_dualw_stay_within_subject import VicQAPDualWStayWithinSubjectStanA
 from .vicQ_ap_dualw_nostay_within_subject import VicQAPDualWNoStayWithinSubjectStanAdapter
 from .vs_within_subject import VSWithinSubjectStanAdapter
 from .qrl_within_subject import QRLWithinSubjectStanAdapter
+from .qrl_stay_within_subject import QRLStayWithinSubjectStanAdapter
 from .base import StanAdapter
 from .qrl import QRLStanAdapter
+from .qrl_stay import QRLStayStanAdapter
 from .vicarious_rl import VicariousRLStanAdapter
 from .vicarious_rl_stay import VicariousRLStayStanAdapter
 from .ap_rl_stay import APRLStayStanAdapter
@@ -87,6 +90,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
         base = getattr(model, "base_model", None)
         if isinstance(base, QRL):
             return QRLWithinSubjectStanAdapter(model)
+        if isinstance(base, QRL_Stay):
+            return QRLStayWithinSubjectStanAdapter(model)
         if isinstance(base, VS):
             return VSWithinSubjectStanAdapter(model)
         if isinstance(base, Vicarious_RL):
@@ -111,6 +116,8 @@ def resolve_stan_adapter(model: ComputationalModel) -> StanAdapter:
         return VSStanAdapter(model)
     if isinstance(model, QRL):
         return QRLStanAdapter(model)
+    if isinstance(model, QRL_Stay):
+        return QRLStayStanAdapter(model)
     if isinstance(model, Vicarious_RL):
         return VicariousRLStanAdapter(model)
     if isinstance(model, Vicarious_RL_Stay):

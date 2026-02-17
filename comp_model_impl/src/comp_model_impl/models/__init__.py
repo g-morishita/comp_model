@@ -52,6 +52,7 @@ from .vicarious_rl.vicarious_rl import Vicarious_RL
 from .vicarious_rl_stay.vicarious_rl_stay import Vicarious_RL_Stay
 from .vicarious_vs.vicarious_vs import Vicarious_VS
 from .qrl.qrl import QRL
+from .qrl_stay.qrl_stay import QRL_Stay
 from .vs.vs import VS
 from .vicarious_ap_db_stay.vicarious_ap_db_stay import Vicarious_AP_DB_STAY
 from .vicarious_dir_db_stay.vicarious_dir_db_stay import Vicarious_Dir_DB_Stay
@@ -75,6 +76,7 @@ __all__ = [
     "Vicarious_RL_Stay",
     "Vicarious_VS",
     "QRL",
+    "QRL_Stay",
     "VS",
     "Vicarious_VS_Stay",
     "UnidentifiableQRL",
