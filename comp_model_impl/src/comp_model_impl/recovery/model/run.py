@@ -407,24 +407,60 @@ def run_model_recovery(
     registry: Registry | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> ModelRecoveryOutputs:
-    """Run a full model recovery experiment.
+    """Run a full model-recovery workflow from simulation to winner selection.
+
+    This is the recommended entry point for users running model recovery from
+    configuration files.
+
+    The function executes the following loop:
+
+    1. For each generating model.
+    2. For each replication.
+    3. Sample subject-level true parameters from the generating model's
+       sampling spec.
+    4. Simulate a study from the study plan.
+    5. Fit every candidate model+estimator pair to the simulated study.
+    6. Score each fit under the configured criterion and select one winner.
 
     Parameters
     ----------
     config : ModelRecoveryConfig
-        Model recovery configuration.
+        Top-level model-recovery configuration.
+
+        Important config elements and meaning:
+
+        - ``plan_path``:
+          Path to a study plan YAML/JSON used to define subjects/blocks/trials.
+        - ``n_reps``, ``seed``:
+          Number of replications per generating model and base RNG seed.
+        - ``components.generator``:
+          Registry-backed generator reference (used when ``generator`` is not
+          passed directly).
+        - ``generating``:
+          List of generating models. Each item defines
+          ``name``, ``model``, ``model_kwargs``, and ``sampling``.
+        - ``candidates``:
+          List of candidate fits. Each item defines
+          ``name``, ``model``, ``estimator``, ``model_kwargs``,
+          and ``estimator_kwargs``.
+        - ``selection``:
+          Winner rule with ``criterion`` (e.g. loglike/aic/bic/waic),
+          ``tie_break`` (``"first"`` or ``"simpler"``), and ``atol``.
+        - ``output``:
+          Output behavior (directory, table format, and whether to save
+          config, diagnostics, and simulated studies).
     generator : Generator or None, default=None
         Optional pre-instantiated generator. If ``None``, the generator is
         resolved from ``config.components.generator``.
     generating : Sequence[RuntimeGeneratingModelSpec] or None, default=None
-        Optional explicit generating model specs. When provided, these override
-        ``config.generating``.
+        Optional runtime generating specs (instantiated model objects). When
+        provided, these override ``config.generating``.
     candidates : Sequence[RuntimeCandidateModelSpec] or None, default=None
-        Optional explicit candidate specs. When provided, these override
-        ``config.candidates``.
+        Optional runtime candidate specs (instantiated model+estimator
+        objects). When provided, these override ``config.candidates``.
     registry : Registry or None, default=None
-        Optional implementation registry used for resolving all component
-        references.
+        Optional implementation registry used to resolve model/estimator/
+        generator references.
     progress_callback : callable or None, default=None
         Optional callback invoked after each candidate fit attempt with
         ``(completed, total)``.
@@ -432,7 +468,93 @@ def run_model_recovery(
     Returns
     -------
     ModelRecoveryOutputs
-        Fit table, winners table, and output directory.
+        Run outputs with:
+
+        - ``fit_table``:
+          One row per ``(rep, generating_model, candidate_model)`` with fit
+          success, likelihood summary, parameter counts, score, runtime, and
+          optional WAIC diagnostics.
+        - ``winners``:
+          One row per ``(rep, generating_model)`` with selected model and
+          winner/runner-up score gap.
+        - ``out_dir``:
+          Unique run directory where artifacts are written.
+
+    Raises
+    ------
+    ValueError
+        If required inputs are missing or invalid (for example: no generator
+        source, empty generating/candidate set, no subjects in plan, or invalid
+        ``output.save_format``).
+
+    Notes
+    -----
+    Side effects
+        The function writes run artifacts into a unique subdirectory of
+        ``output.out_dir``:
+
+        - fit table (CSV or Parquet),
+        - winners table (CSV),
+        - optional diagnostics JSONL,
+        - optional simulated studies (pickle),
+        - optional config/manifest snapshots,
+        - optional confusion matrix and recovery-rate summaries.
+
+    Failure handling
+        Candidate-level fit exceptions are caught and recorded as failed rows;
+        the run continues with remaining candidates/replications.
+
+    Reproducibility
+        Replication seeds are derived from ``config.seed``. Determinism still
+        depends on estimator/model internals and external numeric backends.
+
+    See Also
+    --------
+    comp_model_impl.recovery.model.config.load_model_recovery_config
+        Recommended YAML/JSON loader for creating ``ModelRecoveryConfig``.
+    comp_model_impl.recovery.model.config.config_from_raw_dict
+        Lower-level parser for already-loaded mappings.
+
+    Examples
+    --------
+    Minimal YAML configuration (QRL vs QRL_Stay)::
+
+        plan_path: "study_plan.yaml"
+        n_reps: 2
+        seed: 123
+        components:
+          generator:
+            name: "EventLogAsocialGenerator"
+            kwargs: {}
+        generating:
+          - name: "QRL_gen"
+            model: "QRL"
+            sampling:
+              mode: "independent"
+              space: "param"
+              individual:
+                alpha: {name: "beta", args: {a: 2.0, b: 2.0}}
+                beta:  {name: "lognorm", args: {s: 0.4, scale: 4.0}}
+        candidates:
+          - name: "QRL"
+            model: "QRL"
+            estimator: "BoxMLESubjectwiseEstimator"
+            estimator_kwargs: {n_starts: 5, maxiter: 50}
+          - name: "QRL_Stay"
+            model: "QRL_Stay"
+            estimator: "BoxMLESubjectwiseEstimator"
+            estimator_kwargs: {n_starts: 5, maxiter: 50}
+        selection:
+          criterion: "bic"
+          tie_break: "simpler"
+        output:
+          out_dir: "outputs/model_recovery_qrl_vs_qrl_stay"
+          save_format: "csv"
+
+    Python usage::
+
+        cfg = load_model_recovery_config("model_recovery.yaml")
+        out = run_model_recovery(config=cfg)
     """
     registries = registry or make_registry()
 

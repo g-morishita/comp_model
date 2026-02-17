@@ -394,6 +394,25 @@ def config_from_raw_dict(raw: Mapping[str, Any]) -> ModelRecoveryConfig:
     -------
     ModelRecoveryConfig
         Validated configuration object.
+
+    Notes
+    -----
+    In normal usage, prefer :func:`load_model_recovery_config` and pass a YAML
+    or JSON file path. This function is a lower-level helper used after parsing
+    config text into a mapping.
+
+    See Also
+    --------
+    load_model_recovery_config
+        User-facing YAML/JSON loader.
+    comp_model_impl.recovery.model.run.run_model_recovery
+        Main entry point that executes model recovery with this config.
+
+    Examples
+    --------
+    >>> cfg = config_from_raw_dict({"plan_path": "study_plan.yaml"})
+    >>> cfg.plan_path == "study_plan.yaml"
+    True
     """
 
     if "plan_path" not in raw:
@@ -508,6 +527,38 @@ def load_model_recovery_config(path: str | Path) -> ModelRecoveryConfig:
     -------
     ModelRecoveryConfig
         Parsed config object.
+
+    See Also
+    --------
+    comp_model_impl.recovery.model.run.run_model_recovery
+        Main entry point for running model recovery with the loaded config.
+    config_from_raw_dict
+        Lower-level parser for already-loaded mappings.
+
+    Examples
+    --------
+    Typical usage with a YAML file:
+
+    ``model_recovery.yaml``::
+
+        plan_path: "study_plan.yaml"
+        components:
+          generator:
+            name: "EventLogAsocialGenerator"
+            kwargs: {}
+        generating:
+          - name: "QRL_gen"
+            model: "QRL"
+        candidates:
+          - name: "QRL"
+            model: "QRL"
+            estimator: "BoxMLESubjectwiseEstimator"
+
+    Then load:
+
+    >>> cfg = load_model_recovery_config("model_recovery.yaml")
+    >>> cfg.plan_path
+    'study_plan.yaml'
     """
 
     p = Path(path)
