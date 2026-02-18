@@ -386,6 +386,39 @@ def test_select_winner_logic() -> None:
         _ = run_mod._select_winner([], criterion=get_criterion("bic"), tie_break="first", atol=1e-9)
 
 
+def test_select_winner_tie_simpler_handles_nan_k_total() -> None:
+    """Simpler tie-break should ignore non-finite k_total values safely."""
+    rows = [
+        {"candidate_model": "A", "candidate_model_key": "A_key", "score": 1.0, "k_total": np.nan, "ll_total": -1.0},
+        {"candidate_model": "B", "candidate_model_key": "B_key", "score": 1.0, "k_total": 2, "ll_total": -1.0},
+    ]
+    out = run_mod._select_winner(
+        rows,
+        criterion=get_criterion("aic"),
+        tie_break="simpler",
+        atol=1e-9,
+    )
+    assert out["selected_model"] == "B"
+    assert out["winner_k_total"] == 2
+
+
+def test_select_winner_all_nonfinite_scores_handles_nan_k_total() -> None:
+    """Winner selection should not crash when all scores and k_total are non-finite."""
+    rows = [
+        {"candidate_model": "A", "candidate_model_key": "A_key", "score": float("inf"), "k_total": np.nan, "ll_total": -np.inf},
+        {"candidate_model": "B", "candidate_model_key": "B_key", "score": float("inf"), "k_total": np.nan, "ll_total": -np.inf},
+    ]
+    out = run_mod._select_winner(
+        rows,
+        criterion=get_criterion("waic"),
+        tie_break="simpler",
+        atol=1e-9,
+    )
+    assert out["selected_model"] == "A"
+    assert out["winner_k_total"] == -1
+    assert out["second_best_model"] is None
+
+
 def test_run_model_recovery_uses_waic_criterion(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

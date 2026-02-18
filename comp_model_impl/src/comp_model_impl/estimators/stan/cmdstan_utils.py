@@ -17,7 +17,9 @@ Examples
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 import hashlib
 import tempfile
 
@@ -71,6 +73,32 @@ def load_stan_code(kind: str, model_name: str) -> str:
     return common + "\n\n" + body
 
 
+@contextmanager
+def _file_lock(path: Path) -> Iterator[None]:
+    """Acquire an inter-process lock using a lock file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as lock_file:
+        try:
+            import fcntl
+        except ImportError:
+            yield
+            return
+
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def _write_text_if_changed(path: Path, text: str) -> bool:
+    """Write text when content differs from the existing file."""
+    if path.exists() and _read_text(path) == text:
+        return False
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
 def compile_cmdstan(stan_code: str, cache_tag: str):
     """Compile (or load a cached) CmdStan model from Stan code.
 
@@ -110,6 +138,7 @@ def compile_cmdstan(stan_code: str, cache_tag: str):
     workdir.mkdir(parents=True, exist_ok=True)
 
     stan_path = workdir / "model.stan"
-    stan_path.write_text(stan_code, encoding="utf-8")
-
-    return CmdStanModel(stan_file=str(stan_path))
+    lock_path = workdir / ".compile.lock"
+    with _file_lock(lock_path):
+        _write_text_if_changed(stan_path, stan_code)
+        return CmdStanModel(stan_file=str(stan_path))

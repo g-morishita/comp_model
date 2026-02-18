@@ -562,6 +562,17 @@ def _extract_waic_from_fit_diagnostics(fit: FitResult) -> dict[str, float] | Non
     return None
 
 
+def _safe_int(value: Any, *, default: int) -> int:
+    """Convert value to int when finite; otherwise return default."""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return int(default)
+    if not np.isfinite(f):
+        return int(default)
+    return int(f)
+
+
 def _select_winner(
     rows: list[dict[str, Any]],
     *,
@@ -611,7 +622,10 @@ def _select_winner(
     tie_set = [r for r in cand_rows if np.isfinite(r.get("score", np.nan)) and abs(float(r["score"]) - float(best["score"])) <= float(atol)]
     if tie_set and tie_break.lower() == "simpler":
         # prefer smaller k_total
-        best = min(tie_set, key=lambda r: (int(r.get("k_total", 10**9)), cand_rows.index(r)))
+        best = min(
+            tie_set,
+            key=lambda r: (_safe_int(r.get("k_total"), default=10**9), cand_rows.index(r)),
+        )
     elif tie_set and tie_break.lower() == "first":
         # keep order already implied
         best = tie_set[0]
@@ -650,7 +664,7 @@ def _select_winner(
         "second_best_score": float(second_score),
         "delta_to_second": float(delta),
         "winner_ll_total": float(best.get("ll_total", np.nan)),
-        "winner_k_total": int(best.get("k_total", -1)),
+        "winner_k_total": _safe_int(best.get("k_total"), default=-1),
     }
 
 

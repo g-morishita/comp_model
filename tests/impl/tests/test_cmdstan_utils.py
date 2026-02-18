@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from contextlib import contextmanager
 
 import pytest
 
@@ -61,6 +62,40 @@ def test_compile_cmdstan_writes_file_and_uses_cache(tmp_path, monkeypatch):
     assert stan_path.exists()
     assert stan_path.read_text(encoding="utf-8") == code
     assert stan_path.parent.name.startswith("comp_model_stan_demo_")
+
+
+def test_write_text_if_changed(tmp_path):
+    """Stan source helper should skip identical writes and update changed files."""
+    p = tmp_path / "model.stan"
+    assert cu._write_text_if_changed(p, "parameters {}")
+    assert not cu._write_text_if_changed(p, "parameters {}")
+    assert cu._write_text_if_changed(p, "parameters { real x; }")
+    assert p.read_text(encoding="utf-8") == "parameters { real x; }"
+
+
+def test_compile_cmdstan_uses_lock(tmp_path, monkeypatch):
+    """compile_cmdstan should enter a per-cache compile lock."""
+
+    class DummyModel:
+        def __init__(self, stan_file: str):
+            self.stan_file = stan_file
+
+    entered: list[Path] = []
+
+    @contextmanager
+    def fake_lock(path: Path):
+        entered.append(path)
+        yield
+
+    monkeypatch.setitem(sys.modules, "cmdstanpy", SimpleNamespace(CmdStanModel=DummyModel))
+    monkeypatch.setattr(cu.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(cu, "_file_lock", fake_lock)
+
+    model = cu.compile_cmdstan("data {} parameters {} model {}", cache_tag="demo")
+    assert isinstance(model, DummyModel)
+    assert entered
+    assert entered[0].name == ".compile.lock"
+    assert entered[0].parent == Path(model.stan_file).parent
 
 
 def test_all_stan_bodies_export_pointwise_log_lik():
