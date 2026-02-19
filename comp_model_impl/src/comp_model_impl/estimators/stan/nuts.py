@@ -325,6 +325,51 @@ def _posterior_summary_from_draws(
     return out
 
 
+def _posterior_samples_from_draws(
+    *,
+    name: str,
+    draws: Any,
+    condition_labels: list[str] | None = None,
+    baseline_idx_1based: int | None = None,
+) -> dict[str, list[float]]:
+    """Flatten posterior draws for one Stan variable into per-parameter series.
+
+    Parameters
+    ----------
+    name : str
+        Stan variable name.
+    draws : Any
+        Posterior draws where axis 0 is sampling draw.
+    condition_labels : list[str] or None, optional
+        Optional condition labels for flattening condition-indexed vectors.
+    baseline_idx_1based : int or None, optional
+        Optional one-based baseline index for delta-parameter flattening.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Mapping from flattened parameter name to a list of draw values.
+    """
+    arr = np.asarray(draws, dtype=float)
+    if arr.ndim == 0:
+        arr = arr.reshape((1,))
+    n_draws = int(arr.shape[0])
+    if n_draws <= 0:
+        return {}
+
+    out: dict[str, list[float]] = {}
+    for d in range(n_draws):
+        flat = _flatten_mean(
+            name=name,
+            mean=arr[d],
+            condition_labels=condition_labels,
+            baseline_idx_1based=baseline_idx_1based,
+        )
+        for key, value in flat.items():
+            out.setdefault(str(key), []).append(float(value))
+    return out
+
+
 def _add_subject_posterior_summaries(
     *,
     out: dict[str, dict[str, dict[str, float]]],
@@ -373,6 +418,63 @@ def _add_subject_posterior_summaries(
         for i, sid in enumerate(subject_ids):
             out.setdefault(str(sid), {}).update(
                 _posterior_summary_from_draws(
+                    name=name,
+                    draws=arr[:, i, ...],
+                    condition_labels=condition_labels,
+                    baseline_idx_1based=baseline_idx_1based,
+                )
+            )
+        return
+
+
+def _add_subject_posterior_samples(
+    *,
+    out: dict[str, dict[str, list[float]]],
+    name: str,
+    draws: Any,
+    subject_ids: list[str],
+    condition_labels: list[str] | None = None,
+    baseline_idx_1based: int | None = None,
+) -> None:
+    """Add per-subject posterior samples from hierarchical Stan draws.
+
+    Parameters
+    ----------
+    out : dict[str, dict[str, list[float]]]
+        Output mapping to update: ``subject_id -> parameter -> draw values``.
+    name : str
+        Stan variable name.
+    draws : Any
+        Draw array expected to have shape ``(draws, N, ...)`` for subject-level
+        variables, where ``N == len(subject_ids)``.
+    subject_ids : list[str]
+        Subject identifiers in Stan order.
+    condition_labels : list[str] or None, optional
+        Optional condition labels for flattening.
+    baseline_idx_1based : int or None, optional
+        Optional baseline index for delta-parameter flattening.
+    """
+    arr = np.asarray(draws, dtype=float)
+    n_subj = int(len(subject_ids))
+
+    # Scalar subject parameter: draws x N
+    if arr.ndim == 2 and int(arr.shape[1]) == n_subj:
+        for i, sid in enumerate(subject_ids):
+            out.setdefault(str(sid), {}).update(
+                _posterior_samples_from_draws(
+                    name=name,
+                    draws=arr[:, i],
+                    condition_labels=condition_labels,
+                    baseline_idx_1based=baseline_idx_1based,
+                )
+            )
+        return
+
+    # Vector/matrix subject parameter: draws x N x ...
+    if arr.ndim >= 3 and int(arr.shape[1]) == n_subj:
+        for i, sid in enumerate(subject_ids):
+            out.setdefault(str(sid), {}).update(
+                _posterior_samples_from_draws(
                     name=name,
                     draws=arr[:, i, ...],
                     condition_labels=condition_labels,
@@ -752,6 +854,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
         Target acceptance probability for NUTS.
     max_treedepth : int, optional
         Maximum tree depth for NUTS.
+    sample_thin : int, optional
+        CmdStan sampling thinning factor. ``1`` keeps every draw, ``k > 1``
+        keeps every ``k``-th draw.
     subject_point_estimate : {"mean", "conditional_map"}, optional
         Point estimate for subject-level parameters. ``"mean"`` uses posterior
         means from draws. ``"conditional_map"`` optimizes each subject's
@@ -771,6 +876,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
     return_posterior_summary : bool, optional
         If ``True``, include posterior uncertainty summaries (mean, SD, 95%
         interval) in diagnostics for both population and subject parameters.
+    return_posterior_samples : bool, optional
+        If ``True``, include flattened posterior draws in diagnostics for both
+        population and subject parameters.
 
     Notes
     -----
@@ -786,6 +894,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
     iter_sampling: int = 1200
     adapt_delta: float = 0.92
     max_treedepth: int = 12
+    sample_thin: int = 1
 
     forbid_extra_priors: bool = True
     show_progress: bool = False
@@ -796,6 +905,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
     cond_map_n_starts: int = 1
     cond_map_jitter: float = 0.1
     return_posterior_summary: bool = False
+    return_posterior_samples: bool = False
 
     _compiled: Any = field(default=None, init=False, repr=False)
 
@@ -803,6 +913,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
         """Load hyper-priors from YAML if a path was provided."""
         if isinstance(self.hyper_priors, str):
             self.hyper_priors = _load_yaml(self.hyper_priors)
+        self.sample_thin = int(self.sample_thin)
+        if self.sample_thin < 1:
+            raise ValueError("sample_thin must be >= 1.")
 
     def supports(self, study: StudyData) -> bool:
         """Return ``True`` if the study is compatible with the model."""
@@ -869,6 +982,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
             chains=self.chains,
             iter_warmup=self.iter_warmup,
             iter_sampling=self.iter_sampling,
+            thin=self.sample_thin,
             seed=seed,
             adapt_delta=self.adapt_delta,
             max_treedepth=self.max_treedepth,
@@ -877,6 +991,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
 
         pop_hat: dict[str, float] = {}
         pop_posterior_summary: dict[str, dict[str, float]] = {}
+        pop_posterior_samples: dict[str, list[float]] = {}
         if is_ws:
             bl_idx = int(data.get("baseline_cond", 1))
             for nm in adapter.population_var_names():
@@ -902,6 +1017,15 @@ class StanHierarchicalNUTSEstimator(Estimator):
                             baseline_idx_1based=bl_idx,
                         )
                     )
+                if self.return_posterior_samples:
+                    pop_posterior_samples.update(
+                        _posterior_samples_from_draws(
+                            name=nm,
+                            draws=draws,
+                            condition_labels=condition_labels,
+                            baseline_idx_1based=bl_idx,
+                        )
+                    )
         else:
             for nm in adapter.population_var_names():
                 try:
@@ -911,6 +1035,10 @@ class StanHierarchicalNUTSEstimator(Estimator):
                     if self.return_posterior_summary:
                         pop_posterior_summary.update(
                             _posterior_summary_from_draws(name=nm, draws=draws)
+                        )
+                    if self.return_posterior_samples:
+                        pop_posterior_samples.update(
+                            _posterior_samples_from_draws(name=nm, draws=draws)
                         )
                 except KeyError:
                     continue
@@ -976,21 +1104,32 @@ class StanHierarchicalNUTSEstimator(Estimator):
             raise ValueError(f"Unknown subject_point_estimate: {self.subject_point_estimate!r}")
 
         subj_posterior_summary: dict[str, dict[str, dict[str, float]]] = {}
-        if self.return_posterior_summary:
+        subj_posterior_samples: dict[str, dict[str, list[float]]] = {}
+        if self.return_posterior_summary or self.return_posterior_samples:
             bl_idx = int(data.get("baseline_cond", 1))
             for p in adapter.subject_param_names():
                 try:
                     draws = fit.stan_variable(p)
                 except KeyError:
                     continue
-                _add_subject_posterior_summaries(
-                    out=subj_posterior_summary,
-                    name=p,
-                    draws=draws,
-                    subject_ids=subj_ids,
-                    condition_labels=condition_labels if is_ws else None,
-                    baseline_idx_1based=bl_idx if is_ws else None,
-                )
+                if self.return_posterior_summary:
+                    _add_subject_posterior_summaries(
+                        out=subj_posterior_summary,
+                        name=p,
+                        draws=draws,
+                        subject_ids=subj_ids,
+                        condition_labels=condition_labels if is_ws else None,
+                        baseline_idx_1based=bl_idx if is_ws else None,
+                    )
+                if self.return_posterior_samples:
+                    _add_subject_posterior_samples(
+                        out=subj_posterior_samples,
+                        name=p,
+                        draws=draws,
+                        subject_ids=subj_ids,
+                        condition_labels=condition_labels if is_ws else None,
+                        baseline_idx_1based=bl_idx if is_ws else None,
+                    )
 
         summ = None
         try:
@@ -1003,6 +1142,7 @@ class StanHierarchicalNUTSEstimator(Estimator):
             "rhat_max": _safe_summary_metric(summ, ["R_hat", "r_hat"], agg="max"),
             "ess_bulk_min": _safe_summary_metric(summ, ["ESS_bulk", "ess_bulk"], agg="min"),
             "point_estimate": point_est,
+            "sample_thin": int(self.sample_thin),
         }
         waic_diag = _waic_diagnostics_from_fit(fit)
         if waic_diag is not None:
@@ -1012,6 +1152,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
         if self.return_posterior_summary:
             diags["population_posterior_summary"] = pop_posterior_summary
             diags["subject_posterior_summary"] = subj_posterior_summary
+        if self.return_posterior_samples:
+            diags["population_posterior_samples"] = pop_posterior_samples
+            diags["subject_posterior_samples"] = subj_posterior_samples
 
         return FitResult(
             population_hat=pop_hat,

@@ -7,13 +7,18 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 
+from comp_model_core.data.types import StudyData, SubjectData
+from comp_model_impl.estimators.stan.adapters.base import StanProgramRef
 from comp_model_impl.estimators.stan.nuts import (
+    StanHierarchicalNUTSEstimator,
     _add_subject_posterior_summaries,
+    _add_subject_posterior_samples,
     _delta_labels,
     _flatten_mean,
     _hyper_means_from_pop_hat,
     _is_within_subject_model,
     _load_yaml,
+    _posterior_samples_from_draws,
     _posterior_summary_from_draws,
     _safe_summary_metric,
     _strip_hat,
@@ -175,6 +180,142 @@ def test_add_subject_posterior_summaries_maps_draws_axis_1():
     assert set(out.keys()) == {"S1", "S2"}
     assert out["S1"]["theta"]["mean"] == pytest.approx(0.25)
     assert out["S2"]["theta"]["mean"] == pytest.approx(0.75)
+
+
+def test_posterior_samples_from_draws_scalar_and_vector():
+    """Posterior samples should flatten into per-parameter draw series."""
+    scalar = _posterior_samples_from_draws(name="alpha_hat", draws=np.array([0.1, 0.2, 0.3]))
+    assert set(scalar.keys()) == {"alpha"}
+    assert scalar["alpha"] == pytest.approx([0.1, 0.2, 0.3])
+
+    vec_draws = np.array(
+        [
+            [0.1, 0.9],
+            [0.2, 0.8],
+            [0.3, 0.7],
+        ]
+    )
+    vec = _posterior_samples_from_draws(
+        name="beta_hat",
+        draws=vec_draws,
+        condition_labels=["A", "B"],
+    )
+    assert set(vec.keys()) == {"beta__A", "beta__B"}
+    assert vec["beta__A"] == pytest.approx([0.1, 0.2, 0.3])
+    assert vec["beta__B"] == pytest.approx([0.9, 0.8, 0.7])
+
+
+def test_add_subject_posterior_samples_maps_draws_axis_1():
+    """Subject posterior samples should be split by subject axis."""
+    out: dict[str, dict[str, list[float]]] = {}
+    draws = np.array(
+        [
+            [0.1, 0.9],
+            [0.2, 0.8],
+            [0.3, 0.7],
+        ]
+    )
+    _add_subject_posterior_samples(
+        out=out,
+        name="theta_hat",
+        draws=draws,
+        subject_ids=["S1", "S2"],
+    )
+
+    assert set(out.keys()) == {"S1", "S2"}
+    assert out["S1"]["theta"] == pytest.approx([0.1, 0.2, 0.3])
+    assert out["S2"]["theta"] == pytest.approx([0.9, 0.8, 0.7])
+
+
+def test_hierarchical_estimator_thin_and_posterior_samples(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hierarchical estimator should pass CmdStan thin and emit posterior samples."""
+    import comp_model_impl.estimators.stan.nuts as nuts_mod
+
+    class _DummyAdapter:
+        def program(self, family: str) -> StanProgramRef:
+            return StanProgramRef(family="hier", key="dummy", program_name="dummy_hier")
+
+        def required_priors(self, family: str) -> list[str]:
+            return []
+
+        def augment_subject_data(self, data: dict[str, object]) -> None:
+            return
+
+        def augment_study_data(self, data: dict[str, object]) -> None:
+            return
+
+        def subject_param_names(self) -> list[str]:
+            return ["alpha_hat"]
+
+        def population_var_names(self) -> list[str]:
+            return ["mu_alpha_hat"]
+
+    class _DummyFit:
+        def stan_variable(self, name: str):
+            if name == "mu_alpha_hat":
+                return np.array([0.1, 0.2, 0.3], dtype=float)
+            if name == "alpha_hat":
+                return np.array(
+                    [
+                        [0.11, 0.21],
+                        [0.12, 0.22],
+                        [0.13, 0.23],
+                    ],
+                    dtype=float,
+                )
+            raise KeyError(name)
+
+        def summary(self):
+            return None
+
+    class _DummyCompiled:
+        def __init__(self) -> None:
+            self.last_sample_kwargs: dict[str, object] | None = None
+
+        def sample(self, **kwargs):
+            self.last_sample_kwargs = dict(kwargs)
+            return _DummyFit()
+
+    compiled = _DummyCompiled()
+
+    monkeypatch.setattr(nuts_mod, "resolve_stan_adapter", lambda model: _DummyAdapter())
+    monkeypatch.setattr(nuts_mod, "load_stan_code", lambda kind, model_name: "data{} parameters{} model{}")
+    monkeypatch.setattr(nuts_mod, "compile_cmdstan", lambda stan_code, cache_tag: compiled)
+    monkeypatch.setattr(nuts_mod, "study_to_stan_data", lambda study: {})
+    monkeypatch.setattr(nuts_mod, "priors_to_stan_data", lambda **kwargs: {})
+    monkeypatch.setattr(nuts_mod, "_is_within_subject_model", lambda model: False)
+    monkeypatch.setattr(nuts_mod.StanHierarchicalNUTSEstimator, "supports", lambda self, study: True)
+
+    est = StanHierarchicalNUTSEstimator(
+        model=object(),  # type: ignore[arg-type]
+        hyper_priors={},
+        sample_thin=5,
+        return_posterior_samples=True,
+    )
+    study = StudyData(
+        subjects=[
+            SubjectData(subject_id="s1", blocks=[]),
+            SubjectData(subject_id="s2", blocks=[]),
+        ]
+    )
+    out = est.fit(study=study, rng=np.random.default_rng(123))
+
+    assert compiled.last_sample_kwargs is not None
+    assert int(compiled.last_sample_kwargs["thin"]) == 5
+    assert out.diagnostics["sample_thin"] == 5
+    assert out.diagnostics["population_posterior_samples"]["mu_alpha"] == pytest.approx([0.1, 0.2, 0.3])
+    assert out.diagnostics["subject_posterior_samples"]["s1"]["alpha"] == pytest.approx([0.11, 0.12, 0.13])
+    assert out.diagnostics["subject_posterior_samples"]["s2"]["alpha"] == pytest.approx([0.21, 0.22, 0.23])
+
+
+def test_hierarchical_estimator_rejects_non_positive_sample_thin() -> None:
+    """sample_thin must be a positive integer."""
+    with pytest.raises(ValueError, match="sample_thin"):
+        _ = StanHierarchicalNUTSEstimator(
+            model=object(),  # type: ignore[arg-type]
+            hyper_priors={},
+            sample_thin=0,
+        )
 
 
 def test_load_yaml_reads_mapping(tmp_path):
