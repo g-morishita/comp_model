@@ -1,1 +1,6 @@
-site_name: Computational Modeling (comp_model) Library Documentation
+site_name: Computational Modeling Library Documentation
+
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Install: install.md
