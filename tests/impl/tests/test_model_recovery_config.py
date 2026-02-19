@@ -112,7 +112,7 @@ def test_config_from_raw_dict_new_schema() -> None:
     assert cfg.plan_path == "plan.json"
     assert cfg.n_reps == 2
     assert cfg.seed == 42
-    assert cfg.n_jobs == 1
+    assert cfg.n_fit_jobs == 1
     assert isinstance(cfg.generating[0], GeneratingModelSpec)
     assert cfg.generating[0].model == "QRL"
     assert cfg.generating[0].model_kwargs == {}
@@ -121,16 +121,16 @@ def test_config_from_raw_dict_new_schema() -> None:
     assert cfg.candidates[0].estimator_kwargs["n_starts"] == 2
 
 
-def test_config_from_raw_dict_parses_and_validates_n_jobs() -> None:
-    """n_jobs should parse from raw config and enforce >= 1."""
+def test_config_from_raw_dict_parses_and_validates_n_fit_jobs() -> None:
+    """n_fit_jobs should parse from raw config and enforce >= 1."""
     raw = _minimal_raw_config()
-    raw["n_jobs"] = 3
+    raw["n_fit_jobs"] = 3
     cfg = config_from_raw_dict(raw)
-    assert cfg.n_jobs == 3
+    assert cfg.n_fit_jobs == 3
 
     raw_bad = _minimal_raw_config()
-    raw_bad["n_jobs"] = 0
-    with pytest.raises(ValueError, match="n_jobs must be >= 1"):
+    raw_bad["n_fit_jobs"] = 0
+    with pytest.raises(ValueError, match="n_fit_jobs must be >= 1"):
         _ = config_from_raw_dict(raw_bad)
 
 

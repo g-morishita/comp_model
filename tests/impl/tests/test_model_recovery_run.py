@@ -720,7 +720,7 @@ def test_run_model_recovery_parallel_config_specs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Model recovery should use parallel path when n_jobs > 1 for config specs."""
+    """Model recovery should parallelize config-backed fit tasks when n_fit_jobs > 1."""
     plan_path = tmp_path / "plan.json"
     plan_path.write_text("{}", encoding="utf-8")
     plan = _minimal_plan()
@@ -729,7 +729,7 @@ def test_run_model_recovery_parallel_config_specs(
         plan_path=str(plan_path),
         n_reps=2,
         seed=11,
-        n_jobs=2,
+        n_fit_jobs=2,
         components=ModelRecoveryComponents(
             generator=ComponentSpec(name="EventLogAsocialGenerator", kwargs={})
         ),
@@ -766,10 +766,14 @@ def test_run_model_recovery_parallel_config_specs(
             return self._result
 
     class _FakeExecutor:
-        def __init__(self, max_workers: int):
+        def __init__(self, max_workers: int, initializer=None, initargs=()):
             self.max_workers = max_workers
+            self.initializer = initializer
+            self.initargs = initargs
 
         def __enter__(self):
+            if self.initializer is not None:
+                self.initializer(*self.initargs)
             return self
 
         def __exit__(self, exc_type, exc, tb):
@@ -780,20 +784,17 @@ def test_run_model_recovery_parallel_config_specs(
 
     rep_calls: list[int] = []
 
-    def fake_run_single_rep(**kwargs):
-        rep = int(kwargs["rep"])
-        rep_seed = int(kwargs["rep_seed"])
-        gen_name = str(kwargs["gen_name"])
-        gen_model_key = str(kwargs["gen_model_key"])
+    def fake_run_single_fit(task):
+        rep = int(task.rep_ctx_id[1])
         rep_calls.append(rep)
 
         row = {
             "rep": rep,
-            "rep_seed": rep_seed,
-            "generating_model": gen_name,
-            "generating_model_key": gen_model_key,
-            "candidate_model": "good",
-            "candidate_model_key": "good_model",
+            "rep_seed": 0,
+            "generating_model": "gen",
+            "generating_model_key": "gen_model",
+            "candidate_model": str(task.candidate_name),
+            "candidate_model_key": str(task.candidate_model_ref),
             "criterion": "loglike",
             "success": True,
             "message": "",
@@ -805,32 +806,34 @@ def test_run_model_recovery_parallel_config_specs(
             "score": 12.0,
             "runtime_s": 0.01,
         }
-        winner = {
-            "rep": rep,
-            "rep_seed": rep_seed,
-            "generating_model": gen_name,
-            "generating_model_key": gen_model_key,
-            "selected_model": "good",
-            "selected_model_key": "good_model",
-            "winner_score": 12.0,
-            "second_best_model": None,
-            "second_best_model_key": None,
-            "second_best_score": np.nan,
-            "delta_to_second": np.nan,
-            "winner_ll_total": 12.0,
-            "winner_k_total": 1,
-        }
-        return run_mod._ReplicationRunResult(rep=rep, fit_rows=[row], winner_row=winner, diag_rows=[])
+        return run_mod._FitTaskResult(
+            group_key=task.rep_ctx_id,
+            candidate_index=int(task.candidate_index),
+            fit_row=row,
+            diag_row=None,
+            fit_seed=int(task.fit_seed),
+            success=True,
+            error_message=None,
+        )
 
     progress_calls: list[tuple[int, int]] = []
 
     monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
     monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
     monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
+    monkeypatch.setattr(run_mod, "build_model_checked", lambda model, *, model_kwargs, registries: _TinyModel(label=str(model)))
     monkeypatch.setattr(run_mod, "build_generator_checked", lambda *a, **k: _DummyGenerator(StudyData(subjects=[], metadata={})))
     monkeypatch.setattr(run_mod, "ProcessPoolExecutor", _FakeExecutor)
     monkeypatch.setattr(run_mod, "as_completed", lambda futures: futures)
-    monkeypatch.setattr(run_mod, "_run_single_rep_config_only", fake_run_single_rep)
+    monkeypatch.setattr(run_mod, "_run_single_fit_config_only", fake_run_single_fit)
+
+    import comp_model_impl.recovery.parameter.sampling as sampling_mod
+
+    monkeypatch.setattr(
+        sampling_mod,
+        "sample_subject_params",
+        lambda *, cfg, model, subject_ids, rng: ({sid: {"theta": 0.2} for sid in subject_ids}, None),
+    )
 
     out = run_mod.run_model_recovery(
         config=cfg,

@@ -176,8 +176,8 @@ class ModelRecoveryConfig:
         Number of replications per generating model.
     seed : int, default=0
         Base random seed.
-    n_jobs : int, default=1
-        Number of worker processes used to parallelize replications.
+    n_fit_jobs : int, default=1
+        Number of worker processes used to parallelize model fittings.
         Use ``1`` for sequential execution.
     components : ModelRecoveryComponents or None, default=None
         Optional registry component references for instantiating the
@@ -195,7 +195,7 @@ class ModelRecoveryConfig:
     plan_path: str
     n_reps: int = 50
     seed: int = 0
-    n_jobs: int = 1
+    n_fit_jobs: int = 1
 
     components: ModelRecoveryComponents | None = None
 
@@ -209,8 +209,8 @@ class ModelRecoveryConfig:
         _require_non_empty_text(self.plan_path, field_name="plan_path")
         if int(self.n_reps) < 1:
             raise ValueError("n_reps must be >= 1")
-        if int(self.n_jobs) < 1:
-            raise ValueError("n_jobs must be >= 1")
+        if int(self.n_fit_jobs) < 1:
+            raise ValueError("n_fit_jobs must be >= 1")
         if self.components is not None and not isinstance(self.components, ModelRecoveryComponents):
             raise TypeError(
                 "components must be a ModelRecoveryComponents or None "
@@ -529,7 +529,7 @@ def config_from_raw_dict(raw: Mapping[str, Any]) -> ModelRecoveryConfig:
         plan_path=str(raw["plan_path"]),
         n_reps=int(raw.get("n_reps", 50)),
         seed=int(raw.get("seed", 0)),
-        n_jobs=int(raw.get("n_jobs", 1)),
+        n_fit_jobs=int(raw.get("n_fit_jobs", 1)),
         components=components,
         generating=generating,
         candidates=candidates,
