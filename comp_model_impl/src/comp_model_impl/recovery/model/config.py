@@ -126,7 +126,7 @@ class SelectionSpec:
 
     Parameters
     ----------
-    criterion : {"loglike", "aic", "bic", "waic"}, default="bic"
+    criterion : {"loglike", "aic", "bic", "waic", "psis_loo"}, default="bic"
         Scoring criterion used to compare candidates.
     tie_break : {"first", "simpler"}, default="simpler"
         Tie-breaking strategy when scores are equal within ``atol``.

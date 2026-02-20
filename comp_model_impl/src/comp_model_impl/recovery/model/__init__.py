@@ -4,7 +4,7 @@ Model recovery subpackage.
 Model recovery evaluates whether candidate models can be distinguished and
 recovered under a given study design by simulating data from each generating
 model and fitting all candidates, then selecting a winner under a chosen model
-selection criterion (e.g., log-likelihood, AIC, BIC, WAIC).
+selection criterion (e.g., log-likelihood, AIC, BIC, WAIC, PSIS-LOO).
 
 Main entry points
 -----------------
@@ -37,6 +37,7 @@ from .criteria import (
     AICCriterion,
     BICCriterion,
     WAICCriterion,
+    PSISLOOCriterion,
     get_criterion,
 )
 from .run import (
@@ -66,6 +67,7 @@ __all__ = [
     "AICCriterion",
     "BICCriterion",
     "WAICCriterion",
+    "PSISLOOCriterion",
     "get_criterion",
     "ModelRecoveryOutputs",
     "RuntimeGeneratingModelSpec",

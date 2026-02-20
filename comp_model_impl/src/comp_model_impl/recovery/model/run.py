@@ -2,7 +2,7 @@
 
 Model recovery simulates datasets from each generating model and fits a set of
 candidate models to each dataset, then selects the best candidate using a
-model selection criterion (log-likelihood, AIC, BIC, WAIC).
+model selection criterion (log-likelihood, AIC, BIC, WAIC, PSIS-LOO).
 
 The runner writes a self-contained run directory with configuration snapshots,
 a per-candidate fit table, a winners table, optional diagnostics, and optional
@@ -256,17 +256,23 @@ def _run_single_fit_config_only(task: _FitTaskSpec) -> _FitTaskResult:
         k_per_sub, k_total = _count_free_params(model=cand_model, fit=fit, n_subjects=len(rep_ctx.subject_ids))
         waic_diag = _extract_waic_from_fit_diagnostics(fit)
         waic_value = float(waic_diag["waic"]) if waic_diag and "waic" in waic_diag else None
+        loo_diag = _extract_loo_from_fit_diagnostics(fit)
+        loo_value = float(loo_diag["looic"]) if loo_diag and "looic" in loo_diag else None
         score = criterion.score(
             ll=ll_summary.ll_total,
             k=k_total,
             n_obs=ll_summary.n_obs_total,
             waic=waic_value,
+            looic=loo_value,
         )
         missing_waic = str(criterion.name).lower() == "waic" and not np.isfinite(float(score))
+        missing_loo = str(criterion.name).lower() == "psis_loo" and not np.isfinite(float(score))
         success = bool(getattr(fit, "success", True)) and np.isfinite(score)
         message = str(getattr(fit, "message", ""))
         if missing_waic:
             message = f"{message} | WAIC unavailable" if message else "WAIC unavailable"
+        if missing_loo:
+            message = f"{message} | PSIS-LOO unavailable" if message else "PSIS-LOO unavailable"
         value = float(getattr(fit, "value", np.nan)) if getattr(fit, "value", None) is not None else np.nan
 
         runtime_s = float(time.time() - t0)
@@ -290,6 +296,8 @@ def _run_single_fit_config_only(task: _FitTaskSpec) -> _FitTaskResult:
         }
         if waic_diag:
             fit_row.update(waic_diag)
+        if loo_diag:
+            fit_row.update(loo_diag)
 
         diag_row = None
         if task.save_fit_diagnostics:
@@ -645,6 +653,76 @@ def _extract_waic_from_fit_diagnostics(fit: FitResult) -> dict[str, float] | Non
     return None
 
 
+def _extract_loo_from_fit_diagnostics(fit: FitResult) -> dict[str, float] | None:
+    """Extract PSIS-LOO diagnostics from a fit result when available.
+
+    Supports either:
+    - top-level diagnostics keys (``looic``, ``elpd_loo``, optional ``p_loo``),
+    - per-subject diagnostics under ``diagnostics['per_subject']`` where each
+      subject has PSIS-LOO metrics (aggregated by summation).
+    """
+    d = getattr(fit, "diagnostics", None)
+    if not isinstance(d, Mapping):
+        return None
+
+    # Direct study-level PSIS-LOO (typical for hierarchical Stan estimators).
+    if "looic" in d and "elpd_loo" in d:
+        out: dict[str, float] = {
+            "looic": float(d["looic"]),
+            "elpd_loo": float(d["elpd_loo"]),
+        }
+        if "p_loo" in d:
+            p = float(d["p_loo"])
+            if np.isfinite(p):
+                out["p_loo"] = p
+        if "loo_n_obs" in d:
+            n = float(d["loo_n_obs"])
+            if np.isfinite(n):
+                out["loo_n_obs"] = n
+        if "pareto_k_max" in d:
+            k = float(d["pareto_k_max"])
+            if np.isfinite(k):
+                out["pareto_k_max"] = k
+        if np.isfinite(out["looic"]) and np.isfinite(out["elpd_loo"]):
+            return out
+        return None
+
+    # Subject-wise PSIS-LOO (typical for independent Stan fits).
+    per_subject = d.get("per_subject", None)
+    if not isinstance(per_subject, Mapping):
+        return None
+
+    loo_rows: list[Mapping[str, Any]] = []
+    for v in per_subject.values():
+        if isinstance(v, Mapping) and "looic" in v and "elpd_loo" in v:
+            loo_rows.append(v)
+    if not loo_rows:
+        return None
+
+    looic = float(np.sum([float(v["looic"]) for v in loo_rows]))
+    elpd_loo = float(np.sum([float(v["elpd_loo"]) for v in loo_rows]))
+    if not np.isfinite(looic) or not np.isfinite(elpd_loo):
+        return None
+
+    out: dict[str, float] = {
+        "looic": looic,
+        "elpd_loo": elpd_loo,
+    }
+    if all("p_loo" in v for v in loo_rows):
+        p_loo = float(np.sum([float(v["p_loo"]) for v in loo_rows]))
+        if np.isfinite(p_loo):
+            out["p_loo"] = p_loo
+    if all("loo_n_obs" in v for v in loo_rows):
+        loo_n_obs = float(np.sum([float(v["loo_n_obs"]) for v in loo_rows]))
+        if np.isfinite(loo_n_obs):
+            out["loo_n_obs"] = loo_n_obs
+    if all("pareto_k_max" in v for v in loo_rows):
+        kmax = float(np.max([float(v["pareto_k_max"]) for v in loo_rows]))
+        if np.isfinite(kmax):
+            out["pareto_k_max"] = kmax
+    return out
+
+
 def _safe_int(value: Any, *, default: int) -> int:
     """Convert value to int when finite; otherwise return default."""
     try:
@@ -821,7 +899,7 @@ def run_model_recovery(
           ``name``, ``model``, ``estimator``, ``model_kwargs``,
           and ``estimator_kwargs``.
         - ``selection``:
-          Winner rule with ``criterion`` (e.g. loglike/aic/bic/waic),
+          Winner rule with ``criterion`` (e.g. loglike/aic/bic/waic/psis_loo),
           ``tie_break`` (``"first"`` or ``"simpler"``), and ``atol``.
         - ``output``:
           Output behavior (directory, table format, and whether to save
@@ -1266,17 +1344,23 @@ def run_model_recovery(
                             )
                             waic_diag = _extract_waic_from_fit_diagnostics(fit)
                             waic_value = float(waic_diag["waic"]) if waic_diag and "waic" in waic_diag else None
+                            loo_diag = _extract_loo_from_fit_diagnostics(fit)
+                            loo_value = float(loo_diag["looic"]) if loo_diag and "looic" in loo_diag else None
                             score = criterion.score(
                                 ll=ll_summary.ll_total,
                                 k=k_total,
                                 n_obs=ll_summary.n_obs_total,
                                 waic=waic_value,
+                                looic=loo_value,
                             )
                             missing_waic = str(criterion.name).lower() == "waic" and not np.isfinite(float(score))
+                            missing_loo = str(criterion.name).lower() == "psis_loo" and not np.isfinite(float(score))
                             success = bool(getattr(fit, "success", True)) and np.isfinite(score)
                             message = str(getattr(fit, "message", ""))
                             if missing_waic:
                                 message = f"{message} | WAIC unavailable" if message else "WAIC unavailable"
+                            if missing_loo:
+                                message = f"{message} | PSIS-LOO unavailable" if message else "PSIS-LOO unavailable"
                             value = float(getattr(fit, "value", np.nan)) if getattr(fit, "value", None) is not None else np.nan
                             runtime_s = float(time.time() - t0)
 
@@ -1300,6 +1384,8 @@ def run_model_recovery(
                             }
                             if waic_diag is not None:
                                 row.update(waic_diag)
+                            if loo_diag is not None:
+                                row.update(loo_diag)
                             fit_rows.append(row)
                             rep_candidate_rows.append(row)
 

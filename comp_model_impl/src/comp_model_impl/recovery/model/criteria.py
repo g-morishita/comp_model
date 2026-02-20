@@ -17,7 +17,15 @@ class ModelCriterion(Protocol):
 
     name: str
 
-    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
+    def score(
+        self,
+        *,
+        ll: float,
+        k: int,
+        n_obs: int,
+        waic: float | None = None,
+        looic: float | None = None,
+    ) -> float:
         """Compute a scalar model-selection score.
 
         Parameters
@@ -30,6 +38,9 @@ class ModelCriterion(Protocol):
             Number of observations.
         waic : float or None, optional
             WAIC value when available. Ignored by non-WAIC criteria.
+        looic : float or None, optional
+            PSIS-LOO information criterion when available. Ignored by
+            non-PSIS-LOO criteria.
 
         Returns
         -------
@@ -59,7 +70,15 @@ class LogLikelihoodCriterion:
     """
     name: str = "loglike"
 
-    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
+    def score(
+        self,
+        *,
+        ll: float,
+        k: int,
+        n_obs: int,
+        waic: float | None = None,
+        looic: float | None = None,
+    ) -> float:
         """Return log-likelihood score.
 
         Parameters
@@ -99,7 +118,15 @@ class AICCriterion:
     """
     name: str = "aic"
 
-    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
+    def score(
+        self,
+        *,
+        ll: float,
+        k: int,
+        n_obs: int,
+        waic: float | None = None,
+        looic: float | None = None,
+    ) -> float:
         """Compute AIC score.
 
         Parameters
@@ -139,7 +166,15 @@ class BICCriterion:
     """
     name: str = "bic"
 
-    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
+    def score(
+        self,
+        *,
+        ll: float,
+        k: int,
+        n_obs: int,
+        waic: float | None = None,
+        looic: float | None = None,
+    ) -> float:
         """Compute BIC score.
 
         Parameters
@@ -182,7 +217,15 @@ class WAICCriterion:
 
     name: str = "waic"
 
-    def score(self, *, ll: float, k: int, n_obs: int, waic: float | None = None) -> float:
+    def score(
+        self,
+        *,
+        ll: float,
+        k: int,
+        n_obs: int,
+        waic: float | None = None,
+        looic: float | None = None,
+    ) -> float:
         """Return WAIC score from diagnostics.
 
         Parameters
@@ -217,6 +260,45 @@ class WAICCriterion:
         return False
 
 
+@dataclass(frozen=True, slots=True)
+class PSISLOOCriterion:
+    """PSIS-LOO criterion.
+
+    Notes
+    -----
+    Lower LOOIC is better. If PSIS-LOO is unavailable for a fit, the criterion
+    returns ``+inf`` so that fit is never preferred when finite-LOOIC fits
+    exist.
+    """
+
+    name: str = "psis_loo"
+
+    def score(
+        self,
+        *,
+        ll: float,
+        k: int,
+        n_obs: int,
+        waic: float | None = None,
+        looic: float | None = None,
+    ) -> float:
+        """Return LOOIC score from diagnostics."""
+        if looic is None:
+            return float("inf")
+        x = float(looic)
+        return x if math.isfinite(x) else float("inf")
+
+    def higher_is_better(self) -> bool:
+        """Return whether larger scores are better.
+
+        Returns
+        -------
+        bool
+            Always ``False`` for PSIS-LOO.
+        """
+        return False
+
+
 def get_criterion(name: str) -> ModelCriterion:
     """Build a model selection criterion by name.
 
@@ -244,4 +326,8 @@ def get_criterion(name: str) -> ModelCriterion:
         return BICCriterion()
     if n in ("waic",):
         return WAICCriterion()
-    raise ValueError(f"Unknown criterion: {name!r}. Expected one of: loglike, aic, bic, waic.")
+    if n in ("psis_loo", "psis-loo", "psisloo", "loo", "looic"):
+        return PSISLOOCriterion()
+    raise ValueError(
+        f"Unknown criterion: {name!r}. Expected one of: loglike, aic, bic, waic, psis_loo."
+    )

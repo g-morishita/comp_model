@@ -358,6 +358,53 @@ def test_extract_waic_from_fit_diagnostics_missing_returns_none() -> None:
     assert run_mod._extract_waic_from_fit_diagnostics(fit) is None
 
 
+def test_extract_loo_from_fit_diagnostics_top_level() -> None:
+    """PSIS-LOO extraction should read top-level diagnostics directly."""
+    fit = FitResult(
+        diagnostics={
+            "looic": 130.0,
+            "elpd_loo": -65.0,
+            "p_loo": 8.5,
+            "loo_n_obs": 200,
+            "pareto_k_max": 0.42,
+        }
+    )
+    out = run_mod._extract_loo_from_fit_diagnostics(fit)
+    assert out == {
+        "looic": pytest.approx(130.0),
+        "elpd_loo": pytest.approx(-65.0),
+        "p_loo": pytest.approx(8.5),
+        "loo_n_obs": pytest.approx(200.0),
+        "pareto_k_max": pytest.approx(0.42),
+    }
+
+
+def test_extract_loo_from_fit_diagnostics_per_subject_sum() -> None:
+    """PSIS-LOO extraction should aggregate per-subject diagnostics when present."""
+    fit = FitResult(
+        diagnostics={
+            "per_subject": {
+                "s1": {"looic": 30.0, "elpd_loo": -15.0, "p_loo": 1.0, "loo_n_obs": 20, "pareto_k_max": 0.3},
+                "s2": {"looic": 32.0, "elpd_loo": -16.0, "p_loo": 1.2, "loo_n_obs": 25, "pareto_k_max": 0.5},
+            }
+        }
+    )
+    out = run_mod._extract_loo_from_fit_diagnostics(fit)
+    assert out == {
+        "looic": pytest.approx(62.0),
+        "elpd_loo": pytest.approx(-31.0),
+        "p_loo": pytest.approx(2.2),
+        "loo_n_obs": pytest.approx(45.0),
+        "pareto_k_max": pytest.approx(0.5),
+    }
+
+
+def test_extract_loo_from_fit_diagnostics_missing_returns_none() -> None:
+    """PSIS-LOO extraction should return None when diagnostics do not carry LOO."""
+    fit = FitResult(diagnostics={"per_subject": {"s1": {"rhat_max": 1.01}}})
+    assert run_mod._extract_loo_from_fit_diagnostics(fit) is None
+
+
 def test_select_winner_logic() -> None:
     """Winner selection should respect criterion direction and tie strategy."""
     rows = [
@@ -554,6 +601,107 @@ def test_run_model_recovery_uses_waic_criterion(
     assert fit_table.loc["high_waic", "score"] == pytest.approx(130.0)
     assert fit_table.loc["low_waic", "criterion"] == "waic"
     assert fit_table.loc["low_waic", "waic"] == pytest.approx(80.0)
+
+
+def test_run_model_recovery_uses_psis_loo_criterion(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Runner should rank candidates by PSIS-LOO when selected."""
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text("{}", encoding="utf-8")
+    plan = _minimal_plan()
+
+    study = StudyData(subjects=[SubjectData(subject_id="s1", blocks=[])], metadata={})
+    generator = _DummyGenerator(study=study)
+
+    cfg = ModelRecoveryConfig(
+        plan_path=str(plan_path),
+        n_reps=1,
+        seed=99,
+        generating=[
+            GeneratingModelSpec(
+                name="gen",
+                model="gen_model",
+                sampling=SamplingSpec(mode="fixed", fixed={"theta": 0.2}),
+            )
+        ],
+        candidates=[
+            CandidateModelSpec(name="low_looic", model="low_looic_model", estimator="loo_est"),
+            CandidateModelSpec(name="high_looic", model="high_looic_model", estimator="loo_est"),
+        ],
+        selection=SelectionSpec(criterion="psis_loo", tie_break="first"),
+        output=OutputSpec(out_dir=str(tmp_path / "out_loo"), save_format="csv", save_fit_diagnostics=False),
+    )
+
+    class _LOOEstimator(Estimator):
+        def __init__(self, model: ComputationalModel) -> None:
+            self.model = model
+
+        def supports(self, study: StudyData) -> bool:
+            return True
+
+        def fit(
+            self,
+            *,
+            study: StudyData,
+            rng: np.random.Generator,
+        ) -> FitResult:
+            if getattr(self.model, "label", "") == "low_looic_model":
+                looic = 92.0
+            else:
+                looic = 121.0
+            return FitResult(
+                subject_hats={"s1": {"theta": 0.4}},
+                success=True,
+                message="ok",
+                diagnostics={"looic": looic, "elpd_loo": -0.5 * looic, "loo_n_obs": 5},
+            )
+
+    def fake_make_unique_run_dir(base: str) -> Path:
+        out = Path(base) / "run_fixed"
+        out.mkdir(parents=True, exist_ok=True)
+        return out
+
+    def fake_build_model(model: str, *, model_kwargs, registries) -> ComputationalModel:
+        return _TinyModel(label=str(model))
+
+    def fake_build_estimator(estimator: str, *, estimator_kwargs, model, registries) -> Estimator:
+        return _LOOEstimator(model=model)
+
+    def fake_sample_subject_params(*, cfg, model, subject_ids, rng):
+        return ({sid: {"theta": 0.2} for sid in subject_ids}, None)
+
+    def fake_compute_likelihood_summary(*, study, model, subject_params):
+        ll = 20.0 if getattr(model, "label", "") == "high_looic_model" else 5.0
+        return LikelihoodSummary(
+            ll_total=ll,
+            ll_by_subject={"s1": ll},
+            n_obs_total=5,
+            n_obs_by_subject={"s1": 5},
+        )
+
+    monkeypatch.setattr(run_mod, "load_study_plan", lambda _: plan)
+    monkeypatch.setattr(run_mod, "make_unique_run_dir", fake_make_unique_run_dir)
+    monkeypatch.setattr(run_mod, "_plan_summary", lambda _: {"n_subjects": 1})
+    monkeypatch.setattr(run_mod, "build_model_checked", fake_build_model)
+    monkeypatch.setattr(run_mod, "build_estimator_checked", fake_build_estimator)
+    monkeypatch.setattr(run_mod, "compute_likelihood_summary", fake_compute_likelihood_summary)
+
+    import comp_model_impl.recovery.parameter.sampling as sampling_mod
+
+    monkeypatch.setattr(sampling_mod, "sample_subject_params", fake_sample_subject_params)
+
+    out = run_mod.run_model_recovery(config=cfg, generator=generator)  # type: ignore[arg-type]
+
+    assert len(out.winners) == 1
+    assert out.winners.iloc[0]["selected_model"] == "low_looic"
+
+    fit_table = out.fit_table.set_index("candidate_model")
+    assert fit_table.loc["low_looic", "score"] == pytest.approx(92.0)
+    assert fit_table.loc["high_looic", "score"] == pytest.approx(121.0)
+    assert fit_table.loc["low_looic", "criterion"] == "psis_loo"
+    assert fit_table.loc["low_looic", "looic"] == pytest.approx(92.0)
 
 
 def test_run_model_recovery_smoke(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
