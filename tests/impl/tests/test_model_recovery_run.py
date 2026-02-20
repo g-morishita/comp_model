@@ -266,6 +266,20 @@ def test_subject_id_and_params_hat_helpers() -> None:
         "s2": {"a": 2.0},
     }
 
+    fit_mixed = FitResult(subject_hats={"s1": {"theta": 0.4, "theta__A": 0.9}})
+    assert run_mod._params_hat_by_subject(
+        fit_mixed,
+        ["s1"],
+        model=_TinyModel(),
+    ) == {"s1": {"theta": 0.4}}
+
+    fit_unmatched = FitResult(subject_hats={"s1": {"theta__A": 0.9}})
+    assert run_mod._params_hat_by_subject(
+        fit_unmatched,
+        ["s1"],
+        model=_TinyModel(),
+    ) == {"s1": {"theta__A": 0.9}}
+
     fit_empty = FitResult()
     assert run_mod._params_hat_by_subject(fit_empty, ["s1"]) == {}
 
@@ -403,7 +417,7 @@ def test_select_winner_tie_simpler_handles_nan_k_total() -> None:
 
 
 def test_select_winner_all_nonfinite_scores_handles_nan_k_total() -> None:
-    """Winner selection should not crash when all scores and k_total are non-finite."""
+    """All-nonfinite score groups should be marked undetermined."""
     rows = [
         {"candidate_model": "A", "candidate_model_key": "A_key", "score": float("inf"), "k_total": np.nan, "ll_total": -np.inf},
         {"candidate_model": "B", "candidate_model_key": "B_key", "score": float("inf"), "k_total": np.nan, "ll_total": -np.inf},
@@ -414,9 +428,30 @@ def test_select_winner_all_nonfinite_scores_handles_nan_k_total() -> None:
         tie_break="simpler",
         atol=1e-9,
     )
-    assert out["selected_model"] == "A"
+    assert out["selected_model"] is None
+    assert out["selected_model_key"] is None
+    assert out["winner_determined"] is False
+    assert out["selection_status"] == "undetermined_all_scores_nonfinite"
     assert out["winner_k_total"] == -1
     assert out["second_best_model"] is None
+
+
+def test_select_winner_finite_scores_reports_determined_status() -> None:
+    """Finite-score groups should report a determined winner status."""
+    rows = [
+        {"candidate_model": "A", "candidate_model_key": "A_key", "score": 10.0, "k_total": 3, "ll_total": -1.0},
+        {"candidate_model": "B", "candidate_model_key": "B_key", "score": 12.0, "k_total": 2, "ll_total": -1.0},
+    ]
+    out = run_mod._select_winner(
+        rows,
+        criterion=get_criterion("loglike"),
+        tie_break="simpler",
+        atol=1e-9,
+    )
+    assert out["selected_model"] == "B"
+    assert out["winner_determined"] is True
+    assert out["selection_status"] == "ok"
+    assert out["winner_k_total"] == 2
 
 
 def test_run_model_recovery_uses_waic_criterion(

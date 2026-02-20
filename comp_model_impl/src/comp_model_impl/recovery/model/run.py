@@ -247,12 +247,21 @@ def _run_single_fit_config_only(task: _FitTaskSpec) -> _FitTaskResult:
         fit_rng = np.random.default_rng(int(task.fit_seed))
         fit = estimator.fit(study=study, rng=fit_rng)
     
-        subj_hat = _params_hat_by_subject(fit, list(rep_ctx.subject_ids))
+        subj_hat = _params_hat_by_subject(
+            fit,
+            list(rep_ctx.subject_ids),
+            model=cand_model,
+        )
         ll_summary = compute_likelihood_summary(study=study, model=cand_model, subject_params=subj_hat)
         k_per_sub, k_total = _count_free_params(model=cand_model, fit=fit, n_subjects=len(rep_ctx.subject_ids))
         waic_diag = _extract_waic_from_fit_diagnostics(fit)
         waic_value = float(waic_diag["waic"]) if waic_diag and "waic" in waic_diag else None
-        score = criterion.score(ll=ll_summary.ll_total, k=k_total, n_obs=ll_summary.n_obs_total, waic=waic_value)
+        score = criterion.score(
+            ll=ll_summary.ll_total,
+            k=k_total,
+            n_obs=ll_summary.n_obs_total,
+            waic=waic_value,
+        )
         missing_waic = str(criterion.name).lower() == "waic" and not np.isfinite(float(score))
         success = bool(getattr(fit, "success", True)) and np.isfinite(score)
         message = str(getattr(fit, "message", ""))
@@ -473,7 +482,12 @@ def write_model_recovery_manifest(
     )
 
 
-def _params_hat_by_subject(fit: FitResult, subject_ids: list[str]) -> dict[str, dict[str, float]]:
+def _params_hat_by_subject(
+    fit: FitResult,
+    subject_ids: list[str],
+    *,
+    model: ComputationalModel | None = None,
+) -> dict[str, dict[str, float]]:
     """Normalize fit output to a subject-parameter mapping.
 
     Parameters
@@ -483,20 +497,46 @@ def _params_hat_by_subject(fit: FitResult, subject_ids: list[str]) -> dict[str, 
     subject_ids : list[str]
         Expected subject identifiers.
 
+    model : ComputationalModel or None, optional
+        Candidate model. When provided, subject parameter mappings are filtered
+        to schema names when possible.
+
     Returns
     -------
     dict[str, dict[str, float]]
         Per-subject parameter dictionary.
     """
 
+    out: dict[str, dict[str, float]]
     if getattr(fit, "subject_hats", None):
-        return {str(k): dict(v) for k, v in (fit.subject_hats or {}).items()}
-
-    if getattr(fit, "params_hat", None):
+        out = {str(k): dict(v) for k, v in (fit.subject_hats or {}).items()}
+    elif getattr(fit, "params_hat", None):
         p = dict(fit.params_hat or {})
-        return {sid: dict(p) for sid in subject_ids}
+        out = {sid: dict(p) for sid in subject_ids}
+    else:
+        out = {}
 
-    return {}
+    if not out or model is None:
+        return out
+
+    schema = getattr(model, "param_schema", None)
+    names = getattr(schema, "names", None) if schema is not None else None
+    if names is None:
+        return out
+
+    try:
+        allowed = {str(n) for n in names}
+    except Exception:
+        return out
+
+    if not allowed:
+        return out
+
+    filtered: dict[str, dict[str, float]] = {}
+    for sid, params in out.items():
+        kept = {str(k): float(v) for k, v in dict(params).items() if str(k) in allowed}
+        filtered[sid] = kept if kept else dict(params)
+    return filtered
 
 
 def _count_free_params(
@@ -645,12 +685,26 @@ def _select_winner(
     if not rows:
         raise ValueError("No candidate rows to select from.")
 
-    # Filter to finite scores first; if all invalid, keep all.
+    # Filter to finite scores first.
     scores = np.array([r.get("score", np.nan) for r in rows], dtype=float)
     finite_mask = np.isfinite(scores)
+    has_finite = bool(np.any(finite_mask))
+    if not has_finite:
+        # No finite criterion scores means winner selection is undetermined.
+        return {
+            "selected_model": None,
+            "selected_model_key": None,
+            "winner_score": np.nan,
+            "second_best_model": None,
+            "second_best_model_key": None,
+            "second_best_score": np.nan,
+            "delta_to_second": np.nan,
+            "winner_ll_total": np.nan,
+            "winner_k_total": -1,
+            "winner_determined": False,
+            "selection_status": "undetermined_all_scores_nonfinite",
+        }
     cand_rows = [r for r, ok in zip(rows, finite_mask) if ok]
-    if not cand_rows:
-        cand_rows = rows
 
     # Determine best score direction.
     def better(a: float, b: float) -> bool:
@@ -661,8 +715,13 @@ def _select_winner(
         if better(float(r["score"]), float(best["score"])):
             best = r
 
-    # Tie set within atol
-    tie_set = [r for r in cand_rows if np.isfinite(r.get("score", np.nan)) and abs(float(r["score"]) - float(best["score"])) <= float(atol)]
+    # Tie set within atol among finite-score candidates.
+    tie_set = [
+        r
+        for r in cand_rows
+        if np.isfinite(r.get("score", np.nan))
+        and abs(float(r["score"]) - float(best["score"])) <= float(atol)
+    ]
     if tie_set and tie_break.lower() == "simpler":
         # prefer smaller k_total
         best = min(
@@ -708,6 +767,8 @@ def _select_winner(
         "delta_to_second": float(delta),
         "winner_ll_total": float(best.get("ll_total", np.nan)),
         "winner_k_total": _safe_int(best.get("k_total"), default=-1),
+        "winner_determined": True,
+        "selection_status": "ok",
     }
 
 
@@ -1188,7 +1249,11 @@ def run_model_recovery(
                                 cand_model_key = str(cand_spec.model)
 
                             fit: FitResult = estimator.fit(study=study, rng=rep_rng)
-                            subj_hat = _params_hat_by_subject(fit, subject_ids)
+                            subj_hat = _params_hat_by_subject(
+                                fit,
+                                subject_ids,
+                                model=cand_model,
+                            )
                             ll_summary = compute_likelihood_summary(
                                 study=study,
                                 model=cand_model,
