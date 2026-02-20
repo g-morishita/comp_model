@@ -18,6 +18,7 @@ def test_confusion_matrix_happy_path() -> None:
         {
             "generating_model": ["A", "A", "B"],
             "selected_model": ["A", "B", "B"],
+            "winner_determined": [True, True, True],
         }
     )
     cm = confusion_matrix(winners)
@@ -32,8 +33,27 @@ def test_confusion_matrix_empty_and_missing_columns() -> None:
     out = confusion_matrix(pd.DataFrame())
     assert out.empty
 
-    with pytest.raises(ValueError, match="generating_model and selected_model"):
+    with pytest.raises(
+        ValueError,
+        match="generating_model, selected_model, and winner_determined",
+    ):
         _ = confusion_matrix(pd.DataFrame({"generating_model": ["A"]}))
+
+
+def test_confusion_matrix_excludes_undetermined_rows() -> None:
+    """Rows marked as undetermined should be excluded from confusion counts."""
+    winners = pd.DataFrame(
+        {
+            "generating_model": ["A", "A", "B"],
+            "selected_model": ["A", None, "B"],
+            "winner_determined": [True, False, True],
+        }
+    )
+    cm = confusion_matrix(winners)
+
+    assert cm.loc["A", "A"] == 1
+    assert cm.loc["B", "B"] == 1
+    assert float(cm.values.sum()) == pytest.approx(2.0)
 
 
 def test_add_information_criteria_single_group() -> None:

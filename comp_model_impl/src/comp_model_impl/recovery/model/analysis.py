@@ -12,7 +12,7 @@ def confusion_matrix(winners: pd.DataFrame) -> pd.DataFrame:
     ----------
     winners : pandas.DataFrame
         Output table from :func:`run_model_recovery`, containing at least:
-        ``generating_model`` and ``selected_model``.
+        ``generating_model``, ``selected_model``, and ``winner_determined``.
 
     Returns
     -------
@@ -22,12 +22,23 @@ def confusion_matrix(winners: pd.DataFrame) -> pd.DataFrame:
     if winners.empty:
         return pd.DataFrame()
 
-    if "generating_model" not in winners or "selected_model" not in winners:
-        raise ValueError("winners table must contain generating_model and selected_model columns")
+    if (
+        "generating_model" not in winners
+        or "selected_model" not in winners
+        or "winner_determined" not in winners
+    ):
+        raise ValueError(
+            "winners table must contain generating_model, selected_model, and winner_determined columns"
+        )
+
+    # Exclude undetermined winner rows.
+    w = winners.loc[winners["winner_determined"] == True]  # noqa: E712
+    if w.empty:
+        return pd.DataFrame()
 
     return pd.crosstab(
-        index=winners["generating_model"],
-        columns=winners["selected_model"],
+        index=w["generating_model"],
+        columns=w["selected_model"],
         rownames=["generating_model"],
         colnames=["selected_model"],
         dropna=False,
