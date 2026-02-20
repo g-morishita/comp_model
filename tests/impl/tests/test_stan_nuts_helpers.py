@@ -20,6 +20,7 @@ from comp_model_impl.estimators.stan.nuts import (
     _load_yaml,
     _posterior_samples_from_draws,
     _posterior_summary_from_draws,
+    _psis_loo_diagnostics_from_fit,
     _safe_summary_metric,
     _strip_hat,
     _waic_diagnostics_from_fit,
@@ -353,6 +354,34 @@ def test_waic_diagnostics_from_fit_returns_none_when_missing() -> None:
     # monkey patch method to always fail lookup
     fit.stan_variable = lambda name: (_ for _ in ()).throw(KeyError(name))  # type: ignore[method-assign]
     out = _waic_diagnostics_from_fit(fit)
+    assert out is None
+
+
+def test_psis_loo_diagnostics_from_fit_extracts_metrics() -> None:
+    """PSIS-LOO diagnostics should be computed when log_lik draws are available."""
+    fit = _DummyFitWithLogLik(
+        log_lik=np.array(
+            [
+                [-1.0, -2.0, -0.5],
+                [-1.1, -1.9, -0.7],
+                [-0.8, -2.2, -0.6],
+            ],
+            dtype=float,
+        )
+    )
+    out = _psis_loo_diagnostics_from_fit(fit)
+    assert out is not None
+    assert set(out.keys()) == {"looic", "elpd_loo", "p_loo", "loo_n_obs", "pareto_k_max"}
+    assert np.isfinite(float(out["looic"]))
+    assert np.isfinite(float(out["pareto_k_max"]))
+    assert int(out["loo_n_obs"]) == 3
+
+
+def test_psis_loo_diagnostics_from_fit_returns_none_when_missing() -> None:
+    """Missing log_lik should return None rather than raising for PSIS-LOO."""
+    fit = _DummyFitWithLogLik(log_lik=np.array([[-1.0, -2.0]], dtype=float))
+    fit.stan_variable = lambda name: (_ for _ in ()).throw(KeyError(name))  # type: ignore[method-assign]
+    out = _psis_loo_diagnostics_from_fit(fit)
     assert out is None
 
 

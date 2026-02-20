@@ -38,6 +38,7 @@ from ...models.within_subject_shared_delta import (
     ConditionedSharedDeltaModel,
     ConditionedSharedDeltaSocialModel,
 )
+from ...analysis.psis_loo import compute_psis_loo_from_log_lik_draws
 from ...analysis.waic import compute_waic_from_log_lik_draws
 
 from ..within_subject_shared_delta import (
@@ -121,6 +122,39 @@ def _waic_diagnostics_from_fit(fit: Any) -> dict[str, float] | None:
         "elpd_waic": float(s.elpd_waic),
         "p_waic": float(s.p_waic),
         "waic_n_obs": float(s.n_obs),
+    }
+
+
+def _psis_loo_diagnostics_from_fit(fit: Any) -> dict[str, float] | None:
+    """Compute PSIS-LOO diagnostics from CmdStan fit object when ``log_lik`` exists.
+
+    Parameters
+    ----------
+    fit : Any
+        CmdStanPy fit-like object exposing ``stan_variable``.
+
+    Returns
+    -------
+    dict[str, float] or None
+        ``{"looic", "elpd_loo", "p_loo", "loo_n_obs", "pareto_k_max"}``
+        if available, otherwise ``None``.
+    """
+    try:
+        log_lik = fit.stan_variable("log_lik")
+    except Exception:  # noqa: BLE001
+        return None
+
+    try:
+        s = compute_psis_loo_from_log_lik_draws(log_lik)
+    except Exception:  # noqa: BLE001
+        return None
+
+    return {
+        "looic": float(s.looic),
+        "elpd_loo": float(s.elpd_loo),
+        "p_loo": float(s.p_loo),
+        "loo_n_obs": float(s.n_obs),
+        "pareto_k_max": float(s.pareto_k_max),
     }
 
 
@@ -726,6 +760,7 @@ class StanNUTSSubjectwiseEstimator(Estimator):
         subj_hats: dict[str, dict[str, float]] = {}
         per_subject_diags: dict[str, Any] = {}
         waic_terms: list[dict[str, float]] = []
+        loo_terms: list[dict[str, float]] = []
 
         for subj in study.subjects:
             if is_ws:
@@ -808,6 +843,10 @@ class StanNUTSSubjectwiseEstimator(Estimator):
             if waic_diag is not None:
                 subj_diag.update(waic_diag)
                 waic_terms.append(waic_diag)
+            loo_diag = _psis_loo_diagnostics_from_fit(fit)
+            if loo_diag is not None:
+                subj_diag.update(loo_diag)
+                loo_terms.append(loo_diag)
             if is_ws:
                 subj_diag["conditions"] = list(condition_labels or [])
                 subj_diag["baseline_condition"] = baseline_cond_label
@@ -823,6 +862,16 @@ class StanNUTSSubjectwiseEstimator(Estimator):
                     "elpd_waic": float(np.sum([d["elpd_waic"] for d in waic_terms])),
                     "p_waic": float(np.sum([d["p_waic"] for d in waic_terms])),
                     "waic_n_obs": float(np.sum([d["waic_n_obs"] for d in waic_terms])),
+                }
+            )
+        if loo_terms:
+            diags.update(
+                {
+                    "looic": float(np.sum([d["looic"] for d in loo_terms])),
+                    "elpd_loo": float(np.sum([d["elpd_loo"] for d in loo_terms])),
+                    "p_loo": float(np.sum([d["p_loo"] for d in loo_terms])),
+                    "loo_n_obs": float(np.sum([d["loo_n_obs"] for d in loo_terms])),
+                    "pareto_k_max": float(np.max([d["pareto_k_max"] for d in loo_terms])),
                 }
             )
 
@@ -1147,6 +1196,9 @@ class StanHierarchicalNUTSEstimator(Estimator):
         waic_diag = _waic_diagnostics_from_fit(fit)
         if waic_diag is not None:
             diags.update(waic_diag)
+        loo_diag = _psis_loo_diagnostics_from_fit(fit)
+        if loo_diag is not None:
+            diags.update(loo_diag)
         if cond_diags is not None:
             diags.update(cond_diags)
         if self.return_posterior_summary:
