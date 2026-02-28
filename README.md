@@ -42,3 +42,11 @@ Use `comp_model.inference.fit_model` to fit a model directly from:
 - `TrialDecision` rows.
 
 This fitting module is now the shared base used by recovery workflows.
+
+For multi-subject datasets, use:
+- `comp_model.inference.fit_block_data`
+- `comp_model.inference.fit_subject_data`
+- `comp_model.inference.fit_study_data`
+
+These APIs run independent fits per block and aggregate summaries at subject and
+study levels.
