@@ -1,7 +1,7 @@
 """Plugin manifests and auto-discovery registry.
 
-This module provides a lightweight registry for discoverable model and problem
-components. Discovery scans a package for ``PLUGIN_MANIFESTS`` constants.
+This module provides a lightweight registry for discoverable components.
+Discovery scans a package for ``PLUGIN_MANIFESTS`` constants.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Any, Callable, Literal
 
 from comp_model.core.requirements import ComponentRequirements
 
-ComponentKind = Literal["model", "problem"]
+ComponentKind = Literal["model", "problem", "demonstrator"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +22,7 @@ class ComponentManifest:
 
     Parameters
     ----------
-    kind : {"model", "problem"}
+    kind : {"model", "problem", "demonstrator"}
         Component category.
     component_id : str
         Stable identifier unique within ``kind``.
@@ -45,7 +45,7 @@ class ComponentManifest:
 
 
 class PluginRegistry:
-    """Registry for model/problem manifests with package auto-discovery."""
+    """Registry for built-in component manifests with package auto-discovery."""
 
     def __init__(self) -> None:
         self._manifests: dict[tuple[ComponentKind, str], ComponentManifest] = {}
@@ -81,7 +81,7 @@ class PluginRegistry:
 
         Parameters
         ----------
-        kind : {"model", "problem"}
+        kind : {"model", "problem", "demonstrator"}
             Component category.
         component_id : str
             Component identifier.
@@ -104,7 +104,7 @@ class PluginRegistry:
 
         Parameters
         ----------
-        kind : {"model", "problem"} | None, optional
+        kind : {"model", "problem", "demonstrator"} | None, optional
             Optional kind filter.
 
         Returns
@@ -124,7 +124,7 @@ class PluginRegistry:
 
         Parameters
         ----------
-        kind : {"model", "problem"}
+        kind : {"model", "problem", "demonstrator"}
             Component category.
         component_id : str
             Component identifier.
@@ -149,6 +149,11 @@ class PluginRegistry:
         """Create a problem component by ID."""
 
         return self.create("problem", component_id, **kwargs)
+
+    def create_demonstrator(self, component_id: str, **kwargs: Any) -> Any:
+        """Create a demonstrator component by ID."""
+
+        return self.create("demonstrator", component_id, **kwargs)
 
     def discover(self, package_name: str) -> tuple[ComponentManifest, ...]:
         """Discover and register manifests in a package tree.
@@ -186,9 +191,10 @@ class PluginRegistry:
 
 
 def build_default_registry() -> PluginRegistry:
-    """Build a registry with all built-in models and problems discovered."""
+    """Build a registry with all built-in components discovered."""
 
     registry = PluginRegistry()
     registry.discover("comp_model.models")
     registry.discover("comp_model.problems")
+    registry.discover("comp_model.demonstrators")
     return registry
