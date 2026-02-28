@@ -12,6 +12,7 @@ from typing import Sequence
 import numpy as np
 
 from comp_model_v2.core.contracts import DecisionContext
+from comp_model_v2.plugins import ComponentManifest
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,3 +169,39 @@ class StationaryBanditProblem:
         p_reward = self._reward_probabilities[action]
         reward = float(rng.random() < p_reward)
         return BanditOutcome(reward=reward, reward_probability=p_reward)
+
+
+def create_stationary_bandit_problem(
+    *,
+    reward_probabilities: Sequence[float],
+    action_schedule: Sequence[Sequence[int]] | None = None,
+) -> StationaryBanditProblem:
+    """Factory used by plugin discovery.
+
+    Parameters
+    ----------
+    reward_probabilities : Sequence[float]
+        Bernoulli reward probabilities for each arm.
+    action_schedule : Sequence[Sequence[int]] | None, optional
+        Optional per-trial available action schedule.
+
+    Returns
+    -------
+    StationaryBanditProblem
+        Configured problem instance.
+    """
+
+    return StationaryBanditProblem(
+        reward_probabilities=reward_probabilities,
+        action_schedule=action_schedule,
+    )
+
+
+PLUGIN_MANIFESTS = [
+    ComponentManifest(
+        kind="problem",
+        component_id="stationary_bandit",
+        factory=create_stationary_bandit_problem,
+        description="Stationary Bernoulli multi-armed bandit",
+    )
+]

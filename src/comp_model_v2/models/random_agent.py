@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from comp_model_v2.core.contracts import DecisionContext
+from comp_model_v2.plugins import ComponentManifest
 
 
 class RandomAgent:
@@ -71,3 +72,24 @@ class RandomAgent:
             Unused.
         """
 
+
+def create_random_agent() -> RandomAgent:
+    """Factory used by plugin discovery.
+
+    Returns
+    -------
+    RandomAgent
+        Uniform-random baseline model.
+    """
+
+    return RandomAgent()
+
+
+PLUGIN_MANIFESTS = [
+    ComponentManifest(
+        kind="model",
+        component_id="random_agent",
+        factory=create_random_agent,
+        description="Uniform random baseline model",
+    )
+]

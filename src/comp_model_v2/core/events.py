@@ -1,7 +1,7 @@
 """Canonical event schema for simulation and replay.
 
-The event schema is intentionally small and explicit. Every trial emits a
-fixed phase sequence so generated traces are easy to validate and replay.
+The event schema is intentionally explicit. Every trial is represented by an
+ordered phase sequence so generated traces can be validated and replayed.
 """
 
 from __future__ import annotations
@@ -30,6 +30,14 @@ class EventPhase(str, Enum):
     DECISION = "decision"
     OUTCOME = "outcome"
     UPDATE = "update"
+
+
+DEFAULT_TRIAL_PHASE_SEQUENCE: tuple[EventPhase, ...] = (
+    EventPhase.OBSERVATION,
+    EventPhase.DECISION,
+    EventPhase.OUTCOME,
+    EventPhase.UPDATE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,3 +91,70 @@ class EpisodeTrace:
         """
 
         return [event for event in self.events if event.trial_index == trial_index]
+
+
+def group_events_by_trial(trace: EpisodeTrace) -> dict[int, list[SimulationEvent]]:
+    """Group events by trial index while preserving event order.
+
+    Parameters
+    ----------
+    trace : EpisodeTrace
+        Episode trace to group.
+
+    Returns
+    -------
+    dict[int, list[SimulationEvent]]
+        Mapping from trial index to event list.
+    """
+
+    grouped: dict[int, list[SimulationEvent]] = {}
+    for event in trace.events:
+        grouped.setdefault(event.trial_index, []).append(event)
+    return grouped
+
+
+def validate_trace(
+    trace: EpisodeTrace,
+    *,
+    expected_phase_sequence: tuple[EventPhase, ...] = DEFAULT_TRIAL_PHASE_SEQUENCE,
+) -> None:
+    """Validate that an episode trace follows canonical trial semantics.
+
+    Parameters
+    ----------
+    trace : EpisodeTrace
+        Trace to validate.
+    expected_phase_sequence : tuple[EventPhase, ...], optional
+        Per-trial phase sequence required by the consumer.
+
+    Raises
+    ------
+    ValueError
+        If trial indices are not monotonic/contiguous or phase order is wrong.
+    """
+
+    last_trial = -1
+    for event in trace.events:
+        if event.trial_index < last_trial:
+            raise ValueError("trace trial indices must be non-decreasing")
+        last_trial = event.trial_index
+
+    grouped = group_events_by_trial(trace)
+    if not grouped:
+        return
+
+    actual_indices = sorted(grouped)
+    expected_indices = list(range(len(actual_indices)))
+    if actual_indices != expected_indices:
+        raise ValueError(
+            "trace trial indices must be contiguous starting at 0; "
+            f"got {actual_indices!r}"
+        )
+
+    for trial_index in expected_indices:
+        phases = tuple(event.phase for event in grouped[trial_index])
+        if phases != expected_phase_sequence:
+            raise ValueError(
+                "invalid phase sequence for trial "
+                f"{trial_index}: got {phases!r}, expected {expected_phase_sequence!r}"
+            )

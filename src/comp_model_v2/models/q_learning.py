@@ -13,6 +13,8 @@ from typing import Any, Callable
 import numpy as np
 
 from comp_model_v2.core.contracts import DecisionContext
+from comp_model_v2.core.requirements import ComponentRequirements
+from comp_model_v2.plugins import ComponentManifest
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,3 +193,41 @@ def _default_reward_getter(outcome: Any) -> float:
     raise TypeError(
         "Outcome must expose a reward via attribute 'reward' or mapping key 'reward'"
     )
+
+
+def create_q_learning_agent(
+    *,
+    alpha: float = 0.2,
+    beta: float = 3.0,
+    initial_value: float = 0.0,
+) -> QLearningAgent:
+    """Factory used by plugin discovery.
+
+    Parameters
+    ----------
+    alpha : float, optional
+        Learning rate.
+    beta : float, optional
+        Inverse-temperature.
+    initial_value : float, optional
+        Initial value for unseen actions.
+
+    Returns
+    -------
+    QLearningAgent
+        Configured model instance.
+    """
+
+    config = QLearningConfig(alpha=alpha, beta=beta, initial_value=initial_value)
+    return QLearningAgent(config=config)
+
+
+PLUGIN_MANIFESTS = [
+    ComponentManifest(
+        kind="model",
+        component_id="q_learning",
+        factory=create_q_learning_agent,
+        description="Tabular Q-learning with softmax policy",
+        requirements=ComponentRequirements(required_outcome_fields=("reward",)),
+    )
+]

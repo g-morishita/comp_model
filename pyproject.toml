@@ -9,7 +9,7 @@ description = "Clean-slate decision modeling library"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "comp_model contributors" }]
+authors = [{ name = "Gota Morishita" }]
 dependencies = [
   "numpy>=1.26",
 ]

@@ -8,12 +8,12 @@ for downstream analysis and inference.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
 
 import numpy as np
 
 from comp_model_v2.core.contracts import AgentModel, DecisionContext, DecisionProblem
 from comp_model_v2.core.events import EpisodeTrace, EventPhase, SimulationEvent
+from comp_model_v2.runtime.probabilities import normalize_distribution, sample_action
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +62,8 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
 
     Notes
     -----
-    Distribution normalization is centralized here so model implementations can
+    Distribution normalization is centralized in
+    :mod:`comp_model_v2.runtime.probabilities` so model implementations can
     return unnormalized positive weights.
     """
 
@@ -89,8 +90,8 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
         )
 
         raw_distribution = model.action_distribution(observation, context=context)
-        distribution = _normalize_distribution(raw_distribution, available_actions)
-        action = _sample_action(distribution, rng)
+        distribution = normalize_distribution(raw_distribution, available_actions)
+        action = sample_action(distribution, rng)
         events.append(
             SimulationEvent(
                 trial_index=trial_index,
@@ -122,53 +123,3 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
         )
 
     return EpisodeTrace(events=events)
-
-
-def _normalize_distribution(
-    raw_distribution: Mapping[object, float],
-    available_actions: tuple[object, ...],
-) -> dict[object, float]:
-    """Validate and normalize action probabilities.
-
-    Parameters
-    ----------
-    raw_distribution : Mapping[object, float]
-        Model-emitted action weights.
-    available_actions : tuple[object, ...]
-        Legal actions for the trial.
-
-    Returns
-    -------
-    dict[object, float]
-        Normalized probabilities over ``available_actions``.
-
-    Raises
-    ------
-    ValueError
-        If the model emits invalid keys/values or total probability is zero.
-    """
-
-    unknown_actions = set(raw_distribution.keys()) - set(available_actions)
-    if unknown_actions:
-        raise ValueError(f"distribution contains unknown actions: {sorted(unknown_actions)!r}")
-
-    weights: dict[object, float] = {}
-    for action in available_actions:
-        value = float(raw_distribution.get(action, 0.0))
-        if value < 0:
-            raise ValueError(f"distribution contains negative weight for action {action!r}")
-        weights[action] = value
-
-    total = float(sum(weights.values()))
-    if total <= 0:
-        raise ValueError("distribution sum must be > 0 for available actions")
-
-    return {action: value / total for action, value in weights.items()}
-
-
-def _sample_action(distribution: Mapping[object, float], rng: np.random.Generator) -> object:
-    """Sample one action from a validated distribution."""
-
-    actions = tuple(distribution.keys())
-    probs = np.asarray(tuple(distribution.values()), dtype=float)
-    return actions[int(rng.choice(len(actions), p=probs))]
