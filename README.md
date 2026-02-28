@@ -17,8 +17,5 @@ Canonical model names are descriptive and mechanism-first (for example,
 `AsocialQValueSoftmaxModel` and
 `AsocialStateQValueSoftmaxPerseverationModel`).
 
-Deprecated aliases from v1 naming (for example, `QLearningAgent`, `QRL`,
-`RandomAgent`, and legacy component IDs like `q_learning`) remain available
-only for migration and emit `DeprecationWarning`.
-
-These aliases are scheduled for removal in **v0.3.0**.
+Legacy alias names and IDs were removed; use canonical model classes and
+canonical plugin component IDs only.

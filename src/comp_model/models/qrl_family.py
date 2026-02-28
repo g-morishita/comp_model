@@ -1,35 +1,16 @@
-"""Asocial state-indexed Q-value model family.
-
-This module defines canonical asocial model names and keeps v1-style class/ID
-aliases as deprecations during migration.
-"""
+"""Asocial state-indexed Q-value model family."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
-import warnings
 
 import numpy as np
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.requirements import ComponentRequirements
 from comp_model.plugins import ComponentManifest
-
-
-# TODO(v0.3.0): Remove deprecated alias names and IDs.
-def _warn_deprecated_alias(old_name: str, new_name: str) -> None:
-    """Emit a standardized deprecation warning for model aliases."""
-
-    warnings.warn(
-        (
-            f"{old_name} is deprecated and will be removed in v0.3.0. "
-            f"Use {new_name} instead."
-        ),
-        DeprecationWarning,
-        stacklevel=3,
-    )
 
 
 @dataclass(slots=True)
@@ -287,42 +268,6 @@ class AsocialStateQValueSoftmaxSplitAlphaModel:
         return dict(self._q_values.get(int(state), {}))
 
 
-class QRL(AsocialStateQValueSoftmaxModel):
-    """Deprecated alias for :class:`AsocialStateQValueSoftmaxModel`."""
-
-    def __init__(self, alpha: float = 0.2, beta: float = 5.0, initial_value: float = 0.0) -> None:
-        _warn_deprecated_alias("QRL", "AsocialStateQValueSoftmaxModel")
-        super().__init__(alpha=alpha, beta=beta, initial_value=initial_value)
-
-
-class QRL_Stay(AsocialStateQValueSoftmaxPerseverationModel):
-    """Deprecated alias for :class:`AsocialStateQValueSoftmaxPerseverationModel`."""
-
-    def __init__(
-        self,
-        alpha: float = 0.2,
-        beta: float = 5.0,
-        kappa: float = 1.0,
-        initial_value: float = 0.0,
-    ) -> None:
-        _warn_deprecated_alias("QRL_Stay", "AsocialStateQValueSoftmaxPerseverationModel")
-        super().__init__(alpha=alpha, beta=beta, kappa=kappa, initial_value=initial_value)
-
-
-class UnidentifiableQRL(AsocialStateQValueSoftmaxSplitAlphaModel):
-    """Deprecated alias for :class:`AsocialStateQValueSoftmaxSplitAlphaModel`."""
-
-    def __init__(
-        self,
-        alpha_1: float = 0.2,
-        alpha_2: float = 0.2,
-        beta: float = 5.0,
-        initial_value: float = 0.0,
-    ) -> None:
-        _warn_deprecated_alias("UnidentifiableQRL", "AsocialStateQValueSoftmaxSplitAlphaModel")
-        super().__init__(alpha_1=alpha_1, alpha_2=alpha_2, beta=beta, initial_value=initial_value)
-
-
 def _extract_state(observation: Any) -> int:
     """Extract latent state index from observation payload.
 
@@ -458,60 +403,6 @@ def create_asocial_state_q_value_softmax_split_alpha_model(
     )
 
 
-def create_qrl(
-    *,
-    alpha: float = 0.2,
-    beta: float = 5.0,
-    initial_value: float = 0.0,
-) -> AsocialStateQValueSoftmaxModel:
-    """Deprecated factory alias for :func:`create_asocial_state_q_value_softmax_model`."""
-
-    _warn_deprecated_alias("create_qrl", "create_asocial_state_q_value_softmax_model")
-    return create_asocial_state_q_value_softmax_model(alpha=alpha, beta=beta, initial_value=initial_value)
-
-
-def create_qrl_stay(
-    *,
-    alpha: float = 0.2,
-    beta: float = 5.0,
-    kappa: float = 1.0,
-    initial_value: float = 0.0,
-) -> AsocialStateQValueSoftmaxPerseverationModel:
-    """Deprecated alias for :func:`create_asocial_state_q_value_softmax_perseveration_model`."""
-
-    _warn_deprecated_alias(
-        "create_qrl_stay",
-        "create_asocial_state_q_value_softmax_perseveration_model",
-    )
-    return create_asocial_state_q_value_softmax_perseveration_model(
-        alpha=alpha,
-        beta=beta,
-        kappa=kappa,
-        initial_value=initial_value,
-    )
-
-
-def create_unidentifiable_qrl(
-    *,
-    alpha_1: float = 0.2,
-    alpha_2: float = 0.2,
-    beta: float = 5.0,
-    initial_value: float = 0.0,
-) -> AsocialStateQValueSoftmaxSplitAlphaModel:
-    """Deprecated alias for :func:`create_asocial_state_q_value_softmax_split_alpha_model`."""
-
-    _warn_deprecated_alias(
-        "create_unidentifiable_qrl",
-        "create_asocial_state_q_value_softmax_split_alpha_model",
-    )
-    return create_asocial_state_q_value_softmax_split_alpha_model(
-        alpha_1=alpha_1,
-        alpha_2=alpha_2,
-        beta=beta,
-        initial_value=initial_value,
-    )
-
-
 PLUGIN_MANIFESTS = [
     ComponentManifest(
         kind="model",
@@ -532,27 +423,6 @@ PLUGIN_MANIFESTS = [
         component_id="asocial_state_q_value_softmax_split_alpha",
         factory=create_asocial_state_q_value_softmax_split_alpha_model,
         description="Asocial state-indexed split-alpha non-identifiable Q-learning",
-        requirements=ComponentRequirements(required_outcome_fields=("reward",)),
-    ),
-    ComponentManifest(
-        kind="model",
-        component_id="qrl",
-        factory=create_qrl,
-        description="DEPRECATED alias of asocial_state_q_value_softmax",
-        requirements=ComponentRequirements(required_outcome_fields=("reward",)),
-    ),
-    ComponentManifest(
-        kind="model",
-        component_id="qrl_stay",
-        factory=create_qrl_stay,
-        description="DEPRECATED alias of asocial_state_q_value_softmax_perseveration",
-        requirements=ComponentRequirements(required_outcome_fields=("reward",)),
-    ),
-    ComponentManifest(
-        kind="model",
-        component_id="unidentifiable_qrl",
-        factory=create_unidentifiable_qrl,
-        description="DEPRECATED alias of asocial_state_q_value_softmax_split_alpha",
         requirements=ComponentRequirements(required_outcome_fields=("reward",)),
     ),
 ]

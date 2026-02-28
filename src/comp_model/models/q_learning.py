@@ -1,35 +1,16 @@
-"""Asocial Q-value softmax model.
-
-This module defines the canonical asocial Q-learning implementation and
-backward-compatible deprecated aliases.
-"""
+"""Asocial Q-value softmax model."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Callable
-import warnings
 
 import numpy as np
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.requirements import ComponentRequirements
 from comp_model.plugins import ComponentManifest
-
-
-# TODO(v0.3.0): Remove deprecated alias names and IDs.
-def _warn_deprecated_alias(old_name: str, new_name: str) -> None:
-    """Emit a standardized deprecation warning for model aliases."""
-
-    warnings.warn(
-        (
-            f"{old_name} is deprecated and will be removed in v0.3.0. "
-            f"Use {new_name} instead."
-        ),
-        DeprecationWarning,
-        stacklevel=3,
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,10 +42,6 @@ class AsocialQValueSoftmaxConfig:
             raise ValueError("alpha must be in [0, 1]")
         if self.beta < 0.0:
             raise ValueError("beta must be >= 0")
-
-
-# Backward compatibility alias (kept for transition window).
-QLearningConfig = AsocialQValueSoftmaxConfig
 
 
 class AsocialQValueSoftmaxModel:
@@ -185,18 +162,6 @@ class AsocialQValueSoftmaxModel:
         return dict(self._q_values)
 
 
-class QLearningAgent(AsocialQValueSoftmaxModel):
-    """Deprecated alias for :class:`AsocialQValueSoftmaxModel`."""
-
-    def __init__(
-        self,
-        config: AsocialQValueSoftmaxConfig | None = None,
-        reward_getter: Callable[[Any], float] | None = None,
-    ) -> None:
-        _warn_deprecated_alias("QLearningAgent", "AsocialQValueSoftmaxModel")
-        super().__init__(config=config, reward_getter=reward_getter)
-
-
 def _default_reward_getter(outcome: Any) -> float:
     """Extract scalar reward from outcome payload.
 
@@ -255,18 +220,6 @@ def create_asocial_q_value_softmax_model(
     return AsocialQValueSoftmaxModel(config=config)
 
 
-def create_q_learning_agent(
-    *,
-    alpha: float = 0.2,
-    beta: float = 3.0,
-    initial_value: float = 0.0,
-) -> AsocialQValueSoftmaxModel:
-    """Deprecated factory alias for :func:`create_asocial_q_value_softmax_model`."""
-
-    _warn_deprecated_alias("create_q_learning_agent", "create_asocial_q_value_softmax_model")
-    return create_asocial_q_value_softmax_model(alpha=alpha, beta=beta, initial_value=initial_value)
-
-
 PLUGIN_MANIFESTS = [
     ComponentManifest(
         kind="model",
@@ -274,12 +227,5 @@ PLUGIN_MANIFESTS = [
         factory=create_asocial_q_value_softmax_model,
         description="Asocial tabular Q-learning with softmax policy",
         requirements=ComponentRequirements(required_outcome_fields=("reward",)),
-    ),
-    ComponentManifest(
-        kind="model",
-        component_id="q_learning",
-        factory=create_q_learning_agent,
-        description="DEPRECATED alias of asocial_q_value_softmax",
-        requirements=ComponentRequirements(required_outcome_fields=("reward",)),
-    ),
+    )
 ]

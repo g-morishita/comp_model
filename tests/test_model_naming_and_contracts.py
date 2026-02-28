@@ -9,38 +9,30 @@ from comp_model.models import (
     AsocialStateQValueSoftmaxModel,
     AsocialStateQValueSoftmaxPerseverationModel,
     AsocialStateQValueSoftmaxSplitAlphaModel,
-    QLearningAgent,
-    QRL,
-    QRL_Stay,
-    RandomAgent,
-    UnidentifiableQRL,
     UniformRandomPolicyModel,
 )
+from comp_model.plugins import build_default_registry
 
 
-def test_deprecated_class_aliases_emit_warning_and_still_work() -> None:
-    """Legacy class names should remain functional with deprecation warnings."""
+def test_legacy_component_ids_removed() -> None:
+    """Legacy model IDs should no longer resolve in the plugin registry."""
 
-    with pytest.warns(DeprecationWarning, match="QLearningAgent"):
-        legacy_q = QLearningAgent()
+    registry = build_default_registry()
 
-    with pytest.warns(DeprecationWarning, match="RandomAgent"):
-        legacy_random = RandomAgent()
+    with pytest.raises(KeyError):
+        registry.create_model("q_learning")
 
-    with pytest.warns(DeprecationWarning, match="QRL"):
-        legacy_qrl = QRL()
+    with pytest.raises(KeyError):
+        registry.create_model("random_agent")
 
-    with pytest.warns(DeprecationWarning, match="QRL_Stay"):
-        legacy_qrl_stay = QRL_Stay()
+    with pytest.raises(KeyError):
+        registry.create_model("qrl")
 
-    with pytest.warns(DeprecationWarning, match="UnidentifiableQRL"):
-        legacy_split = UnidentifiableQRL()
+    with pytest.raises(KeyError):
+        registry.create_model("qrl_stay")
 
-    assert isinstance(legacy_q, AsocialQValueSoftmaxModel)
-    assert isinstance(legacy_random, UniformRandomPolicyModel)
-    assert isinstance(legacy_qrl, AsocialStateQValueSoftmaxModel)
-    assert isinstance(legacy_qrl_stay, AsocialStateQValueSoftmaxPerseverationModel)
-    assert isinstance(legacy_split, AsocialStateQValueSoftmaxSplitAlphaModel)
+    with pytest.raises(KeyError):
+        registry.create_model("unidentifiable_qrl")
 
 
 def test_canonical_model_docstrings_share_contract_sections() -> None:

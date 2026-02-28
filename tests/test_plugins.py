@@ -58,6 +58,12 @@ def test_default_registry_discovers_builtin_components() -> None:
         "event_trace_social_post_outcome_generator",
     }.issubset(generator_ids)
 
+    assert "q_learning" not in model_ids
+    assert "random_agent" not in model_ids
+    assert "qrl" not in model_ids
+    assert "qrl_stay" not in model_ids
+    assert "unidentifiable_qrl" not in model_ids
+
 
 def test_registry_creates_components_from_factories() -> None:
     """Registry factories should construct usable instances."""
@@ -94,23 +100,19 @@ def test_registry_creates_components_from_factories() -> None:
     assert isinstance(post_outcome_generator, EventTraceSocialPostOutcomeGenerator)
 
 
-def test_registry_deprecated_model_ids_emit_warning() -> None:
-    """Deprecated model IDs should still resolve while warning callers."""
+def test_registry_rejects_removed_legacy_model_ids() -> None:
+    """Removed legacy IDs should fail with KeyError."""
 
     registry = build_default_registry()
 
-    with pytest.warns(DeprecationWarning, match="q_learning"):
-        legacy_q = registry.create_model("q_learning")
+    with pytest.raises(KeyError):
+        registry.create_model("q_learning")
 
-    with pytest.warns(DeprecationWarning, match="random_agent"):
-        legacy_random = registry.create_model("random_agent")
+    with pytest.raises(KeyError):
+        registry.create_model("random_agent")
 
-    with pytest.warns(DeprecationWarning, match="qrl"):
-        legacy_qrl = registry.create_model("qrl")
-
-    assert isinstance(legacy_q, AsocialQValueSoftmaxModel)
-    assert isinstance(legacy_random, UniformRandomPolicyModel)
-    assert isinstance(legacy_qrl, AsocialStateQValueSoftmaxModel)
+    with pytest.raises(KeyError):
+        registry.create_model("qrl")
 
 
 def test_discovery_is_idempotent_for_same_package() -> None:
