@@ -38,8 +38,8 @@ def test_v1_parity_entries_cover_expected_legacy_model_names() -> None:
     assert len(observed_legacy_names) == len(V1_MODEL_PARITY)
 
 
-def test_implemented_parity_entries_resolve_to_registered_model_ids_and_classes() -> None:
-    """Implemented mappings should point to existing model classes and plugin IDs."""
+def test_implemented_parity_entries_resolve_to_classes_and_optional_plugin_ids() -> None:
+    """Implemented mappings should resolve to classes and plugin IDs when provided."""
 
     registry = build_default_registry()
     available_model_ids = {manifest.component_id for manifest in registry.list("model")}
@@ -48,21 +48,14 @@ def test_implemented_parity_entries_resolve_to_registered_model_ids_and_classes(
         if entry.status != "implemented":
             continue
 
-        assert entry.canonical_component_id is not None
         assert entry.canonical_class_name is not None
-        assert entry.canonical_component_id in available_model_ids
         assert hasattr(models_pkg, entry.canonical_class_name)
 
+        if entry.canonical_component_id is not None:
+            assert entry.canonical_component_id in available_model_ids
 
-def test_planned_parity_entries_are_explicitly_marked_unimplemented() -> None:
-    """Planned mappings should not expose canonical IDs/classes yet."""
 
-    planned = [entry for entry in V1_MODEL_PARITY if entry.status == "planned"]
+def test_no_planned_entries_remain_in_v1_model_parity_matrix() -> None:
+    """All declared v1 model families should now be mapped as implemented."""
 
-    assert {entry.legacy_name for entry in planned} == {
-        "ConditionedSharedDeltaModel",
-        "ConditionedSharedDeltaSocialModel",
-    }
-    for entry in planned:
-        assert entry.canonical_component_id is None
-        assert entry.canonical_class_name is None
+    assert [entry for entry in V1_MODEL_PARITY if entry.status == "planned"] == []

@@ -18,6 +18,13 @@ from .random_agent import (
     UniformRandomPolicyModel,
     create_uniform_random_policy_model,
 )
+from .shared_delta import (
+    ConditionedSharedDeltaModel,
+    ConditionedSharedDeltaSocialModel,
+    SharedDeltaParameterSpec,
+    create_conditioned_shared_delta_model,
+    create_conditioned_shared_delta_social_model,
+)
 from .social_observed_outcome_models import (
     SocialObservedOutcomeQModel,
     SocialObservedOutcomeQPerseverationModel,
@@ -61,7 +68,10 @@ __all__ = [
     "AsocialStateQValueSoftmaxModel",
     "AsocialStateQValueSoftmaxPerseverationModel",
     "AsocialStateQValueSoftmaxSplitAlphaModel",
+    "ConditionedSharedDeltaModel",
+    "ConditionedSharedDeltaSocialModel",
     "LegacyModelParityEntry",
+    "SharedDeltaParameterSpec",
     "SocialConstantDemoBiasObservedOutcomeQPerseverationModel",
     "SocialDirichletReliabilityGatedDemoBiasObservedOutcomeQPerseverationModel",
     "SocialObservedOutcomePolicyIndependentMixPerseverationModel",
@@ -82,6 +92,8 @@ __all__ = [
     "create_asocial_state_q_value_softmax_model",
     "create_asocial_state_q_value_softmax_perseveration_model",
     "create_asocial_state_q_value_softmax_split_alpha_model",
+    "create_conditioned_shared_delta_model",
+    "create_conditioned_shared_delta_social_model",
     "create_social_constant_demo_bias_observed_outcome_q_perseveration_model",
     "create_social_dirichlet_reliability_gated_demo_bias_observed_outcome_q_perseveration_model",
     "create_social_observed_outcome_policy_independent_mix_perseveration_model",

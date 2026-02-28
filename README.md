@@ -28,9 +28,8 @@ canonical class names and plugin IDs.
 
 Current status:
 - Implemented: all base asocial/social model families from v1.
-- Planned (explicit blockers):
-1. `ConditionedSharedDeltaModel`
-2. `ConditionedSharedDeltaSocialModel`
+- Implemented: within-subject shared+delta wrappers (`ConditionedSharedDeltaModel`, `ConditionedSharedDeltaSocialModel`).
 
-These two within-subject shared+delta wrappers are tracked as planned entries
-and guarded by tests until implemented.
+For wrapper models, canonical class mappings are provided in the parity matrix.
+They are intentionally not registered as zero-argument plugin components because
+wrapper construction requires explicit base-model factory and condition metadata.

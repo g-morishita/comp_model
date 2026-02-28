@@ -163,16 +163,16 @@ V1_MODEL_PARITY: tuple[LegacyModelParityEntry, ...] = (
     LegacyModelParityEntry(
         legacy_name="ConditionedSharedDeltaModel",
         canonical_component_id=None,
-        canonical_class_name=None,
-        status="planned",
-        notes="Planned: generic within-subject shared+delta parameter-tying wrapper.",
+        canonical_class_name="ConditionedSharedDeltaModel",
+        status="implemented",
+        notes="Generic within-subject shared+delta parameter-tying wrapper.",
     ),
     LegacyModelParityEntry(
         legacy_name="ConditionedSharedDeltaSocialModel",
         canonical_component_id=None,
-        canonical_class_name=None,
-        status="planned",
-        notes="Planned: social within-subject shared+delta parameter-tying wrapper.",
+        canonical_class_name="ConditionedSharedDeltaSocialModel",
+        status="implemented",
+        notes="Social within-subject shared+delta parameter-tying wrapper.",
     ),
 )
 
