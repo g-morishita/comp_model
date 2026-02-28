@@ -10,6 +10,7 @@ from comp_model.core.contracts import AgentModel
 from comp_model.core.data import BlockData, TrialDecision, get_block_trace, trace_from_trial_decisions
 from comp_model.core.events import EpisodeTrace, validate_trace
 from comp_model.core.requirements import ComponentRequirements
+from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .likelihood import ActionReplayLikelihood, LikelihoodProgram
 from .mle import (
@@ -222,10 +223,67 @@ def fit_model(
     return fit_function(trace)
 
 
+def fit_model_from_registry(
+    data: EpisodeTrace | BlockData | Sequence[TrialDecision],
+    *,
+    model_component_id: str,
+    fit_spec: FitSpec,
+    model_kwargs: Mapping[str, Any] | None = None,
+    registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> MLEFitResult:
+    """Fit one registered model component to a dataset.
+
+    Parameters
+    ----------
+    data : EpisodeTrace | BlockData | Sequence[TrialDecision]
+        Input dataset to fit.
+    model_component_id : str
+        Model component ID in the plugin registry.
+    fit_spec : FitSpec
+        Estimator specification.
+    model_kwargs : Mapping[str, Any] | None, optional
+        Fixed model kwargs applied for every candidate before parameter updates.
+    registry : PluginRegistry | None, optional
+        Optional plugin registry instance. Defaults to built-in registry.
+    likelihood_program : LikelihoodProgram | None, optional
+        Likelihood evaluator. Defaults to :class:`ActionReplayLikelihood`.
+
+    Returns
+    -------
+    MLEFitResult
+        Fitting result.
+    """
+
+    reg = registry if registry is not None else build_default_registry()
+    manifest = reg.get("model", model_component_id)
+    fixed_kwargs = dict(model_kwargs) if model_kwargs is not None else {}
+
+    return fit_model(
+        data,
+        model_factory=lambda params: reg.create_model(
+            model_component_id,
+            **_merge_kwargs(fixed_kwargs, params),
+        ),
+        fit_spec=fit_spec,
+        requirements=manifest.requirements,
+        likelihood_program=likelihood_program,
+    )
+
+
+def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
+    """Merge fixed kwargs and per-candidate parameter kwargs."""
+
+    merged = dict(base)
+    merged.update(override)
+    return merged
+
+
 __all__ = [
     "EstimatorType",
     "FitSpec",
     "build_model_fit_function",
     "coerce_episode_trace",
     "fit_model",
+    "fit_model_from_registry",
 ]

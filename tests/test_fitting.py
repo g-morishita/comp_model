@@ -123,3 +123,29 @@ def test_fit_model_rejects_missing_estimator_inputs() -> None:
             model_factory=lambda params: FixedChoiceModel(p_right=params.get("p_right", 0.5)),
             fit_spec=FitSpec(estimator_type="grid_search"),
         )
+
+
+def test_fit_model_from_registry_component_id() -> None:
+    """fit_model_from_registry should fit built-in model components directly."""
+
+    from comp_model.inference import fit_model_from_registry
+
+    generating_model = FixedChoiceModel(p_right=0.8)
+    problem = StationaryBanditProblem([0.5, 0.5])
+    trace = run_episode(problem=problem, model=generating_model, config=SimulationConfig(n_trials=100, seed=10))
+
+    fit = fit_model_from_registry(
+        trace,
+        model_component_id="asocial_state_q_value_softmax",
+        fit_spec=FitSpec(
+            estimator_type="grid_search",
+            parameter_grid={
+                "alpha": [0.2],
+                "beta": [0.0, 5.0],
+                "initial_value": [0.0],
+            },
+        ),
+    )
+
+    assert fit.best.params["beta"] in {0.0, 5.0}
+    assert "alpha" in fit.best.params
