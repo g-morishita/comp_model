@@ -8,7 +8,9 @@ from .mle import (
     MLEFitResult,
     ScipyMinimizeDiagnostics,
     ScipyMinimizeMLEEstimator,
+    TransformedScipyMinimizeMLEEstimator,
 )
+from .transforms import ParameterTransform, identity_transform, positive_log_transform, unit_interval_logit_transform
 
 __all__ = [
     "ActionReplayLikelihood",
@@ -17,8 +19,13 @@ __all__ = [
     "LikelihoodProgram",
     "MLECandidate",
     "MLEFitResult",
+    "ParameterTransform",
     "ScipyMinimizeDiagnostics",
     "ScipyMinimizeMLEEstimator",
+    "TransformedScipyMinimizeMLEEstimator",
     "assert_trace_compatible",
     "check_trace_compatibility",
+    "identity_transform",
+    "positive_log_transform",
+    "unit_interval_logit_transform",
 ]

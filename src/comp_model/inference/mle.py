@@ -14,6 +14,7 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.core.requirements import ComponentRequirements
 from comp_model.inference.compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
 from comp_model.inference.likelihood import LikelihoodProgram
+from comp_model.inference.transforms import ParameterTransform, identity_transform
 
 
 @dataclass(frozen=True, slots=True)
@@ -388,3 +389,167 @@ def _iter_parameter_grid(parameter_grid: dict[str, list[float]]) -> tuple[dict[s
     for candidate_values in product(*values):
         combinations.append({name: value for name, value in zip(names, candidate_values, strict=True)})
     return tuple(combinations)
+
+
+class TransformedScipyMinimizeMLEEstimator:
+    """Transformed-parameter MLE using ``scipy.optimize.minimize``.
+
+    Parameters
+    ----------
+    likelihood_program : LikelihoodProgram
+        Likelihood evaluator used for each objective call.
+    model_factory : Callable[[dict[str, float]], AgentModel]
+        Factory creating a fresh model from constrained parameters.
+    transforms : Mapping[str, ParameterTransform] | None, optional
+        Parameter transforms by name. Missing names use identity transform.
+    requirements : ComponentRequirements | None, optional
+        Optional compatibility requirements checked before fitting.
+    method : str, optional
+        Scipy minimization method (default ``"L-BFGS-B"``).
+    tol : float | None, optional
+        Termination tolerance passed to SciPy.
+    options : Mapping[str, Any] | None, optional
+        Additional optimizer options passed to SciPy.
+
+    Notes
+    -----
+    Optimization occurs in unconstrained ``z`` space. Objective evaluations are
+    converted to constrained parameters via per-parameter transforms.
+    """
+
+    def __init__(
+        self,
+        likelihood_program: LikelihoodProgram,
+        model_factory: Callable[[dict[str, float]], AgentModel],
+        transforms: Mapping[str, ParameterTransform] | None = None,
+        requirements: ComponentRequirements | None = None,
+        *,
+        method: str = "L-BFGS-B",
+        tol: float | None = None,
+        options: Mapping[str, Any] | None = None,
+    ) -> None:
+        self._likelihood_program = likelihood_program
+        self._model_factory = model_factory
+        self._transforms = dict(transforms) if transforms is not None else {}
+        self._requirements = requirements
+        self._method = str(method)
+        self._tol = tol
+        self._options = dict(options) if options is not None else None
+
+    def fit(
+        self,
+        trace: EpisodeTrace,
+        initial_params: Mapping[str, float],
+        *,
+        bounds_z: Mapping[str, tuple[float | None, float | None]] | None = None,
+    ) -> MLEFitResult:
+        """Fit model parameters in transformed unconstrained space.
+
+        Parameters
+        ----------
+        trace : EpisodeTrace
+            Observed event trace used for likelihood evaluation.
+        initial_params : Mapping[str, float]
+            Initial constrained parameter values.
+        bounds_z : Mapping[str, tuple[float | None, float | None]] | None, optional
+            Optional optimizer-space bounds by parameter name.
+
+        Returns
+        -------
+        MLEFitResult
+            Fit result with constrained best parameters and diagnostics.
+
+        Raises
+        ------
+        ValueError
+            If compatibility fails or parameters are empty.
+        ImportError
+            If SciPy is not installed.
+        """
+
+        compatibility: CompatibilityReport | None = None
+        if self._requirements is not None:
+            compatibility = check_trace_compatibility(trace, self._requirements)
+            assert_trace_compatible(trace, self._requirements)
+
+        minimize = _load_scipy_minimize()
+
+        names = tuple(sorted(initial_params))
+        if not names:
+            raise ValueError("initial_params must include at least one parameter")
+
+        transforms = {
+            name: self._transforms.get(name, identity_transform())
+            for name in names
+        }
+
+        z0 = np.asarray(
+            [transforms[name].inverse(float(initial_params[name])) for name in names],
+            dtype=float,
+        )
+        scipy_bounds = _normalize_scipy_bounds(names, bounds_z)
+
+        candidates: list[MLECandidate] = []
+
+        def objective(z_vector: np.ndarray) -> float:
+            params = _vector_to_constrained_params(names, z_vector, transforms=transforms)
+            model = self._model_factory(params)
+            replay_result = self._likelihood_program.evaluate(trace, model)
+            log_likelihood = float(replay_result.total_log_likelihood)
+            candidates.append(MLECandidate(params=params, log_likelihood=log_likelihood))
+
+            if not np.isfinite(log_likelihood):
+                return 1e15
+            return -log_likelihood
+
+        result = minimize(
+            objective,
+            z0,
+            method=self._method,
+            bounds=scipy_bounds,
+            tol=self._tol,
+            options=self._options,
+        )
+
+        final_params = _vector_to_constrained_params(
+            names,
+            np.asarray(result.x, dtype=float),
+            transforms=transforms,
+        )
+        final_model = self._model_factory(final_params)
+        final_replay = self._likelihood_program.evaluate(trace, final_model)
+        final_candidate = MLECandidate(
+            params=final_params,
+            log_likelihood=float(final_replay.total_log_likelihood),
+        )
+        candidates.append(final_candidate)
+
+        best = max(candidates, key=lambda item: item.log_likelihood)
+        diagnostics = ScipyMinimizeDiagnostics(
+            method=self._method,
+            success=bool(result.success),
+            status=int(result.status),
+            message=str(result.message),
+            n_iterations=int(getattr(result, "nit", -1)),
+            n_function_evaluations=int(getattr(result, "nfev", len(candidates))),
+        )
+        return MLEFitResult(
+            best=best,
+            candidates=tuple(candidates),
+            compatibility=compatibility,
+            scipy_diagnostics=diagnostics,
+        )
+
+
+def _vector_to_constrained_params(
+    names: tuple[str, ...],
+    vector: np.ndarray,
+    *,
+    transforms: Mapping[str, ParameterTransform],
+) -> dict[str, float]:
+    """Convert optimizer-space vector to constrained named parameters."""
+
+    out: dict[str, float] = {}
+    for name, z_value in zip(names, vector, strict=True):
+        out[name] = float(transforms[name].forward(float(z_value)))
+    return out
