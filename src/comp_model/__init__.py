@@ -19,6 +19,14 @@ Bandit is intentionally implemented as a specific problem under
 
 from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
+from .inference import (
+    FitSpec,
+    fit_dataset_from_config,
+    fit_model,
+    fit_model_from_registry,
+    fit_study_data,
+    fit_study_from_config,
+)
 from .recovery import (
     load_json_config,
     run_model_recovery,
@@ -32,8 +40,14 @@ __all__ = [
     "AgentModel",
     "DecisionContext",
     "DecisionProblem",
+    "FitSpec",
     "SimulationConfig",
     "StudyData",
+    "fit_dataset_from_config",
+    "fit_model",
+    "fit_model_from_registry",
+    "fit_study_data",
+    "fit_study_from_config",
     "load_json_config",
     "run_model_recovery",
     "run_model_recovery_from_config",

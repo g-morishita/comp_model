@@ -1,6 +1,15 @@
 """Inference interfaces for replay, compatibility checks, and MLE fitting."""
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
+from .config import (
+    ModelComponentSpec,
+    fit_block_from_config,
+    fit_dataset_from_config,
+    fit_spec_from_config,
+    fit_study_from_config,
+    fit_subject_from_config,
+    model_component_spec_from_config,
+)
 from .fitting import (
     EstimatorType,
     FitSpec,
@@ -38,6 +47,7 @@ __all__ = [
     "LikelihoodProgram",
     "MLECandidate",
     "MLEFitResult",
+    "ModelComponentSpec",
     "ParameterTransform",
     "ScipyMinimizeDiagnostics",
     "ScipyMinimizeMLEEstimator",
@@ -49,11 +59,17 @@ __all__ = [
     "check_trace_compatibility",
     "coerce_episode_trace",
     "fit_block_data",
+    "fit_block_from_config",
+    "fit_dataset_from_config",
     "fit_model",
     "fit_model_from_registry",
+    "fit_spec_from_config",
     "fit_study_data",
+    "fit_study_from_config",
     "fit_subject_data",
+    "fit_subject_from_config",
     "identity_transform",
+    "model_component_spec_from_config",
     "positive_log_transform",
     "unit_interval_logit_transform",
 ]

@@ -50,3 +50,7 @@ For multi-subject datasets, use:
 
 These APIs run independent fits per block and aggregate summaries at subject and
 study levels.
+
+You can also fit from declarative config mappings via:
+- `comp_model.inference.fit_dataset_from_config`
+- `comp_model.inference.fit_study_from_config`

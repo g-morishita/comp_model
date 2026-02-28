@@ -1,23 +1,18 @@
 """Config-driven recovery workflow runners.
 
 This module turns declarative mapping/JSON configs into executable recovery
-runs using the plugin registry and inference estimators.
+runs using the plugin registry and inference fitting APIs.
 """
 
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
-from comp_model.inference import (
-    FitSpec,
-    build_model_fit_function,
-    identity_transform,
-    positive_log_transform,
-    unit_interval_logit_transform,
-)
+from comp_model.inference.fitting import build_model_fit_function
+from comp_model.inference.config import fit_spec_from_config
 from comp_model.plugins import PluginRegistry, build_default_registry
 from comp_model.recovery.model import CandidateModelSpec, GeneratingModelSpec, ModelRecoveryResult, run_model_recovery
 from comp_model.recovery.parameter import ParameterRecoveryResult, run_parameter_recovery
@@ -79,29 +74,13 @@ def run_parameter_recovery_from_config(
     -------
     ParameterRecoveryResult
         Recovery result.
-
-    Notes
-    -----
-    Required config fields:
-    - ``problem`` component reference
-    - ``generating_model`` component reference
-    - ``fitting_model`` component reference
-    - ``estimator`` definition
-    - ``true_parameter_sets`` list
-    - ``n_trials`` integer
     """
 
     reg = registry if registry is not None else build_default_registry()
 
     problem_ref = _parse_component_ref(_require_mapping(config, "problem"), field_name="problem")
-    generating_ref = _parse_component_ref(
-        _require_mapping(config, "generating_model"),
-        field_name="generating_model",
-    )
-    fitting_ref = _parse_component_ref(
-        _require_mapping(config, "fitting_model"),
-        field_name="fitting_model",
-    )
+    generating_ref = _parse_component_ref(_require_mapping(config, "generating_model"), field_name="generating_model")
+    fitting_ref = _parse_component_ref(_require_mapping(config, "fitting_model"), field_name="fitting_model")
     estimator_cfg = _require_mapping(config, "estimator")
 
     true_parameter_sets = _parse_true_parameter_sets(config.get("true_parameter_sets"))
@@ -161,10 +140,7 @@ def run_model_recovery_from_config(
             _require_mapping(item, "model", field_name=f"generating[{index}]"),
             field_name=f"generating[{index}].model",
         )
-        true_params = _coerce_float_mapping(
-            item.get("true_params", {}),
-            field_name=f"generating[{index}].true_params",
-        )
+        true_params = _coerce_float_mapping(item.get("true_params", {}), field_name=f"generating[{index}].true_params")
 
         generating_specs.append(
             GeneratingModelSpec(
@@ -231,51 +207,12 @@ def _build_fit_function(
 ):
     """Build trace->MLE fit callable from estimator config."""
 
-def _build_fit_function(
-    *,
-    estimator_cfg: dict[str, Any],
-    registry: PluginRegistry,
-    fitting_ref: ComponentRef,
-):
-    """Build trace->MLE fit callable from estimator config."""
-
-    estimator_type = _coerce_non_empty_str(estimator_cfg.get("type"), field_name="estimator.type")
-
+    fit_spec = fit_spec_from_config(estimator_cfg)
     model_manifest = registry.get("model", fitting_ref.component_id)
+
     model_factory = lambda params: registry.create_model(
         fitting_ref.component_id,
         **_merge_kwargs(fitting_ref.kwargs, params),
-    )
-
-    fit_spec = FitSpec(
-        estimator_type=estimator_type,
-        parameter_grid=(
-            _coerce_float_list_mapping(estimator_cfg.get("parameter_grid"), field_name="estimator.parameter_grid")
-            if estimator_type == "grid_search"
-            else None
-        ),
-        initial_params=(
-            _coerce_float_mapping(estimator_cfg.get("initial_params"), field_name="estimator.initial_params")
-            if estimator_type in {"scipy_minimize", "transformed_scipy_minimize"}
-            else None
-        ),
-        bounds=(
-            _coerce_bounds_mapping(estimator_cfg.get("bounds"), field_name="estimator.bounds")
-            if estimator_type == "scipy_minimize"
-            else None
-        ),
-        bounds_z=(
-            _coerce_bounds_mapping(estimator_cfg.get("bounds_z"), field_name="estimator.bounds_z")
-            if estimator_type == "transformed_scipy_minimize"
-            else None
-        ),
-        transforms=(
-            _parse_transforms_mapping(estimator_cfg.get("transforms", {}), field_name="estimator.transforms")
-            if estimator_type == "transformed_scipy_minimize"
-            else None
-        ),
-        method=str(estimator_cfg.get("method", "L-BFGS-B")),
-        tol=float(estimator_cfg["tol"]) if "tol" in estimator_cfg else None,
     )
 
     return build_model_fit_function(
@@ -301,68 +238,6 @@ def _parse_true_parameter_sets(raw: Any) -> tuple[dict[str, float], ...]:
     for index, item in enumerate(seq):
         out.append(_coerce_float_mapping(item, field_name=f"true_parameter_sets[{index}]"))
     return tuple(out)
-
-
-def _parse_transforms_mapping(raw: Any, *, field_name: str) -> dict[str, Any]:
-    """Parse parameter-transform mapping from config."""
-
-    mapping = _require_mapping(raw, field_name=field_name)
-    out: dict[str, Any] = {}
-    for param_name, spec in mapping.items():
-        if isinstance(spec, str):
-            out[str(param_name)] = _transform_from_name(spec)
-            continue
-
-        spec_mapping = _require_mapping(spec, field_name=f"{field_name}.{param_name}")
-        kind = _coerce_non_empty_str(spec_mapping.get("kind"), field_name=f"{field_name}.{param_name}.kind")
-        out[str(param_name)] = _transform_from_name(kind)
-    return out
-
-
-def _transform_from_name(name: str):
-    """Resolve configured transform name to transform instance."""
-
-    normalized = str(name)
-    if normalized == "identity":
-        return identity_transform()
-    if normalized == "unit_interval_logit":
-        return unit_interval_logit_transform()
-    if normalized == "positive_log":
-        return positive_log_transform()
-    raise ValueError(
-        f"unsupported transform {name!r}; expected one of "
-        "{'identity', 'unit_interval_logit', 'positive_log'}"
-    )
-
-
-def _coerce_bounds_mapping(raw: Any, *, field_name: str) -> dict[str, tuple[float | None, float | None]] | None:
-    """Parse bounds mapping from config."""
-
-    if raw is None:
-        return None
-
-    mapping = _require_mapping(raw, field_name=field_name)
-    out: dict[str, tuple[float | None, float | None]] = {}
-    for key, value in mapping.items():
-        pair = _require_sequence(value, field_name=f"{field_name}.{key}")
-        if len(pair) != 2:
-            raise ValueError(f"{field_name}.{key} must have exactly two elements")
-        lower_raw, upper_raw = pair
-        lower = float(lower_raw) if lower_raw is not None else None
-        upper = float(upper_raw) if upper_raw is not None else None
-        out[str(key)] = (lower, upper)
-    return out
-
-
-def _coerce_float_list_mapping(raw: Any, *, field_name: str) -> dict[str, list[float]]:
-    """Coerce mapping of parameter -> list[float]."""
-
-    mapping = _require_mapping(raw, field_name=field_name)
-    out: dict[str, list[float]] = {}
-    for key, value in mapping.items():
-        sequence = _require_sequence(value, field_name=f"{field_name}.{key}")
-        out[str(key)] = [float(item) for item in sequence]
-    return out
 
 
 def _coerce_float_mapping(raw: Any, *, field_name: str) -> dict[str, float]:
