@@ -20,6 +20,7 @@ Bandit is intentionally implemented as a specific problem under
 from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
 from .runtime.engine import SimulationConfig, run_episode, run_trial_program
+from .recovery import run_parameter_recovery
 
 __all__ = [
     "AgentModel",
@@ -27,6 +28,7 @@ __all__ = [
     "DecisionProblem",
     "SimulationConfig",
     "StudyData",
+    "run_parameter_recovery",
     "run_episode",
     "run_trial_program",
 ]
