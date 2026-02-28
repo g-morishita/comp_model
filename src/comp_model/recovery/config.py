@@ -12,11 +12,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from comp_model.inference import (
-    ActionReplayLikelihood,
-    GridSearchMLEEstimator,
-    MLEFitResult,
-    ScipyMinimizeMLEEstimator,
-    TransformedScipyMinimizeMLEEstimator,
+    FitSpec,
+    build_model_fit_function,
     identity_transform,
     positive_log_transform,
     unit_interval_logit_transform,
@@ -234,67 +231,57 @@ def _build_fit_function(
 ):
     """Build trace->MLE fit callable from estimator config."""
 
+def _build_fit_function(
+    *,
+    estimator_cfg: dict[str, Any],
+    registry: PluginRegistry,
+    fitting_ref: ComponentRef,
+):
+    """Build trace->MLE fit callable from estimator config."""
+
     estimator_type = _coerce_non_empty_str(estimator_cfg.get("type"), field_name="estimator.type")
 
     model_manifest = registry.get("model", fitting_ref.component_id)
-    likelihood_program = ActionReplayLikelihood()
-
     model_factory = lambda params: registry.create_model(
         fitting_ref.component_id,
         **_merge_kwargs(fitting_ref.kwargs, params),
     )
 
-    if estimator_type == "grid_search":
-        parameter_grid = _coerce_float_list_mapping(
-            estimator_cfg.get("parameter_grid"),
-            field_name="estimator.parameter_grid",
-        )
-        estimator = GridSearchMLEEstimator(
-            likelihood_program=likelihood_program,
-            model_factory=model_factory,
-            requirements=model_manifest.requirements,
-        )
-        return lambda trace: estimator.fit(trace=trace, parameter_grid=parameter_grid)
+    fit_spec = FitSpec(
+        estimator_type=estimator_type,
+        parameter_grid=(
+            _coerce_float_list_mapping(estimator_cfg.get("parameter_grid"), field_name="estimator.parameter_grid")
+            if estimator_type == "grid_search"
+            else None
+        ),
+        initial_params=(
+            _coerce_float_mapping(estimator_cfg.get("initial_params"), field_name="estimator.initial_params")
+            if estimator_type in {"scipy_minimize", "transformed_scipy_minimize"}
+            else None
+        ),
+        bounds=(
+            _coerce_bounds_mapping(estimator_cfg.get("bounds"), field_name="estimator.bounds")
+            if estimator_type == "scipy_minimize"
+            else None
+        ),
+        bounds_z=(
+            _coerce_bounds_mapping(estimator_cfg.get("bounds_z"), field_name="estimator.bounds_z")
+            if estimator_type == "transformed_scipy_minimize"
+            else None
+        ),
+        transforms=(
+            _parse_transforms_mapping(estimator_cfg.get("transforms", {}), field_name="estimator.transforms")
+            if estimator_type == "transformed_scipy_minimize"
+            else None
+        ),
+        method=str(estimator_cfg.get("method", "L-BFGS-B")),
+        tol=float(estimator_cfg["tol"]) if "tol" in estimator_cfg else None,
+    )
 
-    if estimator_type == "scipy_minimize":
-        initial_params = _coerce_float_mapping(
-            estimator_cfg.get("initial_params"),
-            field_name="estimator.initial_params",
-        )
-        bounds = _coerce_bounds_mapping(estimator_cfg.get("bounds"), field_name="estimator.bounds")
-        estimator = ScipyMinimizeMLEEstimator(
-            likelihood_program=likelihood_program,
-            model_factory=model_factory,
-            requirements=model_manifest.requirements,
-            method=str(estimator_cfg.get("method", "L-BFGS-B")),
-            tol=float(estimator_cfg["tol"]) if "tol" in estimator_cfg else None,
-        )
-        return lambda trace: estimator.fit(trace=trace, initial_params=initial_params, bounds=bounds)
-
-    if estimator_type == "transformed_scipy_minimize":
-        initial_params = _coerce_float_mapping(
-            estimator_cfg.get("initial_params"),
-            field_name="estimator.initial_params",
-        )
-        bounds_z = _coerce_bounds_mapping(estimator_cfg.get("bounds_z"), field_name="estimator.bounds_z")
-        transforms = _parse_transforms_mapping(
-            estimator_cfg.get("transforms", {}),
-            field_name="estimator.transforms",
-        )
-
-        estimator = TransformedScipyMinimizeMLEEstimator(
-            likelihood_program=likelihood_program,
-            model_factory=model_factory,
-            transforms=transforms,
-            requirements=model_manifest.requirements,
-            method=str(estimator_cfg.get("method", "L-BFGS-B")),
-            tol=float(estimator_cfg["tol"]) if "tol" in estimator_cfg else None,
-        )
-        return lambda trace: estimator.fit(trace=trace, initial_params=initial_params, bounds_z=bounds_z)
-
-    raise ValueError(
-        "estimator.type must be one of "
-        "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
+    return build_model_fit_function(
+        model_factory=model_factory,
+        fit_spec=fit_spec,
+        requirements=model_manifest.requirements,
     )
 
 

@@ -1,6 +1,7 @@
 """Inference interfaces for replay, compatibility checks, and MLE fitting."""
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
+from .fitting import EstimatorType, FitSpec, build_model_fit_function, coerce_episode_trace, fit_model
 from .likelihood import ActionReplayLikelihood, LikelihoodProgram
 from .mle import (
     GridSearchMLEEstimator,
@@ -15,6 +16,8 @@ from .transforms import ParameterTransform, identity_transform, positive_log_tra
 __all__ = [
     "ActionReplayLikelihood",
     "CompatibilityReport",
+    "EstimatorType",
+    "FitSpec",
     "GridSearchMLEEstimator",
     "LikelihoodProgram",
     "MLECandidate",
@@ -24,7 +27,10 @@ __all__ = [
     "ScipyMinimizeMLEEstimator",
     "TransformedScipyMinimizeMLEEstimator",
     "assert_trace_compatible",
+    "build_model_fit_function",
     "check_trace_compatibility",
+    "coerce_episode_trace",
+    "fit_model",
     "identity_transform",
     "positive_log_transform",
     "unit_interval_logit_transform",

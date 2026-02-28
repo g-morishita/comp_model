@@ -33,3 +33,12 @@ Current status:
 For wrapper models, canonical class mappings are provided in the parity matrix.
 They are intentionally not registered as zero-argument plugin components because
 wrapper construction requires explicit base-model factory and condition metadata.
+
+## Easy Model Fitting API
+
+Use `comp_model.inference.fit_model` to fit a model directly from:
+- canonical `EpisodeTrace`,
+- `BlockData`, or
+- `TrialDecision` rows.
+
+This fitting module is now the shared base used by recovery workflows.

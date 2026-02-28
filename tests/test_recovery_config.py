@@ -152,5 +152,5 @@ def test_recovery_config_rejects_unknown_estimator_type() -> None:
         "n_trials": 10,
     }
 
-    with pytest.raises(ValueError, match="estimator.type must be one of"):
+    with pytest.raises(ValueError, match="must be one of"):
         run_parameter_recovery_from_config(config)
