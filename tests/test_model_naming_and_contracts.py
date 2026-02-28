@@ -9,6 +9,7 @@ from comp_model.models import (
     AsocialStateQValueSoftmaxModel,
     AsocialStateQValueSoftmaxPerseverationModel,
     AsocialStateQValueSoftmaxSplitAlphaModel,
+    SocialSelfOutcomeValueShapingModel,
     UniformRandomPolicyModel,
 )
 from comp_model.plugins import build_default_registry
@@ -44,6 +45,7 @@ def test_canonical_model_docstrings_share_contract_sections() -> None:
         AsocialStateQValueSoftmaxModel,
         AsocialStateQValueSoftmaxPerseverationModel,
         AsocialStateQValueSoftmaxSplitAlphaModel,
+        SocialSelfOutcomeValueShapingModel,
     )
 
     required_sections = ("Model Contract", "Decision Rule", "Update Rule")

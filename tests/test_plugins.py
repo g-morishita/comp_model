@@ -19,6 +19,7 @@ from comp_model.models import (
     AsocialStateQValueSoftmaxModel,
     AsocialStateQValueSoftmaxPerseverationModel,
     AsocialStateQValueSoftmaxSplitAlphaModel,
+    SocialSelfOutcomeValueShapingModel,
     UniformRandomPolicyModel,
 )
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -41,6 +42,7 @@ def test_default_registry_discovers_builtin_components() -> None:
         "asocial_state_q_value_softmax",
         "asocial_state_q_value_softmax_perseveration",
         "asocial_state_q_value_softmax_split_alpha",
+        "social_self_outcome_value_shaping",
     }.issubset(model_ids)
     assert {
         "stationary_bandit",
@@ -75,6 +77,7 @@ def test_registry_creates_components_from_factories() -> None:
     qrl_model = registry.create_model("asocial_state_q_value_softmax")
     qrl_stay_model = registry.create_model("asocial_state_q_value_softmax_perseveration")
     split_alpha_model = registry.create_model("asocial_state_q_value_softmax_split_alpha")
+    social_vs_model = registry.create_model("social_self_outcome_value_shaping")
     problem = registry.create_problem("stationary_bandit", reward_probabilities=[0.2, 0.8])
     fixed_demo = registry.create_demonstrator("fixed_sequence_demonstrator", sequence=[0, 1])
     noisy_demo = registry.create_demonstrator(
@@ -91,6 +94,7 @@ def test_registry_creates_components_from_factories() -> None:
     assert isinstance(qrl_model, AsocialStateQValueSoftmaxModel)
     assert isinstance(qrl_stay_model, AsocialStateQValueSoftmaxPerseverationModel)
     assert isinstance(split_alpha_model, AsocialStateQValueSoftmaxSplitAlphaModel)
+    assert isinstance(social_vs_model, SocialSelfOutcomeValueShapingModel)
     assert isinstance(problem, StationaryBanditProblem)
     assert isinstance(fixed_demo, FixedSequenceDemonstrator)
     assert isinstance(noisy_demo, NoisyBestArmDemonstrator)
