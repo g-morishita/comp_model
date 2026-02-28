@@ -19,3 +19,18 @@ Canonical model names are descriptive and mechanism-first (for example,
 
 Legacy alias names and IDs were removed; use canonical model classes and
 canonical plugin component IDs only.
+
+## v1 Capability Parity Matrix
+
+The repository now includes an explicit parity matrix in
+`comp_model.models.V1_MODEL_PARITY` mapping internal v1 model names to
+canonical class names and plugin IDs.
+
+Current status:
+- Implemented: all base asocial/social model families from v1.
+- Planned (explicit blockers):
+1. `ConditionedSharedDeltaModel`
+2. `ConditionedSharedDeltaSocialModel`
+
+These two within-subject shared+delta wrappers are tracked as planned entries
+and guarded by tests until implemented.
