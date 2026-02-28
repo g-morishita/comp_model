@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from comp_model.core.events import EventPhase, validate_trace
-from comp_model.models import RandomAgent
+from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import TwoStageSocialBanditProgram
 from comp_model.runtime import SimulationConfig, replay_trial_program, run_trial_program
 
@@ -17,7 +17,7 @@ def test_run_trial_program_emits_two_phase_blocks_per_trial() -> None:
     program = TwoStageSocialBanditProgram(reward_probabilities=[0.2, 0.8])
     trace = run_trial_program(
         program=program,
-        models={"demonstrator": RandomAgent(), "subject": RandomAgent()},
+        models={"demonstrator": UniformRandomPolicyModel(), "subject": UniformRandomPolicyModel()},
         config=SimulationConfig(n_trials=3, seed=9),
     )
 
@@ -49,7 +49,7 @@ def test_subject_observation_includes_demonstrator_information() -> None:
     program = TwoStageSocialBanditProgram(reward_probabilities=[1.0, 0.0])
     trace = run_trial_program(
         program=program,
-        models={"demonstrator": RandomAgent(), "subject": RandomAgent()},
+        models={"demonstrator": UniformRandomPolicyModel(), "subject": UniformRandomPolicyModel()},
         config=SimulationConfig(n_trials=1, seed=3),
     )
 
@@ -68,13 +68,13 @@ def test_replay_trial_program_supports_multi_actor_trace() -> None:
     program = TwoStageSocialBanditProgram(reward_probabilities=[0.5, 0.5])
     trace = run_trial_program(
         program=program,
-        models={"demonstrator": RandomAgent(), "subject": RandomAgent()},
+        models={"demonstrator": UniformRandomPolicyModel(), "subject": UniformRandomPolicyModel()},
         config=SimulationConfig(n_trials=4, seed=1),
     )
 
     replay = replay_trial_program(
         trace=trace,
-        models={"demonstrator": RandomAgent(), "subject": RandomAgent()},
+        models={"demonstrator": UniformRandomPolicyModel(), "subject": UniformRandomPolicyModel()},
     )
 
     assert len(replay.steps) == 8

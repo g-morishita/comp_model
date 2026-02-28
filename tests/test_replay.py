@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
-from comp_model.models import QLearningAgent, RandomAgent
-from comp_model.models.q_learning import QLearningConfig
+from comp_model.models import AsocialQValueSoftmaxModel, UniformRandomPolicyModel
+from comp_model.models.q_learning import AsocialQValueSoftmaxConfig
 from comp_model.problems import StationaryBanditProblem
 from comp_model.runtime import SimulationConfig, replay_episode, run_episode
 
@@ -15,10 +15,10 @@ def test_replay_returns_trialwise_likelihood_records() -> None:
     """Replay should return one likelihood step per trial in order."""
 
     problem = StationaryBanditProblem([0.2, 0.8])
-    generating_model = QLearningAgent(config=QLearningConfig(alpha=0.3, beta=2.0, initial_value=0.0))
+    generating_model = AsocialQValueSoftmaxModel(config=AsocialQValueSoftmaxConfig(alpha=0.3, beta=2.0, initial_value=0.0))
     trace = run_episode(problem=problem, model=generating_model, config=SimulationConfig(n_trials=12, seed=7))
 
-    replay_model = QLearningAgent(config=QLearningConfig(alpha=0.3, beta=2.0, initial_value=0.0))
+    replay_model = AsocialQValueSoftmaxModel(config=AsocialQValueSoftmaxConfig(alpha=0.3, beta=2.0, initial_value=0.0))
     replay_result = replay_episode(trace=trace, model=replay_model)
 
     assert len(replay_result.steps) == 12
@@ -56,4 +56,4 @@ def test_replay_rejects_trace_with_illegal_logged_action() -> None:
     )
 
     with pytest.raises(ValueError, match="not available"):
-        replay_episode(trace=trace, model=RandomAgent())
+        replay_episode(trace=trace, model=UniformRandomPolicyModel())

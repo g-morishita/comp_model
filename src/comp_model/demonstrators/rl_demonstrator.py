@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from comp_model.core.contracts import DecisionContext
-from comp_model.models.q_learning import QLearningAgent, QLearningConfig
+from comp_model.models.q_learning import AsocialQValueSoftmaxConfig, AsocialQValueSoftmaxModel
 from comp_model.plugins import ComponentManifest
 
 
@@ -32,8 +32,8 @@ class RLDemonstrator:
         initial_value: float = 0.0,
         reward_getter: Callable[[Any], float] | None = None,
     ) -> None:
-        self._agent = QLearningAgent(
-            config=QLearningConfig(alpha=alpha, beta=beta, initial_value=initial_value),
+        self._agent = AsocialQValueSoftmaxModel(
+            config=AsocialQValueSoftmaxConfig(alpha=alpha, beta=beta, initial_value=initial_value),
             reward_getter=reward_getter,
         )
 

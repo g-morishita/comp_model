@@ -1,19 +1,42 @@
-"""Random baseline agent.
+"""Uniform-random baseline models.
 
-This model is useful for smoke tests because it has deterministic semantics and
-no internal learning state.
+This module defines the canonical random-policy model and backward-compatible
+deprecated aliases.
 """
 
 from __future__ import annotations
 
 from typing import Any
+import warnings
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.plugins import ComponentManifest
 
 
-class RandomAgent:
-    """Uniform-random action model with no-op update.
+# TODO(v0.3.0): Remove deprecated alias names and IDs.
+def _warn_deprecated_alias(old_name: str, new_name: str) -> None:
+    """Emit a standardized deprecation warning for model aliases."""
+
+    warnings.warn(
+        (
+            f"{old_name} is deprecated and will be removed in v0.3.0. "
+            f"Use {new_name} instead."
+        ),
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+class UniformRandomPolicyModel:
+    """Uniform-random policy model.
+
+    Model Contract
+    --------------
+    Decision Rule
+        For ``N`` available actions, assign ``1 / N`` probability to each
+        available action.
+    Update Rule
+        No-op. This model does not maintain latent state.
 
     Methods follow the :class:`comp_model.core.contracts.AgentModel` protocol.
     """
@@ -73,23 +96,44 @@ class RandomAgent:
         """
 
 
-def create_random_agent() -> RandomAgent:
-    """Factory used by plugin discovery.
+class RandomAgent(UniformRandomPolicyModel):
+    """Deprecated alias for :class:`UniformRandomPolicyModel`."""
+
+    def __init__(self) -> None:
+        _warn_deprecated_alias("RandomAgent", "UniformRandomPolicyModel")
+        super().__init__()
+
+
+def create_uniform_random_policy_model() -> UniformRandomPolicyModel:
+    """Factory used by plugin discovery for the canonical random model.
 
     Returns
     -------
-    RandomAgent
+    UniformRandomPolicyModel
         Uniform-random baseline model.
     """
 
-    return RandomAgent()
+    return UniformRandomPolicyModel()
+
+
+def create_random_agent() -> UniformRandomPolicyModel:
+    """Deprecated factory alias for :func:`create_uniform_random_policy_model`."""
+
+    _warn_deprecated_alias("create_random_agent", "create_uniform_random_policy_model")
+    return create_uniform_random_policy_model()
 
 
 PLUGIN_MANIFESTS = [
     ComponentManifest(
         kind="model",
+        component_id="uniform_random_policy",
+        factory=create_uniform_random_policy_model,
+        description="Uniform random policy baseline model",
+    ),
+    ComponentManifest(
+        kind="model",
         component_id="random_agent",
         factory=create_random_agent,
-        description="Uniform random baseline model",
-    )
+        description="DEPRECATED alias of uniform_random_policy",
+    ),
 ]

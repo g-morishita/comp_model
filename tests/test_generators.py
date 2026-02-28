@@ -13,7 +13,7 @@ from comp_model.generators import (
     EventTraceSocialPreChoiceGenerator,
     SocialBlockSpec,
 )
-from comp_model.models import QLearningAgent, RandomAgent
+from comp_model.models import AsocialQValueSoftmaxModel, UniformRandomPolicyModel
 from comp_model.plugins import build_default_registry
 
 
@@ -23,7 +23,7 @@ def test_asocial_generator_simulates_subject_blocks() -> None:
     generator = EventTraceAsocialGenerator()
     subject = generator.simulate_subject(
         subject_id="s1",
-        model=QLearningAgent(),
+        model=AsocialQValueSoftmaxModel(),
         blocks=(
             AsocialBlockSpec(n_trials=5, problem_kwargs={"reward_probabilities": [0.2, 0.8]}, block_id="b1"),
             AsocialBlockSpec(n_trials=4, problem_kwargs={"reward_probabilities": [0.7, 0.3]}, block_id="b2"),
@@ -43,7 +43,7 @@ def test_asocial_generator_simulates_study() -> None:
 
     generator = EventTraceAsocialGenerator()
     study = generator.simulate_study(
-        subject_models={"s1": RandomAgent(), "s2": RandomAgent()},
+        subject_models={"s1": UniformRandomPolicyModel(), "s2": UniformRandomPolicyModel()},
         blocks=(AsocialBlockSpec(n_trials=3, problem_kwargs={"reward_probabilities": [0.5, 0.5]}),),
         rng=np.random.default_rng(1),
     )
@@ -57,7 +57,7 @@ def test_social_pre_choice_generator_timing() -> None:
 
     generator = EventTraceSocialPreChoiceGenerator()
     block = generator.simulate_block(
-        subject_model=RandomAgent(),
+        subject_model=UniformRandomPolicyModel(),
         demonstrator_model=FixedSequenceDemonstrator(sequence=[1, 1, 1]),
         block=SocialBlockSpec(n_trials=3, program_kwargs={"reward_probabilities": [0.2, 0.8]}),
         rng=np.random.default_rng(2),
@@ -76,8 +76,8 @@ def test_social_post_outcome_generator_timing() -> None:
 
     generator = EventTraceSocialPostOutcomeGenerator()
     block = generator.simulate_block(
-        subject_model=RandomAgent(),
-        demonstrator_model=RandomAgent(),
+        subject_model=UniformRandomPolicyModel(),
+        demonstrator_model=UniformRandomPolicyModel(),
         block=SocialBlockSpec(n_trials=3, program_kwargs={"reward_probabilities": [0.2, 0.8]}),
         rng=np.random.default_rng(3),
     )
@@ -95,7 +95,7 @@ def test_social_generator_study_with_single_shared_demonstrator() -> None:
 
     generator = EventTraceSocialPreChoiceGenerator()
     study = generator.simulate_study(
-        subject_models={"s1": RandomAgent(), "s2": RandomAgent()},
+        subject_models={"s1": UniformRandomPolicyModel(), "s2": UniformRandomPolicyModel()},
         demonstrator_models=FixedSequenceDemonstrator(sequence=[0, 1, 0]),
         blocks=(SocialBlockSpec(n_trials=3, program_kwargs={"reward_probabilities": [0.5, 0.5]}),),
         rng=np.random.default_rng(5),
@@ -133,8 +133,8 @@ def test_social_generator_rejects_missing_subject_demonstrator_mapping() -> None
 
     with pytest.raises(ValueError, match="missing demonstrator model"):
         generator.simulate_study(
-            subject_models={"s1": RandomAgent(), "s2": RandomAgent()},
-            demonstrator_models={"s1": RandomAgent()},
+            subject_models={"s1": UniformRandomPolicyModel(), "s2": UniformRandomPolicyModel()},
+            demonstrator_models={"s1": UniformRandomPolicyModel()},
             blocks=(SocialBlockSpec(n_trials=2, program_kwargs={"reward_probabilities": [0.5, 0.5]}),),
             rng=np.random.default_rng(9),
         )

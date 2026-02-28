@@ -1,7 +1,7 @@
-"""Q-learning agent implementation.
+"""Asocial Q-value softmax model.
 
-The agent is generic to any problem that emits scalar reward in the outcome
-payload (attribute ``reward`` or key ``"reward"``).
+This module defines the canonical asocial Q-learning implementation and
+backward-compatible deprecated aliases.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Callable
+import warnings
 
 import numpy as np
 
@@ -17,9 +18,23 @@ from comp_model.core.requirements import ComponentRequirements
 from comp_model.plugins import ComponentManifest
 
 
+# TODO(v0.3.0): Remove deprecated alias names and IDs.
+def _warn_deprecated_alias(old_name: str, new_name: str) -> None:
+    """Emit a standardized deprecation warning for model aliases."""
+
+    warnings.warn(
+        (
+            f"{old_name} is deprecated and will be removed in v0.3.0. "
+            f"Use {new_name} instead."
+        ),
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 @dataclass(frozen=True, slots=True)
-class QLearningConfig:
-    """Configuration for :class:`QLearningAgent`.
+class AsocialQValueSoftmaxConfig:
+    """Configuration for :class:`AsocialQValueSoftmaxModel`.
 
     Parameters
     ----------
@@ -48,29 +63,37 @@ class QLearningConfig:
             raise ValueError("beta must be >= 0")
 
 
-class QLearningAgent:
-    """Tabular Q-learning agent.
+# Backward compatibility alias (kept for transition window).
+QLearningConfig = AsocialQValueSoftmaxConfig
+
+
+class AsocialQValueSoftmaxModel:
+    """Asocial chosen-only Q-learning model with softmax policy.
+
+    Model Contract
+    --------------
+    Decision Rule
+        For action values ``Q[a]`` and inverse temperature ``beta``:
+        ``P(a) = softmax(beta * Q[a])`` over currently available actions.
+    Update Rule
+        After choosing action ``a`` and observing reward ``r``:
+        ``Q[a] <- Q[a] + alpha * (r - Q[a])``.
+        Only the chosen action value is updated.
 
     Parameters
     ----------
-    config : QLearningConfig | None, optional
+    config : AsocialQValueSoftmaxConfig | None, optional
         Hyperparameter bundle. Defaults are used when ``None``.
     reward_getter : Callable[[Any], float] | None, optional
         Optional custom outcome-to-reward extractor.
-
-    Notes
-    -----
-    This implementation updates only the chosen action value via:
-
-    ``Q[a] <- Q[a] + alpha * (reward - Q[a])``
     """
 
     def __init__(
         self,
-        config: QLearningConfig | None = None,
+        config: AsocialQValueSoftmaxConfig | None = None,
         reward_getter: Callable[[Any], float] | None = None,
     ) -> None:
-        self.config = config if config is not None else QLearningConfig()
+        self.config = config if config is not None else AsocialQValueSoftmaxConfig()
         self._reward_getter = reward_getter if reward_getter is not None else _default_reward_getter
         self._q_values: dict[Any, float] = {}
 
@@ -79,8 +102,7 @@ class QLearningAgent:
 
         Notes
         -----
-        Episode reset clears learned values by default. For warm-start behavior,
-        create a separate model wrapper in future iterations.
+        Episode reset clears learned values by default.
         """
 
         self._q_values = {}
@@ -96,7 +118,7 @@ class QLearningAgent:
         Parameters
         ----------
         observation : Any
-            Unused by tabular Q-learning in this baseline implementation.
+            Unused by this baseline implementation.
         context : DecisionContext[Any]
             Per-trial context containing available actions.
 
@@ -115,7 +137,6 @@ class QLearningAgent:
             return {action: probability for action in actions}
 
         logits = np.asarray([self.config.beta * self._q_values[action] for action in actions], dtype=float)
-
         # Subtract max(logits) for numerically stable exponentiation.
         logits -= float(np.max(logits))
         exp_logits = np.exp(logits)
@@ -164,6 +185,18 @@ class QLearningAgent:
         return dict(self._q_values)
 
 
+class QLearningAgent(AsocialQValueSoftmaxModel):
+    """Deprecated alias for :class:`AsocialQValueSoftmaxModel`."""
+
+    def __init__(
+        self,
+        config: AsocialQValueSoftmaxConfig | None = None,
+        reward_getter: Callable[[Any], float] | None = None,
+    ) -> None:
+        _warn_deprecated_alias("QLearningAgent", "AsocialQValueSoftmaxModel")
+        super().__init__(config=config, reward_getter=reward_getter)
+
+
 def _default_reward_getter(outcome: Any) -> float:
     """Extract scalar reward from outcome payload.
 
@@ -195,13 +228,13 @@ def _default_reward_getter(outcome: Any) -> float:
     )
 
 
-def create_q_learning_agent(
+def create_asocial_q_value_softmax_model(
     *,
     alpha: float = 0.2,
     beta: float = 3.0,
     initial_value: float = 0.0,
-) -> QLearningAgent:
-    """Factory used by plugin discovery.
+) -> AsocialQValueSoftmaxModel:
+    """Factory used by plugin discovery for canonical Q-learning model.
 
     Parameters
     ----------
@@ -214,20 +247,39 @@ def create_q_learning_agent(
 
     Returns
     -------
-    QLearningAgent
+    AsocialQValueSoftmaxModel
         Configured model instance.
     """
 
-    config = QLearningConfig(alpha=alpha, beta=beta, initial_value=initial_value)
-    return QLearningAgent(config=config)
+    config = AsocialQValueSoftmaxConfig(alpha=alpha, beta=beta, initial_value=initial_value)
+    return AsocialQValueSoftmaxModel(config=config)
+
+
+def create_q_learning_agent(
+    *,
+    alpha: float = 0.2,
+    beta: float = 3.0,
+    initial_value: float = 0.0,
+) -> AsocialQValueSoftmaxModel:
+    """Deprecated factory alias for :func:`create_asocial_q_value_softmax_model`."""
+
+    _warn_deprecated_alias("create_q_learning_agent", "create_asocial_q_value_softmax_model")
+    return create_asocial_q_value_softmax_model(alpha=alpha, beta=beta, initial_value=initial_value)
 
 
 PLUGIN_MANIFESTS = [
     ComponentManifest(
         kind="model",
+        component_id="asocial_q_value_softmax",
+        factory=create_asocial_q_value_softmax_model,
+        description="Asocial tabular Q-learning with softmax policy",
+        requirements=ComponentRequirements(required_outcome_fields=("reward",)),
+    ),
+    ComponentManifest(
+        kind="model",
         component_id="q_learning",
         factory=create_q_learning_agent,
-        description="Tabular Q-learning with softmax policy",
+        description="DEPRECATED alias of asocial_q_value_softmax",
         requirements=ComponentRequirements(required_outcome_fields=("reward",)),
-    )
+    ),
 ]

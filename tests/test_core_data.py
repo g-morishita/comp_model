@@ -15,7 +15,7 @@ from comp_model.core.data import (
     trial_decisions_from_trace,
 )
 from comp_model.core.events import EventPhase, validate_trace
-from comp_model.models import RandomAgent
+from comp_model.models import UniformRandomPolicyModel
 from comp_model.runtime import replay_episode
 
 
@@ -133,7 +133,7 @@ def test_replay_episode_accepts_trace_converted_from_trial_rows() -> None:
     )
 
     trace = trace_from_trial_decisions(rows)
-    replay = replay_episode(trace=trace, model=RandomAgent())
+    replay = replay_episode(trace=trace, model=UniformRandomPolicyModel())
 
     assert len(replay.steps) == 3
     assert replay.total_log_likelihood == pytest.approx(3 * -0.6931471805599453)

@@ -10,7 +10,7 @@ from comp_model.demonstrators import (
     NoisyBestArmDemonstrator,
     RLDemonstrator,
 )
-from comp_model.models import RandomAgent
+from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import TwoStageSocialBanditProgram
 from comp_model.runtime import SimulationConfig, run_trial_program
 
@@ -71,7 +71,7 @@ def test_demonstrators_work_as_runtime_actor_models() -> None:
         program=program,
         models={
             "demonstrator": FixedSequenceDemonstrator(sequence=[1, 1, 1]),
-            "subject": RandomAgent(),
+            "subject": UniformRandomPolicyModel(),
         },
         config=SimulationConfig(n_trials=3, seed=0),
     )

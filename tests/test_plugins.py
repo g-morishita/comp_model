@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from comp_model.demonstrators import (
     FixedSequenceDemonstrator,
     NoisyBestArmDemonstrator,
@@ -12,7 +14,13 @@ from comp_model.generators import (
     EventTraceSocialPostOutcomeGenerator,
     EventTraceSocialPreChoiceGenerator,
 )
-from comp_model.models import QLearningAgent, RandomAgent
+from comp_model.models import (
+    AsocialQValueSoftmaxModel,
+    AsocialStateQValueSoftmaxModel,
+    AsocialStateQValueSoftmaxPerseverationModel,
+    AsocialStateQValueSoftmaxSplitAlphaModel,
+    UniformRandomPolicyModel,
+)
 from comp_model.plugins import PluginRegistry, build_default_registry
 from comp_model.problems import StationaryBanditProblem
 
@@ -27,7 +35,13 @@ def test_default_registry_discovers_builtin_components() -> None:
     demonstrator_ids = {manifest.component_id for manifest in registry.list(kind="demonstrator")}
     generator_ids = {manifest.component_id for manifest in registry.list(kind="generator")}
 
-    assert {"q_learning", "random_agent"}.issubset(model_ids)
+    assert {
+        "asocial_q_value_softmax",
+        "uniform_random_policy",
+        "asocial_state_q_value_softmax",
+        "asocial_state_q_value_softmax_perseveration",
+        "asocial_state_q_value_softmax_split_alpha",
+    }.issubset(model_ids)
     assert {
         "stationary_bandit",
         "two_stage_social_bandit",
@@ -50,8 +64,11 @@ def test_registry_creates_components_from_factories() -> None:
 
     registry = build_default_registry()
 
-    model = registry.create_model("q_learning", alpha=0.1, beta=1.5, initial_value=0.25)
-    random_model = registry.create_model("random_agent")
+    model = registry.create_model("asocial_q_value_softmax", alpha=0.1, beta=1.5, initial_value=0.25)
+    random_model = registry.create_model("uniform_random_policy")
+    qrl_model = registry.create_model("asocial_state_q_value_softmax")
+    qrl_stay_model = registry.create_model("asocial_state_q_value_softmax_perseveration")
+    split_alpha_model = registry.create_model("asocial_state_q_value_softmax_split_alpha")
     problem = registry.create_problem("stationary_bandit", reward_probabilities=[0.2, 0.8])
     fixed_demo = registry.create_demonstrator("fixed_sequence_demonstrator", sequence=[0, 1])
     noisy_demo = registry.create_demonstrator(
@@ -63,8 +80,11 @@ def test_registry_creates_components_from_factories() -> None:
     pre_choice_generator = registry.create_generator("event_trace_social_pre_choice_generator")
     post_outcome_generator = registry.create_generator("event_trace_social_post_outcome_generator")
 
-    assert isinstance(model, QLearningAgent)
-    assert isinstance(random_model, RandomAgent)
+    assert isinstance(model, AsocialQValueSoftmaxModel)
+    assert isinstance(random_model, UniformRandomPolicyModel)
+    assert isinstance(qrl_model, AsocialStateQValueSoftmaxModel)
+    assert isinstance(qrl_stay_model, AsocialStateQValueSoftmaxPerseverationModel)
+    assert isinstance(split_alpha_model, AsocialStateQValueSoftmaxSplitAlphaModel)
     assert isinstance(problem, StationaryBanditProblem)
     assert isinstance(fixed_demo, FixedSequenceDemonstrator)
     assert isinstance(noisy_demo, NoisyBestArmDemonstrator)
@@ -72,6 +92,25 @@ def test_registry_creates_components_from_factories() -> None:
     assert isinstance(asocial_generator, EventTraceAsocialGenerator)
     assert isinstance(pre_choice_generator, EventTraceSocialPreChoiceGenerator)
     assert isinstance(post_outcome_generator, EventTraceSocialPostOutcomeGenerator)
+
+
+def test_registry_deprecated_model_ids_emit_warning() -> None:
+    """Deprecated model IDs should still resolve while warning callers."""
+
+    registry = build_default_registry()
+
+    with pytest.warns(DeprecationWarning, match="q_learning"):
+        legacy_q = registry.create_model("q_learning")
+
+    with pytest.warns(DeprecationWarning, match="random_agent"):
+        legacy_random = registry.create_model("random_agent")
+
+    with pytest.warns(DeprecationWarning, match="qrl"):
+        legacy_qrl = registry.create_model("qrl")
+
+    assert isinstance(legacy_q, AsocialQValueSoftmaxModel)
+    assert isinstance(legacy_random, UniformRandomPolicyModel)
+    assert isinstance(legacy_qrl, AsocialStateQValueSoftmaxModel)
 
 
 def test_discovery_is_idempotent_for_same_package() -> None:

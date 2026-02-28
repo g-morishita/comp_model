@@ -11,7 +11,7 @@ from comp_model.core.contracts import DecisionContext
 from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
 from comp_model.core.requirements import ComponentRequirements
 from comp_model.inference import ActionReplayLikelihood, GridSearchMLEEstimator, check_trace_compatibility
-from comp_model.models import RandomAgent
+from comp_model.models import UniformRandomPolicyModel
 from comp_model.plugins import build_default_registry
 from comp_model.problems import StationaryBanditProblem
 from comp_model.runtime import SimulationConfig, run_episode
@@ -52,11 +52,11 @@ def test_trace_compatibility_uses_model_requirements() -> None:
     """Compatibility checks should enforce required outcome fields."""
 
     registry = build_default_registry()
-    q_learning_manifest = registry.get("model", "q_learning")
+    q_learning_manifest = registry.get("model", "asocial_q_value_softmax")
     assert q_learning_manifest.requirements is not None
 
     problem = StationaryBanditProblem([1.0])
-    trace = run_episode(problem=problem, model=RandomAgent(), config=SimulationConfig(n_trials=1, seed=2))
+    trace = run_episode(problem=problem, model=UniformRandomPolicyModel(), config=SimulationConfig(n_trials=1, seed=2))
 
     report = check_trace_compatibility(trace, q_learning_manifest.requirements)
     assert report.is_compatible
