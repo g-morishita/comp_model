@@ -2,7 +2,13 @@
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
 from .likelihood import ActionReplayLikelihood, LikelihoodProgram
-from .mle import GridSearchMLEEstimator, MLECandidate, MLEFitResult
+from .mle import (
+    GridSearchMLEEstimator,
+    MLECandidate,
+    MLEFitResult,
+    ScipyMinimizeDiagnostics,
+    ScipyMinimizeMLEEstimator,
+)
 
 __all__ = [
     "ActionReplayLikelihood",
@@ -11,6 +17,8 @@ __all__ = [
     "LikelihoodProgram",
     "MLECandidate",
     "MLEFitResult",
+    "ScipyMinimizeDiagnostics",
+    "ScipyMinimizeMLEEstimator",
     "assert_trace_compatible",
     "check_trace_compatibility",
 ]

@@ -19,6 +19,19 @@ from comp_model.models import (
     AsocialStateQValueSoftmaxModel,
     AsocialStateQValueSoftmaxPerseverationModel,
     AsocialStateQValueSoftmaxSplitAlphaModel,
+    SocialConstantDemoBiasObservedOutcomeQPerseverationModel,
+    SocialDirichletReliabilityGatedDemoBiasObservedOutcomeQPerseverationModel,
+    SocialObservedOutcomePolicyIndependentMixPerseverationModel,
+    SocialObservedOutcomePolicySharedMixModel,
+    SocialObservedOutcomePolicySharedMixPerseverationModel,
+    SocialObservedOutcomeQModel,
+    SocialObservedOutcomeQPerseverationModel,
+    SocialObservedOutcomeValueShapingModel,
+    SocialObservedOutcomeValueShapingPerseverationModel,
+    SocialPolicyLearningOnlyModel,
+    SocialPolicyLearningOnlyPerseverationModel,
+    SocialPolicyReliabilityGatedDemoBiasObservedOutcomeQPerseverationModel,
+    SocialPolicyReliabilityGatedValueShapingModel,
     SocialSelfOutcomeValueShapingModel,
     UniformRandomPolicyModel,
 )
@@ -43,6 +56,19 @@ def test_default_registry_discovers_builtin_components() -> None:
         "asocial_state_q_value_softmax_perseveration",
         "asocial_state_q_value_softmax_split_alpha",
         "social_self_outcome_value_shaping",
+        "social_observed_outcome_q",
+        "social_observed_outcome_q_perseveration",
+        "social_observed_outcome_value_shaping",
+        "social_observed_outcome_value_shaping_perseveration",
+        "social_policy_reliability_gated_value_shaping",
+        "social_constant_demo_bias_observed_outcome_q_perseveration",
+        "social_policy_reliability_gated_demo_bias_observed_outcome_q_perseveration",
+        "social_dirichlet_reliability_gated_demo_bias_observed_outcome_q_perseveration",
+        "social_observed_outcome_policy_shared_mix",
+        "social_observed_outcome_policy_shared_mix_perseveration",
+        "social_observed_outcome_policy_independent_mix_perseveration",
+        "social_policy_learning_only",
+        "social_policy_learning_only_perseveration",
     }.issubset(model_ids)
     assert {
         "stationary_bandit",
@@ -72,12 +98,75 @@ def test_registry_creates_components_from_factories() -> None:
 
     registry = build_default_registry()
 
-    model = registry.create_model("asocial_q_value_softmax", alpha=0.1, beta=1.5, initial_value=0.25)
-    random_model = registry.create_model("uniform_random_policy")
-    qrl_model = registry.create_model("asocial_state_q_value_softmax")
-    qrl_stay_model = registry.create_model("asocial_state_q_value_softmax_perseveration")
-    split_alpha_model = registry.create_model("asocial_state_q_value_softmax_split_alpha")
-    social_vs_model = registry.create_model("social_self_outcome_value_shaping")
+    instances = {
+        "asocial_q_value_softmax": registry.create_model("asocial_q_value_softmax"),
+        "uniform_random_policy": registry.create_model("uniform_random_policy"),
+        "asocial_state_q_value_softmax": registry.create_model("asocial_state_q_value_softmax"),
+        "asocial_state_q_value_softmax_perseveration": registry.create_model("asocial_state_q_value_softmax_perseveration"),
+        "asocial_state_q_value_softmax_split_alpha": registry.create_model("asocial_state_q_value_softmax_split_alpha"),
+        "social_self_outcome_value_shaping": registry.create_model("social_self_outcome_value_shaping"),
+        "social_observed_outcome_q": registry.create_model("social_observed_outcome_q"),
+        "social_observed_outcome_q_perseveration": registry.create_model("social_observed_outcome_q_perseveration"),
+        "social_observed_outcome_value_shaping": registry.create_model("social_observed_outcome_value_shaping"),
+        "social_observed_outcome_value_shaping_perseveration": registry.create_model("social_observed_outcome_value_shaping_perseveration"),
+        "social_policy_reliability_gated_value_shaping": registry.create_model("social_policy_reliability_gated_value_shaping"),
+        "social_constant_demo_bias_observed_outcome_q_perseveration": registry.create_model("social_constant_demo_bias_observed_outcome_q_perseveration"),
+        "social_policy_reliability_gated_demo_bias_observed_outcome_q_perseveration": registry.create_model("social_policy_reliability_gated_demo_bias_observed_outcome_q_perseveration"),
+        "social_dirichlet_reliability_gated_demo_bias_observed_outcome_q_perseveration": registry.create_model("social_dirichlet_reliability_gated_demo_bias_observed_outcome_q_perseveration"),
+        "social_observed_outcome_policy_shared_mix": registry.create_model("social_observed_outcome_policy_shared_mix"),
+        "social_observed_outcome_policy_shared_mix_perseveration": registry.create_model("social_observed_outcome_policy_shared_mix_perseveration"),
+        "social_observed_outcome_policy_independent_mix_perseveration": registry.create_model("social_observed_outcome_policy_independent_mix_perseveration"),
+        "social_policy_learning_only": registry.create_model("social_policy_learning_only"),
+        "social_policy_learning_only_perseveration": registry.create_model("social_policy_learning_only_perseveration"),
+    }
+
+    assert isinstance(instances["asocial_q_value_softmax"], AsocialQValueSoftmaxModel)
+    assert isinstance(instances["uniform_random_policy"], UniformRandomPolicyModel)
+    assert isinstance(instances["asocial_state_q_value_softmax"], AsocialStateQValueSoftmaxModel)
+    assert isinstance(
+        instances["asocial_state_q_value_softmax_perseveration"],
+        AsocialStateQValueSoftmaxPerseverationModel,
+    )
+    assert isinstance(instances["asocial_state_q_value_softmax_split_alpha"], AsocialStateQValueSoftmaxSplitAlphaModel)
+    assert isinstance(instances["social_self_outcome_value_shaping"], SocialSelfOutcomeValueShapingModel)
+    assert isinstance(instances["social_observed_outcome_q"], SocialObservedOutcomeQModel)
+    assert isinstance(
+        instances["social_observed_outcome_q_perseveration"],
+        SocialObservedOutcomeQPerseverationModel,
+    )
+    assert isinstance(instances["social_observed_outcome_value_shaping"], SocialObservedOutcomeValueShapingModel)
+    assert isinstance(
+        instances["social_observed_outcome_value_shaping_perseveration"],
+        SocialObservedOutcomeValueShapingPerseverationModel,
+    )
+    assert isinstance(
+        instances["social_policy_reliability_gated_value_shaping"],
+        SocialPolicyReliabilityGatedValueShapingModel,
+    )
+    assert isinstance(
+        instances["social_constant_demo_bias_observed_outcome_q_perseveration"],
+        SocialConstantDemoBiasObservedOutcomeQPerseverationModel,
+    )
+    assert isinstance(
+        instances["social_policy_reliability_gated_demo_bias_observed_outcome_q_perseveration"],
+        SocialPolicyReliabilityGatedDemoBiasObservedOutcomeQPerseverationModel,
+    )
+    assert isinstance(
+        instances["social_dirichlet_reliability_gated_demo_bias_observed_outcome_q_perseveration"],
+        SocialDirichletReliabilityGatedDemoBiasObservedOutcomeQPerseverationModel,
+    )
+    assert isinstance(instances["social_observed_outcome_policy_shared_mix"], SocialObservedOutcomePolicySharedMixModel)
+    assert isinstance(
+        instances["social_observed_outcome_policy_shared_mix_perseveration"],
+        SocialObservedOutcomePolicySharedMixPerseverationModel,
+    )
+    assert isinstance(
+        instances["social_observed_outcome_policy_independent_mix_perseveration"],
+        SocialObservedOutcomePolicyIndependentMixPerseverationModel,
+    )
+    assert isinstance(instances["social_policy_learning_only"], SocialPolicyLearningOnlyModel)
+    assert isinstance(instances["social_policy_learning_only_perseveration"], SocialPolicyLearningOnlyPerseverationModel)
+
     problem = registry.create_problem("stationary_bandit", reward_probabilities=[0.2, 0.8])
     fixed_demo = registry.create_demonstrator("fixed_sequence_demonstrator", sequence=[0, 1])
     noisy_demo = registry.create_demonstrator(
@@ -89,12 +178,6 @@ def test_registry_creates_components_from_factories() -> None:
     pre_choice_generator = registry.create_generator("event_trace_social_pre_choice_generator")
     post_outcome_generator = registry.create_generator("event_trace_social_post_outcome_generator")
 
-    assert isinstance(model, AsocialQValueSoftmaxModel)
-    assert isinstance(random_model, UniformRandomPolicyModel)
-    assert isinstance(qrl_model, AsocialStateQValueSoftmaxModel)
-    assert isinstance(qrl_stay_model, AsocialStateQValueSoftmaxPerseverationModel)
-    assert isinstance(split_alpha_model, AsocialStateQValueSoftmaxSplitAlphaModel)
-    assert isinstance(social_vs_model, SocialSelfOutcomeValueShapingModel)
     assert isinstance(problem, StationaryBanditProblem)
     assert isinstance(fixed_demo, FixedSequenceDemonstrator)
     assert isinstance(noisy_demo, NoisyBestArmDemonstrator)

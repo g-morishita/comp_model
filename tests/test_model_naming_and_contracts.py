@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 
-from comp_model.models import (
-    AsocialQValueSoftmaxModel,
-    AsocialStateQValueSoftmaxModel,
-    AsocialStateQValueSoftmaxPerseverationModel,
-    AsocialStateQValueSoftmaxSplitAlphaModel,
-    SocialSelfOutcomeValueShapingModel,
-    UniformRandomPolicyModel,
-)
+import comp_model.models as model_module
 from comp_model.plugins import build_default_registry
 
 
@@ -37,19 +32,19 @@ def test_legacy_component_ids_removed() -> None:
 
 
 def test_canonical_model_docstrings_share_contract_sections() -> None:
-    """Canonical model docs should expose a consistent contract template."""
-
-    canonical_models = (
-        UniformRandomPolicyModel,
-        AsocialQValueSoftmaxModel,
-        AsocialStateQValueSoftmaxModel,
-        AsocialStateQValueSoftmaxPerseverationModel,
-        AsocialStateQValueSoftmaxSplitAlphaModel,
-        SocialSelfOutcomeValueShapingModel,
-    )
+    """Every exported *Model class should expose the same contract sections."""
 
     required_sections = ("Model Contract", "Decision Rule", "Update Rule")
-    for model_cls in canonical_models:
+
+    exported_models: list[type] = []
+    for name in getattr(model_module, "__all__", []):
+        attribute = getattr(model_module, name)
+        if inspect.isclass(attribute) and name.endswith("Model"):
+            exported_models.append(attribute)
+
+    assert exported_models, "No exported model classes found"
+
+    for model_cls in exported_models:
         docstring = model_cls.__doc__ or ""
         for section in required_sections:
             assert section in docstring, f"{model_cls.__name__} missing section: {section}"
