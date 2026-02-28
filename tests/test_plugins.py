@@ -16,7 +16,7 @@ def test_default_registry_discovers_builtin_components() -> None:
     problem_ids = {manifest.component_id for manifest in registry.list(kind="problem")}
 
     assert {"q_learning", "random_agent"}.issubset(model_ids)
-    assert {"stationary_bandit"}.issubset(problem_ids)
+    assert {"stationary_bandit", "two_stage_social_bandit"}.issubset(problem_ids)
 
 
 def test_registry_creates_components_from_factories() -> None:

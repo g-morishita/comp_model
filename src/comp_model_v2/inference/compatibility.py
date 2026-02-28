@@ -6,7 +6,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from comp_model_v2.core.events import EpisodeTrace, group_events_by_trial, validate_trace
+from comp_model_v2.core.events import (
+    EpisodeTrace,
+    group_events_by_trial,
+    split_trial_events_into_phase_blocks,
+    validate_trace,
+)
 from comp_model_v2.core.requirements import ComponentRequirements
 
 
@@ -55,26 +60,36 @@ def check_trace_compatibility(
 
     grouped = group_events_by_trial(trace)
     for trial_index in sorted(grouped):
-        trial_events = grouped[trial_index]
+        phase_blocks = split_trial_events_into_phase_blocks(
+            grouped[trial_index],
+            trial_index=trial_index,
+        )
+        for block_index, block in enumerate(phase_blocks):
+            observation_payload = block[0].payload
+            outcome_payload = block[2].payload
 
-        observation_payload = trial_events[0].payload
-        outcome_payload = trial_events[2].payload
+            observation = (
+                observation_payload.get("observation") if isinstance(observation_payload, Mapping) else None
+            )
+            outcome = outcome_payload.get("outcome") if isinstance(outcome_payload, Mapping) else None
 
-        observation = observation_payload.get("observation") if isinstance(observation_payload, Mapping) else None
-        outcome = outcome_payload.get("outcome") if isinstance(outcome_payload, Mapping) else None
+            for field in requirements.required_observation_fields:
+                if not isinstance(observation, Mapping):
+                    issues.append(
+                        f"trial {trial_index}, block {block_index}: "
+                        f"observation is not a mapping but requires field {field!r}"
+                    )
+                    continue
+                if field not in observation:
+                    issues.append(
+                        f"trial {trial_index}, block {block_index}: missing observation field {field!r}"
+                    )
 
-        for field in requirements.required_observation_fields:
-            if not isinstance(observation, Mapping):
-                issues.append(
-                    f"trial {trial_index}: observation is not a mapping but requires field {field!r}"
-                )
-                continue
-            if field not in observation:
-                issues.append(f"trial {trial_index}: missing observation field {field!r}")
-
-        for field in requirements.required_outcome_fields:
-            if not _outcome_has_field(outcome, field):
-                issues.append(f"trial {trial_index}: missing outcome field {field!r}")
+            for field in requirements.required_outcome_fields:
+                if not _outcome_has_field(outcome, field):
+                    issues.append(
+                        f"trial {trial_index}, block {block_index}: missing outcome field {field!r}"
+                    )
 
     return CompatibilityReport(is_compatible=len(issues) == 0, issues=tuple(issues))
 

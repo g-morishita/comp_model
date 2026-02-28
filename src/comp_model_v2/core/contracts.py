@@ -28,6 +28,12 @@ class DecisionContext(Generic[ActionT]):
         Zero-based trial index in the current episode.
     available_actions : tuple[ActionT, ...]
         Actions that are legal for the current trial.
+    actor_id : str, optional
+        Actor performing the decision/update for this step.
+    decision_index : int, optional
+        Zero-based decision step index within the trial.
+    decision_label : str | None, optional
+        Optional semantic label for the decision step.
 
     Raises
     ------
@@ -42,6 +48,9 @@ class DecisionContext(Generic[ActionT]):
 
     trial_index: int
     available_actions: tuple[ActionT, ...]
+    actor_id: str = "subject"
+    decision_index: int = 0
+    decision_label: str | None = None
 
     def __post_init__(self) -> None:
         if len(self.available_actions) == 0:

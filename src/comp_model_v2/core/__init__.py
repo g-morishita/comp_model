@@ -7,6 +7,7 @@ from .events import (
     EventPhase,
     SimulationEvent,
     group_events_by_trial,
+    split_trial_events_into_phase_blocks,
     validate_trace,
 )
 from .requirements import ComponentRequirements
@@ -21,5 +22,6 @@ __all__ = [
     "EventPhase",
     "SimulationEvent",
     "group_events_by_trial",
+    "split_trial_events_into_phase_blocks",
     "validate_trace",
 ]

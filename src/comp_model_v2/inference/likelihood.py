@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
 from comp_model_v2.core.contracts import AgentModel
 from comp_model_v2.core.events import EpisodeTrace
-from comp_model_v2.runtime.replay import ReplayResult, replay_episode
+from comp_model_v2.runtime.replay import ReplayResult, replay_episode, replay_trial_program
 
 
 @runtime_checkable
@@ -27,3 +28,25 @@ class ActionReplayLikelihood:
         """Evaluate action log-likelihood by replaying the trace."""
 
         return replay_episode(trace=trace, model=model)
+
+    def evaluate_with_models(
+        self,
+        trace: EpisodeTrace,
+        models: Mapping[str, AgentModel],
+    ) -> ReplayResult:
+        """Evaluate action log-likelihood for multi-actor traces.
+
+        Parameters
+        ----------
+        trace : EpisodeTrace
+            Canonical event trace.
+        models : Mapping[str, AgentModel]
+            Actor-ID to model mapping used during replay.
+
+        Returns
+        -------
+        ReplayResult
+            Replay likelihood result.
+        """
+
+        return replay_trial_program(trace=trace, models=models)

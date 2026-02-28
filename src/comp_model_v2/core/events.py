@@ -125,12 +125,14 @@ def validate_trace(
     trace : EpisodeTrace
         Trace to validate.
     expected_phase_sequence : tuple[EventPhase, ...], optional
-        Per-trial phase sequence required by the consumer.
+        Canonical phase block sequence. Trials may repeat this block multiple
+        times (for multi-decision programs), but each block must match exactly.
 
     Raises
     ------
     ValueError
-        If trial indices are not monotonic/contiguous or phase order is wrong.
+        If trial indices are not monotonic/contiguous, or phase order does not
+        follow one-or-more repetitions of ``expected_phase_sequence``.
     """
 
     last_trial = -1
@@ -152,9 +154,62 @@ def validate_trace(
         )
 
     for trial_index in expected_indices:
-        phases = tuple(event.phase for event in grouped[trial_index])
+        split_trial_events_into_phase_blocks(
+            grouped[trial_index],
+            expected_phase_sequence=expected_phase_sequence,
+            trial_index=trial_index,
+        )
+
+
+def split_trial_events_into_phase_blocks(
+    trial_events: list[SimulationEvent],
+    *,
+    expected_phase_sequence: tuple[EventPhase, ...] = DEFAULT_TRIAL_PHASE_SEQUENCE,
+    trial_index: int | None = None,
+) -> tuple[tuple[SimulationEvent, ...], ...]:
+    """Split a trial's events into canonical phase blocks.
+
+    Parameters
+    ----------
+    trial_events : list[SimulationEvent]
+        Events for one trial in chronological order.
+    expected_phase_sequence : tuple[EventPhase, ...], optional
+        Phase order expected in each block.
+    trial_index : int | None, optional
+        Optional trial index used to improve error messages.
+
+    Returns
+    -------
+    tuple[tuple[SimulationEvent, ...], ...]
+        Sequence of fixed-size phase blocks.
+
+    Raises
+    ------
+    ValueError
+        If event count is incompatible with block size or block phases mismatch.
+    """
+
+    block_size = len(expected_phase_sequence)
+    if block_size == 0:
+        raise ValueError("expected_phase_sequence must contain at least one phase")
+
+    if len(trial_events) == 0 or len(trial_events) % block_size != 0:
+        prefix = f"trial {trial_index}: " if trial_index is not None else ""
+        raise ValueError(
+            f"{prefix}event count {len(trial_events)} does not match "
+            f"phase block size {block_size}"
+        )
+
+    blocks: list[tuple[SimulationEvent, ...]] = []
+    for offset in range(0, len(trial_events), block_size):
+        block = tuple(trial_events[offset : offset + block_size])
+        phases = tuple(event.phase for event in block)
         if phases != expected_phase_sequence:
+            prefix = f"trial {trial_index}: " if trial_index is not None else ""
             raise ValueError(
-                "invalid phase sequence for trial "
-                f"{trial_index}: got {phases!r}, expected {expected_phase_sequence!r}"
+                f"{prefix}invalid phase block {phases!r}, "
+                f"expected {expected_phase_sequence!r}"
             )
+        blocks.append(block)
+
+    return tuple(blocks)
