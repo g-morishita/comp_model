@@ -27,6 +27,16 @@ from .mle import (
     ScipyMinimizeMLEEstimator,
     TransformedScipyMinimizeMLEEstimator,
 )
+from .serialization import (
+    block_fit_records,
+    study_fit_records,
+    study_summary_records,
+    subject_fit_records,
+    subject_summary_records,
+    write_records_csv,
+    write_study_fit_records_csv,
+    write_study_fit_summary_csv,
+)
 from .study_fitting import (
     BlockFitResult,
     StudyFitResult,
@@ -55,6 +65,7 @@ __all__ = [
     "SubjectFitResult",
     "TransformedScipyMinimizeMLEEstimator",
     "assert_trace_compatible",
+    "block_fit_records",
     "build_model_fit_function",
     "check_trace_compatibility",
     "coerce_episode_trace",
@@ -71,5 +82,12 @@ __all__ = [
     "identity_transform",
     "model_component_spec_from_config",
     "positive_log_transform",
+    "study_fit_records",
+    "study_summary_records",
+    "subject_fit_records",
+    "subject_summary_records",
     "unit_interval_logit_transform",
+    "write_records_csv",
+    "write_study_fit_records_csv",
+    "write_study_fit_summary_csv",
 ]

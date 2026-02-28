@@ -54,3 +54,7 @@ study levels.
 You can also fit from declarative config mappings via:
 - `comp_model.inference.fit_dataset_from_config`
 - `comp_model.inference.fit_study_from_config`
+
+To export fit outputs:
+- `comp_model.inference.write_study_fit_records_csv`
+- `comp_model.inference.write_study_fit_summary_csv`

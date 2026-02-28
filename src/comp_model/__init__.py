@@ -26,6 +26,8 @@ from .inference import (
     fit_model_from_registry,
     fit_study_data,
     fit_study_from_config,
+    write_study_fit_records_csv,
+    write_study_fit_summary_csv,
 )
 from .recovery import (
     load_json_config,
@@ -55,4 +57,6 @@ __all__ = [
     "run_parameter_recovery_from_config",
     "run_episode",
     "run_trial_program",
+    "write_study_fit_records_csv",
+    "write_study_fit_summary_csv",
 ]
