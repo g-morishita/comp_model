@@ -15,6 +15,15 @@ from .model import (
     run_model_recovery,
 )
 from .parameter import ParameterRecoveryCase, ParameterRecoveryResult, run_parameter_recovery
+from .serialization import (
+    model_recovery_case_records,
+    model_recovery_confusion_records,
+    parameter_recovery_records,
+    write_model_recovery_cases_csv,
+    write_model_recovery_confusion_csv,
+    write_parameter_recovery_csv,
+    write_records_csv,
+)
 
 __all__ = [
     "CandidateFitSummary",
@@ -26,8 +35,15 @@ __all__ = [
     "ParameterRecoveryCase",
     "ParameterRecoveryResult",
     "load_json_config",
+    "model_recovery_case_records",
+    "model_recovery_confusion_records",
+    "parameter_recovery_records",
     "run_model_recovery",
     "run_model_recovery_from_config",
     "run_parameter_recovery",
     "run_parameter_recovery_from_config",
+    "write_model_recovery_cases_csv",
+    "write_model_recovery_confusion_csv",
+    "write_parameter_recovery_csv",
+    "write_records_csv",
 ]
