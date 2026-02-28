@@ -7,14 +7,14 @@ from typing import Any
 
 import pytest
 
-from comp_model_v2.core.contracts import DecisionContext
-from comp_model_v2.core.events import EpisodeTrace, EventPhase, SimulationEvent
-from comp_model_v2.core.requirements import ComponentRequirements
-from comp_model_v2.inference import ActionReplayLikelihood, GridSearchMLEEstimator, check_trace_compatibility
-from comp_model_v2.models import RandomAgent
-from comp_model_v2.plugins import build_default_registry
-from comp_model_v2.problems import StationaryBanditProblem
-from comp_model_v2.runtime import SimulationConfig, run_episode
+from comp_model.core.contracts import DecisionContext
+from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
+from comp_model.core.requirements import ComponentRequirements
+from comp_model.inference import ActionReplayLikelihood, GridSearchMLEEstimator, check_trace_compatibility
+from comp_model.models import RandomAgent
+from comp_model.plugins import build_default_registry
+from comp_model.problems import StationaryBanditProblem
+from comp_model.runtime import SimulationConfig, run_episode
 
 
 @dataclass

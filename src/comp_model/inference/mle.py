@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from itertools import product
 from typing import Callable
 
-from comp_model_v2.core.contracts import AgentModel
-from comp_model_v2.core.events import EpisodeTrace
-from comp_model_v2.core.requirements import ComponentRequirements
-from comp_model_v2.inference.compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from comp_model_v2.inference.likelihood import LikelihoodProgram
+from comp_model.core.contracts import AgentModel
+from comp_model.core.events import EpisodeTrace
+from comp_model.core.requirements import ComponentRequirements
+from comp_model.inference.compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
+from comp_model.inference.likelihood import LikelihoodProgram
 
 
 @dataclass(frozen=True, slots=True)

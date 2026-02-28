@@ -11,7 +11,7 @@ import importlib
 import pkgutil
 from typing import Any, Callable, Literal
 
-from comp_model_v2.core.requirements import ComponentRequirements
+from comp_model.core.requirements import ComponentRequirements
 
 ComponentKind = Literal["model", "problem"]
 
@@ -189,6 +189,6 @@ def build_default_registry() -> PluginRegistry:
     """Build a registry with all built-in models and problems discovered."""
 
     registry = PluginRegistry()
-    registry.discover("comp_model_v2.models")
-    registry.discover("comp_model_v2.problems")
+    registry.discover("comp_model.models")
+    registry.discover("comp_model.problems")
     return registry

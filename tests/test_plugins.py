@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from comp_model_v2.models import QLearningAgent, RandomAgent
-from comp_model_v2.plugins import PluginRegistry, build_default_registry
-from comp_model_v2.problems import StationaryBanditProblem
+from comp_model.models import QLearningAgent, RandomAgent
+from comp_model.plugins import PluginRegistry, build_default_registry
+from comp_model.problems import StationaryBanditProblem
 
 
 def test_default_registry_discovers_builtin_components() -> None:
@@ -37,8 +37,8 @@ def test_discovery_is_idempotent_for_same_package() -> None:
     """Repeated discovery should not create duplicate IDs."""
 
     registry = PluginRegistry()
-    registry.discover("comp_model_v2.models")
-    registry.discover("comp_model_v2.models")
+    registry.discover("comp_model.models")
+    registry.discover("comp_model.models")
 
     manifests = registry.list(kind="model")
     ids = [manifest.component_id for manifest in manifests]

@@ -5,10 +5,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from comp_model_v2.core.events import EventPhase, validate_trace
-from comp_model_v2.models import RandomAgent
-from comp_model_v2.problems import TwoStageSocialBanditProgram
-from comp_model_v2.runtime import SimulationConfig, replay_trial_program, run_trial_program
+from comp_model.core.events import EventPhase, validate_trace
+from comp_model.models import RandomAgent
+from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.runtime import SimulationConfig, replay_trial_program, run_trial_program
 
 
 def test_run_trial_program_emits_two_phase_blocks_per_trial() -> None:

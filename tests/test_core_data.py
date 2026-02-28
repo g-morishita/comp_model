@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from comp_model_v2.core.data import (
+from comp_model.core.data import (
     BlockData,
     StudyData,
     SubjectData,
@@ -14,9 +14,9 @@ from comp_model_v2.core.data import (
     trace_from_trial_decisions,
     trial_decisions_from_trace,
 )
-from comp_model_v2.core.events import EventPhase, validate_trace
-from comp_model_v2.models import RandomAgent
-from comp_model_v2.runtime import replay_episode
+from comp_model.core.events import EventPhase, validate_trace
+from comp_model.models import RandomAgent
+from comp_model.runtime import replay_episode
 
 
 def test_trace_from_trial_decisions_builds_canonical_phase_events() -> None:

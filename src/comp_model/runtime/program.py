@@ -13,8 +13,8 @@ from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
-from comp_model_v2.core.contracts import DecisionContext, DecisionProblem
-from comp_model_v2.core.events import SimulationEvent
+from comp_model.core.contracts import DecisionContext, DecisionProblem
+from comp_model.core.events import SimulationEvent
 
 
 @dataclass(frozen=True, slots=True)

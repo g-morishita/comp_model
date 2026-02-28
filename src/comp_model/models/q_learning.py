@@ -12,9 +12,9 @@ from typing import Any, Callable
 
 import numpy as np
 
-from comp_model_v2.core.contracts import DecisionContext
-from comp_model_v2.core.requirements import ComponentRequirements
-from comp_model_v2.plugins import ComponentManifest
+from comp_model.core.contracts import DecisionContext
+from comp_model.core.requirements import ComponentRequirements
+from comp_model.plugins import ComponentManifest
 
 
 @dataclass(frozen=True, slots=True)

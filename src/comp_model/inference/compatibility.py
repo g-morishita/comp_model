@@ -6,13 +6,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from comp_model_v2.core.events import (
+from comp_model.core.events import (
     EpisodeTrace,
     group_events_by_trial,
     split_trial_events_into_phase_blocks,
     validate_trace,
 )
-from comp_model_v2.core.requirements import ComponentRequirements
+from comp_model.core.requirements import ComponentRequirements
 
 
 @dataclass(frozen=True, slots=True)

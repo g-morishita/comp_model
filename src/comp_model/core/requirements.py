@@ -23,7 +23,7 @@ class ComponentRequirements:
     Notes
     -----
     Requirements are declarative metadata. Validation is handled by
-    :mod:`comp_model_v2.inference.compatibility`.
+    :mod:`comp_model.inference.compatibility`.
     """
 
     required_observation_fields: tuple[str, ...] = ()

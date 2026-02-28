@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from comp_model_v2.core.contracts import DecisionContext
-from comp_model_v2.plugins import ComponentManifest
+from comp_model.core.contracts import DecisionContext
+from comp_model.plugins import ComponentManifest
 
 
 class RandomAgent:
     """Uniform-random action model with no-op update.
 
-    Methods follow the :class:`comp_model_v2.core.contracts.AgentModel` protocol.
+    Methods follow the :class:`comp_model.core.contracts.AgentModel` protocol.
     """
 
     def start_episode(self) -> None:

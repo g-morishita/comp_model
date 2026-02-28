@@ -17,9 +17,9 @@ from typing import Any
 
 import numpy as np
 
-from comp_model_v2.core.contracts import DecisionContext
-from comp_model_v2.plugins import ComponentManifest
-from comp_model_v2.runtime.program import DecisionNode, TrialProgram
+from comp_model.core.contracts import DecisionContext
+from comp_model.plugins import ComponentManifest
+from comp_model.runtime.program import DecisionNode, TrialProgram
 
 
 @dataclass(frozen=True, slots=True)

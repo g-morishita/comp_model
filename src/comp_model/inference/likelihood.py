@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Protocol, runtime_checkable
 
-from comp_model_v2.core.contracts import AgentModel
-from comp_model_v2.core.events import EpisodeTrace
-from comp_model_v2.runtime.replay import ReplayResult, replay_episode, replay_trial_program
+from comp_model.core.contracts import AgentModel
+from comp_model.core.events import EpisodeTrace
+from comp_model.runtime.replay import ReplayResult, replay_episode, replay_trial_program
 
 
 @runtime_checkable
@@ -21,7 +21,7 @@ class LikelihoodProgram(Protocol):
 class ActionReplayLikelihood:
     """Likelihood program based on action probabilities during replay.
 
-    The implementation delegates to :func:`comp_model_v2.runtime.replay.replay_episode`.
+    The implementation delegates to :func:`comp_model.runtime.replay.replay_episode`.
     """
 
     def evaluate(self, trace: EpisodeTrace, model: AgentModel) -> ReplayResult:

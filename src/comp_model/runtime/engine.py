@@ -14,10 +14,10 @@ from typing import Any
 
 import numpy as np
 
-from comp_model_v2.core.contracts import AgentModel, DecisionContext, DecisionProblem
-from comp_model_v2.core.events import EpisodeTrace, EventPhase, SimulationEvent
-from comp_model_v2.runtime.probabilities import normalize_distribution, sample_action
-from comp_model_v2.runtime.program import TrialProgram, SingleStepProgramAdapter
+from comp_model.core.contracts import AgentModel, DecisionContext, DecisionProblem
+from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
+from comp_model.runtime.probabilities import normalize_distribution, sample_action
+from comp_model.runtime.program import TrialProgram, SingleStepProgramAdapter
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,7 +219,7 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
     Notes
     -----
     This function wraps ``problem`` using
-    :class:`comp_model_v2.runtime.program.SingleStepProgramAdapter` and runs the
+    :class:`comp_model.runtime.program.SingleStepProgramAdapter` and runs the
     new trial-program engine.
     """
 

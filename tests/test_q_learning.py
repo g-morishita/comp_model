@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from comp_model_v2.models import QLearningAgent
-from comp_model_v2.models.q_learning import QLearningConfig
-from comp_model_v2.problems import StationaryBanditProblem
-from comp_model_v2.runtime import SimulationConfig, run_episode
+from comp_model.models import QLearningAgent
+from comp_model.models.q_learning import QLearningConfig
+from comp_model.problems import StationaryBanditProblem
+from comp_model.runtime import SimulationConfig, run_episode
 
 
 def test_q_learning_single_action_updates_toward_reward_one() -> None:

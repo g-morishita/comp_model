@@ -2,7 +2,7 @@
 
 This module provides generic data structures analogous to the v1
 ``Trial``/``Block``/``SubjectData``/``StudyData`` layers while keeping
-:class:`comp_model_v2.core.events.EpisodeTrace` as the canonical runtime format.
+:class:`comp_model.core.events.EpisodeTrace` as the canonical runtime format.
 """
 
 from __future__ import annotations

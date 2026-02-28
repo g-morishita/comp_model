@@ -8,14 +8,14 @@ from typing import Any
 
 import numpy as np
 
-from comp_model_v2.core.contracts import AgentModel, DecisionContext
-from comp_model_v2.core.events import (
+from comp_model.core.contracts import AgentModel, DecisionContext
+from comp_model.core.events import (
     EpisodeTrace,
     group_events_by_trial,
     split_trial_events_into_phase_blocks,
     validate_trace,
 )
-from comp_model_v2.runtime.probabilities import normalize_distribution
+from comp_model.runtime.probabilities import normalize_distribution
 
 
 @dataclass(frozen=True, slots=True)
