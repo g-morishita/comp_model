@@ -13,7 +13,7 @@ from typing import Any, Callable, Literal
 
 from comp_model.core.requirements import ComponentRequirements
 
-ComponentKind = Literal["model", "problem", "demonstrator"]
+ComponentKind = Literal["model", "problem", "demonstrator", "generator"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,7 +22,7 @@ class ComponentManifest:
 
     Parameters
     ----------
-    kind : {"model", "problem", "demonstrator"}
+    kind : {"model", "problem", "demonstrator", "generator"}
         Component category.
     component_id : str
         Stable identifier unique within ``kind``.
@@ -81,7 +81,7 @@ class PluginRegistry:
 
         Parameters
         ----------
-        kind : {"model", "problem", "demonstrator"}
+        kind : {"model", "problem", "demonstrator", "generator"}
             Component category.
         component_id : str
             Component identifier.
@@ -104,7 +104,7 @@ class PluginRegistry:
 
         Parameters
         ----------
-        kind : {"model", "problem", "demonstrator"} | None, optional
+        kind : {"model", "problem", "demonstrator", "generator"} | None, optional
             Optional kind filter.
 
         Returns
@@ -124,7 +124,7 @@ class PluginRegistry:
 
         Parameters
         ----------
-        kind : {"model", "problem", "demonstrator"}
+        kind : {"model", "problem", "demonstrator", "generator"}
             Component category.
         component_id : str
             Component identifier.
@@ -154,6 +154,11 @@ class PluginRegistry:
         """Create a demonstrator component by ID."""
 
         return self.create("demonstrator", component_id, **kwargs)
+
+    def create_generator(self, component_id: str, **kwargs: Any) -> Any:
+        """Create a generator component by ID."""
+
+        return self.create("generator", component_id, **kwargs)
 
     def discover(self, package_name: str) -> tuple[ComponentManifest, ...]:
         """Discover and register manifests in a package tree.
@@ -197,4 +202,5 @@ def build_default_registry() -> PluginRegistry:
     registry.discover("comp_model.models")
     registry.discover("comp_model.problems")
     registry.discover("comp_model.demonstrators")
+    registry.discover("comp_model.generators")
     return registry
