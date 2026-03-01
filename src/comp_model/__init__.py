@@ -61,6 +61,9 @@ from .inference import (
     write_map_study_fit_records_csv,
     write_map_study_fit_summary_csv,
     write_model_comparison_csv,
+    write_study_model_comparison_csv,
+    write_study_model_comparison_subject_csv,
+    write_subject_model_comparison_csv,
     write_study_fit_records_csv,
     write_study_fit_summary_csv,
 )
@@ -127,6 +130,9 @@ __all__ = [
     "write_map_study_fit_records_csv",
     "write_map_study_fit_summary_csv",
     "write_model_comparison_csv",
+    "write_study_model_comparison_csv",
+    "write_study_model_comparison_subject_csv",
+    "write_subject_model_comparison_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",
 ]

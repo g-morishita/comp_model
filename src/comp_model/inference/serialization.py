@@ -10,6 +10,10 @@ from .fit_result import extract_best_fit_summary
 from .hierarchical import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
 from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .model_selection import ModelComparisonResult
+from .study_model_selection import (
+    StudyModelComparisonResult,
+    SubjectModelComparisonResult,
+)
 from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
 
 
@@ -311,6 +315,71 @@ def model_comparison_records(result: ModelComparisonResult) -> list[dict[str, An
     return rows
 
 
+def subject_model_comparison_records(result: SubjectModelComparisonResult) -> list[dict[str, Any]]:
+    """Convert subject-level model-comparison output into row dictionaries."""
+
+    rows: list[dict[str, Any]] = []
+    for comparison in result.comparisons:
+        rows.append(
+            {
+                "subject_id": str(result.subject_id),
+                "criterion": str(result.criterion),
+                "n_observations": int(result.n_observations),
+                "selected_candidate_name": str(result.selected_candidate_name),
+                "candidate_name": str(comparison.candidate_name),
+                "is_selected": bool(comparison.candidate_name == result.selected_candidate_name),
+                "log_likelihood": float(comparison.log_likelihood),
+                "log_posterior": (
+                    float(comparison.log_posterior)
+                    if comparison.log_posterior is not None
+                    else None
+                ),
+                "n_parameters": int(comparison.n_parameters),
+                "aic": float(comparison.aic),
+                "bic": float(comparison.bic),
+                "score": float(comparison.score),
+            }
+        )
+    return rows
+
+
+def study_model_comparison_records(result: StudyModelComparisonResult) -> list[dict[str, Any]]:
+    """Convert study-level model-comparison output into aggregate candidate rows."""
+
+    rows: list[dict[str, Any]] = []
+    for comparison in result.comparisons:
+        rows.append(
+            {
+                "criterion": str(result.criterion),
+                "n_subjects": int(result.n_subjects),
+                "n_observations": int(result.n_observations),
+                "selected_candidate_name": str(result.selected_candidate_name),
+                "candidate_name": str(comparison.candidate_name),
+                "is_selected": bool(comparison.candidate_name == result.selected_candidate_name),
+                "log_likelihood": float(comparison.log_likelihood),
+                "log_posterior": (
+                    float(comparison.log_posterior)
+                    if comparison.log_posterior is not None
+                    else None
+                ),
+                "n_parameters": int(comparison.n_parameters),
+                "aic": float(comparison.aic),
+                "bic": float(comparison.bic),
+                "score": float(comparison.score),
+            }
+        )
+    return rows
+
+
+def study_model_comparison_subject_records(result: StudyModelComparisonResult) -> list[dict[str, Any]]:
+    """Flatten per-subject candidate comparison rows from a study result."""
+
+    rows: list[dict[str, Any]] = []
+    for subject_result in result.subject_results:
+        rows.extend(subject_model_comparison_records(subject_result))
+    return rows
+
+
 def write_hierarchical_study_block_records_csv(
     study_result: HierarchicalStudyMapResult,
     path: str | Path,
@@ -347,6 +416,24 @@ def write_model_comparison_csv(result: ModelComparisonResult, path: str | Path) 
     return write_records_csv(model_comparison_records(result), path)
 
 
+def write_subject_model_comparison_csv(result: SubjectModelComparisonResult, path: str | Path) -> Path:
+    """Write subject-level model-comparison rows to CSV."""
+
+    return write_records_csv(subject_model_comparison_records(result), path)
+
+
+def write_study_model_comparison_csv(result: StudyModelComparisonResult, path: str | Path) -> Path:
+    """Write study-level aggregate model-comparison rows to CSV."""
+
+    return write_records_csv(study_model_comparison_records(result), path)
+
+
+def write_study_model_comparison_subject_csv(result: StudyModelComparisonResult, path: str | Path) -> Path:
+    """Write study per-subject model-comparison rows to CSV."""
+
+    return write_records_csv(study_model_comparison_subject_records(result), path)
+
+
 __all__ = [
     "block_fit_records",
     "hierarchical_study_block_records",
@@ -359,6 +446,9 @@ __all__ = [
     "map_subject_fit_records",
     "map_subject_summary_records",
     "model_comparison_records",
+    "study_model_comparison_records",
+    "study_model_comparison_subject_records",
+    "subject_model_comparison_records",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
@@ -368,6 +458,9 @@ __all__ = [
     "write_map_study_fit_records_csv",
     "write_map_study_fit_summary_csv",
     "write_model_comparison_csv",
+    "write_study_model_comparison_csv",
+    "write_study_model_comparison_subject_csv",
+    "write_subject_model_comparison_csv",
     "write_records_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",

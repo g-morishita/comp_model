@@ -69,6 +69,8 @@ To export fit outputs:
 - `comp_model.inference.write_hierarchical_study_block_records_csv`
 - `comp_model.inference.write_hierarchical_study_summary_csv`
 - `comp_model.inference.write_model_comparison_csv`
+- `comp_model.inference.write_study_model_comparison_csv`
+- `comp_model.inference.write_study_model_comparison_subject_csv`
 
 For candidate-model comparison on one dataset:
 - `comp_model.inference.compare_candidate_models`
