@@ -44,12 +44,18 @@ from .config import (
 )
 from .config_dispatch import (
     HIERARCHICAL_ESTIMATORS,
+    MCMC_ESTIMATORS,
     MAP_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_block_auto_from_config,
     fit_dataset_auto_from_config,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
+)
+from .mcmc_config import (
+    MCMCEstimatorSpec,
+    mcmc_estimator_spec_from_config,
+    sample_posterior_dataset_from_config,
 )
 from .fitting import (
     EstimatorType,
@@ -80,6 +86,15 @@ from .map_study_fitting import (
     fit_map_block_data,
     fit_map_study_data,
     fit_map_subject_data,
+)
+from .mcmc import (
+    MCMCDiagnostics,
+    MCMCDraw,
+    MCMCPosteriorResult,
+    RandomWalkMetropolisEstimator,
+    posterior_samples_from_draws,
+    sample_posterior_model,
+    sample_posterior_model_from_registry,
 )
 from .model_selection import (
     CandidateComparison,
@@ -170,8 +185,13 @@ __all__ = [
     "HierarchicalSubjectMapResult",
     "IndependentPriorProgram",
     "LikelihoodProgram",
+    "MCMCEstimatorSpec",
     "MAP_ESTIMATORS",
+    "MCMC_ESTIMATORS",
     "MLE_ESTIMATORS",
+    "MCMCDiagnostics",
+    "MCMCDraw",
+    "MCMCPosteriorResult",
     "BestFitSummary",
     "MLECandidate",
     "MLEFitResult",
@@ -193,6 +213,7 @@ __all__ = [
     "ScipyMapBayesEstimator",
     "ScipyMinimizeMLEEstimator",
     "SelectionCriterion",
+    "RandomWalkMetropolisEstimator",
     "StudyFitResult",
     "StudyCandidateComparison",
     "StudyModelComparisonResult",
@@ -246,6 +267,9 @@ __all__ = [
     "fit_map_study_from_config",
     "fit_map_subject_data",
     "fit_map_subject_from_config",
+    "sample_posterior_model",
+    "sample_posterior_model_from_registry",
+    "sample_posterior_dataset_from_config",
     "fit_study_data",
     "fit_study_auto_from_config",
     "fit_study_hierarchical_map",
@@ -260,10 +284,12 @@ __all__ = [
     "hierarchical_map_spec_from_config",
     "log_normal_log_prior",
     "map_fit_spec_from_config",
+    "mcmc_estimator_spec_from_config",
     "model_component_spec_from_config",
     "normal_log_prior",
     "positive_log_transform",
     "posterior_summary_records",
+    "posterior_samples_from_draws",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
