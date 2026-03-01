@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from comp_model.inference.bayes import build_map_fit_function
+from comp_model.inference.bayes_config import map_fit_spec_from_config, prior_program_from_config
 from comp_model.inference.fitting import build_model_fit_function
 from comp_model.inference.config import fit_spec_from_config
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -82,6 +84,7 @@ def run_parameter_recovery_from_config(
     generating_ref = _parse_component_ref(_require_mapping(config, "generating_model"), field_name="generating_model")
     fitting_ref = _parse_component_ref(_require_mapping(config, "fitting_model"), field_name="fitting_model")
     estimator_cfg = _require_mapping(config, "estimator")
+    prior_cfg = config.get("prior")
 
     true_parameter_sets = _parse_true_parameter_sets(config.get("true_parameter_sets"))
     n_trials = _coerce_positive_int(config.get("n_trials"), field_name="n_trials")
@@ -89,6 +92,7 @@ def run_parameter_recovery_from_config(
 
     fit_function = _build_fit_function(
         estimator_cfg=estimator_cfg,
+        prior_cfg=prior_cfg,
         registry=reg,
         fitting_ref=fitting_ref,
     )
@@ -162,9 +166,11 @@ def run_model_recovery_from_config(
             field_name=f"candidates[{index}].model",
         )
         estimator_cfg = _require_mapping(item, "estimator", field_name=f"candidates[{index}]")
+        prior_cfg = item.get("prior")
 
         fit_function = _build_fit_function(
             estimator_cfg=estimator_cfg,
+            prior_cfg=prior_cfg,
             registry=reg,
             fitting_ref=model_ref,
         )
@@ -202,12 +208,13 @@ def run_model_recovery_from_config(
 def _build_fit_function(
     *,
     estimator_cfg: dict[str, Any],
+    prior_cfg: Any,
     registry: PluginRegistry,
     fitting_ref: ComponentRef,
 ):
-    """Build trace->MLE fit callable from estimator config."""
+    """Build trace->fit callable from estimator config."""
 
-    fit_spec = fit_spec_from_config(estimator_cfg)
+    estimator_type = str(estimator_cfg.get("type", "")).strip()
     model_manifest = registry.get("model", fitting_ref.component_id)
 
     model_factory = lambda params: registry.create_model(
@@ -215,6 +222,23 @@ def _build_fit_function(
         **_merge_kwargs(fitting_ref.kwargs, params),
     )
 
+    if estimator_type in {"scipy_map", "transformed_scipy_map"}:
+        if prior_cfg is None:
+            raise ValueError(
+                f"prior is required for estimator type {estimator_type!r} in recovery config"
+            )
+        prior_program = prior_program_from_config(
+            _require_mapping(prior_cfg, field_name="prior")
+        )
+        fit_spec = map_fit_spec_from_config(estimator_cfg)
+        return build_map_fit_function(
+            model_factory=model_factory,
+            prior_program=prior_program,
+            fit_spec=fit_spec,
+            requirements=model_manifest.requirements,
+        )
+
+    fit_spec = fit_spec_from_config(estimator_cfg)
     return build_model_fit_function(
         model_factory=model_factory,
         fit_spec=fit_spec,
