@@ -97,6 +97,10 @@ Tabular CSV I/O helpers are available via:
 - `comp_model.read_study_decisions_csv`
 - `comp_model.write_study_decisions_csv`
 
+Config-driven fitting directly from CSV is available via:
+- `comp_model.fit_trial_csv_from_config`
+- `comp_model.fit_study_csv_from_config`
+
 These APIs run independent fits per block and aggregate summaries at subject and
 study levels.
 

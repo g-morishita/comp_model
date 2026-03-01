@@ -197,6 +197,7 @@ from .study_fitting import (
     fit_study_data,
     fit_subject_data,
 )
+from .tabular import fit_study_csv_from_config, fit_trial_csv_from_config
 from .transforms import ParameterTransform, identity_transform, positive_log_transform, unit_interval_logit_transform
 
 __all__ = [
@@ -335,6 +336,8 @@ __all__ = [
     "fit_subject_auto_from_config",
     "fit_subject_data",
     "fit_subject_from_config",
+    "fit_study_csv_from_config",
+    "fit_trial_csv_from_config",
     "identity_transform",
     "hierarchical_mcmc_estimator_spec_from_config",
     "hierarchical_map_spec_from_config",
