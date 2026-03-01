@@ -21,6 +21,8 @@ from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
 from .inference import (
     FitSpec,
+    compare_candidate_models,
+    compare_registry_candidate_models,
     fit_dataset_from_config,
     fit_model,
     fit_model_from_registry,
@@ -45,6 +47,8 @@ __all__ = [
     "FitSpec",
     "SimulationConfig",
     "StudyData",
+    "compare_candidate_models",
+    "compare_registry_candidate_models",
     "fit_dataset_from_config",
     "fit_model",
     "fit_model_from_registry",

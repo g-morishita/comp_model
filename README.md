@@ -58,3 +58,10 @@ You can also fit from declarative config mappings via:
 To export fit outputs:
 - `comp_model.inference.write_study_fit_records_csv`
 - `comp_model.inference.write_study_fit_summary_csv`
+
+For candidate-model comparison on one dataset:
+- `comp_model.inference.compare_candidate_models`
+- `comp_model.inference.compare_registry_candidate_models`
+
+These return per-candidate log-likelihood/AIC/BIC summaries and selected model
+labels under a chosen criterion.

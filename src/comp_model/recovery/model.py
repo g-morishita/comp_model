@@ -8,18 +8,22 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar
+from typing import Any, TypeVar
 
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
 from comp_model.inference import MLEFitResult
+from comp_model.inference.model_selection import (
+    CandidateFitSpec,
+    SelectionCriterion,
+    compare_candidate_models,
+)
 from comp_model.runtime import SimulationConfig, run_episode
 
 ObsT = TypeVar("ObsT")
 ActionT = TypeVar("ActionT")
 OutcomeT = TypeVar("OutcomeT")
-SelectionCriterion = Literal["log_likelihood", "aic", "bic"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,6 +183,17 @@ def run_model_recovery(
     if n_replications_per_generator <= 0:
         raise ValueError("n_replications_per_generator must be > 0")
 
+    # Compile one reusable candidate set so every simulated dataset is evaluated
+    # with exactly the same fitting configuration.
+    compiled_candidates = tuple(
+        CandidateFitSpec(
+            name=candidate.name,
+            fit_function=candidate.fit_function,
+            n_parameters=candidate.n_parameters,
+        )
+        for candidate in candidate_specs
+    )
+
     rng = np.random.default_rng(seed)
     cases: list[ModelRecoveryCase] = []
 
@@ -193,39 +208,33 @@ def run_model_recovery(
                 config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
             )
 
-            candidate_summaries: list[CandidateFitSummary] = []
-            for candidate in candidate_specs:
-                fit_result = candidate.fit_function(trace)
-                log_likelihood = float(fit_result.best.log_likelihood)
-                n_parameters = (
-                    int(candidate.n_parameters)
-                    if candidate.n_parameters is not None
-                    else int(len(fit_result.best.params))
-                )
-                score = _selection_score(
-                    criterion=criterion,
-                    log_likelihood=log_likelihood,
-                    n_parameters=n_parameters,
-                    n_observations=n_trials,
-                )
-                candidate_summaries.append(
-                    CandidateFitSummary(
-                        candidate_name=candidate.name,
-                        log_likelihood=log_likelihood,
-                        n_parameters=n_parameters,
-                        score=score,
-                        best_params={k: float(v) for k, v in fit_result.best.params.items()},
-                    )
-                )
+            comparison = compare_candidate_models(
+                trace,
+                candidate_specs=compiled_candidates,
+                criterion=criterion,
+            )
 
-            selected = _select_candidate(candidate_summaries, criterion=criterion)
+            candidate_summaries = tuple(
+                CandidateFitSummary(
+                    candidate_name=item.candidate_name,
+                    log_likelihood=item.log_likelihood,
+                    n_parameters=item.n_parameters,
+                    score=item.score,
+                    best_params={
+                        key: float(value)
+                        for key, value in item.fit_result.best.params.items()
+                    },
+                )
+                for item in comparison.comparisons
+            )
+
             cases.append(
                 ModelRecoveryCase(
                     case_index=len(cases),
                     generating_model_name=generating.name,
                     simulation_seed=simulation_seed,
-                    selected_candidate_name=selected.candidate_name,
-                    candidate_summaries=tuple(candidate_summaries),
+                    selected_candidate_name=comparison.selected_candidate_name,
+                    candidate_summaries=candidate_summaries,
                 )
             )
 
@@ -235,36 +244,6 @@ def run_model_recovery(
         confusion_matrix=confusion,
         criterion=criterion,
     )
-
-
-def _selection_score(
-    *,
-    criterion: SelectionCriterion,
-    log_likelihood: float,
-    n_parameters: int,
-    n_observations: int,
-) -> float:
-    """Compute candidate selection score for one criterion."""
-
-    if criterion == "log_likelihood":
-        return float(log_likelihood)
-    if criterion == "aic":
-        return float(2.0 * n_parameters - 2.0 * log_likelihood)
-    if criterion == "bic":
-        return float(np.log(float(n_observations)) * n_parameters - 2.0 * log_likelihood)
-    raise ValueError(f"unsupported criterion: {criterion!r}")
-
-
-def _select_candidate(
-    candidate_summaries: Sequence[CandidateFitSummary],
-    *,
-    criterion: SelectionCriterion,
-) -> CandidateFitSummary:
-    """Select best candidate for one generated dataset."""
-
-    if criterion == "log_likelihood":
-        return max(candidate_summaries, key=lambda item: item.score)
-    return min(candidate_summaries, key=lambda item: item.score)
 
 
 def _build_confusion_matrix(cases: Sequence[ModelRecoveryCase]) -> dict[str, dict[str, int]]:

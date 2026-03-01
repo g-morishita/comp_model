@@ -27,6 +27,15 @@ from .mle import (
     ScipyMinimizeMLEEstimator,
     TransformedScipyMinimizeMLEEstimator,
 )
+from .model_selection import (
+    CandidateComparison,
+    CandidateFitSpec,
+    ModelComparisonResult,
+    RegistryCandidateFitSpec,
+    SelectionCriterion,
+    compare_candidate_models,
+    compare_registry_candidate_models,
+)
 from .serialization import (
     block_fit_records,
     study_fit_records,
@@ -50,6 +59,8 @@ from .transforms import ParameterTransform, identity_transform, positive_log_tra
 __all__ = [
     "ActionReplayLikelihood",
     "BlockFitResult",
+    "CandidateComparison",
+    "CandidateFitSpec",
     "CompatibilityReport",
     "EstimatorType",
     "FitSpec",
@@ -57,10 +68,13 @@ __all__ = [
     "LikelihoodProgram",
     "MLECandidate",
     "MLEFitResult",
+    "ModelComparisonResult",
     "ModelComponentSpec",
     "ParameterTransform",
+    "RegistryCandidateFitSpec",
     "ScipyMinimizeDiagnostics",
     "ScipyMinimizeMLEEstimator",
+    "SelectionCriterion",
     "StudyFitResult",
     "SubjectFitResult",
     "TransformedScipyMinimizeMLEEstimator",
@@ -69,6 +83,8 @@ __all__ = [
     "build_model_fit_function",
     "check_trace_compatibility",
     "coerce_episode_trace",
+    "compare_candidate_models",
+    "compare_registry_candidate_models",
     "fit_block_data",
     "fit_block_from_config",
     "fit_dataset_from_config",
