@@ -122,3 +122,9 @@ Within-subject hierarchical MAP is now available via:
 
 This performs partial pooling across blocks for named parameters in transformed
 space, using the same replay likelihood path as all other estimators.
+
+Information-criterion diagnostics are available via `comp_model.analysis`:
+- `aic`
+- `bic`
+- `waic`
+- `psis_loo`
