@@ -8,6 +8,10 @@ from typing import Any
 
 from .fit_result import extract_best_fit_summary
 from .hierarchical import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
+from .hierarchical_mcmc import (
+    HierarchicalStudyPosteriorResult,
+    HierarchicalSubjectPosteriorResult,
+)
 from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .model_selection import ModelComparisonResult
 from .posterior import PosteriorSummary, posterior_summary_records
@@ -215,6 +219,87 @@ def hierarchical_study_summary_records(study_result: HierarchicalStudyMapResult)
     rows: list[dict[str, Any]] = []
     for subject in study_result.subject_results:
         rows.extend(hierarchical_subject_summary_records(subject))
+    return rows
+
+
+def hierarchical_mcmc_subject_draw_records(
+    subject_result: HierarchicalSubjectPosteriorResult,
+) -> list[dict[str, Any]]:
+    """Convert one hierarchical-MCMC subject result to draw-level rows.
+
+    Parameters
+    ----------
+    subject_result : HierarchicalSubjectPosteriorResult
+        Subject-level hierarchical posterior output.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        One row per retained draw.
+    """
+
+    rows: list[dict[str, Any]] = []
+    for draw in subject_result.draws:
+        row: dict[str, Any] = {
+            "subject_id": subject_result.subject_id,
+            "iteration": int(draw.iteration),
+            "accepted": bool(draw.accepted),
+            "log_likelihood": float(draw.candidate.log_likelihood),
+            "log_prior": float(draw.candidate.log_prior),
+            "log_posterior": float(draw.candidate.log_posterior),
+        }
+        for key, value in sorted(draw.candidate.group_location_z.items()):
+            row[f"group_location_z__{key}"] = float(value)
+        for key, value in sorted(draw.candidate.group_scale_z.items()):
+            row[f"group_scale__{key}"] = float(value)
+        for block_index, block_params in enumerate(draw.candidate.block_params):
+            for key, value in sorted(block_params.items()):
+                row[f"block_{block_index}__param__{key}"] = float(value)
+        rows.append(row)
+    return rows
+
+
+def hierarchical_mcmc_study_draw_records(
+    study_result: HierarchicalStudyPosteriorResult,
+) -> list[dict[str, Any]]:
+    """Convert hierarchical-MCMC study result to draw-level rows."""
+
+    rows: list[dict[str, Any]] = []
+    for subject in study_result.subject_results:
+        rows.extend(hierarchical_mcmc_subject_draw_records(subject))
+    return rows
+
+
+def hierarchical_mcmc_subject_summary_records(
+    subject_result: HierarchicalSubjectPosteriorResult,
+) -> list[dict[str, Any]]:
+    """Convert one hierarchical-MCMC subject result to summary row."""
+
+    map_candidate = subject_result.map_candidate
+    row: dict[str, Any] = {
+        "subject_id": subject_result.subject_id,
+        "n_draws": len(subject_result.draws),
+        "n_blocks": int(subject_result.n_blocks),
+        "acceptance_rate": float(subject_result.diagnostics.acceptance_rate),
+        "map_log_likelihood": float(map_candidate.log_likelihood),
+        "map_log_prior": float(map_candidate.log_prior),
+        "map_log_posterior": float(map_candidate.log_posterior),
+    }
+    for key, value in sorted(map_candidate.group_location_z.items()):
+        row[f"map_group_location_z__{key}"] = float(value)
+    for key, value in sorted(map_candidate.group_scale_z.items()):
+        row[f"map_group_scale__{key}"] = float(value)
+    return [row]
+
+
+def hierarchical_mcmc_study_summary_records(
+    study_result: HierarchicalStudyPosteriorResult,
+) -> list[dict[str, Any]]:
+    """Convert hierarchical-MCMC study result to subject summary rows."""
+
+    rows: list[dict[str, Any]] = []
+    for subject in study_result.subject_results:
+        rows.extend(hierarchical_mcmc_subject_summary_records(subject))
     return rows
 
 
@@ -429,6 +514,24 @@ def write_hierarchical_study_summary_csv(
     return write_records_csv(hierarchical_study_summary_records(study_result), path)
 
 
+def write_hierarchical_mcmc_study_draw_records_csv(
+    study_result: HierarchicalStudyPosteriorResult,
+    path: str | Path,
+) -> Path:
+    """Write hierarchical-MCMC study draw rows to CSV."""
+
+    return write_records_csv(hierarchical_mcmc_study_draw_records(study_result), path)
+
+
+def write_hierarchical_mcmc_study_summary_csv(
+    study_result: HierarchicalStudyPosteriorResult,
+    path: str | Path,
+) -> Path:
+    """Write hierarchical-MCMC study summary rows to CSV."""
+
+    return write_records_csv(hierarchical_mcmc_study_summary_records(study_result), path)
+
+
 def write_map_study_fit_records_csv(study_result: MapStudyFitResult, path: str | Path) -> Path:
     """Write MAP study block-level fit rows to CSV."""
 
@@ -475,6 +578,10 @@ __all__ = [
     "block_fit_records",
     "hierarchical_study_block_records",
     "hierarchical_study_summary_records",
+    "hierarchical_mcmc_study_draw_records",
+    "hierarchical_mcmc_study_summary_records",
+    "hierarchical_mcmc_subject_draw_records",
+    "hierarchical_mcmc_subject_summary_records",
     "hierarchical_subject_block_records",
     "hierarchical_subject_summary_records",
     "map_block_fit_records",
@@ -491,6 +598,8 @@ __all__ = [
     "subject_fit_records",
     "subject_summary_records",
     "write_hierarchical_study_block_records_csv",
+    "write_hierarchical_mcmc_study_draw_records_csv",
+    "write_hierarchical_mcmc_study_summary_csv",
     "write_hierarchical_study_summary_csv",
     "write_map_study_fit_records_csv",
     "write_map_study_fit_summary_csv",

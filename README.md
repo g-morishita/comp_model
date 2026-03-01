@@ -109,6 +109,8 @@ To export fit outputs:
 - `comp_model.inference.write_map_study_fit_summary_csv`
 - `comp_model.inference.write_hierarchical_study_block_records_csv`
 - `comp_model.inference.write_hierarchical_study_summary_csv`
+- `comp_model.inference.write_hierarchical_mcmc_study_draw_records_csv`
+- `comp_model.inference.write_hierarchical_mcmc_study_summary_csv`
 - `comp_model.inference.write_model_comparison_csv`
 - `comp_model.inference.write_study_model_comparison_csv`
 - `comp_model.inference.write_study_model_comparison_subject_csv`
