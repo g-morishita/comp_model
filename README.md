@@ -88,7 +88,3 @@ result = fit_model(
 )
 print(result.best.params)
 ```
-
-## Credits
-
-- Original internal model suite and research framing: Morishita Lab.
