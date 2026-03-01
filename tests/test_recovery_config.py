@@ -485,3 +485,180 @@ def test_model_recovery_config_rejects_invalid_candidate_likelihood() -> None:
 
     with pytest.raises(ValueError, match="likelihood.type must be one of"):
         run_model_recovery_from_config(config)
+
+
+def test_parameter_recovery_supports_generator_social_simulation_config() -> None:
+    """Parameter recovery config should support social generator simulation."""
+
+    n_trials = 60
+    config = {
+        "simulation": {
+            "type": "generator",
+            "generator": {
+                "component_id": "event_trace_social_pre_choice_generator",
+                "kwargs": {},
+            },
+            "demonstrator_model": {
+                "component_id": "fixed_sequence_demonstrator",
+                "kwargs": {"sequence": [1] * n_trials},
+            },
+            "block": {
+                "n_trials": n_trials,
+                "program_kwargs": {"reward_probabilities": [0.5, 0.5]},
+            },
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [4.0],
+                "initial_value": [0.0],
+            },
+        },
+        "likelihood": {
+            "type": "actor_subset_replay",
+            "fitted_actor_id": "subject",
+            "scored_actor_ids": ["subject"],
+            "auto_fill_unmodeled_actors": True,
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 4.0, "initial_value": 0.0},
+        ],
+        "n_trials": n_trials,
+        "seed": 44,
+    }
+
+    result = run_parameter_recovery_from_config(config)
+    assert len(result.cases) == 1
+    assert set(result.cases[0].estimated_params) == {"alpha", "beta", "initial_value"}
+
+
+def test_model_recovery_supports_generator_social_simulation_config() -> None:
+    """Model recovery config should support social generator simulation."""
+
+    n_trials = 80
+    config = {
+        "simulation": {
+            "type": "generator",
+            "generator": {
+                "component_id": "event_trace_social_pre_choice_generator",
+                "kwargs": {},
+            },
+            "demonstrator_model": {
+                "component_id": "fixed_sequence_demonstrator",
+                "kwargs": {"sequence": [1] * n_trials},
+            },
+            "block": {
+                "n_trials": n_trials,
+                "program_kwargs": {"reward_probabilities": [0.5, 0.5]},
+            },
+        },
+        "generating": [
+            {
+                "name": "qrl_generator",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "true_params": {"alpha": 0.3, "beta": 4.0, "initial_value": 0.0},
+            },
+        ],
+        "candidates": [
+            {
+                "name": "candidate_good",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.3],
+                        "beta": [4.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "candidate_bad",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.8],
+                        "beta": [0.1],
+                        "initial_value": [1.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+        ],
+        "likelihood": {
+            "type": "actor_subset_replay",
+            "fitted_actor_id": "subject",
+            "scored_actor_ids": ["subject"],
+            "auto_fill_unmodeled_actors": True,
+        },
+        "n_trials": n_trials,
+        "n_replications_per_generator": 2,
+        "criterion": "log_likelihood",
+        "seed": 45,
+    }
+
+    result = run_model_recovery_from_config(config)
+    assert len(result.cases) == 2
+    assert sum(result.confusion_matrix["qrl_generator"].values()) == 2
+
+
+def test_generator_social_simulation_requires_demonstrator_model() -> None:
+    """Social generator simulation config should require demonstrator model."""
+
+    config = {
+        "simulation": {
+            "type": "generator",
+            "generator": {
+                "component_id": "event_trace_social_pre_choice_generator",
+                "kwargs": {},
+            },
+            "block": {
+                "n_trials": 10,
+                "program_kwargs": {"reward_probabilities": [0.5, 0.5]},
+            },
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [4.0],
+                "initial_value": [0.0],
+            },
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 4.0, "initial_value": 0.0},
+        ],
+        "n_trials": 10,
+        "seed": 46,
+    }
+
+    with pytest.raises(ValueError, match="simulation.demonstrator_model"):
+        run_parameter_recovery_from_config(config)

@@ -6,11 +6,15 @@ runs using the plugin registry and inference fitting APIs.
 
 from __future__ import annotations
 
+import inspect
 import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
+from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.plugins import PluginRegistry, build_default_registry
 from comp_model.recovery.model import CandidateModelSpec, GeneratingModelSpec, ModelRecoveryResult, run_model_recovery
@@ -77,7 +81,6 @@ def run_parameter_recovery_from_config(
 
     reg = registry if registry is not None else build_default_registry()
 
-    problem_ref = _parse_component_ref(_require_mapping(config, "problem"), field_name="problem")
     generating_ref = _parse_component_ref(_require_mapping(config, "generating_model"), field_name="generating_model")
     fitting_ref = _parse_component_ref(_require_mapping(config, "fitting_model"), field_name="fitting_model")
     estimator_cfg = _require_mapping(config, "estimator")
@@ -87,6 +90,11 @@ def run_parameter_recovery_from_config(
     true_parameter_sets = _parse_true_parameter_sets(config.get("true_parameter_sets"))
     n_trials = _coerce_positive_int(config.get("n_trials"), field_name="n_trials")
     seed = int(config.get("seed", 0))
+    problem_factory, trace_factory = _build_simulation_sources(
+        config=config,
+        registry=reg,
+        n_trials=n_trials,
+    )
 
     fit_function = _build_fit_function(
         estimator_cfg=estimator_cfg,
@@ -101,7 +109,7 @@ def run_parameter_recovery_from_config(
     )
 
     return run_parameter_recovery(
-        problem_factory=lambda: reg.create_problem(problem_ref.component_id, **dict(problem_ref.kwargs)),
+        problem_factory=problem_factory,
         model_factory=lambda params: reg.create_model(
             generating_ref.component_id,
             **_merge_kwargs(generating_ref.kwargs, params),
@@ -110,6 +118,7 @@ def run_parameter_recovery_from_config(
         true_parameter_sets=true_parameter_sets,
         n_trials=n_trials,
         seed=seed,
+        trace_factory=trace_factory,
     )
 
 
@@ -135,7 +144,6 @@ def run_model_recovery_from_config(
 
     reg = registry if registry is not None else build_default_registry()
 
-    problem_ref = _parse_component_ref(_require_mapping(config, "problem"), field_name="problem")
     generating_cfg = _require_sequence(config.get("generating"), field_name="generating")
     candidate_cfg = _require_sequence(config.get("candidates"), field_name="candidates")
     global_likelihood_cfg = (
@@ -207,15 +215,166 @@ def run_model_recovery_from_config(
     )
     criterion = str(config.get("criterion", "log_likelihood"))
     seed = int(config.get("seed", 0))
+    problem_factory, trace_factory = _build_simulation_sources(
+        config=config,
+        registry=reg,
+        n_trials=n_trials,
+    )
 
     return run_model_recovery(
-        problem_factory=lambda: reg.create_problem(problem_ref.component_id, **dict(problem_ref.kwargs)),
+        problem_factory=problem_factory,
         generating_specs=tuple(generating_specs),
         candidate_specs=tuple(candidate_specs),
         n_trials=n_trials,
         n_replications_per_generator=n_replications,
         criterion=criterion,
         seed=seed,
+        trace_factory=trace_factory,
+    )
+
+
+def _build_simulation_sources(
+    *,
+    config: dict[str, Any],
+    registry: PluginRegistry,
+    n_trials: int,
+) -> tuple[Any, Any]:
+    """Build problem/trace simulation sources from declarative config.
+
+    Returns
+    -------
+    tuple[Any, Any]
+        ``(problem_factory, trace_factory)`` pair. Exactly one entry is
+        non-``None``.
+    """
+
+    simulation_cfg = (
+        _require_mapping(config["simulation"], field_name="simulation")
+        if "simulation" in config
+        else None
+    )
+    if simulation_cfg is None:
+        problem_ref = _parse_component_ref(
+            _require_mapping(config, "problem"),
+            field_name="problem",
+        )
+        return (
+            lambda: registry.create_problem(problem_ref.component_id, **dict(problem_ref.kwargs)),
+            None,
+        )
+
+    simulation_type = _coerce_non_empty_str(
+        simulation_cfg.get("type", "problem"),
+        field_name="simulation.type",
+    )
+    if simulation_type == "problem":
+        if "problem" in simulation_cfg:
+            problem_ref = _parse_component_ref(
+                _require_mapping(simulation_cfg, "problem", field_name="simulation"),
+                field_name="simulation.problem",
+            )
+        else:
+            problem_ref = _parse_component_ref(
+                _require_mapping(config, "problem"),
+                field_name="problem",
+            )
+        return (
+            lambda: registry.create_problem(problem_ref.component_id, **dict(problem_ref.kwargs)),
+            None,
+        )
+
+    if simulation_type != "generator":
+        raise ValueError("simulation.type must be one of {'problem', 'generator'}")
+
+    generator_ref = _parse_component_ref(
+        _require_mapping(simulation_cfg, "generator", field_name="simulation"),
+        field_name="simulation.generator",
+    )
+    generator = registry.create_generator(
+        generator_ref.component_id,
+        **dict(generator_ref.kwargs),
+    )
+
+    block_cfg = _require_mapping(
+        simulation_cfg.get("block", {}),
+        field_name="simulation.block",
+    )
+    block_n_trials = int(block_cfg.get("n_trials", n_trials))
+    if block_n_trials <= 0:
+        raise ValueError("simulation.block.n_trials must be > 0")
+    block_id = block_cfg.get("block_id")
+    block_metadata = _require_mapping(
+        block_cfg.get("metadata", {}),
+        field_name="simulation.block.metadata",
+    )
+
+    signature = inspect.signature(generator.simulate_block)
+    parameter_names = tuple(signature.parameters)
+
+    if "model" in parameter_names:
+        problem_kwargs = _require_mapping(
+            block_cfg.get("problem_kwargs", {}),
+            field_name="simulation.block.problem_kwargs",
+        )
+
+        def trace_factory(generating_model: Any, simulation_seed: int):
+            block = AsocialBlockSpec(
+                n_trials=block_n_trials,
+                problem_kwargs=problem_kwargs,
+                block_id=block_id,
+                seed=int(simulation_seed),
+                metadata=block_metadata,
+            )
+            block_data = generator.simulate_block(
+                model=generating_model,
+                block=block,
+                rng=np.random.default_rng(simulation_seed),
+            )
+            trace = getattr(block_data, "event_trace", None)
+            if trace is None:
+                raise ValueError("generator outputs must include block.event_trace")
+            return trace
+
+        return None, trace_factory
+
+    if "subject_model" in parameter_names and "demonstrator_model" in parameter_names:
+        demonstrator_ref = _parse_component_ref(
+            _require_mapping(simulation_cfg, "demonstrator_model", field_name="simulation"),
+            field_name="simulation.demonstrator_model",
+        )
+        program_kwargs = _require_mapping(
+            block_cfg.get("program_kwargs", {}),
+            field_name="simulation.block.program_kwargs",
+        )
+
+        def trace_factory(generating_model: Any, simulation_seed: int):
+            block = SocialBlockSpec(
+                n_trials=block_n_trials,
+                program_kwargs=program_kwargs,
+                block_id=block_id,
+                seed=int(simulation_seed),
+                metadata=block_metadata,
+            )
+            demonstrator_model = registry.create_demonstrator(
+                demonstrator_ref.component_id,
+                **dict(demonstrator_ref.kwargs),
+            )
+            block_data = generator.simulate_block(
+                subject_model=generating_model,
+                demonstrator_model=demonstrator_model,
+                block=block,
+                rng=np.random.default_rng(simulation_seed),
+            )
+            trace = getattr(block_data, "event_trace", None)
+            if trace is None:
+                raise ValueError("generator outputs must include block.event_trace")
+            return trace
+
+        return None, trace_factory
+
+    raise ValueError(
+        "simulation.generator component must expose simulate_block with either "
+        "('model', ...) or ('subject_model', 'demonstrator_model', ...)"
     )
 
 
