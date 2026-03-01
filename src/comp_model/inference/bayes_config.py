@@ -33,6 +33,14 @@ from .hierarchical import (
     fit_subject_hierarchical_map,
 )
 from .likelihood import LikelihoodProgram
+from .map_study_fitting import (
+    MapBlockFitResult,
+    MapStudyFitResult,
+    MapSubjectFitResult,
+    fit_map_block_data,
+    fit_map_study_data,
+    fit_map_subject_data,
+)
 from .transforms import ParameterTransform, identity_transform, positive_log_transform, unit_interval_logit_transform
 
 
@@ -295,6 +303,78 @@ def fit_map_dataset_from_config(
     )
 
 
+def fit_map_block_from_config(
+    block: BlockData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+) -> MapBlockFitResult:
+    """Fit one block with MAP using declarative config."""
+
+    cfg = _require_mapping(config, field_name="config")
+    model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
+    prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
+    fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+
+    reg = registry if registry is not None else build_default_registry()
+    return fit_map_block_data(
+        block,
+        model_component_id=model_spec.component_id,
+        prior_program=prior_program,
+        fit_spec=fit_spec,
+        model_kwargs=model_spec.kwargs,
+        registry=reg,
+    )
+
+
+def fit_map_subject_from_config(
+    subject: SubjectData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+) -> MapSubjectFitResult:
+    """Fit one subject with MAP using declarative config."""
+
+    cfg = _require_mapping(config, field_name="config")
+    model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
+    prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
+    fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+
+    reg = registry if registry is not None else build_default_registry()
+    return fit_map_subject_data(
+        subject,
+        model_component_id=model_spec.component_id,
+        prior_program=prior_program,
+        fit_spec=fit_spec,
+        model_kwargs=model_spec.kwargs,
+        registry=reg,
+    )
+
+
+def fit_map_study_from_config(
+    study: StudyData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+) -> MapStudyFitResult:
+    """Fit one study with MAP using declarative config."""
+
+    cfg = _require_mapping(config, field_name="config")
+    model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
+    prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
+    fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+
+    reg = registry if registry is not None else build_default_registry()
+    return fit_map_study_data(
+        study,
+        model_component_id=model_spec.component_id,
+        prior_program=prior_program,
+        fit_spec=fit_spec,
+        model_kwargs=model_spec.kwargs,
+        registry=reg,
+    )
+
+
 def fit_subject_hierarchical_map_from_config(
     subject: SubjectData,
     *,
@@ -553,7 +633,13 @@ def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[
 
 __all__ = [
     "HierarchicalMapEstimatorSpec",
+    "MapBlockFitResult",
+    "MapStudyFitResult",
+    "MapSubjectFitResult",
+    "fit_map_block_from_config",
     "fit_map_dataset_from_config",
+    "fit_map_study_from_config",
+    "fit_map_subject_from_config",
     "fit_study_hierarchical_map_from_config",
     "fit_subject_hierarchical_map_from_config",
     "hierarchical_map_spec_from_config",

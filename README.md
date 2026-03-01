@@ -78,6 +78,12 @@ Bayesian scaffolding now includes MAP estimators built on SciPy optimization:
 - `comp_model.inference.fit_map_model`
 - `comp_model.inference.fit_map_model_from_registry`
 - `comp_model.inference.fit_map_dataset_from_config`
+- `comp_model.inference.fit_map_block_data`
+- `comp_model.inference.fit_map_subject_data`
+- `comp_model.inference.fit_map_study_data`
+- `comp_model.inference.fit_map_block_from_config`
+- `comp_model.inference.fit_map_subject_from_config`
+- `comp_model.inference.fit_map_study_from_config`
 
 Prior utilities:
 - `comp_model.inference.IndependentPriorProgram`

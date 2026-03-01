@@ -8,7 +8,10 @@ import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
+    fit_map_block_from_config,
     fit_map_dataset_from_config,
+    fit_map_study_from_config,
+    fit_map_subject_from_config,
     fit_study_hierarchical_map_from_config,
     fit_subject_hierarchical_map_from_config,
     map_fit_spec_from_config,
@@ -167,4 +170,51 @@ def test_hierarchical_map_from_config_runs_subject_and_study() -> None:
     )
     assert study_result.n_subjects == 2
     assert len(study_result.subject_results) == 2
+    assert math.isfinite(study_result.total_log_posterior)
+
+
+def test_map_study_fit_from_config_runs_block_subject_study() -> None:
+    """MAP config runners should support block, subject, and study inputs."""
+
+    block = BlockData(
+        block_id="b0",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "prior": {
+            "type": "independent",
+            "parameters": {
+                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+            },
+        },
+        "estimator": {
+            "type": "scipy_map",
+            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
+            "bounds": {
+                "alpha": [0.0, 1.0],
+                "beta": [0.0, 20.0],
+                "initial_value": [None, None],
+            },
+        },
+    }
+
+    block_result = fit_map_block_from_config(block, config=config)
+    assert block_result.block_id == "b0"
+
+    subject_result = fit_map_subject_from_config(subject, config=config)
+    assert subject_result.subject_id == "s1"
+    assert len(subject_result.block_results) == 1
+    assert math.isfinite(subject_result.total_log_posterior)
+
+    study_result = fit_map_study_from_config(study, config=config)
+    assert study_result.n_subjects == 1
     assert math.isfinite(study_result.total_log_posterior)
