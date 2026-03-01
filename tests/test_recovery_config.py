@@ -398,3 +398,90 @@ def test_model_recovery_config_supports_waic_with_mcmc_candidates() -> None:
     assert len(result.cases) == 1
     assert result.criterion == "waic"
     assert result.cases[0].selected_candidate_name == "candidate_good_mcmc"
+
+
+def test_parameter_recovery_supports_likelihood_config() -> None:
+    """Parameter recovery config should accept explicit likelihood sections."""
+
+    config = {
+        "problem": {
+            "component_id": "stationary_bandit",
+            "kwargs": {"reward_probabilities": [0.2, 0.8]},
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [2.0],
+                "initial_value": [0.0],
+            },
+        },
+        "likelihood": {
+            "type": "actor_subset_replay",
+            "fitted_actor_id": "subject",
+            "scored_actor_ids": ["subject"],
+            "auto_fill_unmodeled_actors": True,
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+        ],
+        "n_trials": 20,
+        "seed": 33,
+    }
+
+    result = run_parameter_recovery_from_config(config)
+    assert len(result.cases) == 1
+
+
+def test_model_recovery_config_rejects_invalid_candidate_likelihood() -> None:
+    """Model recovery should fail fast on invalid candidate likelihood config."""
+
+    config = {
+        "problem": {
+            "component_id": "stationary_bandit",
+            "kwargs": {"reward_probabilities": [0.2, 0.8]},
+        },
+        "generating": [
+            {
+                "name": "qrl_generator",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "true_params": {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+            },
+        ],
+        "candidates": [
+            {
+                "name": "candidate_bad_likelihood",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.3],
+                        "beta": [2.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "likelihood": {"type": "not_supported"},
+                "n_parameters": 3,
+            },
+        ],
+        "n_trials": 10,
+        "n_replications_per_generator": 1,
+        "seed": 9,
+    }
+
+    with pytest.raises(ValueError, match="likelihood.type must be one of"):
+        run_model_recovery_from_config(config)

@@ -5,11 +5,15 @@ from __future__ import annotations
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
+from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     compare_dataset_candidates_from_config,
     compare_study_candidates_from_config,
     compare_subject_candidates_from_config,
 )
+from comp_model.models import UniformRandomPolicyModel
+from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.runtime import SimulationConfig, run_trial_program
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
@@ -23,6 +27,19 @@ def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
         action=action,
         observation={"state": 0},
         outcome={"reward": reward},
+    )
+
+
+def _social_trace(*, n_trials: int, seed: int):
+    """Generate one two-actor social trace for model-selection config tests."""
+
+    return run_trial_program(
+        program=TwoStageSocialBanditProgram([0.5, 0.5]),
+        models={
+            "subject": UniformRandomPolicyModel(),
+            "demonstrator": FixedSequenceDemonstrator(sequence=[1] * n_trials),
+        },
+        config=SimulationConfig(n_trials=n_trials, seed=seed),
     )
 
 
@@ -286,3 +303,62 @@ def test_compare_subject_and_study_candidates_from_config() -> None:
     study_result = compare_study_candidates_from_config(study, config=config)
     assert study_result.selected_candidate_name == "good_mle"
     assert study_result.n_subjects == 1
+
+
+def test_compare_dataset_candidates_from_config_supports_candidate_likelihood_config() -> None:
+    """Candidate entries should accept per-candidate likelihood configs."""
+
+    trace = _social_trace(n_trials=10, seed=12)
+    config = {
+        "criterion": "log_likelihood",
+        "candidates": [
+            {
+                "name": "candidate_a",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.2],
+                        "beta": [1.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "likelihood": {
+                    "type": "actor_subset_replay",
+                    "fitted_actor_id": "subject",
+                    "scored_actor_ids": ["subject"],
+                    "auto_fill_unmodeled_actors": True,
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "candidate_b",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.8],
+                        "beta": [6.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "likelihood": {
+                    "type": "actor_subset_replay",
+                    "fitted_actor_id": "subject",
+                    "scored_actor_ids": ["subject"],
+                    "auto_fill_unmodeled_actors": True,
+                },
+                "n_parameters": 3,
+            },
+        ],
+    }
+
+    result = compare_dataset_candidates_from_config(trace, config=config)
+    assert len(result.comparisons) == 2
+    assert {item.candidate_name for item in result.comparisons} == {"candidate_a", "candidate_b"}

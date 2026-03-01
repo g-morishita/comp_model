@@ -11,6 +11,7 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .fitting import FitSpec, fit_model_from_registry
+from .likelihood_config import likelihood_program_from_config
 from .mle import MLEFitResult
 from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult, fit_block_data, fit_study_data, fit_subject_data
 from .transforms import ParameterTransform, identity_transform, positive_log_transform, unit_interval_logit_transform
@@ -121,6 +122,11 @@ def fit_dataset_from_config(
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_model_from_registry(
@@ -129,6 +135,7 @@ def fit_dataset_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=likelihood_program_from_config(likelihood_cfg),
     )
 
 
@@ -143,6 +150,11 @@ def fit_block_from_config(
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_block_data(
@@ -151,6 +163,7 @@ def fit_block_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=likelihood_program_from_config(likelihood_cfg),
     )
 
 
@@ -165,6 +178,11 @@ def fit_subject_from_config(
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_subject_data(
@@ -173,6 +191,7 @@ def fit_subject_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=likelihood_program_from_config(likelihood_cfg),
     )
 
 
@@ -187,6 +206,11 @@ def fit_study_from_config(
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_study_data(
@@ -195,6 +219,7 @@ def fit_study_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=likelihood_program_from_config(likelihood_cfg),
     )
 
 

@@ -7,7 +7,11 @@ import math
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
+from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import fit_dataset_from_config, fit_spec_from_config, fit_study_from_config
+from comp_model.models import UniformRandomPolicyModel
+from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.runtime import SimulationConfig, run_trial_program
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
@@ -21,6 +25,19 @@ def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
         action=action,
         observation={"state": 0},
         outcome={"reward": reward},
+    )
+
+
+def _social_trace(*, n_trials: int, seed: int):
+    """Generate one two-actor social trace for config-fitting tests."""
+
+    return run_trial_program(
+        program=TwoStageSocialBanditProgram([0.5, 0.5]),
+        models={
+            "subject": UniformRandomPolicyModel(),
+            "demonstrator": FixedSequenceDemonstrator(sequence=[1] * n_trials),
+        },
+        config=SimulationConfig(n_trials=n_trials, seed=seed),
     )
 
 
@@ -118,3 +135,32 @@ def test_fit_study_from_config_runs_all_subjects() -> None:
     assert result.n_subjects == 2
     assert {subject.subject_id for subject in result.subject_results} == {"s1", "s2"}
     assert math.isfinite(result.total_log_likelihood)
+
+
+def test_fit_dataset_from_config_supports_social_actor_subset_likelihood() -> None:
+    """Config-driven fit should parse and use actor-subset likelihood on social traces."""
+
+    trace = _social_trace(n_trials=12, seed=5)
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.2],
+                "beta": [1.0],
+                "initial_value": [0.0],
+            },
+        },
+        "likelihood": {
+            "type": "actor_subset_replay",
+            "fitted_actor_id": "subject",
+            "scored_actor_ids": ["subject"],
+            "auto_fill_unmodeled_actors": True,
+        },
+    }
+
+    result = fit_dataset_from_config(trace, config=config)
+    assert math.isfinite(result.best.log_likelihood)

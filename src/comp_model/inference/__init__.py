@@ -77,6 +77,7 @@ from .hierarchical import (
     fit_subject_hierarchical_map,
 )
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
+from .likelihood_config import likelihood_program_from_config
 from .mle import (
     GridSearchMLEEstimator,
     MLECandidate,
@@ -304,6 +305,7 @@ __all__ = [
     "identity_transform",
     "hierarchical_map_spec_from_config",
     "log_normal_log_prior",
+    "likelihood_program_from_config",
     "map_fit_spec_from_config",
     "mcmc_estimator_spec_from_config",
     "model_component_spec_from_config",

@@ -14,6 +14,7 @@ from .bayes import PriorProgram
 from .bayes_config import prior_program_from_config
 from .config import model_component_spec_from_config
 from .likelihood import LikelihoodProgram
+from .likelihood_config import likelihood_program_from_config
 from .mcmc import MCMCPosteriorResult, sample_posterior_model_from_registry
 from .mcmc_study_fitting import (
     MCMCBlockResult,
@@ -157,6 +158,16 @@ def sample_posterior_dataset_from_config(
     estimator_spec = mcmc_estimator_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
     )
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return sample_posterior_model_from_registry(
@@ -171,7 +182,7 @@ def sample_posterior_dataset_from_config(
         bounds=estimator_spec.bounds,
         model_kwargs=model_spec.kwargs,
         registry=reg,
-        likelihood_program=likelihood_program,
+        likelihood_program=resolved_likelihood,
         random_seed=estimator_spec.random_seed,
     )
 
@@ -181,8 +192,22 @@ def sample_posterior_block_from_config(
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MCMCBlockResult:
-    """Sample posterior draws from config for one block."""
+    """Sample posterior draws from config for one block.
+
+    Parameters
+    ----------
+    block : BlockData
+        Block dataset.
+    config : Mapping[str, Any]
+        Config with ``model``, ``prior``, ``estimator``, and optional
+        ``likelihood`` sections.
+    registry : PluginRegistry | None, optional
+        Optional plugin registry.
+    likelihood_program : LikelihoodProgram | None, optional
+        Explicit likelihood evaluator override.
+    """
 
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(
@@ -193,6 +218,16 @@ def sample_posterior_block_from_config(
     )
     estimator_spec = mcmc_estimator_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
+    )
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
     )
 
     reg = registry if registry is not None else build_default_registry()
@@ -208,6 +243,7 @@ def sample_posterior_block_from_config(
         bounds=estimator_spec.bounds,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=resolved_likelihood,
         random_seed=estimator_spec.random_seed,
     )
 
@@ -217,8 +253,22 @@ def sample_posterior_subject_from_config(
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MCMCSubjectResult:
-    """Sample posterior draws from config for one subject."""
+    """Sample posterior draws from config for one subject.
+
+    Parameters
+    ----------
+    subject : SubjectData
+        Subject dataset.
+    config : Mapping[str, Any]
+        Config with ``model``, ``prior``, ``estimator``, and optional
+        ``likelihood`` sections.
+    registry : PluginRegistry | None, optional
+        Optional plugin registry.
+    likelihood_program : LikelihoodProgram | None, optional
+        Explicit likelihood evaluator override.
+    """
 
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(
@@ -229,6 +279,16 @@ def sample_posterior_subject_from_config(
     )
     estimator_spec = mcmc_estimator_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
+    )
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
     )
 
     reg = registry if registry is not None else build_default_registry()
@@ -244,6 +304,7 @@ def sample_posterior_subject_from_config(
         bounds=estimator_spec.bounds,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=resolved_likelihood,
         random_seed=estimator_spec.random_seed,
     )
 
@@ -253,8 +314,22 @@ def sample_posterior_study_from_config(
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MCMCStudyResult:
-    """Sample posterior draws from config for one study."""
+    """Sample posterior draws from config for one study.
+
+    Parameters
+    ----------
+    study : StudyData
+        Study dataset.
+    config : Mapping[str, Any]
+        Config with ``model``, ``prior``, ``estimator``, and optional
+        ``likelihood`` sections.
+    registry : PluginRegistry | None, optional
+        Optional plugin registry.
+    likelihood_program : LikelihoodProgram | None, optional
+        Explicit likelihood evaluator override.
+    """
 
     cfg = _require_mapping(config, field_name="config")
     model_spec = model_component_spec_from_config(
@@ -265,6 +340,16 @@ def sample_posterior_study_from_config(
     )
     estimator_spec = mcmc_estimator_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
+    )
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
     )
 
     reg = registry if registry is not None else build_default_registry()
@@ -280,6 +365,7 @@ def sample_posterior_study_from_config(
         bounds=estimator_spec.bounds,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=resolved_likelihood,
         random_seed=estimator_spec.random_seed,
     )
 

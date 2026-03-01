@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from comp_model.core.data import BlockData, StudyData, SubjectData
 from comp_model.inference.bayes import BayesFitResult, MapFitSpec, PriorProgram, fit_map_model_from_registry
+from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 
@@ -86,6 +87,7 @@ def fit_map_block_data(
     fit_spec: MapFitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MapBlockFitResult:
     """Fit one model with MAP to one block."""
 
@@ -96,6 +98,7 @@ def fit_map_block_data(
         fit_spec=fit_spec,
         model_kwargs=model_kwargs,
         registry=registry,
+        likelihood_program=likelihood_program,
     )
     return MapBlockFitResult(
         block_id=block.block_id,
@@ -112,6 +115,7 @@ def fit_map_subject_data(
     fit_spec: MapFitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MapSubjectFitResult:
     """Fit one model with MAP independently to all blocks for one subject."""
 
@@ -124,6 +128,7 @@ def fit_map_subject_data(
             fit_spec=fit_spec,
             model_kwargs=model_kwargs,
             registry=reg,
+            likelihood_program=likelihood_program,
         )
         for block in subject.blocks
     )
@@ -152,6 +157,7 @@ def fit_map_study_data(
     fit_spec: MapFitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MapStudyFitResult:
     """Fit one model with MAP independently to all study subjects/blocks."""
 
@@ -164,6 +170,7 @@ def fit_map_study_data(
             fit_spec=fit_spec,
             model_kwargs=model_kwargs,
             registry=reg,
+            likelihood_program=likelihood_program,
         )
         for subject in study.subjects
     )

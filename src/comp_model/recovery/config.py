@@ -82,6 +82,7 @@ def run_parameter_recovery_from_config(
     fitting_ref = _parse_component_ref(_require_mapping(config, "fitting_model"), field_name="fitting_model")
     estimator_cfg = _require_mapping(config, "estimator")
     prior_cfg = config.get("prior")
+    likelihood_cfg = config.get("likelihood")
 
     true_parameter_sets = _parse_true_parameter_sets(config.get("true_parameter_sets"))
     n_trials = _coerce_positive_int(config.get("n_trials"), field_name="n_trials")
@@ -90,6 +91,11 @@ def run_parameter_recovery_from_config(
     fit_function = _build_fit_function(
         estimator_cfg=estimator_cfg,
         prior_cfg=prior_cfg,
+        likelihood_cfg=(
+            _require_mapping(likelihood_cfg, field_name="likelihood")
+            if likelihood_cfg is not None
+            else None
+        ),
         registry=reg,
         fitting_ref=fitting_ref,
     )
@@ -132,6 +138,11 @@ def run_model_recovery_from_config(
     problem_ref = _parse_component_ref(_require_mapping(config, "problem"), field_name="problem")
     generating_cfg = _require_sequence(config.get("generating"), field_name="generating")
     candidate_cfg = _require_sequence(config.get("candidates"), field_name="candidates")
+    global_likelihood_cfg = (
+        _require_mapping(config["likelihood"], field_name="likelihood")
+        if "likelihood" in config
+        else None
+    )
 
     generating_specs: list[GeneratingModelSpec] = []
     for index, raw in enumerate(generating_cfg):
@@ -164,10 +175,16 @@ def run_model_recovery_from_config(
         )
         estimator_cfg = _require_mapping(item, "estimator", field_name=f"candidates[{index}]")
         prior_cfg = item.get("prior")
+        candidate_likelihood_cfg = (
+            _require_mapping(item["likelihood"], field_name=f"candidates[{index}].likelihood")
+            if "likelihood" in item
+            else global_likelihood_cfg
+        )
 
         fit_function = _build_fit_function(
             estimator_cfg=estimator_cfg,
             prior_cfg=prior_cfg,
+            likelihood_cfg=candidate_likelihood_cfg,
             registry=reg,
             fitting_ref=model_ref,
         )
@@ -206,10 +223,11 @@ def _build_fit_function(
     *,
     estimator_cfg: dict[str, Any],
     prior_cfg: Any,
+    likelihood_cfg: dict[str, Any] | None,
     registry: PluginRegistry,
     fitting_ref: ComponentRef,
 ):
-    """Build trace->fit callable from estimator config."""
+    """Build trace->fit callable from estimator and likelihood config."""
 
     model_cfg = {
         "component_id": fitting_ref.component_id,
@@ -223,6 +241,7 @@ def _build_fit_function(
             if prior_cfg is not None
             else None
         ),
+        likelihood_cfg=likelihood_cfg,
         registry=registry,
     )
 

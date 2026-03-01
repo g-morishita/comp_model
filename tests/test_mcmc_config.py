@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
+from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     fit_block_auto_from_config,
     fit_dataset_auto_from_config,
@@ -16,6 +17,9 @@ from comp_model.inference import (
     sample_posterior_study_from_config,
     sample_posterior_subject_from_config,
 )
+from comp_model.models import UniformRandomPolicyModel
+from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.runtime import SimulationConfig, run_trial_program
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
@@ -29,6 +33,19 @@ def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
         action=action,
         observation={"state": 0},
         outcome={"reward": reward},
+    )
+
+
+def _social_trace(*, n_trials: int, seed: int):
+    """Generate one two-actor social trace for MCMC config tests."""
+
+    return run_trial_program(
+        program=TwoStageSocialBanditProgram([0.5, 0.5]),
+        models={
+            "subject": UniformRandomPolicyModel(),
+            "demonstrator": FixedSequenceDemonstrator(sequence=[1] * n_trials),
+        },
+        config=SimulationConfig(n_trials=n_trials, seed=seed),
     )
 
 
@@ -141,3 +158,19 @@ def test_fit_auto_dispatches_mcmc_for_all_dataset_levels() -> None:
 
     study_result = fit_study_auto_from_config(study, config=_mcmc_config())
     assert study_result.n_subjects == 1
+
+
+def test_sample_posterior_dataset_from_config_supports_social_actor_subset_likelihood() -> None:
+    """MCMC config runner should parse actor-subset likelihood on social traces."""
+
+    trace = _social_trace(n_trials=12, seed=11)
+    config = _mcmc_config()
+    config["likelihood"] = {
+        "type": "actor_subset_replay",
+        "fitted_actor_id": "subject",
+        "scored_actor_ids": ["subject"],
+        "auto_fill_unmodeled_actors": True,
+    }
+
+    result = sample_posterior_dataset_from_config(trace, config=config)
+    assert result.posterior_samples.n_draws == 20

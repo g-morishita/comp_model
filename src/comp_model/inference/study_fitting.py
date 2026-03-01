@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from comp_model.core.data import BlockData, StudyData, SubjectData
 from comp_model.inference.fitting import FitSpec, fit_model_from_registry
+from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.inference.mle import MLEFitResult
 from comp_model.plugins import PluginRegistry, build_default_registry
 
@@ -81,6 +82,7 @@ def fit_block_data(
     fit_spec: FitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> BlockFitResult:
     """Fit one model to one block.
 
@@ -109,6 +111,7 @@ def fit_block_data(
         fit_spec=fit_spec,
         model_kwargs=model_kwargs,
         registry=registry,
+        likelihood_program=likelihood_program,
     )
     return BlockFitResult(
         block_id=block.block_id,
@@ -124,6 +127,7 @@ def fit_subject_data(
     fit_spec: FitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> SubjectFitResult:
     """Fit one model independently to all blocks of one subject."""
 
@@ -135,6 +139,7 @@ def fit_subject_data(
             fit_spec=fit_spec,
             model_kwargs=model_kwargs,
             registry=reg,
+            likelihood_program=likelihood_program,
         )
         for block in subject.blocks
     )
@@ -159,6 +164,7 @@ def fit_study_data(
     fit_spec: FitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> StudyFitResult:
     """Fit one model independently to all subjects and blocks in a study."""
 
@@ -170,6 +176,7 @@ def fit_study_data(
             fit_spec=fit_spec,
             model_kwargs=model_kwargs,
             registry=reg,
+            likelihood_program=likelihood_program,
         )
         for subject in study.subjects
     )

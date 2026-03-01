@@ -2,6 +2,10 @@
 
 A clean-slate computational decision modeling library.
 
+## Credits
+
+- Original internal v1 model suite and research framing: Morishita Lab.
+
 This repository starts from generic decision-problem abstractions where:
 
 1. an agent observes a problem state,

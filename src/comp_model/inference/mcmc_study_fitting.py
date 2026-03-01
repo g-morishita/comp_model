@@ -10,6 +10,7 @@ from comp_model.core.data import BlockData, StudyData, SubjectData
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .bayes import PriorProgram
+from .likelihood import LikelihoodProgram
 from .mcmc import MCMCPosteriorResult, sample_posterior_model_from_registry
 
 
@@ -95,6 +96,7 @@ def sample_posterior_block_data(
     bounds: Mapping[str, tuple[float | None, float | None]] | None = None,
     model_kwargs: Mapping[str, Any] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
     random_seed: int | None = None,
 ) -> MCMCBlockResult:
     """Sample posterior draws for one block dataset."""
@@ -111,6 +113,7 @@ def sample_posterior_block_data(
         bounds=bounds,
         model_kwargs=model_kwargs,
         registry=registry,
+        likelihood_program=likelihood_program,
         random_seed=random_seed,
     )
     return MCMCBlockResult(
@@ -133,6 +136,7 @@ def sample_posterior_subject_data(
     bounds: Mapping[str, tuple[float | None, float | None]] | None = None,
     model_kwargs: Mapping[str, Any] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
     random_seed: int | None = None,
 ) -> MCMCSubjectResult:
     """Sample posterior draws independently for all blocks of one subject."""
@@ -151,6 +155,7 @@ def sample_posterior_subject_data(
             bounds=bounds,
             model_kwargs=model_kwargs,
             registry=reg,
+            likelihood_program=likelihood_program,
             random_seed=None if random_seed is None else int(random_seed) + index,
         )
         for index, block in enumerate(subject.blocks)
@@ -191,6 +196,7 @@ def sample_posterior_study_data(
     bounds: Mapping[str, tuple[float | None, float | None]] | None = None,
     model_kwargs: Mapping[str, Any] | None = None,
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
     random_seed: int | None = None,
 ) -> MCMCStudyResult:
     """Sample posterior draws independently for all study subjects/blocks."""
@@ -209,6 +215,7 @@ def sample_posterior_study_data(
             bounds=bounds,
             model_kwargs=model_kwargs,
             registry=reg,
+            likelihood_program=likelihood_program,
             random_seed=None if random_seed is None else int(random_seed) + index * 1000,
         )
         for index, subject in enumerate(study.subjects)

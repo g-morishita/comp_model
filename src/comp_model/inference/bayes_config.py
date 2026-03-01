@@ -33,6 +33,7 @@ from .hierarchical import (
     fit_subject_hierarchical_map,
 )
 from .likelihood import LikelihoodProgram
+from .likelihood_config import likelihood_program_from_config
 from .map_study_fitting import (
     MapBlockFitResult,
     MapStudyFitResult,
@@ -290,6 +291,16 @@ def fit_map_dataset_from_config(
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_map_model_from_registry(
@@ -299,7 +310,7 @@ def fit_map_dataset_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
-        likelihood_program=likelihood_program,
+        likelihood_program=resolved_likelihood,
     )
 
 
@@ -308,6 +319,7 @@ def fit_map_block_from_config(
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MapBlockFitResult:
     """Fit one block with MAP using declarative config."""
 
@@ -315,6 +327,16 @@ def fit_map_block_from_config(
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_map_block_data(
@@ -324,6 +346,7 @@ def fit_map_block_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=resolved_likelihood,
     )
 
 
@@ -332,6 +355,7 @@ def fit_map_subject_from_config(
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MapSubjectFitResult:
     """Fit one subject with MAP using declarative config."""
 
@@ -339,6 +363,16 @@ def fit_map_subject_from_config(
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_map_subject_data(
@@ -348,6 +382,7 @@ def fit_map_subject_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=resolved_likelihood,
     )
 
 
@@ -356,6 +391,7 @@ def fit_map_study_from_config(
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
 ) -> MapStudyFitResult:
     """Fit one study with MAP using declarative config."""
 
@@ -363,6 +399,16 @@ def fit_map_study_from_config(
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_map_study_data(
@@ -372,6 +418,7 @@ def fit_map_study_from_config(
         fit_spec=fit_spec,
         model_kwargs=model_spec.kwargs,
         registry=reg,
+        likelihood_program=resolved_likelihood,
     )
 
 
@@ -407,6 +454,16 @@ def fit_subject_hierarchical_map_from_config(
     estimator_spec = hierarchical_map_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
     )
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     manifest = reg.get("model", model_spec.component_id)
@@ -428,7 +485,7 @@ def fit_subject_hierarchical_map_from_config(
         model_factory=model_factory,
         parameter_names=estimator_spec.parameter_names,
         transforms=estimator_spec.transforms,
-        likelihood_program=likelihood_program,
+        likelihood_program=resolved_likelihood,
         requirements=manifest.requirements,
         initial_group_location=estimator_spec.initial_group_location,
         initial_group_scale=estimator_spec.initial_group_scale,
@@ -474,6 +531,16 @@ def fit_study_hierarchical_map_from_config(
     estimator_spec = hierarchical_map_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
     )
+    likelihood_cfg = (
+        _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
+        if "likelihood" in cfg
+        else None
+    )
+    resolved_likelihood = (
+        likelihood_program
+        if likelihood_program is not None
+        else likelihood_program_from_config(likelihood_cfg)
+    )
 
     reg = registry if registry is not None else build_default_registry()
     manifest = reg.get("model", model_spec.component_id)
@@ -489,7 +556,7 @@ def fit_study_hierarchical_map_from_config(
         model_factory=model_factory,
         parameter_names=estimator_spec.parameter_names,
         transforms=estimator_spec.transforms,
-        likelihood_program=likelihood_program,
+        likelihood_program=resolved_likelihood,
         requirements=manifest.requirements,
         initial_group_location=estimator_spec.initial_group_location,
         initial_group_scale=estimator_spec.initial_group_scale,
