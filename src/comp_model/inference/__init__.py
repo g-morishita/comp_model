@@ -17,6 +17,15 @@ from .bayes import (
     normal_log_prior,
     uniform_log_prior,
 )
+from .bayes_config import (
+    HierarchicalMapEstimatorSpec,
+    fit_map_dataset_from_config,
+    fit_study_hierarchical_map_from_config,
+    fit_subject_hierarchical_map_from_config,
+    hierarchical_map_spec_from_config,
+    map_fit_spec_from_config,
+    prior_program_from_config,
+)
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
 from .config import (
     ModelComponentSpec,
@@ -37,7 +46,9 @@ from .fitting import (
 )
 from .hierarchical import (
     HierarchicalBlockResult,
+    HierarchicalStudyMapResult,
     HierarchicalSubjectMapResult,
+    fit_study_hierarchical_map,
     fit_subject_hierarchical_map,
 )
 from .likelihood import ActionReplayLikelihood, LikelihoodProgram
@@ -89,6 +100,8 @@ __all__ = [
     "FitSpec",
     "GridSearchMLEEstimator",
     "HierarchicalBlockResult",
+    "HierarchicalMapEstimatorSpec",
+    "HierarchicalStudyMapResult",
     "HierarchicalSubjectMapResult",
     "IndependentPriorProgram",
     "LikelihoodProgram",
@@ -122,18 +135,24 @@ __all__ = [
     "fit_block_data",
     "fit_block_from_config",
     "fit_dataset_from_config",
+    "fit_map_dataset_from_config",
     "fit_model",
     "fit_model_from_registry",
     "fit_map_model",
     "fit_map_model_from_registry",
     "fit_spec_from_config",
     "fit_study_data",
+    "fit_study_hierarchical_map",
+    "fit_study_hierarchical_map_from_config",
     "fit_study_from_config",
     "fit_subject_hierarchical_map",
+    "fit_subject_hierarchical_map_from_config",
     "fit_subject_data",
     "fit_subject_from_config",
     "identity_transform",
+    "hierarchical_map_spec_from_config",
     "log_normal_log_prior",
+    "map_fit_spec_from_config",
     "model_component_spec_from_config",
     "normal_log_prior",
     "positive_log_transform",
@@ -141,6 +160,7 @@ __all__ = [
     "study_summary_records",
     "subject_fit_records",
     "subject_summary_records",
+    "prior_program_from_config",
     "uniform_log_prior",
     "unit_interval_logit_transform",
     "write_records_csv",

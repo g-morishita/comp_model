@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 
 from comp_model.core.contracts import AgentModel
-from comp_model.core.data import SubjectData, get_block_trace
+from comp_model.core.data import StudyData, SubjectData, get_block_trace
 from comp_model.core.events import EpisodeTrace
 from comp_model.core.requirements import ComponentRequirements
 
@@ -79,6 +79,34 @@ class HierarchicalSubjectMapResult:
     total_log_prior: float
     total_log_posterior: float
     scipy_diagnostics: ScipyMinimizeDiagnostics
+
+
+@dataclass(frozen=True, slots=True)
+class HierarchicalStudyMapResult:
+    """Hierarchical MAP output aggregated across study subjects.
+
+    Parameters
+    ----------
+    subject_results : tuple[HierarchicalSubjectMapResult, ...]
+        Per-subject hierarchical MAP results.
+    total_log_likelihood : float
+        Sum of subject-level log-likelihood values.
+    total_log_prior : float
+        Sum of subject-level log-prior values.
+    total_log_posterior : float
+        Sum of subject-level log-posterior values.
+    """
+
+    subject_results: tuple[HierarchicalSubjectMapResult, ...]
+    total_log_likelihood: float
+    total_log_prior: float
+    total_log_posterior: float
+
+    @property
+    def n_subjects(self) -> int:
+        """Return number of fitted subjects."""
+
+        return len(self.subject_results)
 
 
 def fit_subject_hierarchical_map(
@@ -313,6 +341,114 @@ def fit_subject_hierarchical_map(
     )
 
 
+def fit_study_hierarchical_map(
+    study: StudyData,
+    *,
+    model_factory: Callable[[dict[str, float]], AgentModel],
+    parameter_names: Sequence[str],
+    transforms: Mapping[str, ParameterTransform] | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+    requirements: ComponentRequirements | None = None,
+    initial_group_location: Mapping[str, float] | None = None,
+    initial_group_scale: Mapping[str, float] | None = None,
+    initial_block_params_by_subject: Mapping[str, Sequence[Mapping[str, float]]] | None = None,
+    mu_prior_mean: float = 0.0,
+    mu_prior_std: float = 2.0,
+    log_sigma_prior_mean: float = -1.0,
+    log_sigma_prior_std: float = 1.0,
+    method: str = "L-BFGS-B",
+    tol: float | None = None,
+    options: Mapping[str, Any] | None = None,
+) -> HierarchicalStudyMapResult:
+    """Fit within-subject hierarchical MAP independently for all subjects.
+
+    Parameters
+    ----------
+    study : StudyData
+        Study dataset.
+    model_factory : Callable[[dict[str, float]], AgentModel]
+        Model-construction callable.
+    parameter_names : Sequence[str]
+        Names of pooled parameters.
+    transforms : Mapping[str, ParameterTransform] | None, optional
+        Per-parameter transforms.
+    likelihood_program : LikelihoodProgram | None, optional
+        Replay likelihood evaluator.
+    requirements : ComponentRequirements | None, optional
+        Optional compatibility requirements.
+    initial_group_location : Mapping[str, float] | None, optional
+        Initial constrained group-location values.
+    initial_group_scale : Mapping[str, float] | None, optional
+        Initial positive group-scale values.
+    initial_block_params_by_subject : Mapping[str, Sequence[Mapping[str, float]]] | None, optional
+        Optional subject-specific block initial parameters.
+    mu_prior_mean : float, optional
+        Group-location Normal prior mean in ``z`` space.
+    mu_prior_std : float, optional
+        Group-location Normal prior std in ``z`` space.
+    log_sigma_prior_mean : float, optional
+        Prior mean for log group scale.
+    log_sigma_prior_std : float, optional
+        Prior std for log group scale.
+    method : str, optional
+        SciPy optimizer method.
+    tol : float | None, optional
+        SciPy optimizer tolerance.
+    options : Mapping[str, Any] | None, optional
+        Extra SciPy optimizer options.
+
+    Returns
+    -------
+    HierarchicalStudyMapResult
+        Aggregated study-level hierarchical MAP output.
+    """
+
+    subject_results: list[HierarchicalSubjectMapResult] = []
+    for subject in study.subjects:
+        subject_initial_block_params = None
+        if initial_block_params_by_subject is not None:
+            raw_subject_params = initial_block_params_by_subject.get(subject.subject_id)
+            if raw_subject_params is not None:
+                subject_initial_block_params = tuple(dict(item) for item in raw_subject_params)
+
+        subject_results.append(
+            fit_subject_hierarchical_map(
+                subject,
+                model_factory=model_factory,
+                parameter_names=parameter_names,
+                transforms=transforms,
+                likelihood_program=likelihood_program,
+                requirements=requirements,
+                initial_group_location=initial_group_location,
+                initial_group_scale=initial_group_scale,
+                initial_block_params=subject_initial_block_params,
+                mu_prior_mean=mu_prior_mean,
+                mu_prior_std=mu_prior_std,
+                log_sigma_prior_mean=log_sigma_prior_mean,
+                log_sigma_prior_std=log_sigma_prior_std,
+                method=method,
+                tol=tol,
+                options=options,
+            )
+        )
+
+    total_log_likelihood = float(
+        sum(item.total_log_likelihood for item in subject_results)
+    )
+    total_log_prior = float(
+        sum(item.total_log_prior for item in subject_results)
+    )
+    total_log_posterior = float(
+        sum(item.total_log_posterior for item in subject_results)
+    )
+    return HierarchicalStudyMapResult(
+        subject_results=tuple(subject_results),
+        total_log_likelihood=total_log_likelihood,
+        total_log_prior=total_log_prior,
+        total_log_posterior=total_log_posterior,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _DecodedHierarchicalVector:
     """Decoded parameter vector for hierarchical MAP objective."""
@@ -454,6 +590,8 @@ def _load_scipy_minimize():
 
 __all__ = [
     "HierarchicalBlockResult",
+    "HierarchicalStudyMapResult",
     "HierarchicalSubjectMapResult",
+    "fit_study_hierarchical_map",
     "fit_subject_hierarchical_map",
 ]

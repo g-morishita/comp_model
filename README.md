@@ -73,6 +73,7 @@ Bayesian scaffolding now includes MAP estimators built on SciPy optimization:
 - `comp_model.inference.TransformedScipyMapBayesEstimator`
 - `comp_model.inference.fit_map_model`
 - `comp_model.inference.fit_map_model_from_registry`
+- `comp_model.inference.fit_map_dataset_from_config`
 
 Prior utilities:
 - `comp_model.inference.IndependentPriorProgram`
@@ -86,6 +87,9 @@ the same canonical replay likelihood semantics as MLE.
 
 Within-subject hierarchical MAP is now available via:
 - `comp_model.inference.fit_subject_hierarchical_map`
+- `comp_model.inference.fit_study_hierarchical_map`
+- `comp_model.inference.fit_subject_hierarchical_map_from_config`
+- `comp_model.inference.fit_study_hierarchical_map_from_config`
 
 This performs partial pooling across blocks for named parameters in transformed
 space, using the same replay likelihood path as all other estimators.

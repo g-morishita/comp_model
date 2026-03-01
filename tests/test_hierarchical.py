@@ -9,8 +9,8 @@ import math
 import pytest
 
 from comp_model.core.contracts import DecisionContext
-from comp_model.core.data import BlockData, SubjectData
-from comp_model.inference import fit_subject_hierarchical_map
+from comp_model.core.data import BlockData, StudyData, SubjectData
+from comp_model.inference import fit_study_hierarchical_map, fit_subject_hierarchical_map
 from comp_model.inference.transforms import unit_interval_logit_transform
 from comp_model.problems import StationaryBanditProblem
 from comp_model.runtime import SimulationConfig, run_episode
@@ -123,3 +123,34 @@ def test_fit_subject_hierarchical_map_validates_positive_group_scale() -> None:
             transforms={"p_right": unit_interval_logit_transform()},
             initial_group_scale={"p_right": 0.0},
         )
+
+
+def test_fit_study_hierarchical_map_runs_all_subjects() -> None:
+    """Study-level hierarchical wrapper should fit every subject."""
+
+    study = StudyData(
+        subjects=(
+            _make_subject(),
+            SubjectData(
+                subject_id="s2",
+                blocks=(
+                    _make_block(block_id="b1", p_right=0.3, seed=11),
+                    _make_block(block_id="b2", p_right=0.6, seed=12),
+                ),
+            ),
+        )
+    )
+    result = fit_study_hierarchical_map(
+        study,
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        parameter_names=("p_right",),
+        transforms={"p_right": unit_interval_logit_transform()},
+        initial_group_location={"p_right": 0.5},
+        initial_group_scale={"p_right": 0.5},
+    )
+
+    assert result.n_subjects == 2
+    assert len(result.subject_results) == 2
+    assert math.isfinite(result.total_log_likelihood)
+    assert math.isfinite(result.total_log_prior)
+    assert math.isfinite(result.total_log_posterior)
