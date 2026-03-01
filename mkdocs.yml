@@ -15,9 +15,11 @@ nav:
       - Compare Candidate Models: how-to/compare-candidate-models.md
       - Run Recovery Workflows: how-to/run-recovery-workflows.md
       - Deploy Docs and Enable Hooks: how-to/deploy-docs-and-enable-hooks.md
+      - Contribute New Models and Tasks: how-to/contribute-new-models-and-tasks.md
   - Reference:
       - API Overview: reference/api-overview.md
       - Configuration Schemas: reference/config_schemas.md
+      - Contribution Rules: reference/contribution-rules.md
   - Explanation:
       - Design Philosophy: explanation/design-philosophy.md
       - Architecture Decisions: explanation/architecture-decisions.md

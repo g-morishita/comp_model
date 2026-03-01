@@ -7,7 +7,7 @@ Published site:
 
 - https://g-morishita.github.io/comp_model/
 
-This documentation follows the Divio system (Diataxis):
+Documentation is organized into:
 
 - **Tutorials**: learning-oriented, end-to-end walkthroughs.
 - **How-to guides**: task-oriented instructions for specific outcomes.

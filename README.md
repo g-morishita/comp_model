@@ -101,13 +101,14 @@ print(fit_result.best.params)
 
 ## Documentation
 
-Documentation follows the Divio system:
+Documentation is organized into:
 
 - Published documentation: `https://g-morishita.github.io/comp_model/`
 - Tutorials: `https://g-morishita.github.io/comp_model/tutorials/first-end-to-end-fit/`
 - How-to guides: `https://g-morishita.github.io/comp_model/how-to/fit-existing-csv-data/`
 - Reference: `https://g-morishita.github.io/comp_model/reference/api-overview/`
 - Explanation: `https://g-morishita.github.io/comp_model/explanation/design-philosophy/`
+- Contributor guide: `https://g-morishita.github.io/comp_model/how-to/contribute-new-models-and-tasks/`
 
 For local docs preview:
 
