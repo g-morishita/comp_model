@@ -11,16 +11,19 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from math import lgamma, log, log1p, pi
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 import numpy as np
 
 from comp_model.core.contracts import AgentModel
+from comp_model.core.data import BlockData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.core.requirements import ComponentRequirements
+from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from .likelihood import LikelihoodProgram
+from .fitting import coerce_episode_trace
+from .likelihood import ActionReplayLikelihood, LikelihoodProgram
 from .mle import ScipyMinimizeDiagnostics
 from .transforms import ParameterTransform, identity_transform
 
@@ -83,6 +86,40 @@ class BayesFitResult:
         return dict(self.map_candidate.params)
 
 
+MapEstimatorType = Literal["scipy_map", "transformed_scipy_map"]
+
+
+@dataclass(frozen=True, slots=True)
+class MapFitSpec:
+    """Estimator specification for MAP fitting.
+
+    Parameters
+    ----------
+    estimator_type : {"scipy_map", "transformed_scipy_map"}
+        Estimator backend.
+    initial_params : dict[str, float]
+        Initial constrained parameter values.
+    bounds : dict[str, tuple[float | None, float | None]] | None, optional
+        Constrained-space bounds for ``scipy_map``.
+    bounds_z : dict[str, tuple[float | None, float | None]] | None, optional
+        Unconstrained-space bounds for ``transformed_scipy_map``.
+    transforms : dict[str, ParameterTransform] | None, optional
+        Per-parameter transforms used by ``transformed_scipy_map``.
+    method : str, optional
+        SciPy optimizer method.
+    tol : float | None, optional
+        SciPy optimizer tolerance.
+    """
+
+    estimator_type: MapEstimatorType
+    initial_params: dict[str, float]
+    bounds: dict[str, tuple[float | None, float | None]] | None = None
+    bounds_z: dict[str, tuple[float | None, float | None]] | None = None
+    transforms: dict[str, ParameterTransform] | None = None
+    method: str = "L-BFGS-B"
+    tol: float | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class IndependentPriorProgram:
     """Independent per-parameter prior program.
@@ -139,6 +176,183 @@ class IndependentPriorProgram:
             total += logp
 
         return float(total)
+
+
+def build_map_fit_function(
+    *,
+    model_factory: Callable[[dict[str, float]], AgentModel],
+    prior_program: PriorProgram,
+    fit_spec: MapFitSpec,
+    requirements: ComponentRequirements | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> Callable[[EpisodeTrace], BayesFitResult]:
+    """Build a reusable trace->MAP-fit function.
+
+    Parameters
+    ----------
+    model_factory : Callable[[dict[str, float]], AgentModel]
+        Factory creating a fresh model instance from parameters.
+    prior_program : PriorProgram
+        Prior evaluator.
+    fit_spec : MapFitSpec
+        MAP estimator specification.
+    requirements : ComponentRequirements | None, optional
+        Optional compatibility requirements checked before fitting.
+    likelihood_program : LikelihoodProgram | None, optional
+        Likelihood evaluator. Defaults to :class:`ActionReplayLikelihood`.
+
+    Returns
+    -------
+    Callable[[EpisodeTrace], BayesFitResult]
+        Function that fits one canonical trace.
+
+    Raises
+    ------
+    ValueError
+        If ``fit_spec`` is invalid.
+    """
+
+    like = likelihood_program if likelihood_program is not None else ActionReplayLikelihood()
+
+    if fit_spec.estimator_type == "scipy_map":
+        estimator = ScipyMapBayesEstimator(
+            likelihood_program=like,
+            model_factory=model_factory,
+            prior_program=prior_program,
+            requirements=requirements,
+            method=fit_spec.method,
+            tol=fit_spec.tol,
+        )
+        return lambda trace: estimator.fit(
+            trace,
+            initial_params=fit_spec.initial_params,
+            bounds=fit_spec.bounds,
+        )
+
+    if fit_spec.estimator_type == "transformed_scipy_map":
+        estimator = TransformedScipyMapBayesEstimator(
+            likelihood_program=like,
+            model_factory=model_factory,
+            prior_program=prior_program,
+            transforms=fit_spec.transforms,
+            requirements=requirements,
+            method=fit_spec.method,
+            tol=fit_spec.tol,
+        )
+        return lambda trace: estimator.fit(
+            trace,
+            initial_params=fit_spec.initial_params,
+            bounds_z=fit_spec.bounds_z,
+        )
+
+    raise ValueError(
+        "fit_spec.estimator_type must be one of "
+        "{'scipy_map', 'transformed_scipy_map'}"
+    )
+
+
+def fit_map_model(
+    data: EpisodeTrace | BlockData | tuple[TrialDecision, ...] | list[TrialDecision],
+    *,
+    model_factory: Callable[[dict[str, float]], AgentModel],
+    prior_program: PriorProgram,
+    fit_spec: MapFitSpec,
+    requirements: ComponentRequirements | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> BayesFitResult:
+    """Fit one model with MAP using supported dataset containers.
+
+    Parameters
+    ----------
+    data : EpisodeTrace | BlockData | tuple[TrialDecision, ...] | list[TrialDecision]
+        Dataset container.
+    model_factory : Callable[[dict[str, float]], AgentModel]
+        Factory creating model instances from parameter mappings.
+    prior_program : PriorProgram
+        Prior evaluator.
+    fit_spec : MapFitSpec
+        MAP estimator specification.
+    requirements : ComponentRequirements | None, optional
+        Optional compatibility requirements checked before fitting.
+    likelihood_program : LikelihoodProgram | None, optional
+        Likelihood evaluator. Defaults to :class:`ActionReplayLikelihood`.
+
+    Returns
+    -------
+    BayesFitResult
+        MAP fit output.
+    """
+
+    trace = coerce_episode_trace(data)
+    fit_function = build_map_fit_function(
+        model_factory=model_factory,
+        prior_program=prior_program,
+        fit_spec=fit_spec,
+        requirements=requirements,
+        likelihood_program=likelihood_program,
+    )
+    return fit_function(trace)
+
+
+def fit_map_model_from_registry(
+    data: EpisodeTrace | BlockData | tuple[TrialDecision, ...] | list[TrialDecision],
+    *,
+    model_component_id: str,
+    prior_program: PriorProgram,
+    fit_spec: MapFitSpec,
+    model_kwargs: Mapping[str, Any] | None = None,
+    registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> BayesFitResult:
+    """Fit one registered model component with MAP.
+
+    Parameters
+    ----------
+    data : EpisodeTrace | BlockData | tuple[TrialDecision, ...] | list[TrialDecision]
+        Dataset container.
+    model_component_id : str
+        Model component ID from the plugin registry.
+    prior_program : PriorProgram
+        Prior evaluator.
+    fit_spec : MapFitSpec
+        MAP estimator specification.
+    model_kwargs : Mapping[str, Any] | None, optional
+        Fixed model constructor keyword arguments.
+    registry : PluginRegistry | None, optional
+        Optional registry instance.
+    likelihood_program : LikelihoodProgram | None, optional
+        Likelihood evaluator. Defaults to :class:`ActionReplayLikelihood`.
+
+    Returns
+    -------
+    BayesFitResult
+        MAP fit output.
+    """
+
+    reg = registry if registry is not None else build_default_registry()
+    manifest = reg.get("model", model_component_id)
+    fixed_kwargs = dict(model_kwargs) if model_kwargs is not None else {}
+
+    model_factory = lambda params: reg.create_model(
+        model_component_id,
+        **_merge_kwargs(fixed_kwargs, params),
+    )
+    return fit_map_model(
+        data,
+        model_factory=model_factory,
+        prior_program=prior_program,
+        fit_spec=fit_spec,
+        requirements=manifest.requirements,
+        likelihood_program=likelihood_program,
+    )
+
+
+def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
+    """Merge fixed keyword arguments with free-parameter overrides."""
+
+    merged = dict(base)
+    merged.update(dict(override))
+    return merged
 
 
 def normal_log_prior(*, mean: float, std: float) -> Callable[[float], float]:
@@ -609,11 +823,16 @@ def _load_scipy_minimize() -> Callable[..., Any]:
 __all__ = [
     "BayesFitResult",
     "IndependentPriorProgram",
+    "MapEstimatorType",
+    "MapFitSpec",
     "PosteriorCandidate",
     "PriorProgram",
     "ScipyMapBayesEstimator",
     "TransformedScipyMapBayesEstimator",
     "beta_log_prior",
+    "build_map_fit_function",
+    "fit_map_model",
+    "fit_map_model_from_registry",
     "log_normal_log_prior",
     "normal_log_prior",
     "uniform_log_prior",

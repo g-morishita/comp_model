@@ -71,6 +71,8 @@ labels under a chosen criterion.
 Bayesian scaffolding now includes MAP estimators built on SciPy optimization:
 - `comp_model.inference.ScipyMapBayesEstimator`
 - `comp_model.inference.TransformedScipyMapBayesEstimator`
+- `comp_model.inference.fit_map_model`
+- `comp_model.inference.fit_map_model_from_registry`
 
 Prior utilities:
 - `comp_model.inference.IndependentPriorProgram`
