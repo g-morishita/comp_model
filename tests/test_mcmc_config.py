@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import pytest
 
-from comp_model.core.data import BlockData, TrialDecision
+from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     fit_block_auto_from_config,
     fit_dataset_auto_from_config,
+    fit_study_auto_from_config,
+    fit_subject_auto_from_config,
     mcmc_estimator_spec_from_config,
+    sample_posterior_block_from_config,
     sample_posterior_dataset_from_config,
+    sample_posterior_study_from_config,
+    sample_posterior_subject_from_config,
 )
 
 
@@ -94,12 +99,45 @@ def test_fit_dataset_auto_dispatches_mcmc() -> None:
     assert result.posterior_samples.n_draws == 20
 
 
-def test_fit_block_auto_rejects_mcmc_estimator_type() -> None:
-    """Block auto-dispatch should reject dataset-only MCMC estimator type."""
+def test_sample_posterior_block_subject_study_from_config() -> None:
+    """Config-driven MCMC helpers should support block/subject/study inputs."""
 
     block = BlockData(
         block_id="b0",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
     )
-    with pytest.raises(ValueError, match="dataset-level fitting only"):
-        fit_block_auto_from_config(block, config=_mcmc_config())
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    block_result = sample_posterior_block_from_config(block, config=_mcmc_config())
+    assert block_result.n_trials == 3
+    assert block_result.posterior_result.posterior_samples.n_draws == 20
+
+    subject_result = sample_posterior_subject_from_config(subject, config=_mcmc_config())
+    assert subject_result.subject_id == "s1"
+    assert len(subject_result.block_results) == 1
+    assert set(subject_result.mean_block_map_params) == {"alpha", "beta", "initial_value"}
+
+    study_result = sample_posterior_study_from_config(study, config=_mcmc_config())
+    assert study_result.n_subjects == 1
+    assert len(study_result.subject_results) == 1
+
+
+def test_fit_auto_dispatches_mcmc_for_all_dataset_levels() -> None:
+    """Auto-dispatch should route MCMC estimator type across all levels."""
+
+    block = BlockData(
+        block_id="b0",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    block_result = fit_block_auto_from_config(block, config=_mcmc_config())
+    assert block_result.posterior_result.posterior_samples.n_draws == 20
+
+    subject_result = fit_subject_auto_from_config(subject, config=_mcmc_config())
+    assert len(subject_result.block_results) == 1
+
+    study_result = fit_study_auto_from_config(study, config=_mcmc_config())
+    assert study_result.n_subjects == 1

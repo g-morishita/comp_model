@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from comp_model.core.data import BlockData, TrialDecision
+from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
@@ -15,6 +15,14 @@ from .bayes_config import prior_program_from_config
 from .config import model_component_spec_from_config
 from .likelihood import LikelihoodProgram
 from .mcmc import MCMCPosteriorResult, sample_posterior_model_from_registry
+from .mcmc_study_fitting import (
+    MCMCBlockResult,
+    MCMCStudyResult,
+    MCMCSubjectResult,
+    sample_posterior_block_data,
+    sample_posterior_study_data,
+    sample_posterior_subject_data,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +176,114 @@ def sample_posterior_dataset_from_config(
     )
 
 
+def sample_posterior_block_from_config(
+    block: BlockData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+) -> MCMCBlockResult:
+    """Sample posterior draws from config for one block."""
+
+    cfg = _require_mapping(config, field_name="config")
+    model_spec = model_component_spec_from_config(
+        _require_mapping(cfg.get("model"), field_name="config.model")
+    )
+    prior_program: PriorProgram = prior_program_from_config(
+        _require_mapping(cfg.get("prior"), field_name="config.prior")
+    )
+    estimator_spec = mcmc_estimator_spec_from_config(
+        _require_mapping(cfg.get("estimator"), field_name="config.estimator")
+    )
+
+    reg = registry if registry is not None else build_default_registry()
+    return sample_posterior_block_data(
+        block,
+        model_component_id=model_spec.component_id,
+        prior_program=prior_program,
+        initial_params=estimator_spec.initial_params,
+        n_samples=estimator_spec.n_samples,
+        n_warmup=estimator_spec.n_warmup,
+        thin=estimator_spec.thin,
+        proposal_scales=estimator_spec.proposal_scales,
+        bounds=estimator_spec.bounds,
+        model_kwargs=model_spec.kwargs,
+        registry=reg,
+        random_seed=estimator_spec.random_seed,
+    )
+
+
+def sample_posterior_subject_from_config(
+    subject: SubjectData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+) -> MCMCSubjectResult:
+    """Sample posterior draws from config for one subject."""
+
+    cfg = _require_mapping(config, field_name="config")
+    model_spec = model_component_spec_from_config(
+        _require_mapping(cfg.get("model"), field_name="config.model")
+    )
+    prior_program: PriorProgram = prior_program_from_config(
+        _require_mapping(cfg.get("prior"), field_name="config.prior")
+    )
+    estimator_spec = mcmc_estimator_spec_from_config(
+        _require_mapping(cfg.get("estimator"), field_name="config.estimator")
+    )
+
+    reg = registry if registry is not None else build_default_registry()
+    return sample_posterior_subject_data(
+        subject,
+        model_component_id=model_spec.component_id,
+        prior_program=prior_program,
+        initial_params=estimator_spec.initial_params,
+        n_samples=estimator_spec.n_samples,
+        n_warmup=estimator_spec.n_warmup,
+        thin=estimator_spec.thin,
+        proposal_scales=estimator_spec.proposal_scales,
+        bounds=estimator_spec.bounds,
+        model_kwargs=model_spec.kwargs,
+        registry=reg,
+        random_seed=estimator_spec.random_seed,
+    )
+
+
+def sample_posterior_study_from_config(
+    study: StudyData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+) -> MCMCStudyResult:
+    """Sample posterior draws from config for one study."""
+
+    cfg = _require_mapping(config, field_name="config")
+    model_spec = model_component_spec_from_config(
+        _require_mapping(cfg.get("model"), field_name="config.model")
+    )
+    prior_program: PriorProgram = prior_program_from_config(
+        _require_mapping(cfg.get("prior"), field_name="config.prior")
+    )
+    estimator_spec = mcmc_estimator_spec_from_config(
+        _require_mapping(cfg.get("estimator"), field_name="config.estimator")
+    )
+
+    reg = registry if registry is not None else build_default_registry()
+    return sample_posterior_study_data(
+        study,
+        model_component_id=model_spec.component_id,
+        prior_program=prior_program,
+        initial_params=estimator_spec.initial_params,
+        n_samples=estimator_spec.n_samples,
+        n_warmup=estimator_spec.n_warmup,
+        thin=estimator_spec.thin,
+        proposal_scales=estimator_spec.proposal_scales,
+        bounds=estimator_spec.bounds,
+        model_kwargs=model_spec.kwargs,
+        registry=reg,
+        random_seed=estimator_spec.random_seed,
+    )
+
+
 def _coerce_bounds_mapping(
     raw: Any,
     *,
@@ -226,5 +342,8 @@ def _require_sequence(raw: Any, *, field_name: str) -> list[Any]:
 __all__ = [
     "MCMCEstimatorSpec",
     "mcmc_estimator_spec_from_config",
+    "sample_posterior_block_from_config",
     "sample_posterior_dataset_from_config",
+    "sample_posterior_study_from_config",
+    "sample_posterior_subject_from_config",
 ]

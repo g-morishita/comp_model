@@ -103,9 +103,15 @@ Bayesian scaffolding now includes MAP estimators built on SciPy optimization:
 - `comp_model.inference.RandomWalkMetropolisEstimator`
 - `comp_model.inference.sample_posterior_model`
 - `comp_model.inference.sample_posterior_model_from_registry`
+- `comp_model.inference.sample_posterior_block_data`
+- `comp_model.inference.sample_posterior_subject_data`
+- `comp_model.inference.sample_posterior_study_data`
 - `comp_model.inference.sample_posterior_dataset_from_config`
+- `comp_model.inference.sample_posterior_block_from_config`
+- `comp_model.inference.sample_posterior_subject_from_config`
+- `comp_model.inference.sample_posterior_study_from_config`
 
-Config auto-dispatch supports dataset-level MCMC when
+Config auto-dispatch supports dataset/block/subject/study MCMC when
 `estimator.type = "random_walk_metropolis"`.
 - `comp_model.inference.fit_map_study_from_config`
 

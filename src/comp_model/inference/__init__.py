@@ -55,7 +55,10 @@ from .config_dispatch import (
 from .mcmc_config import (
     MCMCEstimatorSpec,
     mcmc_estimator_spec_from_config,
+    sample_posterior_block_from_config,
     sample_posterior_dataset_from_config,
+    sample_posterior_study_from_config,
+    sample_posterior_subject_from_config,
 )
 from .fitting import (
     EstimatorType,
@@ -95,6 +98,14 @@ from .mcmc import (
     posterior_samples_from_draws,
     sample_posterior_model,
     sample_posterior_model_from_registry,
+)
+from .mcmc_study_fitting import (
+    MCMCBlockResult,
+    MCMCStudyResult,
+    MCMCSubjectResult,
+    sample_posterior_block_data,
+    sample_posterior_study_data,
+    sample_posterior_subject_data,
 )
 from .model_selection import (
     CandidateComparison,
@@ -185,6 +196,7 @@ __all__ = [
     "HierarchicalSubjectMapResult",
     "IndependentPriorProgram",
     "LikelihoodProgram",
+    "MCMCBlockResult",
     "MCMCEstimatorSpec",
     "MAP_ESTIMATORS",
     "MCMC_ESTIMATORS",
@@ -192,6 +204,8 @@ __all__ = [
     "MCMCDiagnostics",
     "MCMCDraw",
     "MCMCPosteriorResult",
+    "MCMCStudyResult",
+    "MCMCSubjectResult",
     "BestFitSummary",
     "MLECandidate",
     "MLEFitResult",
@@ -269,7 +283,13 @@ __all__ = [
     "fit_map_subject_from_config",
     "sample_posterior_model",
     "sample_posterior_model_from_registry",
+    "sample_posterior_block_data",
+    "sample_posterior_subject_data",
+    "sample_posterior_study_data",
+    "sample_posterior_block_from_config",
     "sample_posterior_dataset_from_config",
+    "sample_posterior_subject_from_config",
+    "sample_posterior_study_from_config",
     "fit_study_data",
     "fit_study_auto_from_config",
     "fit_study_hierarchical_map",
