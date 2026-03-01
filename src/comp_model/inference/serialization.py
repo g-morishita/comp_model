@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .hierarchical import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
+from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
 
 
@@ -210,6 +211,64 @@ def hierarchical_study_summary_records(study_result: HierarchicalStudyMapResult)
     return rows
 
 
+def map_block_fit_records(block_result: MapBlockFitResult, *, subject_id: str | None = None) -> list[dict[str, Any]]:
+    """Convert one MAP block-fit result to flat row records."""
+
+    candidate = block_result.fit_result.map_candidate
+    row: dict[str, Any] = {
+        "subject_id": subject_id,
+        "block_id": block_result.block_id,
+        "n_trials": int(block_result.n_trials),
+        "log_likelihood": float(candidate.log_likelihood),
+        "log_prior": float(candidate.log_prior),
+        "log_posterior": float(candidate.log_posterior),
+    }
+    for key, value in sorted(candidate.params.items()):
+        row[f"param__{key}"] = float(value)
+    return [row]
+
+
+def map_subject_fit_records(subject_result: MapSubjectFitResult) -> list[dict[str, Any]]:
+    """Convert one MAP subject-fit result to flat block rows."""
+
+    rows: list[dict[str, Any]] = []
+    for block in subject_result.block_results:
+        rows.extend(map_block_fit_records(block, subject_id=subject_result.subject_id))
+    return rows
+
+
+def map_study_fit_records(study_result: MapStudyFitResult) -> list[dict[str, Any]]:
+    """Convert MAP study fit result to flat block rows."""
+
+    rows: list[dict[str, Any]] = []
+    for subject in study_result.subject_results:
+        rows.extend(map_subject_fit_records(subject))
+    return rows
+
+
+def map_subject_summary_records(subject_result: MapSubjectFitResult) -> list[dict[str, Any]]:
+    """Convert one MAP subject fit result to summary row."""
+
+    row: dict[str, Any] = {
+        "subject_id": subject_result.subject_id,
+        "n_blocks": len(subject_result.block_results),
+        "total_log_likelihood": float(subject_result.total_log_likelihood),
+        "total_log_posterior": float(subject_result.total_log_posterior),
+    }
+    for key, value in sorted(subject_result.mean_map_params.items()):
+        row[f"mean_map_param__{key}"] = float(value)
+    return [row]
+
+
+def map_study_summary_records(study_result: MapStudyFitResult) -> list[dict[str, Any]]:
+    """Convert MAP study fit result to subject-level summary rows."""
+
+    rows: list[dict[str, Any]] = []
+    for subject in study_result.subject_results:
+        rows.extend(map_subject_summary_records(subject))
+    return rows
+
+
 def write_hierarchical_study_block_records_csv(
     study_result: HierarchicalStudyMapResult,
     path: str | Path,
@@ -228,18 +287,37 @@ def write_hierarchical_study_summary_csv(
     return write_records_csv(hierarchical_study_summary_records(study_result), path)
 
 
+def write_map_study_fit_records_csv(study_result: MapStudyFitResult, path: str | Path) -> Path:
+    """Write MAP study block-level fit rows to CSV."""
+
+    return write_records_csv(map_study_fit_records(study_result), path)
+
+
+def write_map_study_fit_summary_csv(study_result: MapStudyFitResult, path: str | Path) -> Path:
+    """Write MAP study subject-level summaries to CSV."""
+
+    return write_records_csv(map_study_summary_records(study_result), path)
+
+
 __all__ = [
     "block_fit_records",
     "hierarchical_study_block_records",
     "hierarchical_study_summary_records",
     "hierarchical_subject_block_records",
     "hierarchical_subject_summary_records",
+    "map_block_fit_records",
+    "map_study_fit_records",
+    "map_study_summary_records",
+    "map_subject_fit_records",
+    "map_subject_summary_records",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
     "subject_summary_records",
     "write_hierarchical_study_block_records_csv",
     "write_hierarchical_study_summary_csv",
+    "write_map_study_fit_records_csv",
+    "write_map_study_fit_summary_csv",
     "write_records_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",

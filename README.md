@@ -60,6 +60,8 @@ You can also fit from declarative config mappings via:
 To export fit outputs:
 - `comp_model.inference.write_study_fit_records_csv`
 - `comp_model.inference.write_study_fit_summary_csv`
+- `comp_model.inference.write_map_study_fit_records_csv`
+- `comp_model.inference.write_map_study_fit_summary_csv`
 - `comp_model.inference.write_hierarchical_study_block_records_csv`
 - `comp_model.inference.write_hierarchical_study_summary_csv`
 
