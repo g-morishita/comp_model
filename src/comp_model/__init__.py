@@ -88,6 +88,7 @@ from .recovery import (
     run_model_recovery_from_config,
     run_parameter_recovery,
     run_parameter_recovery_from_config,
+    run_recovery_cli,
 )
 from .runtime.engine import SimulationConfig, run_episode, run_trial_program
 
@@ -150,6 +151,7 @@ __all__ = [
     "run_model_recovery_from_config",
     "run_parameter_recovery",
     "run_parameter_recovery_from_config",
+    "run_recovery_cli",
     "run_episode",
     "run_trial_program",
     "summarize_posterior",

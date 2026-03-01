@@ -22,6 +22,7 @@ dev = [
 
 [project.scripts]
 comp-model-parity = "comp_model.analysis.parity_cli:run_parity_benchmark_cli"
+comp-model-recovery = "comp_model.recovery.cli:run_recovery_cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

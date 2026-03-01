@@ -66,6 +66,25 @@ For multi-actor traces (for example social trial programs), use
 scoring only selected actor IDs such as `subject`.
 Recovery serialization rows now include optional `best_log_posterior` and
 candidate `param__*` columns when available.
+Config-driven recovery can also be executed from CLI:
+
+```bash
+python scripts/run_recovery.py \
+  --config recovery_config.json \
+  --mode auto \
+  --output-dir recovery_out \
+  --prefix run1
+```
+
+Installed package command:
+
+```bash
+comp-model-recovery \
+  --config recovery_config.json \
+  --mode auto \
+  --output-dir recovery_out \
+  --prefix run1
+```
 
 For multi-subject datasets, use:
 - `comp_model.inference.fit_block_data`
