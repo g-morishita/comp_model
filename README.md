@@ -44,6 +44,8 @@ Use `comp_model.inference.fit_model` to fit a model directly from:
 This fitting module is now the shared base used by recovery workflows.
 Recovery workflows can consume both MLE-style and MAP-style fit outputs.
 Config-driven recovery runners support MAP estimators when a `prior` section is provided.
+Recovery serialization rows now include optional `best_log_posterior` and
+candidate `param__*` columns when available.
 
 For multi-subject datasets, use:
 - `comp_model.inference.fit_block_data`

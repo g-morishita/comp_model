@@ -97,6 +97,8 @@ def test_model_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
     row_by_name = {row["candidate_name"]: row for row in case_rows}
     assert row_by_name["cand1"]["log_posterior"] == pytest.approx(-1.2)
     assert row_by_name["cand2"]["log_posterior"] is None
+    assert row_by_name["cand1"]["param__alpha"] == pytest.approx(0.2)
+    assert row_by_name["cand2"]["param__alpha"] == pytest.approx(0.8)
 
     confusion_rows = model_recovery_confusion_records(result)
     assert confusion_rows == [

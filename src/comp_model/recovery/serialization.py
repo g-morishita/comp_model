@@ -59,23 +59,24 @@ def model_recovery_case_records(result: ModelRecoveryResult) -> list[dict[str, A
     rows: list[dict[str, Any]] = []
     for case in result.cases:
         for summary in case.candidate_summaries:
-            rows.append(
-                {
-                    "case_index": int(case.case_index),
-                    "simulation_seed": int(case.simulation_seed),
-                    "generating_model_name": str(case.generating_model_name),
-                    "selected_candidate_name": str(case.selected_candidate_name),
-                    "candidate_name": str(summary.candidate_name),
-                    "log_likelihood": float(summary.log_likelihood),
-                    "log_posterior": (
-                        float(summary.log_posterior)
-                        if summary.log_posterior is not None
-                        else None
-                    ),
-                    "n_parameters": int(summary.n_parameters),
-                    "score": float(summary.score),
-                }
-            )
+            row: dict[str, Any] = {
+                "case_index": int(case.case_index),
+                "simulation_seed": int(case.simulation_seed),
+                "generating_model_name": str(case.generating_model_name),
+                "selected_candidate_name": str(case.selected_candidate_name),
+                "candidate_name": str(summary.candidate_name),
+                "log_likelihood": float(summary.log_likelihood),
+                "log_posterior": (
+                    float(summary.log_posterior)
+                    if summary.log_posterior is not None
+                    else None
+                ),
+                "n_parameters": int(summary.n_parameters),
+                "score": float(summary.score),
+            }
+            for key, value in sorted(summary.best_params.items()):
+                row[f"param__{key}"] = float(value)
+            rows.append(row)
 
     return rows
 
