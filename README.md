@@ -9,9 +9,6 @@ A clean-slate computational decision modeling library.
 Config schemas and strict validation rules are documented in
 `docs/config_schemas.md`.
 
-Model-mapping notes from the prior internal codebase are documented in
-`docs/model_mapping_guide.md`.
-
 This repository starts from generic decision-problem abstractions where:
 
 1. an agent observes a problem state,
@@ -27,22 +24,8 @@ Canonical model names are descriptive and mechanism-first (for example,
 `AsocialQValueSoftmaxModel` and
 `AsocialStateQValueSoftmaxPerseverationModel`).
 
-Legacy alias names and IDs were removed; use canonical model classes and
+Deprecated alias names and IDs were removed; use canonical model classes and
 canonical plugin component IDs only.
-
-## Capability Parity Matrix
-
-The repository now includes an explicit parity matrix in
-`comp_model.models.MODEL_PARITY` mapping source model labels to canonical class
-names and plugin IDs.
-
-Current status:
-- Implemented: all base asocial/social model families from the source suite.
-- Implemented: within-subject shared+delta wrappers (`ConditionedSharedDeltaModel`, `ConditionedSharedDeltaSocialModel`).
-
-For wrapper models, canonical class mappings are provided in the parity matrix.
-They are intentionally not registered as zero-argument plugin components because
-wrapper construction requires explicit base-model factory and condition metadata.
 
 ## Easy Model Fitting API
 
@@ -244,49 +227,3 @@ Information-criterion diagnostics are available via `comp_model.analysis`:
 - `bic`
 - `waic`
 - `psis_loo`
-
-Parity benchmark helpers are also available in `comp_model.analysis`:
-- `load_parity_fixture_file`
-- `run_parity_benchmark`
-- `write_parity_benchmark_csv`
-- `run_parity_benchmark_cli`
-- `build_model_parity_matrix`
-- `summarize_model_parity_matrix`
-- `write_model_parity_matrix_json`
-- `write_model_parity_matrix_csv`
-
-Example parity benchmark command:
-
-```bash
-python scripts/run_parity_benchmark.py \
-  --fixture docs/parity_fixture_template.json \
-  --output-csv parity_report.csv
-```
-
-When installed as a package, the script entry point is:
-
-```bash
-comp-model-parity \
-  --fixture docs/parity_fixture_template.json \
-  --output-csv parity_report.csv
-```
-
-Programmatic parity matrix export:
-
-```python
-from comp_model.analysis import (
-    build_model_parity_matrix,
-    write_model_parity_matrix_json,
-)
-
-rows = build_model_parity_matrix()
-write_model_parity_matrix_json(rows, "parity_matrix.json")
-```
-
-CLI parity matrix export:
-
-```bash
-python scripts/run_parity_matrix.py \
-  --output-json parity_matrix.json \
-  --output-csv parity_matrix.csv
-```
