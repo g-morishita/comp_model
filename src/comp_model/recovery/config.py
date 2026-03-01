@@ -14,6 +14,7 @@ from typing import Any
 
 import numpy as np
 
+from comp_model.core.config_validation import validate_allowed_keys, validate_required_keys
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -80,6 +81,27 @@ def run_parameter_recovery_from_config(
     """
 
     reg = registry if registry is not None else build_default_registry()
+    validate_allowed_keys(
+        config,
+        field_name="config",
+        allowed_keys=(
+            "problem",
+            "simulation",
+            "generating_model",
+            "fitting_model",
+            "estimator",
+            "prior",
+            "likelihood",
+            "true_parameter_sets",
+            "n_trials",
+            "seed",
+        ),
+    )
+    validate_required_keys(
+        config,
+        field_name="config",
+        required_keys=("generating_model", "fitting_model", "estimator", "true_parameter_sets", "n_trials"),
+    )
 
     generating_ref = _parse_component_ref(_require_mapping(config, "generating_model"), field_name="generating_model")
     fitting_ref = _parse_component_ref(_require_mapping(config, "fitting_model"), field_name="fitting_model")
@@ -143,6 +165,26 @@ def run_model_recovery_from_config(
     """
 
     reg = registry if registry is not None else build_default_registry()
+    validate_allowed_keys(
+        config,
+        field_name="config",
+        allowed_keys=(
+            "problem",
+            "simulation",
+            "generating",
+            "candidates",
+            "likelihood",
+            "n_trials",
+            "n_replications_per_generator",
+            "criterion",
+            "seed",
+        ),
+    )
+    validate_required_keys(
+        config,
+        field_name="config",
+        required_keys=("generating", "candidates", "n_trials", "n_replications_per_generator"),
+    )
 
     generating_cfg = _require_sequence(config.get("generating"), field_name="generating")
     candidate_cfg = _require_sequence(config.get("candidates"), field_name="candidates")
@@ -268,6 +310,11 @@ def _build_simulation_sources(
         field_name="simulation.type",
     )
     if simulation_type == "problem":
+        validate_allowed_keys(
+            simulation_cfg,
+            field_name="simulation",
+            allowed_keys=("type", "problem"),
+        )
         if "problem" in simulation_cfg:
             problem_ref = _parse_component_ref(
                 _require_mapping(simulation_cfg, "problem", field_name="simulation"),
@@ -285,6 +332,11 @@ def _build_simulation_sources(
 
     if simulation_type != "generator":
         raise ValueError("simulation.type must be one of {'problem', 'generator'}")
+    validate_allowed_keys(
+        simulation_cfg,
+        field_name="simulation",
+        allowed_keys=("type", "generator", "demonstrator_model", "block"),
+    )
 
     generator_ref = _parse_component_ref(
         _require_mapping(simulation_cfg, "generator", field_name="simulation"),
@@ -299,6 +351,11 @@ def _build_simulation_sources(
         simulation_cfg.get("block", {}),
         field_name="simulation.block",
     )
+    validate_allowed_keys(
+        block_cfg,
+        field_name="simulation.block",
+        allowed_keys=("n_trials", "block_id", "metadata", "problem_kwargs", "program_kwargs"),
+    )
     block_n_trials = int(block_cfg.get("n_trials", n_trials))
     if block_n_trials <= 0:
         raise ValueError("simulation.block.n_trials must be > 0")
@@ -312,6 +369,11 @@ def _build_simulation_sources(
     parameter_names = tuple(signature.parameters)
 
     if "model" in parameter_names:
+        validate_allowed_keys(
+            block_cfg,
+            field_name="simulation.block",
+            allowed_keys=("n_trials", "block_id", "metadata", "problem_kwargs"),
+        )
         problem_kwargs = _require_mapping(
             block_cfg.get("problem_kwargs", {}),
             field_name="simulation.block.problem_kwargs",
@@ -338,6 +400,11 @@ def _build_simulation_sources(
         return None, trace_factory
 
     if "subject_model" in parameter_names and "demonstrator_model" in parameter_names:
+        validate_allowed_keys(
+            block_cfg,
+            field_name="simulation.block",
+            allowed_keys=("n_trials", "block_id", "metadata", "program_kwargs"),
+        )
         demonstrator_ref = _parse_component_ref(
             _require_mapping(simulation_cfg, "demonstrator_model", field_name="simulation"),
             field_name="simulation.demonstrator_model",

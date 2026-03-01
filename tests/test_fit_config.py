@@ -72,6 +72,19 @@ def test_fit_spec_from_config_rejects_unknown_transform() -> None:
         )
 
 
+def test_fit_spec_from_config_rejects_unknown_estimator_keys() -> None:
+    """Estimator parser should reject unknown keys for known estimator types."""
+
+    with pytest.raises(ValueError, match="estimator has unknown keys"):
+        fit_spec_from_config(
+            {
+                "type": "grid_search",
+                "parameter_grid": {"alpha": [0.2]},
+                "unexpected": 1,
+            }
+        )
+
+
 def test_fit_dataset_from_config_on_trial_rows() -> None:
     """Config-driven fit should run directly on TrialDecision rows."""
 
@@ -94,6 +107,30 @@ def test_fit_dataset_from_config_on_trial_rows() -> None:
     result = fit_dataset_from_config(rows, config=config)
     assert result.best.params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
     assert math.isfinite(result.best.log_likelihood)
+
+
+def test_fit_dataset_from_config_rejects_unknown_top_level_keys() -> None:
+    """Dataset config should fail fast on unknown top-level keys."""
+
+    rows = [_trial(0, 1, 1.0), _trial(1, 0, 0.0)]
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [2.0],
+                "initial_value": [0.0],
+            },
+        },
+        "typo_field": True,
+    }
+
+    with pytest.raises(ValueError, match="config has unknown keys"):
+        fit_dataset_from_config(rows, config=config)
 
 
 def test_fit_study_from_config_runs_all_subjects() -> None:

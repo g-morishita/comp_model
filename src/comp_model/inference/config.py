@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from comp_model.core.config_validation import validate_allowed_keys
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -54,6 +55,26 @@ def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
     estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
+    if estimator_type == "grid_search":
+        validate_allowed_keys(
+            estimator,
+            field_name="estimator",
+            allowed_keys=("type", "parameter_grid"),
+        )
+    elif estimator_type == "scipy_minimize":
+        validate_allowed_keys(
+            estimator,
+            field_name="estimator",
+            allowed_keys=("type", "initial_params", "bounds", "method", "tol"),
+        )
+    elif estimator_type == "transformed_scipy_minimize":
+        validate_allowed_keys(
+            estimator,
+            field_name="estimator",
+            allowed_keys=("type", "initial_params", "bounds_z", "transforms", "method", "tol"),
+        )
+    else:
+        validate_allowed_keys(estimator, field_name="estimator", allowed_keys=("type",))
 
     return FitSpec(
         estimator_type=estimator_type,
@@ -91,6 +112,7 @@ def model_component_spec_from_config(model_cfg: Mapping[str, Any]) -> ModelCompo
     """Parse model component spec from config mapping."""
 
     mapping = _require_mapping(model_cfg, field_name="model")
+    validate_allowed_keys(mapping, field_name="model", allowed_keys=("component_id", "kwargs"))
     component_id = _coerce_non_empty_str(mapping.get("component_id"), field_name="model.component_id")
     kwargs = _require_mapping(mapping.get("kwargs", {}), field_name="model.kwargs")
     return ModelComponentSpec(component_id=component_id, kwargs=dict(kwargs))
@@ -120,6 +142,7 @@ def fit_dataset_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
@@ -148,6 +171,7 @@ def fit_block_from_config(
     """Fit one block using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
@@ -176,6 +200,7 @@ def fit_subject_from_config(
     """Fit one subject using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
@@ -204,6 +229,7 @@ def fit_study_from_config(
     """Fit one study using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (

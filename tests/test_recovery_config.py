@@ -662,3 +662,81 @@ def test_generator_social_simulation_requires_demonstrator_model() -> None:
 
     with pytest.raises(ValueError, match="simulation.demonstrator_model"):
         run_parameter_recovery_from_config(config)
+
+
+def test_parameter_recovery_config_rejects_unknown_top_level_keys() -> None:
+    """Parameter recovery config should fail fast on unknown top-level keys."""
+
+    config = {
+        "problem": {
+            "component_id": "stationary_bandit",
+            "kwargs": {"reward_probabilities": [0.2, 0.8]},
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [2.0],
+                "initial_value": [0.0],
+            },
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+        ],
+        "n_trials": 10,
+        "unexpected": "typo",
+    }
+
+    with pytest.raises(ValueError, match="config has unknown keys"):
+        run_parameter_recovery_from_config(config)
+
+
+def test_generator_simulation_block_rejects_unknown_keys() -> None:
+    """Generator simulation block config should reject unknown keys."""
+
+    config = {
+        "simulation": {
+            "type": "generator",
+            "generator": {
+                "component_id": "event_trace_asocial_generator",
+                "kwargs": {},
+            },
+            "block": {
+                "n_trials": 10,
+                "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+                "bad_field": 1,
+            },
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [2.0],
+                "initial_value": [0.0],
+            },
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+        ],
+        "n_trials": 10,
+        "seed": 52,
+    }
+
+    with pytest.raises(ValueError, match="simulation.block has unknown keys"):
+        run_parameter_recovery_from_config(config)
