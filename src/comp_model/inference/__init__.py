@@ -104,6 +104,13 @@ from .study_model_selection import (
     compare_study_candidate_models,
     compare_subject_candidate_models,
 )
+from .posterior import (
+    PosteriorParameterSummary,
+    PosteriorSamples,
+    PosteriorSummary,
+    posterior_summary_records,
+    summarize_posterior,
+)
 from .serialization import (
     block_fit_records,
     hierarchical_study_block_records,
@@ -177,6 +184,9 @@ __all__ = [
     "PosteriorCandidate",
     "PriorProgram",
     "ParameterTransform",
+    "PosteriorParameterSummary",
+    "PosteriorSamples",
+    "PosteriorSummary",
     "RegistryCandidateFitSpec",
     "ScipyMinimizeDiagnostics",
     "ScipyMapBayesEstimator",
@@ -252,11 +262,13 @@ __all__ = [
     "model_component_spec_from_config",
     "normal_log_prior",
     "positive_log_transform",
+    "posterior_summary_records",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
     "subject_model_comparison_records",
     "subject_summary_records",
+    "summarize_posterior",
     "prior_program_from_config",
     "uniform_log_prior",
     "unit_interval_logit_transform",

@@ -107,6 +107,8 @@ Prior utilities:
 - `comp_model.inference.uniform_log_prior`
 - `comp_model.inference.beta_log_prior`
 - `comp_model.inference.log_normal_log_prior`
+- `comp_model.inference.PosteriorSamples`
+- `comp_model.inference.summarize_posterior`
 
 These are the first step toward full Bayesian and hierarchical workflows using
 the same canonical replay likelihood semantics as MLE.
