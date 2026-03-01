@@ -40,7 +40,10 @@ from .mcmc_config import (
 MLE_ESTIMATORS = {"grid_search", "scipy_minimize", "transformed_scipy_minimize"}
 MAP_ESTIMATORS = {"scipy_map", "transformed_scipy_map"}
 MCMC_ESTIMATORS = {"random_walk_metropolis"}
-HIERARCHICAL_MCMC_ESTIMATORS = {"within_subject_hierarchical_random_walk_metropolis"}
+HIERARCHICAL_MCMC_ESTIMATORS = {
+    "within_subject_hierarchical_random_walk_metropolis",
+    "within_subject_hierarchical_stan_nuts",
+}
 HIERARCHICAL_ESTIMATORS = {"within_subject_hierarchical_map"}
 
 

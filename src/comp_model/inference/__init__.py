@@ -56,8 +56,10 @@ from .config_dispatch import (
 )
 from .mcmc_config import (
     HierarchicalMCMCEstimatorSpec,
+    HierarchicalStanEstimatorSpec,
     MCMCEstimatorSpec,
     hierarchical_mcmc_estimator_spec_from_config,
+    hierarchical_stan_estimator_spec_from_config,
     mcmc_estimator_spec_from_config,
     sample_posterior_block_from_config,
     sample_posterior_dataset_from_config,
@@ -89,6 +91,10 @@ from .hierarchical_mcmc import (
     HierarchicalSubjectPosteriorResult,
     sample_study_hierarchical_posterior,
     sample_subject_hierarchical_posterior,
+)
+from .hierarchical_stan import (
+    sample_study_hierarchical_posterior_stan,
+    sample_subject_hierarchical_posterior_stan,
 )
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
@@ -220,6 +226,7 @@ __all__ = [
     "HIERARCHICAL_MCMC_ESTIMATORS",
     "HIERARCHICAL_ESTIMATORS",
     "HierarchicalMCMCEstimatorSpec",
+    "HierarchicalStanEstimatorSpec",
     "HierarchicalBlockResult",
     "HierarchicalMCMCDraw",
     "HierarchicalPosteriorCandidate",
@@ -336,10 +343,12 @@ __all__ = [
     "fit_study_hierarchical_map",
     "fit_study_hierarchical_map_from_config",
     "sample_study_hierarchical_posterior",
+    "sample_study_hierarchical_posterior_stan",
     "fit_study_from_config",
     "fit_subject_hierarchical_map",
     "fit_subject_hierarchical_map_from_config",
     "sample_subject_hierarchical_posterior",
+    "sample_subject_hierarchical_posterior_stan",
     "sample_subject_hierarchical_posterior_from_config",
     "fit_subject_auto_from_config",
     "fit_subject_data",
@@ -348,6 +357,7 @@ __all__ = [
     "fit_trial_csv_from_config",
     "identity_transform",
     "hierarchical_mcmc_estimator_spec_from_config",
+    "hierarchical_stan_estimator_spec_from_config",
     "hierarchical_map_spec_from_config",
     "log_normal_log_prior",
     "likelihood_program_from_config",

@@ -23,6 +23,9 @@ dev = [
 docs = [
   "mkdocs>=1.6",
 ]
+stan = [
+  "cmdstanpy>=1.2",
+]
 
 [project.scripts]
 comp-model-recovery = "comp_model.recovery.cli:run_recovery_cli"
