@@ -271,3 +271,38 @@ def test_model_recovery_supports_map_candidates_in_config() -> None:
     result = run_model_recovery_from_config(config)
     assert len(result.cases) == 2
     assert set(result.confusion_matrix["qrl_generator"]).issubset({"candidate_map", "candidate_grid"})
+
+
+def test_recovery_config_requires_prior_for_map_estimators() -> None:
+    """MAP recovery config should require explicit prior specification."""
+
+    config = {
+        "problem": {
+            "component_id": "stationary_bandit",
+            "kwargs": {"reward_probabilities": [0.2, 0.8]},
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "scipy_map",
+            "initial_params": {"alpha": 0.4, "beta": 1.0, "initial_value": 0.0},
+            "bounds": {
+                "alpha": [0.0, 1.0],
+                "beta": [0.0, 20.0],
+                "initial_value": [None, None],
+            },
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+        ],
+        "n_trials": 10,
+    }
+
+    with pytest.raises(ValueError, match="prior is required"):
+        run_parameter_recovery_from_config(config)
