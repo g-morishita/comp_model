@@ -1,4 +1,4 @@
-"""Parity benchmark helpers for v1 fixture comparison workflows."""
+"""Parity benchmark helpers for reference fixture comparison workflows."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ class ParityFixtureCase:
     params : dict[str, float]
         Free parameter values supplied to the model constructor.
     expected_log_likelihood : float
-        Reference log-likelihood from v1 fixture output.
+        Reference log-likelihood from fixture output.
     trial_decisions : tuple[TrialDecision, ...]
         Canonical trial-decision rows for replay.
     model_kwargs : dict[str, Any], optional
@@ -272,4 +272,3 @@ __all__ = [
     "run_parity_benchmark",
     "write_parity_benchmark_csv",
 ]
-

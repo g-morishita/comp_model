@@ -1,6 +1,6 @@
 """Reference model implementations for the new architecture."""
 
-from .parity import LegacyModelParityEntry, V1_MODEL_PARITY
+from .parity import MODEL_PARITY, ModelParityEntry
 from .q_learning import (
     AsocialQValueSoftmaxConfig,
     AsocialQValueSoftmaxModel,
@@ -70,7 +70,7 @@ __all__ = [
     "AsocialStateQValueSoftmaxSplitAlphaModel",
     "ConditionedSharedDeltaModel",
     "ConditionedSharedDeltaSocialModel",
-    "LegacyModelParityEntry",
+    "ModelParityEntry",
     "SharedDeltaParameterSpec",
     "SocialConstantDemoBiasObservedOutcomeQPerseverationModel",
     "SocialDirichletReliabilityGatedDemoBiasObservedOutcomeQPerseverationModel",
@@ -87,7 +87,7 @@ __all__ = [
     "SocialPolicyReliabilityGatedValueShapingModel",
     "SocialSelfOutcomeValueShapingModel",
     "UniformRandomPolicyModel",
-    "V1_MODEL_PARITY",
+    "MODEL_PARITY",
     "create_asocial_q_value_softmax_model",
     "create_asocial_state_q_value_softmax_model",
     "create_asocial_state_q_value_softmax_perseveration_model",

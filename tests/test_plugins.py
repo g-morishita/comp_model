@@ -193,8 +193,8 @@ def test_registry_creates_components_from_factories() -> None:
     assert isinstance(post_outcome_generator, EventTraceSocialPostOutcomeGenerator)
 
 
-def test_registry_rejects_removed_legacy_model_ids() -> None:
-    """Removed legacy IDs should fail with KeyError."""
+def test_registry_rejects_removed_deprecated_model_ids() -> None:
+    """Removed deprecated IDs should fail with KeyError."""
 
     registry = build_default_registry()
 

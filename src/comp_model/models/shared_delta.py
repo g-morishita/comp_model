@@ -2,7 +2,7 @@
 
 These wrappers provide condition-wise parameter tying via shared and delta
 unconstrained parameters. They are generic wrappers around a model factory and
-fit the new architecture without requiring a legacy parameter-schema system.
+fit the new architecture without requiring a prior parameter-schema system.
 """
 
 from __future__ import annotations

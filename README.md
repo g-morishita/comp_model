@@ -4,13 +4,13 @@ A clean-slate computational decision modeling library.
 
 ## Credits
 
-- Original internal v1 model suite and research framing: Morishita Lab.
+- Original internal model suite and research framing: Morishita Lab.
 
 Config schemas and strict validation rules are documented in
 `docs/config_schemas.md`.
 
-Migration notes from the internal v1 codebase are documented in
-`docs/migration_v1_to_comp_model.md`.
+Model-mapping notes from the prior internal codebase are documented in
+`docs/model_mapping_guide.md`.
 
 This repository starts from generic decision-problem abstractions where:
 
@@ -30,14 +30,14 @@ Canonical model names are descriptive and mechanism-first (for example,
 Legacy alias names and IDs were removed; use canonical model classes and
 canonical plugin component IDs only.
 
-## v1 Capability Parity Matrix
+## Capability Parity Matrix
 
 The repository now includes an explicit parity matrix in
-`comp_model.models.V1_MODEL_PARITY` mapping internal v1 model names to
-canonical class names and plugin IDs.
+`comp_model.models.MODEL_PARITY` mapping source model labels to canonical class
+names and plugin IDs.
 
 Current status:
-- Implemented: all base asocial/social model families from v1.
+- Implemented: all base asocial/social model families from the source suite.
 - Implemented: within-subject shared+delta wrappers (`ConditionedSharedDeltaModel`, `ConditionedSharedDeltaSocialModel`).
 
 For wrapper models, canonical class mappings are provided in the parity matrix.

@@ -1,7 +1,7 @@
 """Study generators backed by canonical runtime event traces.
 
-These generators provide v1-like simulation surfaces while using the new
-runtime as the single source of trial semantics.
+These generators provide source-compatible simulation surfaces while using the
+new runtime as the single source of trial semantics.
 """
 
 from __future__ import annotations

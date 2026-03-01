@@ -28,7 +28,7 @@ def run_model_parity_matrix_cli(argv: Sequence[str] | None = None) -> int:
         Exit code (`0` when matrix is fully valid, `1` otherwise).
     """
 
-    parser = argparse.ArgumentParser(description="Export v1 model parity matrix artifacts.")
+    parser = argparse.ArgumentParser(description="Export model parity matrix artifacts.")
     parser.add_argument("--output-json", default=None, help="Optional output JSON path.")
     parser.add_argument("--output-csv", default=None, help="Optional output CSV path.")
     args = parser.parse_args(list(argv) if argv is not None else None)

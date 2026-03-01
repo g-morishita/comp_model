@@ -1,17 +1,17 @@
-"""Tests for explicit v1-to-canonical model parity mapping."""
+"""Tests for explicit source-to-canonical model parity mapping."""
 
 from __future__ import annotations
 
 import comp_model.models as models_pkg
 
-from comp_model.models import V1_MODEL_PARITY
+from comp_model.models import MODEL_PARITY
 from comp_model.plugins import build_default_registry
 
 
-def test_v1_parity_entries_cover_expected_legacy_model_names() -> None:
-    """Parity table should include every targeted v1 model name exactly once."""
+def test_parity_entries_cover_expected_source_model_names() -> None:
+    """Parity table should include every targeted source model name exactly once."""
 
-    expected_legacy_names = {
+    expected_source_names = {
         "QRL",
         "QRL_Stay",
         "UnidentifiableQRL",
@@ -32,10 +32,10 @@ def test_v1_parity_entries_cover_expected_legacy_model_names() -> None:
         "ConditionedSharedDeltaModel",
         "ConditionedSharedDeltaSocialModel",
     }
-    observed_legacy_names = {entry.legacy_name for entry in V1_MODEL_PARITY}
+    observed_source_names = {entry.source_name for entry in MODEL_PARITY}
 
-    assert observed_legacy_names == expected_legacy_names
-    assert len(observed_legacy_names) == len(V1_MODEL_PARITY)
+    assert observed_source_names == expected_source_names
+    assert len(observed_source_names) == len(MODEL_PARITY)
 
 
 def test_implemented_parity_entries_resolve_to_classes_and_optional_plugin_ids() -> None:
@@ -44,7 +44,7 @@ def test_implemented_parity_entries_resolve_to_classes_and_optional_plugin_ids()
     registry = build_default_registry()
     available_model_ids = {manifest.component_id for manifest in registry.list("model")}
 
-    for entry in V1_MODEL_PARITY:
+    for entry in MODEL_PARITY:
         if entry.status != "implemented":
             continue
 
@@ -55,7 +55,7 @@ def test_implemented_parity_entries_resolve_to_classes_and_optional_plugin_ids()
             assert entry.canonical_component_id in available_model_ids
 
 
-def test_no_planned_entries_remain_in_v1_model_parity_matrix() -> None:
-    """All declared v1 model families should now be mapped as implemented."""
+def test_no_planned_entries_remain_in_model_parity_matrix() -> None:
+    """All declared model families should now be mapped as implemented."""
 
-    assert [entry for entry in V1_MODEL_PARITY if entry.status == "planned"] == []
+    assert [entry for entry in MODEL_PARITY if entry.status == "planned"] == []

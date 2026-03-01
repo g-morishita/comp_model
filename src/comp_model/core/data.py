@@ -1,6 +1,6 @@
 """Study-level data containers and conversion helpers.
 
-This module provides generic data structures analogous to the v1
+This module provides generic data structures analogous to prior internal
 ``Trial``/``Block``/``SubjectData``/``StudyData`` layers while keeping
 :class:`comp_model.core.events.EpisodeTrace` as the canonical runtime format.
 """

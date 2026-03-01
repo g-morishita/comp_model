@@ -10,16 +10,16 @@ from comp_model.analysis import (
     write_model_parity_matrix_csv,
     write_model_parity_matrix_json,
 )
-from comp_model.models import V1_MODEL_PARITY
+from comp_model.models import MODEL_PARITY
 
 
-def test_build_model_parity_matrix_has_one_row_per_legacy_entry() -> None:
+def test_build_model_parity_matrix_has_one_row_per_source_entry() -> None:
     """Parity matrix should preserve parity table cardinality."""
 
     rows = build_model_parity_matrix()
-    assert len(rows) == len(V1_MODEL_PARITY)
-    assert {row.legacy_name for row in rows} == {
-        entry.legacy_name for entry in V1_MODEL_PARITY
+    assert len(rows) == len(MODEL_PARITY)
+    assert {row.source_name for row in rows} == {
+        entry.source_name for entry in MODEL_PARITY
     }
 
 
@@ -58,5 +58,5 @@ def test_model_parity_matrix_summary_and_serialization(tmp_path) -> None:
     assert payload["summary"]["n_invalid"] == 0
     assert len(payload["rows"]) == len(rows)
     csv_text = csv_path.read_text(encoding="utf-8")
-    assert "legacy_name" in csv_text
+    assert "source_name" in csv_text
     assert "mapping_valid" in csv_text

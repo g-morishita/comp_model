@@ -1,8 +1,7 @@
 """Model parity matrix reporting utilities.
 
-This module exports the static v1-to-canonical model mapping into a machine-
-readable parity matrix that can be consumed by CI pipelines and migration
-dashboards.
+This module exports the static source-to-canonical model mapping into a
+machine-readable parity matrix that can be consumed by CI pipelines.
 """
 
 from __future__ import annotations
@@ -14,24 +13,24 @@ from pathlib import Path
 from typing import Any
 
 import comp_model.models as models_pkg
-from comp_model.models import V1_MODEL_PARITY
+from comp_model.models import MODEL_PARITY
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 
 @dataclass(frozen=True, slots=True)
 class ModelParityMatrixRow:
-    """Resolved parity-matrix row for one legacy v1 model.
+    """Resolved parity-matrix row for one source model.
 
     Parameters
     ----------
-    legacy_name : str
-        Model name used in the internal v1 codebase.
+    source_name : str
+        Source model name retained for mapping/reference.
     canonical_component_id : str | None
         Canonical plugin component ID in this repository when applicable.
     canonical_class_name : str | None
         Canonical model class name in :mod:`comp_model.models` when applicable.
     status : str
-        Declared parity status from :data:`comp_model.models.V1_MODEL_PARITY`.
+        Declared parity status from :data:`comp_model.models.MODEL_PARITY`.
     notes : str
         Free-text notes carried from parity mapping declarations.
     class_exists : bool
@@ -45,7 +44,7 @@ class ModelParityMatrixRow:
         provided they must be registered.
     """
 
-    legacy_name: str
+    source_name: str
     canonical_component_id: str | None
     canonical_class_name: str | None
     status: str
@@ -98,7 +97,7 @@ def build_model_parity_matrix(
     available_model_ids = {manifest.component_id for manifest in reg.list("model")}
 
     rows: list[ModelParityMatrixRow] = []
-    for entry in V1_MODEL_PARITY:
+    for entry in MODEL_PARITY:
         class_exists = (
             entry.canonical_class_name is not None
             and hasattr(models_pkg, entry.canonical_class_name)
@@ -115,7 +114,7 @@ def build_model_parity_matrix(
 
         rows.append(
             ModelParityMatrixRow(
-                legacy_name=entry.legacy_name,
+                source_name=entry.source_name,
                 canonical_component_id=entry.canonical_component_id,
                 canonical_class_name=entry.canonical_class_name,
                 status=entry.status,
@@ -215,7 +214,7 @@ def write_model_parity_matrix_csv(
         writer = csv.DictWriter(
             handle,
             fieldnames=[
-                "legacy_name",
+                "source_name",
                 "canonical_component_id",
                 "canonical_class_name",
                 "status",

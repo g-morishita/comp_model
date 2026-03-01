@@ -10,8 +10,8 @@ import comp_model.models as model_module
 from comp_model.plugins import build_default_registry
 
 
-def test_legacy_component_ids_removed() -> None:
-    """Legacy model IDs should no longer resolve in the plugin registry."""
+def test_deprecated_component_ids_removed() -> None:
+    """Deprecated model IDs should no longer resolve in the plugin registry."""
 
     registry = build_default_registry()
 

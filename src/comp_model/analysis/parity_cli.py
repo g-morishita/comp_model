@@ -27,7 +27,7 @@ def run_parity_benchmark_cli(argv: Sequence[str] | None = None) -> int:
         Exit code (`0` on success, `1` on benchmark failures).
     """
 
-    parser = argparse.ArgumentParser(description="Run v1 fixture parity benchmark.")
+    parser = argparse.ArgumentParser(description="Run reference fixture parity benchmark.")
     parser.add_argument("--fixture", required=True, help="Path to parity fixture JSON file.")
     parser.add_argument("--output-csv", required=True, help="Path to output CSV report.")
     parser.add_argument("--atol", type=float, default=1e-8, help="Absolute tolerance.")
