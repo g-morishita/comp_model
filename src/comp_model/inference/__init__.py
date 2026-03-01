@@ -93,6 +93,16 @@ from .model_selection import (
 from .model_selection_config import (
     build_fit_function_from_model_config,
     compare_dataset_candidates_from_config,
+    compare_study_candidates_from_config,
+    compare_subject_candidates_from_config,
+)
+from .study_model_selection import (
+    StudyCandidateComparison,
+    StudyModelComparisonResult,
+    SubjectCandidateComparison,
+    SubjectModelComparisonResult,
+    compare_study_candidate_models,
+    compare_subject_candidate_models,
 )
 from .serialization import (
     block_fit_records,
@@ -167,7 +177,11 @@ __all__ = [
     "ScipyMinimizeMLEEstimator",
     "SelectionCriterion",
     "StudyFitResult",
+    "StudyCandidateComparison",
+    "StudyModelComparisonResult",
     "SubjectFitResult",
+    "SubjectCandidateComparison",
+    "SubjectModelComparisonResult",
     "TransformedScipyMapBayesEstimator",
     "TransformedScipyMinimizeMLEEstimator",
     "assert_trace_compatible",
@@ -191,6 +205,10 @@ __all__ = [
     "compare_dataset_candidates_from_config",
     "extract_best_fit_summary",
     "compare_candidate_models",
+    "compare_study_candidate_models",
+    "compare_study_candidates_from_config",
+    "compare_subject_candidate_models",
+    "compare_subject_candidates_from_config",
     "compare_registry_candidate_models",
     "fit_block_data",
     "fit_block_auto_from_config",

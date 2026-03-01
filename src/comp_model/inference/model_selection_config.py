@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from comp_model.core.data import BlockData, TrialDecision
+from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
@@ -16,6 +16,12 @@ from .config_dispatch import MAP_ESTIMATORS, MLE_ESTIMATORS
 from .fitting import build_model_fit_function
 from .likelihood import LikelihoodProgram
 from .model_selection import CandidateFitSpec, ModelComparisonResult, compare_candidate_models
+from .study_model_selection import (
+    StudyModelComparisonResult,
+    SubjectModelComparisonResult,
+    compare_study_candidate_models,
+    compare_subject_candidate_models,
+)
 
 
 def build_fit_function_from_model_config(
@@ -124,10 +130,78 @@ def compare_dataset_candidates_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
-    candidate_rows = _require_sequence(cfg.get("candidates"), field_name="config.candidates")
     criterion = str(cfg.get("criterion", "log_likelihood"))
     n_observations = int(cfg["n_observations"]) if "n_observations" in cfg else None
 
+    candidate_specs = _candidate_specs_from_config(
+        cfg=cfg,
+        registry=registry,
+        likelihood_program=likelihood_program,
+    )
+
+    return compare_candidate_models(
+        data,
+        candidate_specs=candidate_specs,
+        criterion=criterion,
+        n_observations=n_observations,
+    )
+
+
+def compare_subject_candidates_from_config(
+    subject: SubjectData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> SubjectModelComparisonResult:
+    """Compare configured model candidates across all blocks for one subject."""
+
+    cfg = _require_mapping(config, field_name="config")
+    candidate_specs = _candidate_specs_from_config(
+        cfg=cfg,
+        registry=registry,
+        likelihood_program=likelihood_program,
+    )
+    criterion = str(cfg.get("criterion", "log_likelihood"))
+    return compare_subject_candidate_models(
+        subject,
+        candidate_specs=candidate_specs,
+        criterion=criterion,
+    )
+
+
+def compare_study_candidates_from_config(
+    study: StudyData,
+    *,
+    config: Mapping[str, Any],
+    registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> StudyModelComparisonResult:
+    """Compare configured model candidates across all study subjects."""
+
+    cfg = _require_mapping(config, field_name="config")
+    candidate_specs = _candidate_specs_from_config(
+        cfg=cfg,
+        registry=registry,
+        likelihood_program=likelihood_program,
+    )
+    criterion = str(cfg.get("criterion", "log_likelihood"))
+    return compare_study_candidate_models(
+        study,
+        candidate_specs=candidate_specs,
+        criterion=criterion,
+    )
+
+
+def _candidate_specs_from_config(
+    *,
+    cfg: Mapping[str, Any],
+    registry: PluginRegistry | None,
+    likelihood_program: LikelihoodProgram | None,
+) -> tuple[CandidateFitSpec, ...]:
+    """Parse and build candidate fit specs from shared config format."""
+
+    candidate_rows = _require_sequence(cfg.get("candidates"), field_name="config.candidates")
     reg = registry if registry is not None else build_default_registry()
     candidate_specs: list[CandidateFitSpec] = []
     for index, raw in enumerate(candidate_rows):
@@ -159,12 +233,7 @@ def compare_dataset_candidates_from_config(
             )
         )
 
-    return compare_candidate_models(
-        data,
-        candidate_specs=tuple(candidate_specs),
-        criterion=criterion,
-        n_observations=n_observations,
-    )
+    return tuple(candidate_specs)
 
 
 def _coerce_non_empty_str(raw: Any, *, field_name: str) -> str:
@@ -206,4 +275,6 @@ def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[
 __all__ = [
     "build_fit_function_from_model_config",
     "compare_dataset_candidates_from_config",
+    "compare_study_candidates_from_config",
+    "compare_subject_candidates_from_config",
 ]

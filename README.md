@@ -74,6 +74,10 @@ For candidate-model comparison on one dataset:
 - `comp_model.inference.compare_candidate_models`
 - `comp_model.inference.compare_registry_candidate_models`
 - `comp_model.inference.compare_dataset_candidates_from_config`
+- `comp_model.inference.compare_subject_candidate_models`
+- `comp_model.inference.compare_study_candidate_models`
+- `comp_model.inference.compare_subject_candidates_from_config`
+- `comp_model.inference.compare_study_candidates_from_config`
 
 These return per-candidate log-likelihood/AIC/BIC summaries and selected model
 labels under a chosen criterion.
