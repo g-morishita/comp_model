@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
+from .hierarchical import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
 from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
 
 
@@ -136,12 +137,109 @@ def write_study_fit_summary_csv(study_result: StudyFitResult, path: str | Path) 
     return write_records_csv(study_summary_records(study_result), path)
 
 
+def hierarchical_subject_block_records(subject_result: HierarchicalSubjectMapResult) -> list[dict[str, Any]]:
+    """Convert one hierarchical subject result to per-block rows.
+
+    Parameters
+    ----------
+    subject_result : HierarchicalSubjectMapResult
+        Subject-level hierarchical MAP output.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Per-block flattened rows including parameter values.
+    """
+
+    rows: list[dict[str, Any]] = []
+    for block in subject_result.block_results:
+        row: dict[str, Any] = {
+            "subject_id": subject_result.subject_id,
+            "block_id": block.block_id,
+            "log_likelihood": float(block.log_likelihood),
+        }
+        for key, value in sorted(block.params.items()):
+            row[f"param__{key}"] = float(value)
+        rows.append(row)
+    return rows
+
+
+def hierarchical_study_block_records(study_result: HierarchicalStudyMapResult) -> list[dict[str, Any]]:
+    """Convert hierarchical study result to per-block rows."""
+
+    rows: list[dict[str, Any]] = []
+    for subject in study_result.subject_results:
+        rows.extend(hierarchical_subject_block_records(subject))
+    return rows
+
+
+def hierarchical_subject_summary_records(subject_result: HierarchicalSubjectMapResult) -> list[dict[str, Any]]:
+    """Convert one hierarchical subject result to summary rows.
+
+    Parameters
+    ----------
+    subject_result : HierarchicalSubjectMapResult
+        Subject-level hierarchical MAP output.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        One-row subject summary.
+    """
+
+    row: dict[str, Any] = {
+        "subject_id": subject_result.subject_id,
+        "n_blocks": len(subject_result.block_results),
+        "total_log_likelihood": float(subject_result.total_log_likelihood),
+        "total_log_prior": float(subject_result.total_log_prior),
+        "total_log_posterior": float(subject_result.total_log_posterior),
+    }
+    for key, value in sorted(subject_result.group_location_z.items()):
+        row[f"group_location_z__{key}"] = float(value)
+    for key, value in sorted(subject_result.group_scale_z.items()):
+        row[f"group_scale__{key}"] = float(value)
+    return [row]
+
+
+def hierarchical_study_summary_records(study_result: HierarchicalStudyMapResult) -> list[dict[str, Any]]:
+    """Convert hierarchical study result to subject-level summary rows."""
+
+    rows: list[dict[str, Any]] = []
+    for subject in study_result.subject_results:
+        rows.extend(hierarchical_subject_summary_records(subject))
+    return rows
+
+
+def write_hierarchical_study_block_records_csv(
+    study_result: HierarchicalStudyMapResult,
+    path: str | Path,
+) -> Path:
+    """Write hierarchical study block rows to CSV."""
+
+    return write_records_csv(hierarchical_study_block_records(study_result), path)
+
+
+def write_hierarchical_study_summary_csv(
+    study_result: HierarchicalStudyMapResult,
+    path: str | Path,
+) -> Path:
+    """Write hierarchical study summary rows to CSV."""
+
+    return write_records_csv(hierarchical_study_summary_records(study_result), path)
+
+
 __all__ = [
     "block_fit_records",
+    "hierarchical_study_block_records",
+    "hierarchical_study_summary_records",
+    "hierarchical_subject_block_records",
+    "hierarchical_subject_summary_records",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
     "subject_summary_records",
+    "write_hierarchical_study_block_records_csv",
+    "write_hierarchical_study_summary_csv",
     "write_records_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",

@@ -41,6 +41,8 @@ from .inference import (
     fit_subject_hierarchical_map_from_config,
     normal_log_prior,
     uniform_log_prior,
+    write_hierarchical_study_block_records_csv,
+    write_hierarchical_study_summary_csv,
     write_study_fit_records_csv,
     write_study_fit_summary_csv,
 )
@@ -87,6 +89,8 @@ __all__ = [
     "run_episode",
     "run_trial_program",
     "uniform_log_prior",
+    "write_hierarchical_study_block_records_csv",
+    "write_hierarchical_study_summary_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",
 ]
