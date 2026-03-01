@@ -85,6 +85,20 @@ The command returns:
 - `0` when all fixture cases pass tolerance checks.
 - `1` when one or more cases fail.
 
+You can also export the static v1 mapping as a machine-readable matrix:
+
+```python
+from comp_model.analysis import (
+    build_model_parity_matrix,
+    write_model_parity_matrix_csv,
+    write_model_parity_matrix_json,
+)
+
+rows = build_model_parity_matrix()
+write_model_parity_matrix_json(rows, "parity_matrix.json")
+write_model_parity_matrix_csv(rows, "parity_matrix.csv")
+```
+
 ## Known Non-Goals
 
 - Legacy aliases are removed in current mainline; use canonical names only.

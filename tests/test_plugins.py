@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import numpy as np
 import pytest
 
+from comp_model.core.data import TrialDecision, trace_from_trial_decisions
 from comp_model.demonstrators import (
     FixedSequenceDemonstrator,
     NoisyBestArmDemonstrator,
@@ -13,6 +17,7 @@ from comp_model.generators import (
     EventTraceAsocialGenerator,
     EventTraceSocialPostOutcomeGenerator,
     EventTraceSocialPreChoiceGenerator,
+    SocialBlockSpec,
 )
 from comp_model.models import (
     AsocialQValueSoftmaxModel,
@@ -35,6 +40,7 @@ from comp_model.models import (
     SocialSelfOutcomeValueShapingModel,
     UniformRandomPolicyModel,
 )
+from comp_model.inference import ActionReplayLikelihood, ActorSubsetReplayLikelihood
 from comp_model.plugins import PluginRegistry, build_default_registry
 from comp_model.problems import StationaryBanditProblem
 
@@ -212,3 +218,97 @@ def test_discovery_is_idempotent_for_same_package() -> None:
     manifests = registry.list(kind="model")
     ids = [manifest.component_id for manifest in manifests]
     assert len(ids) == len(set(ids))
+
+
+def test_registry_smoke_instantiates_every_manifest() -> None:
+    """Every discovered manifest should instantiate with smoke kwargs."""
+
+    registry = build_default_registry()
+    kwargs_by_key = _manifest_smoke_kwargs()
+
+    for manifest in registry.list():
+        kwargs = kwargs_by_key.get((manifest.kind, manifest.component_id), {})
+        instance = registry.create(manifest.kind, manifest.component_id, **kwargs)
+        assert instance is not None
+
+
+def test_registry_model_likelihood_smoke_for_all_registered_models() -> None:
+    """All registered models should evaluate likelihood on canonical traces."""
+
+    registry = build_default_registry()
+    asocial_trace, social_trace = _smoke_traces()
+
+    asocial_likelihood = ActionReplayLikelihood()
+    social_likelihood = ActorSubsetReplayLikelihood(
+        fitted_actor_id="subject",
+        scored_actor_ids=("subject",),
+    )
+
+    for manifest in registry.list("model"):
+        model = registry.create_model(manifest.component_id)
+        if manifest.component_id.startswith("social_"):
+            replay = social_likelihood.evaluate(social_trace, model)
+        else:
+            replay = asocial_likelihood.evaluate(asocial_trace, model)
+        assert np.isfinite(replay.total_log_likelihood)
+
+
+def _manifest_smoke_kwargs() -> dict[tuple[str, str], dict[str, Any]]:
+    """Return constructor kwargs for manifests requiring non-default args."""
+
+    return {
+        ("problem", "stationary_bandit"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "two_stage_social_bandit"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "two_stage_social_post_outcome_bandit"): {"reward_probabilities": [0.2, 0.8]},
+        ("demonstrator", "fixed_sequence_demonstrator"): {"sequence": [0, 1]},
+        ("demonstrator", "noisy_best_arm_demonstrator"): {"reward_probabilities": [0.2, 0.8]},
+    }
+
+
+def _smoke_traces():
+    """Build deterministic asocial and social traces for model smoke checks."""
+
+    asocial_trace = trace_from_trial_decisions(
+        (
+            TrialDecision(
+                trial_index=0,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 1.0},
+            ),
+            TrialDecision(
+                trial_index=1,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=0,
+                observation={"state": 0},
+                outcome={"reward": 0.0},
+            ),
+            TrialDecision(
+                trial_index=2,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 1.0},
+            ),
+        )
+    )
+
+    pre_choice_generator = EventTraceSocialPreChoiceGenerator()
+    social_block = pre_choice_generator.simulate_block(
+        subject_model=UniformRandomPolicyModel(),
+        demonstrator_model=UniformRandomPolicyModel(),
+        block=SocialBlockSpec(
+            n_trials=6,
+            program_kwargs={"reward_probabilities": [0.2, 0.8]},
+        ),
+        rng=np.random.default_rng(123),
+    )
+
+    return asocial_trace, social_block.event_trace

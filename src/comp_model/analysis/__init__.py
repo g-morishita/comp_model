@@ -18,6 +18,14 @@ from .parity_benchmark import (
     write_parity_benchmark_csv,
 )
 from .parity_cli import run_parity_benchmark_cli
+from .parity_matrix import (
+    ModelParityMatrixRow,
+    ModelParityMatrixSummary,
+    build_model_parity_matrix,
+    summarize_model_parity_matrix,
+    write_model_parity_matrix_csv,
+    write_model_parity_matrix_json,
+)
 
 __all__ = [
     "PSISLOOResult",
@@ -25,18 +33,24 @@ __all__ = [
     "ProfileLikelihood2DResult",
     "ProfilePoint1D",
     "ProfilePoint2D",
+    "ModelParityMatrixRow",
+    "ModelParityMatrixSummary",
     "ParityBenchmarkResult",
     "ParityCaseResult",
     "ParityFixtureCase",
     "WAICResult",
     "aic",
     "bic",
+    "build_model_parity_matrix",
     "load_parity_fixture_file",
     "psis_loo",
     "profile_likelihood_1d",
     "profile_likelihood_2d",
     "run_parity_benchmark",
     "run_parity_benchmark_cli",
+    "summarize_model_parity_matrix",
     "waic",
     "write_parity_benchmark_csv",
+    "write_model_parity_matrix_csv",
+    "write_model_parity_matrix_json",
 ]

@@ -174,6 +174,10 @@ Parity benchmark helpers are also available in `comp_model.analysis`:
 - `run_parity_benchmark`
 - `write_parity_benchmark_csv`
 - `run_parity_benchmark_cli`
+- `build_model_parity_matrix`
+- `summarize_model_parity_matrix`
+- `write_model_parity_matrix_json`
+- `write_model_parity_matrix_csv`
 
 Example parity benchmark command:
 
@@ -189,4 +193,16 @@ When installed as a package, the script entry point is:
 comp-model-parity \
   --fixture docs/parity_fixture_template.json \
   --output-csv parity_report.csv
+```
+
+Programmatic parity matrix export:
+
+```python
+from comp_model.analysis import (
+    build_model_parity_matrix,
+    write_model_parity_matrix_json,
+)
+
+rows = build_model_parity_matrix()
+write_model_parity_matrix_json(rows, "parity_matrix.json")
 ```
