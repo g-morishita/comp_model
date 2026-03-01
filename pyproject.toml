@@ -28,6 +28,9 @@ comp-model-recovery = "comp_model.recovery.cli:run_recovery_cli"
 comp-model-fit = "comp_model.inference.cli:run_fit_cli"
 comp-model-compare = "comp_model.inference.model_selection_cli:run_model_comparison_cli"
 
+[project.urls]
+Documentation = "https://g-morishita.github.io/comp_model/"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

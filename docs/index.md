@@ -3,6 +3,10 @@
 `comp_model` provides a generic framework for computational decision modeling:
 simulation, replay, inference, model comparison, and recovery.
 
+Published site:
+
+- https://g-morishita.github.io/comp_model/
+
 This documentation follows the Divio system (Diataxis):
 
 - **Tutorials**: learning-oriented, end-to-end walkthroughs.

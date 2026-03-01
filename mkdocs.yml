@@ -1,6 +1,7 @@
 site_name: comp_model
 site_description: Clean-slate computational decision modeling library
 repo_name: comp_model
+site_url: https://g-morishita.github.io/comp_model/
 
 theme:
   name: mkdocs
