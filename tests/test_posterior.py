@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import csv
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-from comp_model.inference import PosteriorSamples, posterior_summary_records, summarize_posterior
+from comp_model.inference import (
+    PosteriorSamples,
+    posterior_summary_records,
+    summarize_posterior,
+    write_posterior_summary_csv,
+)
 
 
 def test_posterior_samples_basic_stats() -> None:
@@ -64,3 +72,23 @@ def test_posterior_samples_validate_shapes() -> None:
                 "alpha": np.asarray([[0.1, 0.2]], dtype=float),
             }
         )
+
+
+def test_write_posterior_summary_csv(tmp_path: Path) -> None:
+    """Posterior summary CSV writer should persist one row per parameter."""
+
+    samples = PosteriorSamples(
+        parameter_draws={
+            "alpha": np.asarray([0.1, 0.2, 0.3], dtype=float),
+            "beta": np.asarray([1.0, 2.0, 3.0], dtype=float),
+        }
+    )
+    summary = summarize_posterior(samples, quantiles=(0.5,))
+    output = write_posterior_summary_csv(summary, tmp_path / "posterior_summary.csv")
+
+    assert output.exists()
+    with output.open("r", encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+
+    assert len(rows) == 2
+    assert {row["parameter_name"] for row in rows} == {"alpha", "beta"}

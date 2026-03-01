@@ -10,6 +10,7 @@ from .fit_result import extract_best_fit_summary
 from .hierarchical import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
 from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .model_selection import ModelComparisonResult
+from .posterior import PosteriorSummary, posterior_summary_records
 from .study_model_selection import (
     StudyModelComparisonResult,
     SubjectModelComparisonResult,
@@ -434,6 +435,12 @@ def write_study_model_comparison_subject_csv(result: StudyModelComparisonResult,
     return write_records_csv(study_model_comparison_subject_records(result), path)
 
 
+def write_posterior_summary_csv(summary: PosteriorSummary, path: str | Path) -> Path:
+    """Write posterior summary rows to CSV."""
+
+    return write_records_csv(posterior_summary_records(summary), path)
+
+
 __all__ = [
     "block_fit_records",
     "hierarchical_study_block_records",
@@ -461,6 +468,7 @@ __all__ = [
     "write_study_model_comparison_csv",
     "write_study_model_comparison_subject_csv",
     "write_subject_model_comparison_csv",
+    "write_posterior_summary_csv",
     "write_records_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",

@@ -73,6 +73,7 @@ To export fit outputs:
 - `comp_model.inference.write_model_comparison_csv`
 - `comp_model.inference.write_study_model_comparison_csv`
 - `comp_model.inference.write_study_model_comparison_subject_csv`
+- `comp_model.inference.write_posterior_summary_csv`
 
 For candidate-model comparison on one dataset:
 - `comp_model.inference.compare_candidate_models`
