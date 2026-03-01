@@ -21,6 +21,7 @@ from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
 from .inference import (
     FitSpec,
+    ActorSubsetReplayLikelihood,
     IndependentPriorProgram,
     MapFitSpec,
     ScipyMapBayesEstimator,
@@ -94,6 +95,7 @@ __all__ = [
     "DecisionContext",
     "DecisionProblem",
     "FitSpec",
+    "ActorSubsetReplayLikelihood",
     "IndependentPriorProgram",
     "MapFitSpec",
     "ScipyMapBayesEstimator",

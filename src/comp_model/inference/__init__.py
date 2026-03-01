@@ -76,7 +76,7 @@ from .hierarchical import (
     fit_study_hierarchical_map,
     fit_subject_hierarchical_map,
 )
-from .likelihood import ActionReplayLikelihood, LikelihoodProgram
+from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .mle import (
     GridSearchMLEEstimator,
     MLECandidate,
@@ -181,6 +181,7 @@ from .transforms import ParameterTransform, identity_transform, positive_log_tra
 
 __all__ = [
     "ActionReplayLikelihood",
+    "ActorSubsetReplayLikelihood",
     "BayesFitResult",
     "BlockFitResult",
     "CandidateComparison",

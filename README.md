@@ -46,6 +46,9 @@ Recovery workflows can consume both MLE-style and MAP-style fit outputs.
 Config-driven recovery runners support MAP estimators when a `prior` section is provided.
 Recovery model-selection criteria support `waic` and `psis_loo` when candidate
 fitters provide posterior pointwise log-likelihood draws (for example via MCMC).
+For multi-actor traces (for example social trial programs), use
+`comp_model.inference.ActorSubsetReplayLikelihood` to replay all actors while
+scoring only selected actor IDs such as `subject`.
 Recovery serialization rows now include optional `best_log_posterior` and
 candidate `param__*` columns when available.
 
