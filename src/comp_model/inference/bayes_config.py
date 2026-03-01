@@ -10,6 +10,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from comp_model.core.config_validation import validate_allowed_keys
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -107,6 +108,20 @@ def map_fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> MapFitSpec:
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
     estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
+    if estimator_type == "scipy_map":
+        validate_allowed_keys(
+            estimator,
+            field_name="estimator",
+            allowed_keys=("type", "initial_params", "bounds", "method", "tol"),
+        )
+    elif estimator_type == "transformed_scipy_map":
+        validate_allowed_keys(
+            estimator,
+            field_name="estimator",
+            allowed_keys=("type", "initial_params", "bounds_z", "transforms", "method", "tol"),
+        )
+    else:
+        validate_allowed_keys(estimator, field_name="estimator", allowed_keys=("type",))
 
     return MapFitSpec(
         estimator_type=estimator_type,
@@ -154,6 +169,12 @@ def prior_program_from_config(prior_cfg: Mapping[str, Any]) -> PriorProgram:
         raise ValueError("prior.type must be 'independent'")
 
     parameters_raw = prior.get("parameters")
+    if parameters_raw is not None:
+        validate_allowed_keys(
+            prior,
+            field_name="prior",
+            allowed_keys=("type", "parameters", "require_all"),
+        )
     if parameters_raw is None:
         parameters = {
             key: value
@@ -195,6 +216,25 @@ def hierarchical_map_spec_from_config(estimator_cfg: Mapping[str, Any]) -> Hiera
             "estimator.type must be 'within_subject_hierarchical_map' "
             "for hierarchical MAP config"
         )
+    validate_allowed_keys(
+        estimator,
+        field_name="estimator",
+        allowed_keys=(
+            "type",
+            "parameter_names",
+            "transforms",
+            "initial_group_location",
+            "initial_group_scale",
+            "initial_block_params",
+            "initial_block_params_by_subject",
+            "mu_prior_mean",
+            "mu_prior_std",
+            "log_sigma_prior_mean",
+            "log_sigma_prior_std",
+            "method",
+            "tol",
+        ),
+    )
 
     raw_names = _require_sequence(estimator.get("parameter_names"), field_name="estimator.parameter_names")
     parameter_names = tuple(
@@ -288,6 +328,11 @@ def fit_map_dataset_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
@@ -324,6 +369,11 @@ def fit_map_block_from_config(
     """Fit one block with MAP using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
@@ -360,6 +410,11 @@ def fit_map_subject_from_config(
     """Fit one subject with MAP using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
@@ -396,6 +451,11 @@ def fit_map_study_from_config(
     """Fit one study with MAP using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
     fit_spec = map_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
@@ -450,6 +510,11 @@ def fit_subject_hierarchical_map_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     estimator_spec = hierarchical_map_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
@@ -527,6 +592,11 @@ def fit_study_hierarchical_map_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     estimator_spec = hierarchical_map_spec_from_config(
         _require_mapping(cfg.get("estimator"), field_name="config.estimator")
@@ -581,6 +651,11 @@ def _parse_transforms_mapping(raw: Any, *, field_name: str) -> dict[str, Paramet
             continue
 
         spec_mapping = _require_mapping(spec, field_name=f"{field_name}.{param_name}")
+        validate_allowed_keys(
+            spec_mapping,
+            field_name=f"{field_name}.{param_name}",
+            allowed_keys=("kind",),
+        )
         kind = _coerce_non_empty_str(spec_mapping.get("kind"), field_name=f"{field_name}.{param_name}.kind")
         out[str(param_name)] = _transform_from_name(kind)
     return out
@@ -612,20 +687,40 @@ def _prior_log_pdf_from_config(raw: Any, *, field_name: str):
     )
 
     if distribution == "normal":
+        validate_allowed_keys(
+            spec,
+            field_name=field_name,
+            allowed_keys=("distribution", "kind", "mean", "std"),
+        )
         return normal_log_prior(
             mean=float(spec.get("mean", 0.0)),
             std=float(spec["std"]),
         )
     if distribution == "uniform":
+        validate_allowed_keys(
+            spec,
+            field_name=field_name,
+            allowed_keys=("distribution", "kind", "lower", "upper"),
+        )
         lower = float(spec["lower"]) if "lower" in spec else None
         upper = float(spec["upper"]) if "upper" in spec else None
         return uniform_log_prior(lower=lower, upper=upper)
     if distribution == "beta":
+        validate_allowed_keys(
+            spec,
+            field_name=field_name,
+            allowed_keys=("distribution", "kind", "alpha", "beta"),
+        )
         return beta_log_prior(
             alpha=float(spec["alpha"]),
             beta=float(spec["beta"]),
         )
     if distribution in {"log_normal", "lognormal"}:
+        validate_allowed_keys(
+            spec,
+            field_name=field_name,
+            allowed_keys=("distribution", "kind", "mean_log", "std_log"),
+        )
         return log_normal_log_prior(
             mean_log=float(spec.get("mean_log", 0.0)),
             std_log=float(spec["std_log"]),

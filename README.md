@@ -6,6 +6,9 @@ A clean-slate computational decision modeling library.
 
 - Original internal v1 model suite and research framing: Morishita Lab.
 
+Config schemas and strict validation rules are documented in
+`docs/config_schemas.md`.
+
 This repository starts from generic decision-problem abstractions where:
 
 1. an agent observes a problem state,
@@ -51,6 +54,8 @@ Config-driven recovery runners support MAP estimators when a `prior` section is 
 Core recovery APIs (`run_parameter_recovery`, `run_model_recovery`) also accept
 an optional `trace_factory(model, seed)` hook so social/multi-actor trial
 programs can be recovered without forcing a single-actor `run_episode` path.
+Recovery config runners support generator-based simulation blocks and
+study-level model-recovery generation via `simulation.level = "study"`.
 Recovery model-selection criteria support `waic` and `psis_loo` when candidate
 fitters provide posterior pointwise log-likelihood draws (for example via MCMC).
 For multi-actor traces (for example social trial programs), use
@@ -160,3 +165,8 @@ Information-criterion diagnostics are available via `comp_model.analysis`:
 - `bic`
 - `waic`
 - `psis_loo`
+
+Parity benchmark helpers are also available in `comp_model.analysis`:
+- `load_parity_fixture_file`
+- `run_parity_benchmark`
+- `write_parity_benchmark_csv`

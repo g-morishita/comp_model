@@ -305,6 +305,50 @@ def test_compare_subject_and_study_candidates_from_config() -> None:
     assert study_result.n_subjects == 1
 
 
+def test_compare_dataset_candidates_from_config_rejects_unknown_top_level_keys() -> None:
+    """Model-selection config should fail fast on unknown top-level keys."""
+
+    rows = (_trial(0, action=1, reward=1.0),)
+    config = {
+        "candidates": [
+            {
+                "name": "mle",
+                "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {"alpha": [0.5], "beta": [1.0], "initial_value": [0.0]},
+                },
+            },
+        ],
+        "unexpected": True,
+    }
+
+    with pytest.raises(ValueError, match="config has unknown keys"):
+        compare_dataset_candidates_from_config(rows, config=config)
+
+
+def test_compare_dataset_candidates_from_config_rejects_unknown_candidate_keys() -> None:
+    """Candidate parser should reject unknown keys in candidate entries."""
+
+    rows = (_trial(0, action=1, reward=1.0),)
+    config = {
+        "candidates": [
+            {
+                "name": "mle",
+                "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {"alpha": [0.5], "beta": [1.0], "initial_value": [0.0]},
+                },
+                "oops": 1,
+            },
+        ],
+    }
+
+    with pytest.raises(ValueError, match="config.candidates\\[0\\] has unknown keys"):
+        compare_dataset_candidates_from_config(rows, config=config)
+
+
 def test_compare_dataset_candidates_from_config_supports_candidate_likelihood_config() -> None:
     """Candidate entries should accept per-candidate likelihood configs."""
 

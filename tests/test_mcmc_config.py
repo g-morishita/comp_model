@@ -94,6 +94,15 @@ def test_mcmc_estimator_spec_from_config_parses_fields() -> None:
     assert spec.random_seed == 9
 
 
+def test_mcmc_estimator_spec_from_config_rejects_unknown_keys() -> None:
+    """MCMC estimator parser should reject unknown keys."""
+
+    estimator_cfg = dict(_mcmc_config()["estimator"])
+    estimator_cfg["unexpected"] = 1
+    with pytest.raises(ValueError, match="estimator has unknown keys"):
+        mcmc_estimator_spec_from_config(estimator_cfg)
+
+
 def test_sample_posterior_dataset_from_config_runs_end_to_end() -> None:
     """Config-driven MCMC helper should return posterior samples."""
 
@@ -106,6 +115,16 @@ def test_sample_posterior_dataset_from_config_runs_end_to_end() -> None:
         "beta",
         "initial_value",
     }
+
+
+def test_sample_posterior_dataset_from_config_rejects_unknown_top_level_keys() -> None:
+    """MCMC dataset config should fail fast on unknown top-level keys."""
+
+    rows = (_trial(0, 1, 1.0), _trial(1, 0, 0.0))
+    config = _mcmc_config()
+    config["typo"] = True
+    with pytest.raises(ValueError, match="config has unknown keys"):
+        sample_posterior_dataset_from_config(rows, config=config)
 
 
 def test_fit_dataset_auto_dispatches_mcmc() -> None:

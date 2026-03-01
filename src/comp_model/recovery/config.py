@@ -6,6 +6,7 @@ runs using the plugin registry and inference fitting APIs.
 
 from __future__ import annotations
 
+import copy
 import inspect
 import json
 from dataclasses import dataclass
@@ -112,11 +113,15 @@ def run_parameter_recovery_from_config(
     true_parameter_sets = _parse_true_parameter_sets(config.get("true_parameter_sets"))
     n_trials = _coerce_positive_int(config.get("n_trials"), field_name="n_trials")
     seed = int(config.get("seed", 0))
-    problem_factory, trace_factory = _build_simulation_sources(
+    problem_factory, trace_factory, simulation_level = _build_simulation_sources(
         config=config,
         registry=reg,
         n_trials=n_trials,
     )
+    if simulation_level != "block":
+        raise ValueError(
+            "parameter recovery currently supports simulation.level='block' only"
+        )
 
     fit_function = _build_fit_function(
         estimator_cfg=estimator_cfg,
@@ -257,7 +262,7 @@ def run_model_recovery_from_config(
     )
     criterion = str(config.get("criterion", "log_likelihood"))
     seed = int(config.get("seed", 0))
-    problem_factory, trace_factory = _build_simulation_sources(
+    problem_factory, trace_factory, _ = _build_simulation_sources(
         config=config,
         registry=reg,
         n_trials=n_trials,
@@ -280,14 +285,14 @@ def _build_simulation_sources(
     config: dict[str, Any],
     registry: PluginRegistry,
     n_trials: int,
-) -> tuple[Any, Any]:
+) -> tuple[Any, Any, str]:
     """Build problem/trace simulation sources from declarative config.
 
     Returns
     -------
-    tuple[Any, Any]
-        ``(problem_factory, trace_factory)`` pair. Exactly one entry is
-        non-``None``.
+    tuple[Any, Any, str]
+        ``(problem_factory, trace_factory, simulation_level)`` where exactly
+        one of ``problem_factory`` and ``trace_factory`` is non-``None``.
     """
 
     simulation_cfg = (
@@ -303,18 +308,30 @@ def _build_simulation_sources(
         return (
             lambda: registry.create_problem(problem_ref.component_id, **dict(problem_ref.kwargs)),
             None,
+            "block",
         )
 
     simulation_type = _coerce_non_empty_str(
         simulation_cfg.get("type", "problem"),
         field_name="simulation.type",
     )
+    simulation_level = _coerce_non_empty_str(
+        simulation_cfg.get("level", "block"),
+        field_name="simulation.level",
+    )
+    if simulation_level not in {"block", "subject", "study"}:
+        raise ValueError("simulation.level must be one of {'block', 'subject', 'study'}")
+
     if simulation_type == "problem":
         validate_allowed_keys(
             simulation_cfg,
             field_name="simulation",
-            allowed_keys=("type", "problem"),
+            allowed_keys=("type", "problem", "level"),
         )
+        if simulation_level != "block":
+            raise ValueError(
+                "simulation.level must be 'block' when simulation.type='problem'"
+            )
         if "problem" in simulation_cfg:
             problem_ref = _parse_component_ref(
                 _require_mapping(simulation_cfg, "problem", field_name="simulation"),
@@ -328,6 +345,7 @@ def _build_simulation_sources(
         return (
             lambda: registry.create_problem(problem_ref.component_id, **dict(problem_ref.kwargs)),
             None,
+            "block",
         )
 
     if simulation_type != "generator":
@@ -335,7 +353,17 @@ def _build_simulation_sources(
     validate_allowed_keys(
         simulation_cfg,
         field_name="simulation",
-        allowed_keys=("type", "generator", "demonstrator_model", "block"),
+        allowed_keys=(
+            "type",
+            "level",
+            "generator",
+            "demonstrator_model",
+            "block",
+            "blocks",
+            "subject_id",
+            "subject_ids",
+            "n_subjects",
+        ),
     )
 
     generator_ref = _parse_component_ref(
@@ -347,97 +375,191 @@ def _build_simulation_sources(
         **dict(generator_ref.kwargs),
     )
 
-    block_cfg = _require_mapping(
-        simulation_cfg.get("block", {}),
-        field_name="simulation.block",
+    if "block" in simulation_cfg and "blocks" in simulation_cfg:
+        raise ValueError("simulation must include either 'block' or 'blocks', not both")
+    block_rows = (
+        _require_sequence(simulation_cfg["blocks"], field_name="simulation.blocks")
+        if "blocks" in simulation_cfg
+        else [simulation_cfg.get("block", {})]
     )
-    validate_allowed_keys(
-        block_cfg,
-        field_name="simulation.block",
-        allowed_keys=("n_trials", "block_id", "metadata", "problem_kwargs", "program_kwargs"),
+    if not block_rows:
+        raise ValueError("simulation.blocks must include at least one block spec")
+    if simulation_level == "block" and len(block_rows) != 1:
+        raise ValueError("simulation.level='block' requires exactly one block spec")
+
+    subject_id = _coerce_non_empty_str(
+        simulation_cfg.get("subject_id", "subject"),
+        field_name="simulation.subject_id",
     )
-    block_n_trials = int(block_cfg.get("n_trials", n_trials))
-    if block_n_trials <= 0:
-        raise ValueError("simulation.block.n_trials must be > 0")
-    block_id = block_cfg.get("block_id")
-    block_metadata = _require_mapping(
-        block_cfg.get("metadata", {}),
-        field_name="simulation.block.metadata",
-    )
+    if "subject_ids" in simulation_cfg:
+        raw_subject_ids = _require_sequence(simulation_cfg["subject_ids"], field_name="simulation.subject_ids")
+        subject_ids = tuple(
+            _coerce_non_empty_str(value, field_name=f"simulation.subject_ids[{index}]")
+            for index, value in enumerate(raw_subject_ids)
+        )
+        if not subject_ids:
+            raise ValueError("simulation.subject_ids must include at least one subject")
+    else:
+        n_subjects = int(simulation_cfg.get("n_subjects", 1))
+        if n_subjects <= 0:
+            raise ValueError("simulation.n_subjects must be > 0")
+        subject_ids = tuple(f"s{index+1}" for index in range(n_subjects))
 
     signature = inspect.signature(generator.simulate_block)
     parameter_names = tuple(signature.parameters)
 
     if "model" in parameter_names:
-        validate_allowed_keys(
-            block_cfg,
-            field_name="simulation.block",
-            allowed_keys=("n_trials", "block_id", "metadata", "problem_kwargs"),
-        )
-        problem_kwargs = _require_mapping(
-            block_cfg.get("problem_kwargs", {}),
-            field_name="simulation.block.problem_kwargs",
-        )
+        blocks: list[AsocialBlockSpec] = []
+        for index, raw_block in enumerate(block_rows):
+            block_cfg = _require_mapping(raw_block, field_name=f"simulation.blocks[{index}]")
+            validate_allowed_keys(
+                block_cfg,
+                field_name=f"simulation.blocks[{index}]",
+                allowed_keys=("n_trials", "block_id", "metadata", "problem_kwargs"),
+            )
+            block_n_trials = int(block_cfg.get("n_trials", n_trials))
+            if block_n_trials <= 0:
+                raise ValueError(f"simulation.blocks[{index}].n_trials must be > 0")
+            blocks.append(
+                AsocialBlockSpec(
+                    n_trials=block_n_trials,
+                    problem_kwargs=_require_mapping(
+                        block_cfg.get("problem_kwargs", {}),
+                        field_name=f"simulation.blocks[{index}].problem_kwargs",
+                    ),
+                    block_id=block_cfg.get("block_id", f"b{index}"),
+                    seed=None,
+                    metadata=_require_mapping(
+                        block_cfg.get("metadata", {}),
+                        field_name=f"simulation.blocks[{index}].metadata",
+                    ),
+                )
+            )
+        block_specs = tuple(blocks)
 
         def trace_factory(generating_model: Any, simulation_seed: int):
-            block = AsocialBlockSpec(
-                n_trials=block_n_trials,
-                problem_kwargs=problem_kwargs,
-                block_id=block_id,
-                seed=int(simulation_seed),
-                metadata=block_metadata,
-            )
-            block_data = generator.simulate_block(
-                model=generating_model,
-                block=block,
-                rng=np.random.default_rng(simulation_seed),
-            )
-            trace = getattr(block_data, "event_trace", None)
-            if trace is None:
-                raise ValueError("generator outputs must include block.event_trace")
-            return trace
+            rng = np.random.default_rng(simulation_seed)
+            if simulation_level == "block":
+                block = copy.copy(block_specs[0])
+                block = AsocialBlockSpec(
+                    n_trials=block.n_trials,
+                    problem_kwargs=block.problem_kwargs,
+                    block_id=block.block_id,
+                    seed=int(simulation_seed),
+                    metadata=block.metadata,
+                )
+                block_data = generator.simulate_block(
+                    model=generating_model,
+                    block=block,
+                    rng=rng,
+                )
+                trace = getattr(block_data, "event_trace", None)
+                if trace is None:
+                    raise ValueError("generator outputs must include block.event_trace")
+                return trace
+            if simulation_level == "subject":
+                return generator.simulate_subject(
+                    subject_id=subject_id,
+                    model=generating_model,
+                    blocks=block_specs,
+                    rng=rng,
+                )
 
-        return None, trace_factory
+            model_by_subject = {
+                sid: (generating_model if index == 0 else copy.deepcopy(generating_model))
+                for index, sid in enumerate(subject_ids)
+            }
+            return generator.simulate_study(
+                subject_models=model_by_subject,
+                blocks=block_specs,
+                rng=rng,
+            )
+
+        return None, trace_factory, simulation_level
 
     if "subject_model" in parameter_names and "demonstrator_model" in parameter_names:
-        validate_allowed_keys(
-            block_cfg,
-            field_name="simulation.block",
-            allowed_keys=("n_trials", "block_id", "metadata", "program_kwargs"),
-        )
         demonstrator_ref = _parse_component_ref(
             _require_mapping(simulation_cfg, "demonstrator_model", field_name="simulation"),
             field_name="simulation.demonstrator_model",
         )
-        program_kwargs = _require_mapping(
-            block_cfg.get("program_kwargs", {}),
-            field_name="simulation.block.program_kwargs",
-        )
+        blocks: list[SocialBlockSpec] = []
+        for index, raw_block in enumerate(block_rows):
+            block_cfg = _require_mapping(raw_block, field_name=f"simulation.blocks[{index}]")
+            validate_allowed_keys(
+                block_cfg,
+                field_name=f"simulation.blocks[{index}]",
+                allowed_keys=("n_trials", "block_id", "metadata", "program_kwargs"),
+            )
+            block_n_trials = int(block_cfg.get("n_trials", n_trials))
+            if block_n_trials <= 0:
+                raise ValueError(f"simulation.blocks[{index}].n_trials must be > 0")
+            blocks.append(
+                SocialBlockSpec(
+                    n_trials=block_n_trials,
+                    program_kwargs=_require_mapping(
+                        block_cfg.get("program_kwargs", {}),
+                        field_name=f"simulation.blocks[{index}].program_kwargs",
+                    ),
+                    block_id=block_cfg.get("block_id", f"b{index}"),
+                    seed=None,
+                    metadata=_require_mapping(
+                        block_cfg.get("metadata", {}),
+                        field_name=f"simulation.blocks[{index}].metadata",
+                    ),
+                )
+            )
+        block_specs = tuple(blocks)
 
         def trace_factory(generating_model: Any, simulation_seed: int):
-            block = SocialBlockSpec(
-                n_trials=block_n_trials,
-                program_kwargs=program_kwargs,
-                block_id=block_id,
-                seed=int(simulation_seed),
-                metadata=block_metadata,
-            )
-            demonstrator_model = registry.create_demonstrator(
-                demonstrator_ref.component_id,
-                **dict(demonstrator_ref.kwargs),
-            )
-            block_data = generator.simulate_block(
-                subject_model=generating_model,
-                demonstrator_model=demonstrator_model,
-                block=block,
-                rng=np.random.default_rng(simulation_seed),
-            )
-            trace = getattr(block_data, "event_trace", None)
-            if trace is None:
-                raise ValueError("generator outputs must include block.event_trace")
-            return trace
+            rng = np.random.default_rng(simulation_seed)
 
-        return None, trace_factory
+            def make_demonstrator():
+                return registry.create_demonstrator(
+                    demonstrator_ref.component_id,
+                    **dict(demonstrator_ref.kwargs),
+                )
+
+            if simulation_level == "block":
+                block = copy.copy(block_specs[0])
+                block = SocialBlockSpec(
+                    n_trials=block.n_trials,
+                    program_kwargs=block.program_kwargs,
+                    block_id=block.block_id,
+                    seed=int(simulation_seed),
+                    metadata=block.metadata,
+                )
+                block_data = generator.simulate_block(
+                    subject_model=generating_model,
+                    demonstrator_model=make_demonstrator(),
+                    block=block,
+                    rng=rng,
+                )
+                trace = getattr(block_data, "event_trace", None)
+                if trace is None:
+                    raise ValueError("generator outputs must include block.event_trace")
+                return trace
+            if simulation_level == "subject":
+                return generator.simulate_subject(
+                    subject_id=subject_id,
+                    subject_model=generating_model,
+                    demonstrator_model=make_demonstrator(),
+                    blocks=block_specs,
+                    rng=rng,
+                )
+
+            subject_models = {
+                sid: (generating_model if index == 0 else copy.deepcopy(generating_model))
+                for index, sid in enumerate(subject_ids)
+            }
+            demonstrator_models = {sid: make_demonstrator() for sid in subject_ids}
+            return generator.simulate_study(
+                subject_models=subject_models,
+                demonstrator_models=demonstrator_models,
+                blocks=block_specs,
+                rng=rng,
+            )
+
+        return None, trace_factory, simulation_level
 
     raise ValueError(
         "simulation.generator component must expose simulate_block with either "

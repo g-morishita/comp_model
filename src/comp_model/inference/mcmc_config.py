@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from comp_model.core.config_validation import validate_allowed_keys
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -80,6 +81,20 @@ def mcmc_estimator_spec_from_config(estimator_cfg: Mapping[str, Any]) -> MCMCEst
     estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
     if estimator_type != "random_walk_metropolis":
         raise ValueError("estimator.type must be 'random_walk_metropolis' for MCMC config")
+    validate_allowed_keys(
+        estimator,
+        field_name="estimator",
+        allowed_keys=(
+            "type",
+            "initial_params",
+            "n_samples",
+            "n_warmup",
+            "thin",
+            "proposal_scales",
+            "bounds",
+            "random_seed",
+        ),
+    )
 
     n_samples = int(estimator.get("n_samples", 0))
     if n_samples <= 0:
@@ -149,6 +164,11 @@ def sample_posterior_dataset_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(
         _require_mapping(cfg.get("model"), field_name="config.model")
     )
@@ -210,6 +230,11 @@ def sample_posterior_block_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(
         _require_mapping(cfg.get("model"), field_name="config.model")
     )
@@ -271,6 +296,11 @@ def sample_posterior_subject_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(
         _require_mapping(cfg.get("model"), field_name="config.model")
     )
@@ -332,6 +362,11 @@ def sample_posterior_study_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "prior", "estimator", "likelihood"),
+    )
     model_spec = model_component_spec_from_config(
         _require_mapping(cfg.get("model"), field_name="config.model")
     )

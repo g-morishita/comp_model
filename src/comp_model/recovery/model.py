@@ -13,11 +13,16 @@ from typing import Any, TypeVar
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
+from comp_model.core.data import StudyData, SubjectData
 from comp_model.inference.fit_result import extract_best_fit_summary
 from comp_model.inference.model_selection import (
     CandidateFitSpec,
     SelectionCriterion,
     compare_candidate_models,
+)
+from comp_model.inference.study_model_selection import (
+    compare_study_candidate_models,
+    compare_subject_candidate_models,
 )
 from comp_model.runtime import SimulationConfig, run_episode
 
@@ -239,11 +244,24 @@ def run_model_recovery(
                     config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
                 )
 
-            comparison = compare_candidate_models(
-                trace,
-                candidate_specs=compiled_candidates,
-                criterion=criterion,
-            )
+            if isinstance(trace, SubjectData):
+                comparison = compare_subject_candidate_models(
+                    trace,
+                    candidate_specs=compiled_candidates,
+                    criterion=criterion,
+                )
+            elif isinstance(trace, StudyData):
+                comparison = compare_study_candidate_models(
+                    trace,
+                    candidate_specs=compiled_candidates,
+                    criterion=criterion,
+                )
+            else:
+                comparison = compare_candidate_models(
+                    trace,
+                    candidate_specs=compiled_candidates,
+                    criterion=criterion,
+                )
 
             candidate_summaries = tuple(
                 _candidate_summary_from_comparison_item(item)
@@ -281,7 +299,9 @@ def _build_confusion_matrix(cases: Sequence[ModelRecoveryCase]) -> dict[str, dic
 def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
     """Convert one model-comparison record into recovery summary form."""
 
-    best = extract_best_fit_summary(item.fit_result)
+    best = None
+    if hasattr(item, "fit_result"):
+        best = extract_best_fit_summary(item.fit_result)
     return CandidateFitSummary(
         candidate_name=item.candidate_name,
         log_likelihood=float(item.log_likelihood),
@@ -289,11 +309,19 @@ def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
         aic=float(item.aic),
         bic=float(item.bic),
         score=float(item.score),
-        best_params={key: float(value) for key, value in best.params.items()},
+        best_params=(
+            {key: float(value) for key, value in best.params.items()}
+            if best is not None
+            else {}
+        ),
         log_posterior=(
             float(best.log_posterior)
-            if best.log_posterior is not None
-            else None
+            if best is not None and best.log_posterior is not None
+            else (
+                float(item.log_posterior)
+                if getattr(item, "log_posterior", None) is not None
+                else None
+            )
         ),
         waic=(
             float(item.waic)

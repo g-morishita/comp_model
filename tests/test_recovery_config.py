@@ -738,5 +738,128 @@ def test_generator_simulation_block_rejects_unknown_keys() -> None:
         "seed": 52,
     }
 
-    with pytest.raises(ValueError, match="simulation.block has unknown keys"):
+    with pytest.raises(ValueError, match="simulation.blocks\\[0\\] has unknown keys"):
         run_parameter_recovery_from_config(config)
+
+
+def test_parameter_recovery_rejects_non_block_simulation_levels() -> None:
+    """Parameter recovery should reject subject/study simulation levels."""
+
+    config = {
+        "simulation": {
+            "type": "generator",
+            "level": "subject",
+            "generator": {
+                "component_id": "event_trace_asocial_generator",
+                "kwargs": {},
+            },
+            "block": {
+                "n_trials": 10,
+                "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+            },
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [2.0],
+                "initial_value": [0.0],
+            },
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+        ],
+        "n_trials": 10,
+        "seed": 54,
+    }
+
+    with pytest.raises(ValueError, match="simulation.level='block' only"):
+        run_parameter_recovery_from_config(config)
+
+
+def test_model_recovery_supports_study_level_generator_simulation() -> None:
+    """Model recovery should support study-level generator simulation configs."""
+
+    config = {
+        "simulation": {
+            "type": "generator",
+            "level": "study",
+            "n_subjects": 2,
+            "generator": {
+                "component_id": "event_trace_asocial_generator",
+                "kwargs": {},
+            },
+            "blocks": [
+                {
+                    "n_trials": 30,
+                    "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+                    "block_id": "b1",
+                },
+                {
+                    "n_trials": 30,
+                    "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+                    "block_id": "b2",
+                },
+            ],
+        },
+        "generating": [
+            {
+                "name": "qrl_generator",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "true_params": {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+            },
+        ],
+        "candidates": [
+            {
+                "name": "candidate_good",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.3],
+                        "beta": [2.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "candidate_bad",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.9],
+                        "beta": [0.1],
+                        "initial_value": [1.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+        ],
+        "n_trials": 30,
+        "n_replications_per_generator": 2,
+        "criterion": "log_likelihood",
+        "seed": 55,
+    }
+
+    result = run_model_recovery_from_config(config)
+    assert len(result.cases) == 2
+    assert sum(result.confusion_matrix["qrl_generator"].values()) == 2

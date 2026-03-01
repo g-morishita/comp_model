@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from comp_model.core.config_validation import validate_allowed_keys
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -163,6 +164,11 @@ def compare_dataset_candidates_from_config(
     """
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("candidates", "criterion", "n_observations", "likelihood"),
+    )
     criterion = str(cfg.get("criterion", "log_likelihood"))
     n_observations = int(cfg["n_observations"]) if "n_observations" in cfg else None
     likelihood_cfg = (
@@ -196,6 +202,11 @@ def compare_subject_candidates_from_config(
     """Compare configured model candidates across all blocks for one subject."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("candidates", "criterion", "likelihood"),
+    )
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
@@ -225,6 +236,11 @@ def compare_study_candidates_from_config(
     """Compare configured model candidates across all study subjects."""
 
     cfg = _require_mapping(config, field_name="config")
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("candidates", "criterion", "likelihood"),
+    )
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
@@ -258,6 +274,11 @@ def _candidate_specs_from_config(
     candidate_specs: list[CandidateFitSpec] = []
     for index, raw in enumerate(candidate_rows):
         item = _require_mapping(raw, field_name=f"config.candidates[{index}]")
+        validate_allowed_keys(
+            item,
+            field_name=f"config.candidates[{index}]",
+            allowed_keys=("name", "model", "estimator", "prior", "likelihood", "n_parameters"),
+        )
         name = _coerce_non_empty_str(item.get("name"), field_name=f"config.candidates[{index}].name")
         model_cfg = _require_mapping(item.get("model"), field_name=f"config.candidates[{index}].model")
         estimator_cfg = _require_mapping(item.get("estimator"), field_name=f"config.candidates[{index}].estimator")

@@ -9,6 +9,14 @@ from .profile_likelihood import (
     profile_likelihood_1d,
     profile_likelihood_2d,
 )
+from .parity_benchmark import (
+    ParityBenchmarkResult,
+    ParityCaseResult,
+    ParityFixtureCase,
+    load_parity_fixture_file,
+    run_parity_benchmark,
+    write_parity_benchmark_csv,
+)
 
 __all__ = [
     "PSISLOOResult",
@@ -16,11 +24,17 @@ __all__ = [
     "ProfileLikelihood2DResult",
     "ProfilePoint1D",
     "ProfilePoint2D",
+    "ParityBenchmarkResult",
+    "ParityCaseResult",
+    "ParityFixtureCase",
     "WAICResult",
     "aic",
     "bic",
+    "load_parity_fixture_file",
     "psis_loo",
     "profile_likelihood_1d",
     "profile_likelihood_2d",
+    "run_parity_benchmark",
     "waic",
+    "write_parity_benchmark_csv",
 ]

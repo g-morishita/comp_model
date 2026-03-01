@@ -25,8 +25,9 @@ from comp_model.inference import (
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
+from comp_model.core.data import BlockData, StudyData, SubjectData, trial_decisions_from_trace
 from comp_model.recovery import CandidateModelSpec, GeneratingModelSpec, run_model_recovery
-from comp_model.runtime import SimulationConfig, run_trial_program
+from comp_model.runtime import SimulationConfig, run_episode, run_trial_program
 
 
 @dataclass
@@ -363,3 +364,108 @@ def test_run_model_recovery_requires_problem_or_trace_factory() -> None:
             n_trials=20,
             n_replications_per_generator=1,
         )
+
+
+def test_run_model_recovery_supports_subject_level_datasets_from_trace_factory() -> None:
+    """Recovery should compare candidates when trace_factory returns SubjectData."""
+
+    def subject_trace_factory(model: Any, simulation_seed: int):
+        block_traces = []
+        for offset in (0, 1000):
+            block_traces.append(
+                run_episode(
+                    problem=StationaryBanditProblem([0.5, 0.5]),
+                    model=model,
+                    config=SimulationConfig(n_trials=40, seed=simulation_seed + offset),
+                )
+            )
+        blocks = tuple(
+            BlockData(
+                block_id=f"b{index}",
+                trials=trial_decisions_from_trace(trace),
+                event_trace=trace,
+            )
+            for index, trace in enumerate(block_traces)
+        )
+        return SubjectData(subject_id="s1", blocks=blocks)
+
+    result = run_model_recovery(
+        problem_factory=None,
+        generating_specs=(
+            GeneratingModelSpec(
+                name="fixed_choice_subject",
+                model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+                true_params={"p_right": 0.85},
+            ),
+        ),
+        candidate_specs=(
+            CandidateModelSpec(name="fixed_choice_mle", fit_function=_fit_fixed_choice, n_parameters=1),
+            CandidateModelSpec(name="uniform_random", fit_function=_fit_uniform_policy, n_parameters=0),
+        ),
+        n_trials=40,
+        n_replications_per_generator=2,
+        criterion="log_likelihood",
+        seed=61,
+        trace_factory=subject_trace_factory,
+    )
+
+    assert len(result.cases) == 2
+    assert result.confusion_matrix["fixed_choice_subject"].get("fixed_choice_mle", 0) >= 1
+
+
+def test_run_model_recovery_supports_study_level_datasets_from_trace_factory() -> None:
+    """Recovery should compare candidates when trace_factory returns StudyData."""
+
+    def study_trace_factory(model: Any, simulation_seed: int):
+        subject_rows: list[SubjectData] = []
+        for subject_index in range(2):
+            block_rows: list[BlockData] = []
+            for block_index in range(2):
+                trace = run_episode(
+                    problem=StationaryBanditProblem([0.5, 0.5]),
+                    model=model,
+                    config=SimulationConfig(
+                        n_trials=30,
+                        seed=simulation_seed + subject_index * 1000 + block_index * 100,
+                    ),
+                )
+                block_rows.append(
+                    BlockData(
+                        block_id=f"b{block_index}",
+                        trials=trial_decisions_from_trace(trace),
+                        event_trace=trace,
+                    )
+                )
+            subject_rows.append(
+                SubjectData(
+                    subject_id=f"s{subject_index}",
+                    blocks=tuple(block_rows),
+                )
+            )
+        return StudyData(subjects=tuple(subject_rows))
+
+    result = run_model_recovery(
+        problem_factory=None,
+        generating_specs=(
+            GeneratingModelSpec(
+                name="fixed_choice_study",
+                model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+                true_params={"p_right": 0.85},
+            ),
+        ),
+        candidate_specs=(
+            CandidateModelSpec(name="fixed_choice_mle", fit_function=_fit_fixed_choice, n_parameters=1),
+            CandidateModelSpec(name="uniform_random", fit_function=_fit_uniform_policy, n_parameters=0),
+        ),
+        n_trials=30,
+        n_replications_per_generator=1,
+        criterion="log_likelihood",
+        seed=62,
+        trace_factory=study_trace_factory,
+    )
+
+    assert len(result.cases) == 1
+    case = result.cases[0]
+    assert case.selected_candidate_name in {"fixed_choice_mle", "uniform_random"}
+    for summary in case.candidate_summaries:
+        assert isinstance(summary.best_params, dict)

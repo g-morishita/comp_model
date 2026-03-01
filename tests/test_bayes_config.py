@@ -87,6 +87,25 @@ def test_prior_program_from_config_rejects_unknown_distribution() -> None:
         )
 
 
+def test_prior_program_from_config_rejects_unknown_distribution_keys() -> None:
+    """Prior parser should reject unknown keys for known distributions."""
+
+    with pytest.raises(ValueError, match="unknown keys"):
+        prior_program_from_config(
+            {
+                "type": "independent",
+                "parameters": {
+                    "alpha": {
+                        "distribution": "uniform",
+                        "lower": 0.0,
+                        "upper": 1.0,
+                        "extra": 1.0,
+                    },
+                },
+            }
+        )
+
+
 def test_fit_map_dataset_from_config_runs_end_to_end() -> None:
     """Config-driven MAP fit should run on trial-row datasets."""
 
@@ -119,6 +138,39 @@ def test_fit_map_dataset_from_config_runs_end_to_end() -> None:
     assert set(result.map_params) == {"alpha", "beta", "initial_value"}
     assert math.isfinite(result.map_candidate.log_likelihood)
     assert math.isfinite(result.map_candidate.log_posterior)
+
+
+def test_fit_map_dataset_from_config_rejects_unknown_top_level_keys() -> None:
+    """MAP dataset config should fail fast on unknown top-level keys."""
+
+    rows = (_trial(0, 1, 1.0), _trial(1, 0, 0.0))
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "prior": {
+            "type": "independent",
+            "parameters": {
+                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+            },
+        },
+        "estimator": {
+            "type": "scipy_map",
+            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
+            "bounds": {
+                "alpha": [0.0, 1.0],
+                "beta": [0.0, 20.0],
+                "initial_value": [None, None],
+            },
+        },
+        "typo_field": True,
+    }
+
+    with pytest.raises(ValueError, match="config has unknown keys"):
+        fit_map_dataset_from_config(rows, config=config)
 
 
 def test_hierarchical_map_from_config_runs_subject_and_study() -> None:
