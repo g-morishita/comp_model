@@ -1,223 +1,83 @@
 # comp_model
 
-A clean-slate computational decision modeling library.
+`comp_model` is a clean-slate computational decision-modeling library for
+simulation, replay, fitting, model comparison, and recovery workflows.
+
+It is designed around a generic decision loop:
+
+1. a model receives context from a problem/environment,
+2. the model chooses an action,
+3. the environment returns outcomes/observations,
+4. the model updates internal state (or no-op updates for static policies).
+
+`Bandit` is only one concrete problem family, not the core abstraction.
+
+## Design Philosophy
+
+- Generic first: core interfaces describe decision problems and agent models,
+  not a specific task family.
+- One canonical event semantics: simulation, replay likelihood, inference, and
+  recovery all operate on the same event representation.
+- Strict contracts: config schemas and component requirements fail fast on
+  malformed inputs.
+- Separation of concerns: runtime, models, inference, analysis, recovery, I/O,
+  and plugin registry live in separate packages with explicit boundaries.
+- Practical reproducibility: deterministic seeds and tabular I/O are first-class
+  to support iterative scientific workflows.
+
+## Package Map
+
+- `comp_model.core`: contracts, event/data structures, validation primitives
+- `comp_model.runtime`: simulation engines and replay execution
+- `comp_model.models`: canonical decision-model implementations
+- `comp_model.problems`: concrete task/problem implementations
+- `comp_model.inference`: MLE/MAP/MCMC fitting and model comparison
+- `comp_model.recovery`: parameter/model recovery workflows
+- `comp_model.analysis`: information criteria and profile-likelihood tools
+- `comp_model.io`: tabular CSV import/export
+- `comp_model.plugins`: registry and component manifests
+
+## Documentation
+
+Documentation follows the Divio system (Diataxis):
+
+- Tutorials: `docs/tutorials/`
+- How-to guides: `docs/how-to/`
+- Reference: `docs/reference/`
+- Explanation: `docs/explanation/`
+
+MkDocs config is provided in `mkdocs.yml`.
+
+## Quick Start
+
+```python
+from comp_model.problems import StationaryBanditProblem
+from comp_model.models import AsocialStateQValueSoftmaxModel
+from comp_model.runtime import SimulationConfig, run_episode
+from comp_model.inference import fit_model, FitSpec
+
+problem = StationaryBanditProblem(reward_probabilities=[0.2, 0.8])
+model = AsocialStateQValueSoftmaxModel(alpha=0.2, beta=3.0, initial_value=0.0)
+trace = run_episode(problem=problem, model=model, config=SimulationConfig(n_trials=100, seed=7))
+
+result = fit_model(
+    trace,
+    model_factory=lambda p: AsocialStateQValueSoftmaxModel(**p),
+    fit_spec=FitSpec(
+        estimator_type="grid_search",
+        parameter_grid={
+            "alpha": [0.1, 0.2, 0.3],
+            "beta": [2.0, 3.0, 4.0],
+            "initial_value": [0.0],
+        },
+    ),
+)
+print(result.best.params)
+```
 
 ## Credits
 
 - Original internal model suite and research framing: Morishita Lab.
-
-Config schemas and strict validation rules are documented in
-`docs/config_schemas.md`.
-
-This repository starts from generic decision-problem abstractions where:
-
-1. an agent observes a problem state,
-2. selects an action,
-3. receives an outcome,
-4. updates internal memory.
-
-`Bandit` appears only as one concrete problem implementation under `comp_model.problems`.
-
-## Model Naming
-
-Canonical model names are descriptive and mechanism-first (for example,
-`AsocialQValueSoftmaxModel` and
-`AsocialStateQValueSoftmaxPerseverationModel`).
-
-Deprecated alias names and IDs were removed; use canonical model classes and
-canonical plugin component IDs only.
-
-## Easy Model Fitting API
-
-Use `comp_model.inference.fit_model` to fit a model directly from:
-- canonical `EpisodeTrace`,
-- `BlockData`, or
-- `TrialDecision` rows.
-
-This fitting module is now the shared base used by recovery workflows.
-Recovery workflows can consume both MLE-style and MAP-style fit outputs.
-Config-driven recovery runners support MAP estimators when a `prior` section is provided.
-Core recovery APIs (`run_parameter_recovery`, `run_model_recovery`) also accept
-an optional `trace_factory(model, seed)` hook so social/multi-actor trial
-programs can be recovered without forcing a single-actor `run_episode` path.
-Recovery config runners support generator-based simulation blocks and
-study-level model-recovery generation via `simulation.level = "study"`.
-Recovery model-selection criteria support `waic` and `psis_loo` when candidate
-fitters provide posterior pointwise log-likelihood draws (for example via MCMC).
-For multi-actor traces (for example social trial programs), use
-`comp_model.inference.ActorSubsetReplayLikelihood` to replay all actors while
-scoring only selected actor IDs such as `subject`.
-Recovery serialization rows now include optional `best_log_posterior` and
-candidate `param__*` columns when available.
-Config-driven recovery can also be executed from CLI:
-
-```bash
-python scripts/run_recovery.py \
-  --config recovery_config.json \
-  --mode auto \
-  --output-dir recovery_out \
-  --prefix run1
-```
-
-Installed package command:
-
-```bash
-comp-model-recovery \
-  --config recovery_config.json \
-  --mode auto \
-  --output-dir recovery_out \
-  --prefix run1
-```
-
-For multi-subject datasets, use:
-- `comp_model.inference.fit_block_data`
-- `comp_model.inference.fit_subject_data`
-- `comp_model.inference.fit_study_data`
-
-Tabular CSV I/O helpers are available via:
-- `comp_model.read_trial_decisions_csv`
-- `comp_model.write_trial_decisions_csv`
-- `comp_model.read_study_decisions_csv`
-- `comp_model.write_study_decisions_csv`
-
-Config-driven fitting directly from CSV is available via:
-- `comp_model.fit_trial_csv_from_config`
-- `comp_model.fit_study_csv_from_config`
-- `comp_model.compare_trial_csv_candidates_from_config`
-- `comp_model.compare_study_csv_candidates_from_config`
-
-CLI entrypoint:
-
-```bash
-python scripts/run_fit.py \
-  --config fit_config.json \
-  --input-csv study.csv \
-  --input-kind study \
-  --level study \
-  --output-dir fit_out \
-  --prefix run1
-```
-
-For candidate-model comparison from CSV plus config:
-
-```bash
-python scripts/run_compare.py \
-  --config compare_config.json \
-  --input-csv study.csv \
-  --input-kind study \
-  --level study \
-  --output-dir compare_out \
-  --prefix run1
-```
-
-Installed package command:
-
-```bash
-comp-model-compare \
-  --config compare_config.json \
-  --input-csv study.csv \
-  --input-kind study \
-  --level study \
-  --output-dir compare_out \
-  --prefix run1
-```
-
-These APIs run independent fits per block and aggregate summaries at subject and
-study levels.
-
-You can also fit from declarative config mappings via:
-- `comp_model.inference.fit_dataset_from_config`
-- `comp_model.inference.fit_study_from_config`
-- `comp_model.inference.fit_dataset_auto_from_config`
-- `comp_model.inference.fit_block_auto_from_config`
-- `comp_model.inference.fit_subject_auto_from_config`
-- `comp_model.inference.fit_study_auto_from_config`
-
-To export fit outputs:
-- `comp_model.inference.write_study_fit_records_csv`
-- `comp_model.inference.write_study_fit_summary_csv`
-- `comp_model.inference.write_map_study_fit_records_csv`
-- `comp_model.inference.write_map_study_fit_summary_csv`
-- `comp_model.inference.write_hierarchical_study_block_records_csv`
-- `comp_model.inference.write_hierarchical_study_summary_csv`
-- `comp_model.inference.write_hierarchical_mcmc_study_draw_records_csv`
-- `comp_model.inference.write_hierarchical_mcmc_study_summary_csv`
-- `comp_model.inference.write_model_comparison_csv`
-- `comp_model.inference.write_study_model_comparison_csv`
-- `comp_model.inference.write_study_model_comparison_subject_csv`
-- `comp_model.inference.write_posterior_summary_csv`
-
-For candidate-model comparison on one dataset:
-- `comp_model.inference.compare_candidate_models`
-- `comp_model.inference.compare_registry_candidate_models`
-- `comp_model.inference.compare_dataset_candidates_from_config`
-- `comp_model.inference.compare_subject_candidate_models`
-- `comp_model.inference.compare_study_candidate_models`
-- `comp_model.inference.compare_subject_candidates_from_config`
-- `comp_model.inference.compare_study_candidates_from_config`
-
-These return per-candidate log-likelihood/AIC/BIC summaries and selected model
-labels under a chosen criterion.
-
-Supported comparison criteria now include:
-- `log_likelihood`
-- `aic`
-- `bic`
-- `waic` (requires posterior pointwise log-likelihood draws)
-- `psis_loo` (requires posterior pointwise log-likelihood draws)
-
-## Bayesian Inference (MAP First)
-
-Bayesian scaffolding now includes MAP estimators built on SciPy optimization:
-- `comp_model.inference.ScipyMapBayesEstimator`
-- `comp_model.inference.TransformedScipyMapBayesEstimator`
-- `comp_model.inference.fit_map_model`
-- `comp_model.inference.fit_map_model_from_registry`
-- `comp_model.inference.fit_map_dataset_from_config`
-- `comp_model.inference.fit_map_block_data`
-- `comp_model.inference.fit_map_subject_data`
-- `comp_model.inference.fit_map_study_data`
-- `comp_model.inference.fit_map_block_from_config`
-- `comp_model.inference.fit_map_subject_from_config`
-- `comp_model.inference.RandomWalkMetropolisEstimator`
-- `comp_model.inference.sample_posterior_model`
-- `comp_model.inference.sample_posterior_model_from_registry`
-- `comp_model.inference.sample_posterior_block_data`
-- `comp_model.inference.sample_posterior_subject_data`
-- `comp_model.inference.sample_posterior_study_data`
-- `comp_model.inference.sample_posterior_dataset_from_config`
-- `comp_model.inference.sample_posterior_block_from_config`
-- `comp_model.inference.sample_posterior_subject_from_config`
-- `comp_model.inference.sample_posterior_study_from_config`
-
-Config auto-dispatch supports dataset/block/subject/study MCMC when
-`estimator.type = "random_walk_metropolis"`.
-- `comp_model.inference.fit_map_study_from_config`
-
-Prior utilities:
-- `comp_model.inference.IndependentPriorProgram`
-- `comp_model.inference.normal_log_prior`
-- `comp_model.inference.uniform_log_prior`
-- `comp_model.inference.beta_log_prior`
-- `comp_model.inference.log_normal_log_prior`
-- `comp_model.inference.PosteriorSamples`
-- `comp_model.inference.summarize_posterior`
-
-These are the first step toward full Bayesian and hierarchical workflows using
-the same canonical replay likelihood semantics as MLE.
-
-Within-subject hierarchical MAP is now available via:
-- `comp_model.inference.fit_subject_hierarchical_map`
-- `comp_model.inference.fit_study_hierarchical_map`
-- `comp_model.inference.fit_subject_hierarchical_map_from_config`
-- `comp_model.inference.fit_study_hierarchical_map_from_config`
-
-This performs partial pooling across blocks for named parameters in transformed
-space, using the same replay likelihood path as all other estimators.
-
-Within-subject hierarchical posterior sampling (random-walk Metropolis) is
-also available via:
-- `comp_model.inference.sample_subject_hierarchical_posterior`
 - `comp_model.inference.sample_study_hierarchical_posterior`
 - `comp_model.inference.sample_subject_hierarchical_posterior_from_config`
 - `comp_model.inference.sample_study_hierarchical_posterior_from_config`

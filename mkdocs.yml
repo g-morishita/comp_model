@@ -1,0 +1,21 @@
+site_name: comp_model
+site_description: Clean-slate computational decision modeling library
+repo_name: comp_model
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - Tutorials:
+      - First End-to-End Fit: tutorials/first-end-to-end-fit.md
+  - How-to guides:
+      - Fit Existing CSV Data: how-to/fit-existing-csv-data.md
+      - Compare Candidate Models: how-to/compare-candidate-models.md
+      - Run Recovery Workflows: how-to/run-recovery-workflows.md
+  - Reference:
+      - API Overview: reference/api-overview.md
+      - Configuration Schemas: reference/config_schemas.md
+  - Explanation:
+      - Design Philosophy: explanation/design-philosophy.md
+      - Architecture Decisions: explanation/architecture-decisions.md
