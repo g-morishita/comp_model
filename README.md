@@ -42,6 +42,7 @@ Use `comp_model.inference.fit_model` to fit a model directly from:
 - `TrialDecision` rows.
 
 This fitting module is now the shared base used by recovery workflows.
+Recovery workflows can consume both MLE-style and MAP-style fit outputs.
 
 For multi-subject datasets, use:
 - `comp_model.inference.fit_block_data`

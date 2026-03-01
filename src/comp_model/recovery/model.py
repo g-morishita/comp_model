@@ -13,7 +13,7 @@ from typing import Any, TypeVar
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
-from comp_model.inference import MLEFitResult
+from comp_model.inference.fit_result import extract_best_fit_summary
 from comp_model.inference.model_selection import (
     CandidateFitSpec,
     SelectionCriterion,
@@ -53,15 +53,16 @@ class CandidateModelSpec:
     ----------
     name : str
         Candidate label used in reports.
-    fit_function : Callable[[Any], MLEFitResult]
-        Function fitting one trace and returning best log-likelihood.
+    fit_function : Callable[[Any], Any]
+        Function fitting one trace and returning a supported inference fit
+        result (MLE-style or MAP-style).
     n_parameters : int | None, optional
         Number of effective free parameters for information criteria.
         If ``None``, this defaults to ``len(fit_result.best.params)``.
     """
 
     name: str
-    fit_function: Callable[[Any], MLEFitResult]
+    fit_function: Callable[[Any], Any]
     n_parameters: int | None = None
 
 
@@ -215,16 +216,7 @@ def run_model_recovery(
             )
 
             candidate_summaries = tuple(
-                CandidateFitSummary(
-                    candidate_name=item.candidate_name,
-                    log_likelihood=item.log_likelihood,
-                    n_parameters=item.n_parameters,
-                    score=item.score,
-                    best_params={
-                        key: float(value)
-                        for key, value in item.fit_result.best.params.items()
-                    },
-                )
+                _candidate_summary_from_comparison_item(item)
                 for item in comparison.comparisons
             )
 
@@ -254,6 +246,19 @@ def _build_confusion_matrix(cases: Sequence[ModelRecoveryCase]) -> dict[str, dic
         by_selected = matrix.setdefault(case.generating_model_name, {})
         by_selected[case.selected_candidate_name] = by_selected.get(case.selected_candidate_name, 0) + 1
     return matrix
+
+
+def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
+    """Convert one model-comparison record into recovery summary form."""
+
+    best = extract_best_fit_summary(item.fit_result)
+    return CandidateFitSummary(
+        candidate_name=item.candidate_name,
+        log_likelihood=float(item.log_likelihood),
+        n_parameters=int(item.n_parameters),
+        score=float(item.score),
+        best_params={key: float(value) for key, value in best.params.items()},
+    )
 
 
 __all__ = [

@@ -8,7 +8,13 @@ from typing import Any
 import pytest
 
 from comp_model.core.contracts import DecisionContext
-from comp_model.inference import ActionReplayLikelihood, GridSearchMLEEstimator
+from comp_model.inference import (
+    ActionReplayLikelihood,
+    GridSearchMLEEstimator,
+    IndependentPriorProgram,
+    ScipyMapBayesEstimator,
+    uniform_log_prior,
+)
 from comp_model.problems import StationaryBanditProblem
 from comp_model.recovery import run_parameter_recovery
 
@@ -103,3 +109,38 @@ def test_run_parameter_recovery_validates_inputs() -> None:
             true_parameter_sets=({"p_right": 0.5},),
             n_trials=0,
         )
+
+
+def test_run_parameter_recovery_accepts_map_fit_functions() -> None:
+    """Recovery should accept MAP fit outputs in addition to MLE outputs."""
+
+    def fit_function(trace: Any):
+        estimator = ScipyMapBayesEstimator(
+            likelihood_program=ActionReplayLikelihood(),
+            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+            prior_program=IndependentPriorProgram(
+                {
+                    "p_right": uniform_log_prior(lower=0.0, upper=1.0),
+                }
+            ),
+        )
+        return estimator.fit(
+            trace,
+            initial_params={"p_right": 0.5},
+            bounds={"p_right": (0.0, 1.0)},
+        )
+
+    result = run_parameter_recovery(
+        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        fit_function=fit_function,
+        true_parameter_sets=(
+            {"p_right": 0.7},
+        ),
+        n_trials=40,
+        seed=17,
+    )
+
+    assert len(result.cases) == 1
+    assert 0.0 <= result.cases[0].estimated_params["p_right"] <= 1.0
+    assert "p_right" in result.mean_absolute_error

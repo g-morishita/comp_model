@@ -10,9 +10,11 @@ import pytest
 from comp_model.core.contracts import DecisionContext
 from comp_model.inference import (
     ActionReplayLikelihood,
+    BayesFitResult,
     GridSearchMLEEstimator,
     MLECandidate,
     MLEFitResult,
+    PosteriorCandidate,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import StationaryBanditProblem
@@ -70,6 +72,18 @@ def _fit_uniform_policy(trace: Any) -> MLEFitResult:
     replay = ActionReplayLikelihood().evaluate(trace, UniformRandomPolicyModel())
     candidate = MLECandidate(params={}, log_likelihood=float(replay.total_log_likelihood))
     return MLEFitResult(best=candidate, candidates=(candidate,))
+
+
+def _fit_constant_map(trace: Any) -> BayesFitResult:
+    """Return a constant MAP fit result for compatibility tests."""
+
+    candidate = PosteriorCandidate(
+        params={"p_right": 0.8},
+        log_likelihood=-5.0,
+        log_prior=-0.5,
+        log_posterior=-5.5,
+    )
+    return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
 
 
 def test_run_model_recovery_prefers_matching_candidate() -> None:
@@ -151,3 +165,29 @@ def test_run_model_recovery_validates_inputs() -> None:
             n_trials=20,
             n_replications_per_generator=1,
         )
+
+
+def test_run_model_recovery_accepts_map_fit_results() -> None:
+    """Model recovery should accept MAP-style candidate fit outputs."""
+
+    result = run_model_recovery(
+        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
+        generating_specs=(
+            GeneratingModelSpec(
+                name="fixed_choice",
+                model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+                true_params={"p_right": 0.8},
+            ),
+        ),
+        candidate_specs=(
+            CandidateModelSpec(name="map_candidate", fit_function=_fit_constant_map, n_parameters=1),
+            CandidateModelSpec(name="uniform_random", fit_function=_fit_uniform_policy, n_parameters=0),
+        ),
+        n_trials=50,
+        n_replications_per_generator=2,
+        criterion="log_likelihood",
+        seed=12,
+    )
+
+    assert len(result.cases) == 2
+    assert result.confusion_matrix["fixed_choice"].get("map_candidate", 0) == 2

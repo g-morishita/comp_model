@@ -13,7 +13,7 @@ from typing import Any, TypeVar
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
-from comp_model.inference import MLEFitResult
+from comp_model.inference.fit_result import extract_best_fit_summary
 from comp_model.runtime import SimulationConfig, run_episode
 
 ObsT = TypeVar("ObsT")
@@ -70,7 +70,7 @@ def run_parameter_recovery(
     *,
     problem_factory: Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]],
     model_factory: Callable[[dict[str, float]], AgentModel[ObsT, ActionT, OutcomeT]],
-    fit_function: Callable[[Any], MLEFitResult],
+    fit_function: Callable[[Any], Any],
     true_parameter_sets: Sequence[Mapping[str, float]],
     n_trials: int,
     seed: int = 0,
@@ -83,8 +83,9 @@ def run_parameter_recovery(
         Factory returning a fresh problem instance for one synthetic dataset.
     model_factory : Callable[[dict[str, float]], AgentModel[ObsT, ActionT, OutcomeT]]
         Factory returning a generating model from true parameters.
-    fit_function : Callable[[Any], MLEFitResult]
-        Function that fits one generated trace and returns an ``MLEFitResult``.
+    fit_function : Callable[[Any], Any]
+        Function that fits one generated trace and returns a supported
+        inference fit result (MLE-style or MAP-style).
     true_parameter_sets : Sequence[Mapping[str, float]]
         Collection of true parameter mappings to recover.
     n_trials : int
@@ -121,14 +122,15 @@ def run_parameter_recovery(
             config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
         )
         fit_result = fit_function(trace)
+        best = extract_best_fit_summary(fit_result)
 
         cases.append(
             ParameterRecoveryCase(
                 case_index=case_index,
                 simulation_seed=simulation_seed,
                 true_params={name: float(value) for name, value in params.items()},
-                estimated_params={name: float(value) for name, value in fit_result.best.params.items()},
-                best_log_likelihood=float(fit_result.best.log_likelihood),
+                estimated_params={name: float(value) for name, value in best.params.items()},
+                best_log_likelihood=float(best.log_likelihood),
             )
         )
 

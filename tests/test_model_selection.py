@@ -10,10 +10,12 @@ import pytest
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import TrialDecision
 from comp_model.inference import (
+    BayesFitResult,
     CandidateFitSpec,
     FitSpec,
     MLECandidate,
     MLEFitResult,
+    PosteriorCandidate,
     RegistryCandidateFitSpec,
     compare_candidate_models,
     compare_registry_candidate_models,
@@ -86,6 +88,23 @@ def _constant_fit(log_likelihood: float, params: dict[str, float]) -> MLEFitResu
 
     candidate = MLECandidate(params=dict(params), log_likelihood=float(log_likelihood))
     return MLEFitResult(best=candidate, candidates=(candidate,))
+
+
+def _constant_map_fit(
+    *,
+    log_likelihood: float,
+    log_prior: float,
+    params: dict[str, float],
+) -> BayesFitResult:
+    """Build a constant MAP fit result helper for compatibility tests."""
+
+    candidate = PosteriorCandidate(
+        params=dict(params),
+        log_likelihood=float(log_likelihood),
+        log_prior=float(log_prior),
+        log_posterior=float(log_likelihood + log_prior),
+    )
+    return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
 
 
 
@@ -238,3 +257,56 @@ def test_compare_candidate_models_validates_candidate_specs() -> None:
 
     with pytest.raises(ValueError, match="candidate_specs must not be empty"):
         compare_candidate_models(decisions, candidate_specs=(), criterion="log_likelihood")
+
+
+def test_compare_candidate_models_accepts_map_fit_results() -> None:
+    """Model comparison should accept MAP-style fit results as candidates."""
+
+    decisions = (
+        TrialDecision(
+            trial_index=0,
+            decision_index=0,
+            actor_id="subject",
+            available_actions=(0, 1),
+            action=1,
+            observation={"state": 0},
+            outcome={"reward": 1.0},
+        ),
+        TrialDecision(
+            trial_index=1,
+            decision_index=0,
+            actor_id="subject",
+            available_actions=(0, 1),
+            action=1,
+            observation={"state": 0},
+            outcome={"reward": 1.0},
+        ),
+    )
+
+    result = compare_candidate_models(
+        decisions,
+        candidate_specs=(
+            CandidateFitSpec(
+                name="map_good",
+                fit_function=lambda trace: _constant_map_fit(
+                    log_likelihood=-1.0,
+                    log_prior=-0.2,
+                    params={"p_right": 0.8},
+                ),
+                n_parameters=1,
+            ),
+            CandidateFitSpec(
+                name="map_bad",
+                fit_function=lambda trace: _constant_map_fit(
+                    log_likelihood=-3.0,
+                    log_prior=-0.1,
+                    params={"p_right": 0.6},
+                ),
+                n_parameters=1,
+            ),
+        ),
+        criterion="log_likelihood",
+    )
+
+    assert result.selected_candidate_name == "map_good"
+    assert len(result.comparisons) == 2

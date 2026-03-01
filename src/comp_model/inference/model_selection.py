@@ -16,9 +16,9 @@ from comp_model.core.data import BlockData, TrialDecision
 from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
+from .fit_result import extract_best_fit_summary
 from .fitting import FitSpec, build_model_fit_function, coerce_episode_trace
 from .likelihood import LikelihoodProgram
-from .mle import MLEFitResult
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic"]
 
@@ -31,15 +31,17 @@ class CandidateFitSpec:
     ----------
     name : str
         Candidate label used in outputs.
-    fit_function : Callable[[EpisodeTrace], MLEFitResult]
-        Function fitting one canonical episode trace.
+    fit_function : Callable[[EpisodeTrace], Any]
+        Function fitting one canonical episode trace and returning an inference
+        fit result with either an MLE-style ``.best`` candidate or a MAP-style
+        ``.map_candidate``.
     n_parameters : int | None, optional
         Effective free parameter count used by information criteria.
         If ``None``, ``len(fit_result.best.params)`` is used.
     """
 
     name: str
-    fit_function: Callable[[EpisodeTrace], MLEFitResult]
+    fit_function: Callable[[EpisodeTrace], Any]
     n_parameters: int | None = None
 
 
@@ -87,7 +89,7 @@ class CandidateComparison:
         Bayesian Information Criterion (lower is better).
     score : float
         Criterion-specific selection score.
-    fit_result : MLEFitResult
+    fit_result : Any
         Full fit output for downstream inspection.
     """
 
@@ -97,7 +99,7 @@ class CandidateComparison:
     aic: float
     bic: float
     score: float
-    fit_result: MLEFitResult
+    fit_result: Any
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,11 +171,12 @@ def compare_candidate_models(
     comparisons: list[CandidateComparison] = []
     for spec in candidate_specs:
         fit_result = spec.fit_function(trace)
-        log_likelihood = float(fit_result.best.log_likelihood)
+        best = extract_best_fit_summary(fit_result)
+        log_likelihood = float(best.log_likelihood)
         n_parameters = (
             int(spec.n_parameters)
             if spec.n_parameters is not None
-            else int(len(fit_result.best.params))
+            else int(len(best.params))
         )
         if n_parameters < 0:
             raise ValueError(f"n_parameters must be >= 0 for candidate {spec.name!r}")

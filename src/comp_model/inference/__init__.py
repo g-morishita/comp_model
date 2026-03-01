@@ -44,6 +44,7 @@ from .fitting import (
     fit_model,
     fit_model_from_registry,
 )
+from .fit_result import BestFitSummary, extract_best_fit_summary
 from .hierarchical import (
     HierarchicalBlockResult,
     HierarchicalStudyMapResult,
@@ -105,6 +106,7 @@ __all__ = [
     "HierarchicalSubjectMapResult",
     "IndependentPriorProgram",
     "LikelihoodProgram",
+    "BestFitSummary",
     "MLECandidate",
     "MLEFitResult",
     "MapEstimatorType",
@@ -130,6 +132,7 @@ __all__ = [
     "build_map_fit_function",
     "check_trace_compatibility",
     "coerce_episode_trace",
+    "extract_best_fit_summary",
     "compare_candidate_models",
     "compare_registry_candidate_models",
     "fit_block_data",
