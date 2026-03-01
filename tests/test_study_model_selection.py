@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+import numpy as np
+
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     BayesFitResult,
@@ -49,6 +53,41 @@ def _constant_map_fit(*, log_likelihood: float, log_prior: float, alpha: float =
             log_posterior=log_likelihood + log_prior,
         )
         return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
+
+    return _fit
+
+
+@dataclass
+class _FakePosteriorFit:
+    """Minimal posterior-fit object with pointwise draws for IC criteria."""
+
+    map_candidate: PosteriorCandidate
+    pointwise_log_likelihood_draws: np.ndarray
+
+
+def _constant_pointwise_posterior_fit(
+    *,
+    log_likelihood: float,
+    log_prior: float,
+    pointwise_log_likelihood_draws: np.ndarray,
+    alpha: float = 0.4,
+):
+    """Build deterministic posterior fit function with pointwise draws."""
+
+    def _fit(trace):
+        candidate = PosteriorCandidate(
+            params={"alpha": alpha},
+            log_likelihood=log_likelihood,
+            log_prior=log_prior,
+            log_posterior=log_likelihood + log_prior,
+        )
+        return _FakePosteriorFit(
+            map_candidate=candidate,
+            pointwise_log_likelihood_draws=np.asarray(
+                pointwise_log_likelihood_draws,
+                dtype=float,
+            ),
+        )
 
     return _fit
 
@@ -123,3 +162,80 @@ def test_compare_study_candidate_models_aggregates_subjects() -> None:
     by_name = {row.candidate_name: row for row in result.comparisons}
     assert by_name["mle_bad"].log_likelihood == -36.0
     assert by_name["map_good"].log_likelihood == -28.0
+
+
+def test_compare_subject_candidate_models_supports_waic_psis_loo() -> None:
+    """Subject-level model comparison should support WAIC/PSIS-LOO criteria."""
+
+    subject = _subject("s1")
+    good_draws = np.asarray(
+        [
+            [-0.2, -0.2],
+            [-0.3, -0.1],
+            [-0.25, -0.15],
+        ],
+        dtype=float,
+    )
+    bad_draws = np.asarray(
+        [
+            [-1.0, -1.2],
+            [-0.9, -1.1],
+            [-1.1, -1.0],
+        ],
+        dtype=float,
+    )
+
+    waic_result = compare_subject_candidate_models(
+        subject,
+        candidate_specs=(
+            CandidateFitSpec(
+                name="good_post",
+                fit_function=_constant_pointwise_posterior_fit(
+                    log_likelihood=-1.0,
+                    log_prior=-0.2,
+                    pointwise_log_likelihood_draws=good_draws,
+                ),
+                n_parameters=1,
+            ),
+            CandidateFitSpec(
+                name="bad_post",
+                fit_function=_constant_pointwise_posterior_fit(
+                    log_likelihood=-3.0,
+                    log_prior=-0.2,
+                    pointwise_log_likelihood_draws=bad_draws,
+                ),
+                n_parameters=1,
+            ),
+        ),
+        criterion="waic",
+    )
+    assert waic_result.selected_candidate_name == "good_post"
+    by_name = {row.candidate_name: row for row in waic_result.comparisons}
+    assert by_name["good_post"].waic is not None
+    assert by_name["good_post"].psis_loo is not None
+
+    loo_result = compare_subject_candidate_models(
+        subject,
+        candidate_specs=(
+            CandidateFitSpec(
+                name="good_post",
+                fit_function=_constant_pointwise_posterior_fit(
+                    log_likelihood=-1.0,
+                    log_prior=-0.2,
+                    pointwise_log_likelihood_draws=good_draws,
+                ),
+                n_parameters=1,
+            ),
+            CandidateFitSpec(
+                name="bad_post",
+                fit_function=_constant_pointwise_posterior_fit(
+                    log_likelihood=-3.0,
+                    log_prior=-0.2,
+                    pointwise_log_likelihood_draws=bad_draws,
+                ),
+                n_parameters=1,
+            ),
+        ),
+        criterion="psis_loo",
+    )
+    assert loo_result.selected_candidate_name == "good_post"

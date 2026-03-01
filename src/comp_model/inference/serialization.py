@@ -308,6 +308,16 @@ def model_comparison_records(result: ModelComparisonResult) -> list[dict[str, An
             "n_parameters": int(comparison.n_parameters),
             "aic": float(comparison.aic),
             "bic": float(comparison.bic),
+            "waic": (
+                float(comparison.waic)
+                if comparison.waic is not None
+                else None
+            ),
+            "psis_loo": (
+                float(comparison.psis_loo)
+                if comparison.psis_loo is not None
+                else None
+            ),
             "score": float(comparison.score),
         }
         for key, value in sorted(best.params.items()):
@@ -338,6 +348,16 @@ def subject_model_comparison_records(result: SubjectModelComparisonResult) -> li
                 "n_parameters": int(comparison.n_parameters),
                 "aic": float(comparison.aic),
                 "bic": float(comparison.bic),
+                "waic": (
+                    float(comparison.waic)
+                    if comparison.waic is not None
+                    else None
+                ),
+                "psis_loo": (
+                    float(comparison.psis_loo)
+                    if comparison.psis_loo is not None
+                    else None
+                ),
                 "score": float(comparison.score),
             }
         )
@@ -366,6 +386,16 @@ def study_model_comparison_records(result: StudyModelComparisonResult) -> list[d
                 "n_parameters": int(comparison.n_parameters),
                 "aic": float(comparison.aic),
                 "bic": float(comparison.bic),
+                "waic": (
+                    float(comparison.waic)
+                    if comparison.waic is not None
+                    else None
+                ),
+                "psis_loo": (
+                    float(comparison.psis_loo)
+                    if comparison.psis_loo is not None
+                    else None
+                ),
                 "score": float(comparison.score),
             }
         )

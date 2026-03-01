@@ -80,6 +80,8 @@ def test_sample_posterior_model_recovers_reasonable_mean() -> None:
     assert result.posterior_samples.n_draws == 200
     assert result.diagnostics.n_kept_draws == 200
     assert 0.0 <= result.diagnostics.acceptance_rate <= 1.0
+    assert result.pointwise_log_likelihood_draws.shape[0] == 200
+    assert result.pointwise_log_likelihood_draws.shape[1] == 80
     assert 0.55 <= result.posterior_samples.mean("p_right") <= 0.9
     assert result.map_candidate.log_posterior == pytest.approx(
         result.map_candidate.log_likelihood + result.map_candidate.log_prior

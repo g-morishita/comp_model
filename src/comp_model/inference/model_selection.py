@@ -16,11 +16,12 @@ from comp_model.core.data import BlockData, TrialDecision
 from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
+from .criteria import compute_pointwise_information_criteria
 from .fit_result import extract_best_fit_summary
 from .fitting import FitSpec, build_model_fit_function, coerce_episode_trace
 from .likelihood import LikelihoodProgram
 
-SelectionCriterion = Literal["log_likelihood", "aic", "bic"]
+SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +92,11 @@ class CandidateComparison:
         Criterion-specific selection score.
     fit_result : Any
         Full fit output for downstream inspection.
+    waic : float | None, optional
+        Widely Applicable Information Criterion when pointwise draws are
+        available.
+    psis_loo : float | None, optional
+        PSIS-LOO information criterion when pointwise draws are available.
     """
 
     candidate_name: str
@@ -100,6 +106,8 @@ class CandidateComparison:
     bic: float
     score: float
     fit_result: Any
+    waic: float | None = None
+    psis_loo: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +116,7 @@ class ModelComparisonResult:
 
     Parameters
     ----------
-    criterion : {"log_likelihood", "aic", "bic"}
+    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}
         Selection criterion.
     n_observations : int
         Number of decision observations used for BIC computation.
@@ -139,7 +147,7 @@ def compare_candidate_models(
         Dataset container supported by :func:`coerce_episode_trace`.
     candidate_specs : Sequence[CandidateFitSpec]
         Candidate fitting definitions.
-    criterion : {"log_likelihood", "aic", "bic"}, optional
+    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}, optional
         Selection criterion.
     n_observations : int | None, optional
         Observation count for BIC. If ``None``, inferred as the number of
@@ -160,8 +168,11 @@ def compare_candidate_models(
     if not candidate_specs:
         raise ValueError("candidate_specs must not be empty")
 
-    if criterion not in {"log_likelihood", "aic", "bic"}:
-        raise ValueError("criterion must be one of {'log_likelihood', 'aic', 'bic'}")
+    if criterion not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
+        raise ValueError(
+            "criterion must be one of "
+            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
+        )
 
     inferred_observations = _count_decision_events(trace)
     n_obs = inferred_observations if n_observations is None else int(n_observations)
@@ -187,11 +198,23 @@ def compare_candidate_models(
             n_parameters=n_parameters,
             n_observations=n_obs,
         )
+        waic_value: float | None = None
+        looic_value: float | None = None
+        try:
+            waic_value, looic_value = compute_pointwise_information_criteria(fit_result)
+        except (TypeError, ValueError) as exc:
+            if criterion in {"waic", "psis_loo"}:
+                raise ValueError(
+                    f"candidate {spec.name!r} does not support criterion "
+                    f"{criterion!r}: {exc}"
+                ) from exc
         score = _selection_score(
             criterion=criterion,
             log_likelihood=log_likelihood,
             aic_value=aic_value,
             bic_value=bic_value,
+            waic_value=waic_value,
+            looic_value=looic_value,
         )
 
         comparisons.append(
@@ -203,6 +226,8 @@ def compare_candidate_models(
                 bic=bic_value,
                 score=score,
                 fit_result=fit_result,
+                waic=waic_value,
+                psis_loo=looic_value,
             )
         )
 
@@ -232,7 +257,7 @@ def compare_registry_candidate_models(
         Dataset container supported by :func:`coerce_episode_trace`.
     candidate_specs : Sequence[RegistryCandidateFitSpec]
         Registry-based candidate definitions.
-    criterion : {"log_likelihood", "aic", "bic"}, optional
+    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}, optional
         Selection criterion.
     n_observations : int | None, optional
         Observation count for BIC. If ``None``, inferred from data.
@@ -291,6 +316,8 @@ def _selection_score(
     log_likelihood: float,
     aic_value: float,
     bic_value: float,
+    waic_value: float | None,
+    looic_value: float | None,
 ) -> float:
     """Compute criterion-specific score for one candidate."""
 
@@ -300,6 +327,14 @@ def _selection_score(
         return float(aic_value)
     if criterion == "bic":
         return float(bic_value)
+    if criterion == "waic":
+        if waic_value is None:
+            raise ValueError("waic criterion requires pointwise posterior draws")
+        return float(waic_value)
+    if criterion == "psis_loo":
+        if looic_value is None:
+            raise ValueError("psis_loo criterion requires pointwise posterior draws")
+        return float(looic_value)
     raise ValueError(f"unsupported criterion: {criterion!r}")
 
 

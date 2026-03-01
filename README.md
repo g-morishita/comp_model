@@ -87,6 +87,13 @@ For candidate-model comparison on one dataset:
 These return per-candidate log-likelihood/AIC/BIC summaries and selected model
 labels under a chosen criterion.
 
+Supported comparison criteria now include:
+- `log_likelihood`
+- `aic`
+- `bic`
+- `waic` (requires posterior pointwise log-likelihood draws)
+- `psis_loo` (requires posterior pointwise log-likelihood draws)
+
 ## Bayesian Inference (MAP First)
 
 Bayesian scaffolding now includes MAP estimators built on SciPy optimization:

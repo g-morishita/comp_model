@@ -158,6 +158,80 @@ def test_compare_dataset_candidates_from_config_requires_prior_for_map() -> None
         compare_dataset_candidates_from_config(rows, config=config)
 
 
+def test_compare_dataset_candidates_from_config_supports_mcmc_waic() -> None:
+    """Config model-comparison should support MCMC candidates with WAIC."""
+
+    rows = tuple(_trial(index, action=1, reward=1.0) for index in range(18))
+    config = {
+        "criterion": "waic",
+        "candidates": [
+            {
+                "name": "good_mcmc",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "prior": {
+                    "type": "independent",
+                    "parameters": {
+                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+                    },
+                },
+                "estimator": {
+                    "type": "random_walk_metropolis",
+                    "initial_params": {"alpha": 0.6, "beta": 3.0, "initial_value": 0.0},
+                    "n_samples": 20,
+                    "n_warmup": 20,
+                    "thin": 1,
+                    "proposal_scales": {"alpha": 0.05, "beta": 0.2, "initial_value": 0.1},
+                    "bounds": {
+                        "alpha": [0.0, 1.0],
+                        "beta": [0.0, 20.0],
+                        "initial_value": [None, None],
+                    },
+                    "random_seed": 3,
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "bad_mcmc",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "prior": {
+                    "type": "independent",
+                    "parameters": {
+                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+                    },
+                },
+                "estimator": {
+                    "type": "random_walk_metropolis",
+                    "initial_params": {"alpha": 0.2, "beta": 0.1, "initial_value": 0.0},
+                    "n_samples": 20,
+                    "n_warmup": 20,
+                    "thin": 1,
+                    "proposal_scales": {"alpha": 0.02, "beta": 0.05, "initial_value": 0.05},
+                    "bounds": {
+                        "alpha": [0.0, 0.4],
+                        "beta": [0.0, 0.5],
+                        "initial_value": [None, None],
+                    },
+                    "random_seed": 4,
+                },
+                "n_parameters": 3,
+            },
+        ],
+    }
+
+    result = compare_dataset_candidates_from_config(rows, config=config)
+    assert result.selected_candidate_name == "good_mcmc"
+
+
 def test_compare_subject_and_study_candidates_from_config() -> None:
     """Config comparison helpers should support subject and study datasets."""
 

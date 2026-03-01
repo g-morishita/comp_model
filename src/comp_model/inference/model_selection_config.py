@@ -12,9 +12,11 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 from .bayes import build_map_fit_function
 from .bayes_config import map_fit_spec_from_config, prior_program_from_config
 from .config import fit_spec_from_config, model_component_spec_from_config
-from .config_dispatch import MAP_ESTIMATORS, MLE_ESTIMATORS
+from .config_dispatch import MAP_ESTIMATORS, MCMC_ESTIMATORS, MLE_ESTIMATORS
 from .fitting import build_model_fit_function
 from .likelihood import LikelihoodProgram
+from .mcmc import sample_posterior_model
+from .mcmc_config import mcmc_estimator_spec_from_config
 from .model_selection import CandidateFitSpec, ModelComparisonResult, compare_candidate_models
 from .study_model_selection import (
     StudyModelComparisonResult,
@@ -95,7 +97,29 @@ def build_fit_function_from_model_config(
             likelihood_program=likelihood_program,
         )
 
-    supported = sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)
+    if estimator_type in MCMC_ESTIMATORS:
+        if prior_cfg is None:
+            raise ValueError(
+                f"prior is required for estimator type {estimator_type!r}"
+            )
+        prior_program = prior_program_from_config(prior_cfg)
+        estimator_spec = mcmc_estimator_spec_from_config(estimator_cfg)
+        return lambda trace: sample_posterior_model(
+            trace,
+            model_factory=model_factory,
+            prior_program=prior_program,
+            initial_params=estimator_spec.initial_params,
+            n_samples=estimator_spec.n_samples,
+            n_warmup=estimator_spec.n_warmup,
+            thin=estimator_spec.thin,
+            proposal_scales=estimator_spec.proposal_scales,
+            bounds=estimator_spec.bounds,
+            requirements=manifest.requirements,
+            likelihood_program=likelihood_program,
+            random_seed=estimator_spec.random_seed,
+        )
+
+    supported = sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | MCMC_ESTIMATORS)
     raise ValueError(
         f"estimator.type must be one of {supported}; got {estimator_type!r}"
     )

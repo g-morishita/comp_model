@@ -10,10 +10,11 @@ from comp_model.analysis.information_criteria import aic, bic
 from comp_model.core.data import StudyData, SubjectData, get_block_trace
 from comp_model.core.events import EventPhase
 
+from .criteria import compute_pointwise_information_criteria
 from .fit_result import extract_best_fit_summary
 from .model_selection import CandidateFitSpec
 
-SelectionCriterion = Literal["log_likelihood", "aic", "bic"]
+SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +37,10 @@ class SubjectCandidateComparison:
         BIC based on subject-level total log-likelihood.
     score : float
         Criterion-specific selection score.
+    waic : float | None, optional
+        Sum of block-level WAIC values when available.
+    psis_loo : float | None, optional
+        Sum of block-level PSIS-LOO IC values when available.
     """
 
     candidate_name: str
@@ -45,6 +50,8 @@ class SubjectCandidateComparison:
     aic: float
     bic: float
     score: float
+    waic: float | None = None
+    psis_loo: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +76,8 @@ class StudyCandidateComparison:
     aic: float
     bic: float
     score: float
+    waic: float | None = None
+    psis_loo: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +123,9 @@ def compare_subject_candidate_models(
         total_log_likelihood = 0.0
         total_log_posterior = 0.0
         has_posterior = True
+        total_waic = 0.0
+        total_looic = 0.0
+        has_pointwise_criteria = True
         first_param_count: int | None = None
 
         for trace in block_traces:
@@ -126,6 +138,17 @@ def compare_subject_candidate_models(
                 total_log_posterior += float(best.log_posterior)
             if first_param_count is None:
                 first_param_count = len(best.params)
+            try:
+                block_waic, block_looic = compute_pointwise_information_criteria(fit_result)
+                total_waic += float(block_waic)
+                total_looic += float(block_looic)
+            except (TypeError, ValueError) as exc:
+                has_pointwise_criteria = False
+                if criterion in {"waic", "psis_loo"}:
+                    raise ValueError(
+                        f"candidate {spec.name!r} does not support criterion "
+                        f"{criterion!r}: {exc}"
+                    ) from exc
 
         n_parameters = (
             int(spec.n_parameters)
@@ -146,6 +169,16 @@ def compare_subject_candidate_models(
             log_likelihood=total_log_likelihood,
             aic_value=aic_value,
             bic_value=bic_value,
+            waic_value=(
+                float(total_waic)
+                if has_pointwise_criteria
+                else None
+            ),
+            looic_value=(
+                float(total_looic)
+                if has_pointwise_criteria
+                else None
+            ),
         )
         comparisons.append(
             SubjectCandidateComparison(
@@ -159,6 +192,16 @@ def compare_subject_candidate_models(
                 n_parameters=n_parameters,
                 aic=float(aic_value),
                 bic=float(bic_value),
+                waic=(
+                    float(total_waic)
+                    if has_pointwise_criteria
+                    else None
+                ),
+                psis_loo=(
+                    float(total_looic)
+                    if has_pointwise_criteria
+                    else None
+                ),
                 score=float(score),
             )
         )
@@ -212,6 +255,20 @@ def compare_study_candidate_models(
             if has_posterior
             else None
         )
+        waic_values = [item.waic for item in rows]
+        has_waic = all(value is not None for value in waic_values)
+        total_waic = (
+            float(sum(float(value) for value in waic_values if value is not None))
+            if has_waic
+            else None
+        )
+        looic_values = [item.psis_loo for item in rows]
+        has_looic = all(value is not None for value in looic_values)
+        total_looic = (
+            float(sum(float(value) for value in looic_values if value is not None))
+            if has_looic
+            else None
+        )
 
         # n_parameters is expected to be constant for one candidate.
         n_parameters = int(rows[0].n_parameters)
@@ -226,6 +283,8 @@ def compare_study_candidate_models(
             log_likelihood=total_log_likelihood,
             aic_value=aic_value,
             bic_value=bic_value,
+            waic_value=total_waic,
+            looic_value=total_looic,
         )
         comparisons.append(
             StudyCandidateComparison(
@@ -235,6 +294,8 @@ def compare_study_candidate_models(
                 n_parameters=n_parameters,
                 aic=float(aic_value),
                 bic=float(bic_value),
+                waic=total_waic,
+                psis_loo=total_looic,
                 score=float(score),
             )
         )
@@ -252,8 +313,11 @@ def compare_study_candidate_models(
 def _validate_criterion(criterion: str) -> None:
     """Validate supported selection criterion."""
 
-    if criterion not in {"log_likelihood", "aic", "bic"}:
-        raise ValueError("criterion must be one of {'log_likelihood', 'aic', 'bic'}")
+    if criterion not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
+        raise ValueError(
+            "criterion must be one of "
+            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
+        )
 
 
 def _selection_score(
@@ -262,6 +326,8 @@ def _selection_score(
     log_likelihood: float,
     aic_value: float,
     bic_value: float,
+    waic_value: float | None,
+    looic_value: float | None,
 ) -> float:
     """Compute criterion-specific score."""
 
@@ -269,7 +335,17 @@ def _selection_score(
         return float(log_likelihood)
     if criterion == "aic":
         return float(aic_value)
-    return float(bic_value)
+    if criterion == "bic":
+        return float(bic_value)
+    if criterion == "waic":
+        if waic_value is None:
+            raise ValueError("waic criterion requires pointwise posterior draws")
+        return float(waic_value)
+    if criterion == "psis_loo":
+        if looic_value is None:
+            raise ValueError("psis_loo criterion requires pointwise posterior draws")
+        return float(looic_value)
+    raise ValueError(f"unsupported criterion: {criterion!r}")
 
 
 def _select_subject_candidate(

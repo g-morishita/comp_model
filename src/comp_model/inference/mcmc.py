@@ -91,6 +91,9 @@ class MCMCPosteriorResult:
         Parameter-wise posterior draws derived from ``draws``.
     diagnostics : MCMCDiagnostics
         Sampler diagnostics.
+    pointwise_log_likelihood_draws : numpy.ndarray
+        Pointwise log-likelihood draws with shape ``(n_draws, n_observations)``
+        aligned with retained ``draws``.
     compatibility : CompatibilityReport | None, optional
         Compatibility report when requirements were checked.
     """
@@ -98,6 +101,7 @@ class MCMCPosteriorResult:
     draws: tuple[MCMCDraw, ...]
     posterior_samples: PosteriorSamples
     diagnostics: MCMCDiagnostics
+    pointwise_log_likelihood_draws: np.ndarray
     compatibility: CompatibilityReport | None = None
 
     @property
@@ -105,6 +109,14 @@ class MCMCPosteriorResult:
         """Return highest-posterior retained draw candidate."""
 
         return max(self.draws, key=lambda draw: draw.candidate.log_posterior).candidate
+
+
+@dataclass(frozen=True, slots=True)
+class _EvaluatedState:
+    """Internal evaluated parameter state with pointwise likelihood values."""
+
+    candidate: PosteriorCandidate
+    pointwise_log_likelihood: tuple[float, ...]
 
 
 def posterior_samples_from_draws(draws: Sequence[MCMCDraw]) -> PosteriorSamples:
@@ -255,16 +267,17 @@ class RandomWalkMetropolisEstimator:
         normalized_bounds = _normalize_bounds(names, bounds)
 
         current = self._evaluate_state(trace, dict(initial_params))
-        if not np.isfinite(current.log_posterior):
+        if not np.isfinite(current.candidate.log_posterior):
             raise ValueError("initial_params produce non-finite log posterior")
 
         n_iterations = int(n_warmup + n_samples * thin)
         accepted_total = 0
         retained: list[MCMCDraw] = []
+        retained_pointwise: list[np.ndarray] = []
 
         for iteration in range(n_iterations):
             proposal_params = _propose(
-                current.params,
+                current.candidate.params,
                 names=names,
                 scales=scales,
                 rng=rng,
@@ -272,17 +285,22 @@ class RandomWalkMetropolisEstimator:
             proposal = (
                 self._evaluate_state(trace, proposal_params)
                 if _within_bounds(proposal_params, normalized_bounds)
-                else PosteriorCandidate(
-                    params=proposal_params,
-                    log_likelihood=float("-inf"),
-                    log_prior=float("-inf"),
-                    log_posterior=float("-inf"),
+                else _EvaluatedState(
+                    candidate=PosteriorCandidate(
+                        params=proposal_params,
+                        log_likelihood=float("-inf"),
+                        log_prior=float("-inf"),
+                        log_posterior=float("-inf"),
+                    ),
+                    pointwise_log_likelihood=tuple(
+                        float("-inf") for _ in current.pointwise_log_likelihood
+                    ),
                 )
             )
 
             accepted = _metropolis_accept(
-                current_log_posterior=current.log_posterior,
-                proposal_log_posterior=proposal.log_posterior,
+                current_log_posterior=current.candidate.log_posterior,
+                proposal_log_posterior=proposal.candidate.log_posterior,
                 rng=rng,
             )
             if accepted:
@@ -295,14 +313,18 @@ class RandomWalkMetropolisEstimator:
             if keep_iteration:
                 retained.append(
                     MCMCDraw(
-                        candidate=current,
+                        candidate=current.candidate,
                         accepted=accepted,
                         iteration=iteration,
                     )
                 )
+                retained_pointwise.append(
+                    np.asarray(current.pointwise_log_likelihood, dtype=float)
+                )
 
         draws = tuple(retained)
         posterior_samples = posterior_samples_from_draws(draws)
+        pointwise_log_likelihood_draws = np.vstack(retained_pointwise)
         diagnostics = MCMCDiagnostics(
             method="random_walk_metropolis",
             n_iterations=n_iterations,
@@ -317,6 +339,7 @@ class RandomWalkMetropolisEstimator:
             draws=draws,
             posterior_samples=posterior_samples,
             diagnostics=diagnostics,
+            pointwise_log_likelihood_draws=pointwise_log_likelihood_draws,
             compatibility=compatibility,
         )
 
@@ -324,7 +347,7 @@ class RandomWalkMetropolisEstimator:
         self,
         trace: EpisodeTrace,
         params: dict[str, float],
-    ) -> PosteriorCandidate:
+    ) -> _EvaluatedState:
         """Evaluate one parameter state under likelihood and prior."""
 
         model = self._model_factory(params)
@@ -332,11 +355,16 @@ class RandomWalkMetropolisEstimator:
         log_likelihood = float(replay.total_log_likelihood)
         log_prior = float(self._prior_program.log_prior(params))
         log_posterior = float(log_likelihood + log_prior)
-        return PosteriorCandidate(
-            params=dict(params),
-            log_likelihood=log_likelihood,
-            log_prior=log_prior,
-            log_posterior=log_posterior,
+        return _EvaluatedState(
+            candidate=PosteriorCandidate(
+                params=dict(params),
+                log_likelihood=log_likelihood,
+                log_prior=log_prior,
+                log_posterior=log_posterior,
+            ),
+            pointwise_log_likelihood=tuple(
+                float(step.log_probability) for step in replay.steps
+            ),
         )
 
 
