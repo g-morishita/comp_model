@@ -100,6 +100,8 @@ Tabular CSV I/O helpers are available via:
 Config-driven fitting directly from CSV is available via:
 - `comp_model.fit_trial_csv_from_config`
 - `comp_model.fit_study_csv_from_config`
+- `comp_model.compare_trial_csv_candidates_from_config`
+- `comp_model.compare_study_csv_candidates_from_config`
 
 CLI entrypoint:
 
@@ -110,6 +112,30 @@ python scripts/run_fit.py \
   --input-kind study \
   --level study \
   --output-dir fit_out \
+  --prefix run1
+```
+
+For candidate-model comparison from CSV plus config:
+
+```bash
+python scripts/run_compare.py \
+  --config compare_config.json \
+  --input-csv study.csv \
+  --input-kind study \
+  --level study \
+  --output-dir compare_out \
+  --prefix run1
+```
+
+Installed package command:
+
+```bash
+comp-model-compare \
+  --config compare_config.json \
+  --input-csv study.csv \
+  --input-kind study \
+  --level study \
+  --output-dir compare_out \
   --prefix run1
 ```
 

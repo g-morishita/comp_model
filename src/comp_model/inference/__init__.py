@@ -131,11 +131,16 @@ from .model_selection import (
     compare_candidate_models,
     compare_registry_candidate_models,
 )
+from .model_selection_cli import run_model_comparison_cli
 from .model_selection_config import (
     build_fit_function_from_model_config,
     compare_dataset_candidates_from_config,
     compare_study_candidates_from_config,
     compare_subject_candidates_from_config,
+)
+from .model_selection_tabular import (
+    compare_study_csv_candidates_from_config,
+    compare_trial_csv_candidates_from_config,
 )
 from .study_model_selection import (
     StudyCandidateComparison,
@@ -294,8 +299,10 @@ __all__ = [
     "compare_candidate_models",
     "compare_study_candidate_models",
     "compare_study_candidates_from_config",
+    "compare_study_csv_candidates_from_config",
     "compare_subject_candidate_models",
     "compare_subject_candidates_from_config",
+    "compare_trial_csv_candidates_from_config",
     "compare_registry_candidate_models",
     "fit_block_data",
     "fit_block_auto_from_config",
@@ -359,6 +366,7 @@ __all__ = [
     "summarize_posterior",
     "prior_program_from_config",
     "run_fit_cli",
+    "run_model_comparison_cli",
     "uniform_log_prior",
     "unit_interval_logit_transform",
     "write_hierarchical_study_block_records_csv",
