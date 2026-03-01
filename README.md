@@ -256,3 +256,11 @@ from comp_model.analysis import (
 rows = build_model_parity_matrix()
 write_model_parity_matrix_json(rows, "parity_matrix.json")
 ```
+
+CLI parity matrix export:
+
+```bash
+python scripts/run_parity_matrix.py \
+  --output-json parity_matrix.json \
+  --output-csv parity_matrix.csv
+```

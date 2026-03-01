@@ -26,6 +26,7 @@ from .parity_matrix import (
     write_model_parity_matrix_csv,
     write_model_parity_matrix_json,
 )
+from .parity_matrix_cli import run_model_parity_matrix_cli
 
 __all__ = [
     "PSISLOOResult",
@@ -48,6 +49,7 @@ __all__ = [
     "profile_likelihood_2d",
     "run_parity_benchmark",
     "run_parity_benchmark_cli",
+    "run_model_parity_matrix_cli",
     "summarize_model_parity_matrix",
     "waic",
     "write_parity_benchmark_csv",
