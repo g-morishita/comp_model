@@ -76,6 +76,14 @@ from .hierarchical import (
     fit_study_hierarchical_map,
     fit_subject_hierarchical_map,
 )
+from .hierarchical_mcmc import (
+    HierarchicalMCMCDraw,
+    HierarchicalPosteriorCandidate,
+    HierarchicalStudyPosteriorResult,
+    HierarchicalSubjectPosteriorResult,
+    sample_study_hierarchical_posterior,
+    sample_subject_hierarchical_posterior,
+)
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
 from .mle import (
@@ -193,9 +201,13 @@ __all__ = [
     "GridSearchMLEEstimator",
     "HIERARCHICAL_ESTIMATORS",
     "HierarchicalBlockResult",
+    "HierarchicalMCMCDraw",
+    "HierarchicalPosteriorCandidate",
     "HierarchicalMapEstimatorSpec",
     "HierarchicalStudyMapResult",
+    "HierarchicalStudyPosteriorResult",
     "HierarchicalSubjectMapResult",
+    "HierarchicalSubjectPosteriorResult",
     "IndependentPriorProgram",
     "LikelihoodProgram",
     "MCMCBlockResult",
@@ -296,9 +308,11 @@ __all__ = [
     "fit_study_auto_from_config",
     "fit_study_hierarchical_map",
     "fit_study_hierarchical_map_from_config",
+    "sample_study_hierarchical_posterior",
     "fit_study_from_config",
     "fit_subject_hierarchical_map",
     "fit_subject_hierarchical_map_from_config",
+    "sample_subject_hierarchical_posterior",
     "fit_subject_auto_from_config",
     "fit_subject_data",
     "fit_subject_from_config",

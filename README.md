@@ -182,6 +182,11 @@ Within-subject hierarchical MAP is now available via:
 This performs partial pooling across blocks for named parameters in transformed
 space, using the same replay likelihood path as all other estimators.
 
+Within-subject hierarchical posterior sampling (random-walk Metropolis) is
+also available via:
+- `comp_model.inference.sample_subject_hierarchical_posterior`
+- `comp_model.inference.sample_study_hierarchical_posterior`
+
 Information-criterion diagnostics are available via `comp_model.analysis`:
 - `aic`
 - `bic`
