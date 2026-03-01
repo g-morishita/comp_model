@@ -169,3 +169,57 @@ def test_recovery_cli_auto_mode_infers_parameter_from_config(tmp_path) -> None:
 
     assert code == 0
     assert (tmp_path / "auto_parameter_cases.csv").exists()
+
+
+def test_recovery_cli_accepts_yaml_config(tmp_path, capsys) -> None:
+    """Recovery CLI should parse YAML configs."""
+
+    config_path = tmp_path / "parameter_config.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "problem:",
+                "  component_id: stationary_bandit",
+                "  kwargs:",
+                "    reward_probabilities: [0.2, 0.8]",
+                "generating_model:",
+                "  component_id: asocial_state_q_value_softmax",
+                "  kwargs: {}",
+                "fitting_model:",
+                "  component_id: asocial_state_q_value_softmax",
+                "  kwargs: {}",
+                "estimator:",
+                "  type: grid_search",
+                "  parameter_grid:",
+                "    alpha: [0.3]",
+                "    beta: [2.0]",
+                "    initial_value: [0.0]",
+                "true_parameter_sets:",
+                "  - alpha: 0.3",
+                "    beta: 2.0",
+                "    initial_value: 0.0",
+                "n_trials: 6",
+                "seed: 123",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    code = run_recovery_cli(
+        [
+            "--config",
+            str(config_path),
+            "--mode",
+            "parameter",
+            "--output-dir",
+            str(tmp_path),
+            "--prefix",
+            "param_yaml",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert "Parameter recovery complete" in captured.out
+    assert (tmp_path / "param_yaml_parameter_cases.csv").exists()

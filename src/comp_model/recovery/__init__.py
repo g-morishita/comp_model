@@ -2,6 +2,7 @@
 
 from .config import (
     ComponentRef,
+    load_config,
     load_json_config,
     run_model_recovery_from_config,
     run_parameter_recovery_from_config,
@@ -35,6 +36,7 @@ __all__ = [
     "ModelRecoveryResult",
     "ParameterRecoveryCase",
     "ParameterRecoveryResult",
+    "load_config",
     "load_json_config",
     "model_recovery_case_records",
     "model_recovery_confusion_records",

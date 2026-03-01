@@ -149,3 +149,48 @@ def test_fit_cli_rejects_invalid_level_for_trial_input(tmp_path) -> None:
                 "study",
             ]
         )
+
+
+def test_fit_cli_accepts_yaml_config(tmp_path, capsys) -> None:
+    """Fit CLI should parse YAML config files."""
+
+    trial_path = tmp_path / "trial.csv"
+    write_trial_decisions_csv((_trial(0, 1, 1.0), _trial(1, 0, 0.0)), trial_path)
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "model:",
+                "  component_id: asocial_state_q_value_softmax",
+                "  kwargs: {}",
+                "estimator:",
+                "  type: grid_search",
+                "  parameter_grid:",
+                "    alpha: [0.3, 0.5]",
+                "    beta: [2.0]",
+                "    initial_value: [0.0]",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    code = run_fit_cli(
+        [
+            "--config",
+            str(config_path),
+            "--input-csv",
+            str(trial_path),
+            "--input-kind",
+            "trial",
+            "--output-dir",
+            str(tmp_path),
+            "--prefix",
+            "trial_fit_yaml",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert "Fit complete" in captured.out
+    assert (tmp_path / "trial_fit_yaml_summary.json").exists()

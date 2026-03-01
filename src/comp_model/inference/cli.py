@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
+from comp_model.core import load_config_mapping
+
 from .tabular import fit_study_csv_from_config, fit_trial_csv_from_config
 
 
@@ -25,7 +27,7 @@ def run_fit_cli(argv: Sequence[str] | None = None) -> int:
     """
 
     parser = argparse.ArgumentParser(description="Run comp_model fitting from CSV and config.")
-    parser.add_argument("--config", required=True, help="Path to fitting JSON config.")
+    parser.add_argument("--config", required=True, help="Path to fitting JSON or YAML config.")
     parser.add_argument("--input-csv", required=True, help="Path to input CSV file.")
     parser.add_argument(
         "--input-kind",
@@ -56,7 +58,7 @@ def run_fit_cli(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    config = _load_json_mapping(args.config)
+    config = _load_config_mapping(args.config)
     input_kind = str(args.input_kind)
     level = _resolve_level(input_kind=input_kind, level=str(args.level))
 
@@ -164,14 +166,10 @@ def _fit_result_summary(result: Any) -> dict[str, Any]:
     return {"result_type": type(result).__name__}
 
 
-def _load_json_mapping(path: str | Path) -> dict[str, Any]:
-    """Load one JSON object from path."""
+def _load_config_mapping(path: str | Path) -> dict[str, Any]:
+    """Load one config object from JSON or YAML path."""
 
-    with Path(path).open("r", encoding="utf-8") as handle:
-        raw = json.load(handle)
-    if not isinstance(raw, dict):
-        raise ValueError("config root must be a JSON object")
-    return raw
+    return load_config_mapping(path)
 
 
 def main() -> None:

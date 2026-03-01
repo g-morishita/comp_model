@@ -1,5 +1,6 @@
 """Core contracts and event schema for generic decision modeling."""
 
+from .config_loading import SUPPORTED_CONFIG_SUFFIXES, load_config_mapping
 from .contracts import AgentModel, DecisionContext, DecisionProblem
 from .data import (
     BlockData,
@@ -28,6 +29,7 @@ __all__ = [
     "DecisionContext",
     "DecisionProblem",
     "ComponentRequirements",
+    "SUPPORTED_CONFIG_SUFFIXES",
     "DEFAULT_TRIAL_PHASE_SEQUENCE",
     "EpisodeTrace",
     "EventPhase",
@@ -42,4 +44,5 @@ __all__ = [
     "trace_from_trial_decisions",
     "trial_decisions_from_trace",
     "validate_trace",
+    "load_config_mapping",
 ]

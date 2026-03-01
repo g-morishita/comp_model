@@ -5,7 +5,7 @@ verify outputs.
 
 ## Step 1: Prepare a Fitting Config
 
-Create `fit_config.json`:
+Create `fit_config.json` (or `fit_config.yaml` with the same fields):
 
 ```json
 {

@@ -42,7 +42,7 @@ Fit one dataset from config:
 
 ```bash
 comp-model-fit \
-  --config fit_config.json \
+  --config fit_config.yaml \
   --input-csv study.csv \
   --input-kind study \
   --level study \
@@ -54,7 +54,7 @@ Compare candidate models from config:
 
 ```bash
 comp-model-compare \
-  --config compare_config.json \
+  --config compare_config.yaml \
   --input-csv study.csv \
   --input-kind study \
   --level study \
@@ -66,11 +66,13 @@ Run recovery workflow:
 
 ```bash
 comp-model-recovery \
-  --config recovery_config.json \
+  --config recovery_config.yaml \
   --mode auto \
   --output-dir recovery_out \
   --prefix run1
 ```
+
+Config files can be JSON (`.json`) or YAML (`.yaml` / `.yml`).
 
 ## Fast Start: Simulate Then Fit in Python
 
@@ -107,6 +109,7 @@ Documentation is organized into:
 - Tutorials: `https://g-morishita.github.io/comp_model/tutorials/install-and-verify/`
 - How-to guides: `https://g-morishita.github.io/comp_model/how-to/create-a-new-problem/`
 - Reference: `https://g-morishita.github.io/comp_model/reference/api-overview/`
+- v1 parity mapping: `https://g-morishita.github.io/comp_model/reference/v1-model-parity/`
 - Explanation: `https://g-morishita.github.io/comp_model/explanation/design-philosophy/`
 - Contributor guide: `https://g-morishita.github.io/comp_model/how-to/contribute-new-models-and-tasks/`
 

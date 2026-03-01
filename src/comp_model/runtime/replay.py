@@ -170,7 +170,7 @@ def replay_trial_program(
 
 
 def replay_episode(trace: EpisodeTrace, model: AgentModel) -> ReplayResult:
-    """Replay a backward-compatible single-actor episode trace.
+    """Replay a single-actor episode trace.
 
     Parameters
     ----------
@@ -186,7 +186,7 @@ def replay_episode(trace: EpisodeTrace, model: AgentModel) -> ReplayResult:
 
     Notes
     -----
-    This function is a compatibility wrapper around
+    This function is a convenience wrapper around
     :func:`replay_trial_program` with a single ``"subject"`` actor.
     """
 

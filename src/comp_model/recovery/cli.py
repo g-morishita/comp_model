@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any, Sequence
 
-from .config import load_json_config, run_model_recovery_from_config, run_parameter_recovery_from_config
+from .config import load_config, run_model_recovery_from_config, run_parameter_recovery_from_config
 from .serialization import (
     write_model_recovery_cases_csv,
     write_model_recovery_confusion_csv,
@@ -16,7 +16,7 @@ from .serialization import (
 
 
 def run_recovery_cli(argv: Sequence[str] | None = None) -> int:
-    """Run parameter/model recovery from a JSON config path.
+    """Run parameter/model recovery from a JSON or YAML config path.
 
     Parameters
     ----------
@@ -29,8 +29,8 @@ def run_recovery_cli(argv: Sequence[str] | None = None) -> int:
         Exit code (`0` on success).
     """
 
-    parser = argparse.ArgumentParser(description="Run comp_model recovery workflow from JSON config.")
-    parser.add_argument("--config", required=True, help="Path to recovery JSON config.")
+    parser = argparse.ArgumentParser(description="Run comp_model recovery workflow from JSON or YAML config.")
+    parser.add_argument("--config", required=True, help="Path to recovery JSON or YAML config.")
     parser.add_argument(
         "--mode",
         choices=("auto", "parameter", "model"),
@@ -49,7 +49,7 @@ def run_recovery_cli(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    config = load_json_config(args.config)
+    config = load_config(args.config)
     mode = _resolve_mode(config, requested_mode=str(args.mode))
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

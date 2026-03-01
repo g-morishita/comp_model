@@ -3,7 +3,7 @@
 This module provides two runtime entry points:
 
 - :func:`run_trial_program`: multi-phase, multi-actor episode runner.
-- :func:`run_episode`: backward-compatible single-step wrapper.
+- :func:`run_episode`: single-problem convenience wrapper.
 """
 
 from __future__ import annotations
@@ -200,7 +200,7 @@ def run_trial_program(
 
 
 def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationConfig) -> EpisodeTrace:
-    """Run a backward-compatible single-step episode.
+    """Run a single-problem episode via the generic trial-program engine.
 
     Parameters
     ----------
@@ -218,9 +218,9 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
 
     Notes
     -----
-    This function wraps ``problem`` using
+    This function adapts ``problem`` using
     :class:`comp_model.runtime.program.SingleStepProgramAdapter` and runs the
-    new trial-program engine.
+    trial-program engine.
     """
 
     program = SingleStepProgramAdapter(problem)

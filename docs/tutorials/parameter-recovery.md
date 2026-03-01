@@ -5,7 +5,7 @@ and verifies the resulting artifacts.
 
 ## Step 1: Create a Recovery Config
 
-Create `parameter_recovery.json`:
+Create `parameter_recovery.json` (or `parameter_recovery.yaml` with the same fields):
 
 ```json
 {

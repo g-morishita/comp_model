@@ -3,9 +3,9 @@
 Use this guide when you already have behavioral data in CSV form and want model
 fit outputs quickly.
 
-## 1. Prepare Config JSON
+## 1. Prepare Config (JSON or YAML)
 
-Create `fit_config.json`:
+Create `fit_config.json` (or `fit_config.yaml` with the same fields):
 
 ```json
 {

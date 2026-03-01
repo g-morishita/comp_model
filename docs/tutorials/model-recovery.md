@@ -4,7 +4,7 @@ This tutorial runs a model-recovery workflow and verifies confusion outputs.
 
 ## Step 1: Create a Model-Recovery Config
 
-Create `model_recovery.json`:
+Create `model_recovery.json` (or `model_recovery.yaml` with the same fields):
 
 ```json
 {

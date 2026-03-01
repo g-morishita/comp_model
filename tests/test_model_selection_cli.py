@@ -178,3 +178,66 @@ def test_model_comparison_cli_rejects_invalid_level_for_trial_input(tmp_path) ->
                 "study",
             ]
         )
+
+
+def test_model_comparison_cli_accepts_yaml_config(tmp_path, capsys) -> None:
+    """Model-comparison CLI should parse YAML config files."""
+
+    trial_path = tmp_path / "trial.csv"
+    write_trial_decisions_csv(
+        tuple(_trial(index, action=1, reward=1.0) for index in range(8)),
+        trial_path,
+    )
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "criterion: log_likelihood",
+                "candidates:",
+                "  - name: good_mle",
+                "    model:",
+                "      component_id: asocial_state_q_value_softmax",
+                "      kwargs: {}",
+                "    estimator:",
+                "      type: grid_search",
+                "      parameter_grid:",
+                "        alpha: [0.8]",
+                "        beta: [8.0]",
+                "        initial_value: [0.0]",
+                "    n_parameters: 3",
+                "  - name: bad_mle",
+                "    model:",
+                "      component_id: asocial_state_q_value_softmax",
+                "      kwargs: {}",
+                "    estimator:",
+                "      type: grid_search",
+                "      parameter_grid:",
+                "        alpha: [0.2]",
+                "        beta: [0.0]",
+                "        initial_value: [0.0]",
+                "    n_parameters: 3",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    code = run_model_comparison_cli(
+        [
+            "--config",
+            str(config_path),
+            "--input-csv",
+            str(trial_path),
+            "--input-kind",
+            "trial",
+            "--output-dir",
+            str(tmp_path),
+            "--prefix",
+            "trial_cmp_yaml",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert "Model comparison complete" in captured.out
+    assert (tmp_path / "trial_cmp_yaml_summary.json").exists()

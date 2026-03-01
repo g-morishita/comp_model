@@ -118,8 +118,8 @@ class SingleStepProgramAdapter:
 
     Notes
     -----
-    This adapter preserves backward compatibility for ``run_episode`` by mapping
-    each trial to one decision node owned by ``"subject"``.
+    This adapter maps each trial to one decision node owned by ``"subject"``,
+    allowing single-problem tasks to run on the same generic runtime.
     """
 
     def __init__(self, problem: DecisionProblem) -> None:

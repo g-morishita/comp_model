@@ -1,6 +1,6 @@
 """Config-driven recovery workflow runners.
 
-This module turns declarative mapping/JSON configs into executable recovery
+This module turns declarative mapping/JSON/YAML configs into executable recovery
 runs using the plugin registry and inference fitting APIs.
 """
 
@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import copy
 import inspect
-import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
+from comp_model.core import load_config_mapping
 from comp_model.core.config_validation import validate_allowed_keys, validate_required_keys
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
@@ -39,13 +39,13 @@ class ComponentRef:
     kwargs: dict[str, Any]
 
 
-def load_json_config(path: str | Path) -> dict[str, Any]:
-    """Load a JSON config file as a dictionary.
+def load_config(path: str | Path) -> dict[str, Any]:
+    """Load a recovery config file as a dictionary.
 
     Parameters
     ----------
     path : str | pathlib.Path
-        JSON config file path.
+        Config file path (`.json`, `.yaml`, or `.yml`).
 
     Returns
     -------
@@ -53,12 +53,24 @@ def load_json_config(path: str | Path) -> dict[str, Any]:
         Parsed configuration mapping.
     """
 
-    with Path(path).open("r", encoding="utf-8") as handle:
-        raw = json.load(handle)
+    return load_config_mapping(path)
 
-    if not isinstance(raw, dict):
-        raise ValueError("config root must be a JSON object")
-    return raw
+
+def load_json_config(path: str | Path) -> dict[str, Any]:
+    """Backward-compatible alias for :func:`load_config`.
+
+    Parameters
+    ----------
+    path : str | pathlib.Path
+        Config file path (`.json`, `.yaml`, or `.yml`).
+
+    Returns
+    -------
+    dict[str, Any]
+        Parsed configuration mapping.
+    """
+
+    return load_config(path)
 
 
 def run_parameter_recovery_from_config(
@@ -679,6 +691,7 @@ def _merge_kwargs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, A
 
 __all__ = [
     "ComponentRef",
+    "load_config",
     "load_json_config",
     "run_model_recovery_from_config",
     "run_parameter_recovery_from_config",

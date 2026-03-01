@@ -26,6 +26,7 @@ nav:
   - Reference:
       - API Overview: reference/api-overview.md
       - Configuration Schemas: reference/config_schemas.md
+      - v1 Model Parity: reference/v1-model-parity.md
       - Contribution Rules: reference/contribution-rules.md
   - Explanation:
       - Design Philosophy: explanation/design-philosophy.md

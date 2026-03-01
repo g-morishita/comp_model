@@ -7,6 +7,7 @@ import json
 import pytest
 
 from comp_model.recovery import (
+    load_config,
     load_json_config,
     run_model_recovery_from_config,
     run_parameter_recovery_from_config,
@@ -55,6 +56,48 @@ def test_parameter_recovery_runs_from_json_config(tmp_path) -> None:
     assert case.true_params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
     assert case.estimated_params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
     assert result.mean_absolute_error == {"alpha": 0.0, "beta": 0.0, "initial_value": 0.0}
+
+
+def test_parameter_recovery_runs_from_yaml_config(tmp_path) -> None:
+    """Parameter recovery should run from YAML configuration files."""
+
+    path = tmp_path / "param_recovery_config.yaml"
+    path.write_text(
+        "\n".join(
+            [
+                "problem:",
+                "  component_id: stationary_bandit",
+                "  kwargs:",
+                "    reward_probabilities: [0.2, 0.8]",
+                "generating_model:",
+                "  component_id: asocial_state_q_value_softmax",
+                "  kwargs: {}",
+                "fitting_model:",
+                "  component_id: asocial_state_q_value_softmax",
+                "  kwargs: {}",
+                "estimator:",
+                "  type: grid_search",
+                "  parameter_grid:",
+                "    alpha: [0.3]",
+                "    beta: [2.0]",
+                "    initial_value: [0.0]",
+                "true_parameter_sets:",
+                "  - alpha: 0.3",
+                "    beta: 2.0",
+                "    initial_value: 0.0",
+                "n_trials: 30",
+                "seed: 11",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    loaded = load_config(path)
+    result = run_parameter_recovery_from_config(loaded)
+
+    assert len(result.cases) == 1
+    assert result.cases[0].estimated_params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
 
 
 def test_model_recovery_runs_from_mapping_config() -> None:
