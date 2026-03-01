@@ -109,7 +109,6 @@ Documentation is organized into:
 - Tutorials: `https://g-morishita.github.io/comp_model/tutorials/install-and-verify/`
 - How-to guides: `https://g-morishita.github.io/comp_model/how-to/create-a-new-problem/`
 - Reference: `https://g-morishita.github.io/comp_model/reference/api-overview/`
-- v1 parity mapping: `https://g-morishita.github.io/comp_model/reference/v1-model-parity/`
 - Explanation: `https://g-morishita.github.io/comp_model/explanation/design-philosophy/`
 - Contributor guide: `https://g-morishita.github.io/comp_model/how-to/contribute-new-models-and-tasks/`
 
