@@ -90,6 +90,10 @@ from .model_selection import (
     compare_candidate_models,
     compare_registry_candidate_models,
 )
+from .model_selection_config import (
+    build_fit_function_from_model_config,
+    compare_dataset_candidates_from_config,
+)
 from .serialization import (
     block_fit_records,
     hierarchical_study_block_records,
@@ -180,6 +184,8 @@ __all__ = [
     "build_map_fit_function",
     "check_trace_compatibility",
     "coerce_episode_trace",
+    "build_fit_function_from_model_config",
+    "compare_dataset_candidates_from_config",
     "extract_best_fit_summary",
     "compare_candidate_models",
     "compare_registry_candidate_models",

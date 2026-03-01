@@ -72,6 +72,7 @@ To export fit outputs:
 For candidate-model comparison on one dataset:
 - `comp_model.inference.compare_candidate_models`
 - `comp_model.inference.compare_registry_candidate_models`
+- `comp_model.inference.compare_dataset_candidates_from_config`
 
 These return per-candidate log-likelihood/AIC/BIC summaries and selected model
 labels under a chosen criterion.

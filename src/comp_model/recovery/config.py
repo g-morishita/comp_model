@@ -11,10 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from comp_model.inference.bayes import build_map_fit_function
-from comp_model.inference.bayes_config import map_fit_spec_from_config, prior_program_from_config
-from comp_model.inference.fitting import build_model_fit_function
-from comp_model.inference.config import fit_spec_from_config
+from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.plugins import PluginRegistry, build_default_registry
 from comp_model.recovery.model import CandidateModelSpec, GeneratingModelSpec, ModelRecoveryResult, run_model_recovery
 from comp_model.recovery.parameter import ParameterRecoveryResult, run_parameter_recovery
@@ -214,35 +211,19 @@ def _build_fit_function(
 ):
     """Build trace->fit callable from estimator config."""
 
-    estimator_type = str(estimator_cfg.get("type", "")).strip()
-    model_manifest = registry.get("model", fitting_ref.component_id)
-
-    model_factory = lambda params: registry.create_model(
-        fitting_ref.component_id,
-        **_merge_kwargs(fitting_ref.kwargs, params),
-    )
-
-    if estimator_type in {"scipy_map", "transformed_scipy_map"}:
-        if prior_cfg is None:
-            raise ValueError(
-                f"prior is required for estimator type {estimator_type!r} in recovery config"
-            )
-        prior_program = prior_program_from_config(
+    model_cfg = {
+        "component_id": fitting_ref.component_id,
+        "kwargs": dict(fitting_ref.kwargs),
+    }
+    return build_fit_function_from_model_config(
+        model_cfg=model_cfg,
+        estimator_cfg=estimator_cfg,
+        prior_cfg=(
             _require_mapping(prior_cfg, field_name="prior")
-        )
-        fit_spec = map_fit_spec_from_config(estimator_cfg)
-        return build_map_fit_function(
-            model_factory=model_factory,
-            prior_program=prior_program,
-            fit_spec=fit_spec,
-            requirements=model_manifest.requirements,
-        )
-
-    fit_spec = fit_spec_from_config(estimator_cfg)
-    return build_model_fit_function(
-        model_factory=model_factory,
-        fit_spec=fit_spec,
-        requirements=model_manifest.requirements,
+            if prior_cfg is not None
+            else None
+        ),
+        registry=registry,
     )
 
 
