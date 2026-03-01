@@ -82,6 +82,8 @@ class CandidateFitSummary:
         Selection score under the chosen criterion.
     best_params : dict[str, float]
         Best-fit parameter mapping.
+    log_posterior : float | None, optional
+        Best log-posterior when available (for MAP-style fits).
     """
 
     candidate_name: str
@@ -89,6 +91,7 @@ class CandidateFitSummary:
     n_parameters: int
     score: float
     best_params: dict[str, float]
+    log_posterior: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,6 +261,11 @@ def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
         n_parameters=int(item.n_parameters),
         score=float(item.score),
         best_params={key: float(value) for key, value in best.params.items()},
+        log_posterior=(
+            float(best.log_posterior)
+            if best.log_posterior is not None
+            else None
+        ),
     )
 
 

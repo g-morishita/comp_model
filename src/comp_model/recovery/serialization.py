@@ -30,6 +30,11 @@ def parameter_recovery_records(result: ParameterRecoveryResult) -> list[dict[str
             "case_index": int(case.case_index),
             "simulation_seed": int(case.simulation_seed),
             "best_log_likelihood": float(case.best_log_likelihood),
+            "best_log_posterior": (
+                float(case.best_log_posterior)
+                if case.best_log_posterior is not None
+                else None
+            ),
         }
 
         all_keys = sorted(set(case.true_params) | set(case.estimated_params))
@@ -62,6 +67,11 @@ def model_recovery_case_records(result: ModelRecoveryResult) -> list[dict[str, A
                     "selected_candidate_name": str(case.selected_candidate_name),
                     "candidate_name": str(summary.candidate_name),
                     "log_likelihood": float(summary.log_likelihood),
+                    "log_posterior": (
+                        float(summary.log_posterior)
+                        if summary.log_posterior is not None
+                        else None
+                    ),
                     "n_parameters": int(summary.n_parameters),
                     "score": float(summary.score),
                 }

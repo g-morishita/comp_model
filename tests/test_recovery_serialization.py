@@ -32,6 +32,7 @@ def test_parameter_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
                 true_params={"alpha": 0.2},
                 estimated_params={"alpha": 0.3},
                 best_log_likelihood=-1.23,
+                best_log_posterior=-1.5,
             ),
         ),
         mean_absolute_error={"alpha": 0.1},
@@ -43,6 +44,7 @@ def test_parameter_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
     assert rows[0]["true__alpha"] == pytest.approx(0.2)
     assert rows[0]["estimated__alpha"] == pytest.approx(0.3)
     assert rows[0]["error__alpha"] == pytest.approx(0.1)
+    assert rows[0]["best_log_posterior"] == pytest.approx(-1.5)
 
     output = write_parameter_recovery_csv(result, tmp_path / "parameter_recovery.csv")
     assert output.exists()
@@ -69,6 +71,7 @@ def test_model_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
                     CandidateFitSummary(
                         candidate_name="cand1",
                         log_likelihood=-1.0,
+                        log_posterior=-1.2,
                         n_parameters=2,
                         score=-1.0,
                         best_params={"alpha": 0.2},
@@ -76,6 +79,7 @@ def test_model_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
                     CandidateFitSummary(
                         candidate_name="cand2",
                         log_likelihood=-2.0,
+                        log_posterior=None,
                         n_parameters=2,
                         score=-2.0,
                         best_params={"alpha": 0.8},
@@ -90,6 +94,9 @@ def test_model_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
     case_rows = model_recovery_case_records(result)
     assert len(case_rows) == 2
     assert {row["candidate_name"] for row in case_rows} == {"cand1", "cand2"}
+    row_by_name = {row["candidate_name"]: row for row in case_rows}
+    assert row_by_name["cand1"]["log_posterior"] == pytest.approx(-1.2)
+    assert row_by_name["cand2"]["log_posterior"] is None
 
     confusion_rows = model_recovery_confusion_records(result)
     assert confusion_rows == [

@@ -37,6 +37,8 @@ class ParameterRecoveryCase:
         Best-fit parameters returned by the fitting procedure.
     best_log_likelihood : float
         Best log-likelihood reported by the fit result.
+    best_log_posterior : float | None, optional
+        Best log-posterior when available (for MAP-style fits).
     """
 
     case_index: int
@@ -44,6 +46,7 @@ class ParameterRecoveryCase:
     true_params: dict[str, float]
     estimated_params: dict[str, float]
     best_log_likelihood: float
+    best_log_posterior: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +134,11 @@ def run_parameter_recovery(
                 true_params={name: float(value) for name, value in params.items()},
                 estimated_params={name: float(value) for name, value in best.params.items()},
                 best_log_likelihood=float(best.log_likelihood),
+                best_log_posterior=(
+                    float(best.log_posterior)
+                    if best.log_posterior is not None
+                    else None
+                ),
             )
         )
 

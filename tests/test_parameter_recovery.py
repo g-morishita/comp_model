@@ -143,4 +143,5 @@ def test_run_parameter_recovery_accepts_map_fit_functions() -> None:
 
     assert len(result.cases) == 1
     assert 0.0 <= result.cases[0].estimated_params["p_right"] <= 1.0
+    assert result.cases[0].best_log_posterior is not None
     assert "p_right" in result.mean_absolute_error

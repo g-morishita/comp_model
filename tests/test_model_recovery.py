@@ -191,3 +191,6 @@ def test_run_model_recovery_accepts_map_fit_results() -> None:
 
     assert len(result.cases) == 2
     assert result.confusion_matrix["fixed_choice"].get("map_candidate", 0) == 2
+    for case in result.cases:
+        map_summary = next(item for item in case.candidate_summaries if item.candidate_name == "map_candidate")
+        assert map_summary.log_posterior == pytest.approx(-5.5)
