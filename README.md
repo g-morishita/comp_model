@@ -101,6 +101,18 @@ Config-driven fitting directly from CSV is available via:
 - `comp_model.fit_trial_csv_from_config`
 - `comp_model.fit_study_csv_from_config`
 
+CLI entrypoint:
+
+```bash
+python scripts/run_fit.py \
+  --config fit_config.json \
+  --input-csv study.csv \
+  --input-kind study \
+  --level study \
+  --output-dir fit_out \
+  --prefix run1
+```
+
 These APIs run independent fits per block and aggregate summaries at subject and
 study levels.
 

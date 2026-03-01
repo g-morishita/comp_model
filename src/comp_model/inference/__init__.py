@@ -33,6 +33,7 @@ from .bayes_config import (
     prior_program_from_config,
 )
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
+from .cli import run_fit_cli
 from .config import (
     ModelComponentSpec,
     fit_block_from_config,
@@ -357,6 +358,7 @@ __all__ = [
     "subject_summary_records",
     "summarize_posterior",
     "prior_program_from_config",
+    "run_fit_cli",
     "uniform_log_prior",
     "unit_interval_logit_transform",
     "write_hierarchical_study_block_records_csv",
