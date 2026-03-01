@@ -6,7 +6,7 @@ from known models, then summarizes selection outcomes.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
@@ -230,7 +230,7 @@ def run_model_recovery(
     for generating in generating_specs:
         for _ in range(n_replications_per_generator):
             simulation_seed = int(rng.integers(0, 2**31 - 1))
-            model = generating.model_factory(dict(generating.true_params))
+            model: AgentModel[Any, Any, Any] = generating.model_factory(dict(generating.true_params))
 
             if trace_factory is not None:
                 # Custom simulator path allows recovery on generic canonical
@@ -244,6 +244,7 @@ def run_model_recovery(
                     config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
                 )
 
+            comparison: Any
             if isinstance(trace, SubjectData):
                 comparison = compare_subject_candidate_models(
                     trace,

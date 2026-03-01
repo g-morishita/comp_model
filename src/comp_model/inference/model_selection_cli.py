@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 from comp_model.core import load_config_mapping
 
@@ -76,16 +76,18 @@ def run_model_comparison_cli(argv: Sequence[str] | None = None) -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     prefix = str(args.prefix)
 
+    result: ModelComparisonResult | SubjectModelComparisonResult | StudyModelComparisonResult
     if input_kind == "trial":
         result = compare_trial_csv_candidates_from_config(
             str(args.input_csv),
             config=config,
         )
     else:
+        study_level: Literal["study", "subject"] = "study" if level == "study" else "subject"
         result = compare_study_csv_candidates_from_config(
             str(args.input_csv),
             config=config,
-            level=level,
+            level=study_level,
             subject_id=args.subject_id,
         )
 

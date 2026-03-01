@@ -14,10 +14,10 @@ from comp_model.plugins import ComponentManifest
 from .social_utils import (
     ensure_policy_state,
     ensure_q_state,
-    maybe_extract_reward,
     extract_state,
     is_demonstrator_stage,
     is_subject_stage,
+    maybe_extract_reward,
     normalized_policy_drive,
     policy_vector,
     stable_softmax,

@@ -23,7 +23,6 @@ from comp_model.core.data import (
     trial_decisions_from_trace,
 )
 
-
 _TRIAL_COLUMNS = (
     "trial_index",
     "decision_index",
@@ -323,7 +322,7 @@ def _coerce_non_empty_str(raw: Any, *, field_name: str, row_index: int) -> str:
     return text
 
 
-def _require_columns(fieldnames: list[str] | None, *, required: tuple[str, ...]) -> None:
+def _require_columns(fieldnames: Sequence[str] | None, *, required: tuple[str, ...]) -> None:
     """Require all expected columns to exist in CSV header."""
 
     if fieldnames is None:

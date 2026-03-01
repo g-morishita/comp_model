@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Literal, Sequence
 
 from comp_model.core import load_config_mapping
 
@@ -65,10 +65,11 @@ def run_fit_cli(argv: Sequence[str] | None = None) -> int:
     if input_kind == "trial":
         result = fit_trial_csv_from_config(str(args.input_csv), config=config)
     else:
+        study_level: Literal["study", "subject"] = "study" if level == "study" else "subject"
         result = fit_study_csv_from_config(
             str(args.input_csv),
             config=config,
-            level=level,
+            level=study_level,
             subject_id=args.subject_id,
         )
 

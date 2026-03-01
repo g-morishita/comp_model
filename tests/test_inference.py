@@ -10,7 +10,12 @@ import pytest
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
 from comp_model.core.requirements import ComponentRequirements
-from comp_model.inference import ActionReplayLikelihood, GridSearchMLEEstimator, ScipyMinimizeMLEEstimator, check_trace_compatibility
+from comp_model.inference import (
+    ActionReplayLikelihood,
+    GridSearchMLEEstimator,
+    ScipyMinimizeMLEEstimator,
+    check_trace_compatibility,
+)
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.plugins import build_default_registry
 from comp_model.problems import StationaryBanditProblem

@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from comp_model.core.data import BlockData, StudyData, SubjectData
-from comp_model.inference.bayes import BayesFitResult, MapFitSpec, PriorProgram, fit_map_model_from_registry
+from comp_model.inference.bayes import (
+    BayesFitResult,
+    MapFitSpec,
+    PriorProgram,
+    fit_map_model_from_registry,
+)
 from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.plugins import PluginRegistry, build_default_registry
 

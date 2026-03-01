@@ -1,5 +1,6 @@
 """Recovery workflows for simulation-based validation."""
 
+from .cli import run_recovery_cli
 from .config import (
     ComponentRef,
     load_config,
@@ -7,7 +8,6 @@ from .config import (
     run_model_recovery_from_config,
     run_parameter_recovery_from_config,
 )
-from .cli import run_recovery_cli
 from .model import (
     CandidateFitSummary,
     CandidateModelSpec,

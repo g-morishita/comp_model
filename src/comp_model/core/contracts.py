@@ -13,9 +13,11 @@ from typing import Generic, Mapping, Protocol, Sequence, TypeVar, runtime_checka
 
 import numpy as np
 
-ObsT = TypeVar("ObsT")
+ObsProblemT_co = TypeVar("ObsProblemT_co", covariant=True)
+ObsModelT_contra = TypeVar("ObsModelT_contra", contravariant=True)
 ActionT = TypeVar("ActionT")
-OutcomeT = TypeVar("OutcomeT")
+OutcomeProblemT_co = TypeVar("OutcomeProblemT_co", covariant=True)
+OutcomeModelT_contra = TypeVar("OutcomeModelT_contra", contravariant=True)
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,7 +60,7 @@ class DecisionContext(Generic[ActionT]):
 
 
 @runtime_checkable
-class DecisionProblem(Protocol[ObsT, ActionT, OutcomeT]):
+class DecisionProblem(Protocol[ObsProblemT_co, ActionT, OutcomeProblemT_co]):
     """Interface for decision problems/environments.
 
     Methods in this protocol define the environment side of one decision step.
@@ -92,7 +94,7 @@ class DecisionProblem(Protocol[ObsT, ActionT, OutcomeT]):
             Ordered action collection valid at the given trial.
         """
 
-    def observe(self, *, context: DecisionContext[ActionT]) -> ObsT:
+    def observe(self, *, context: DecisionContext[ActionT]) -> ObsProblemT_co:
         """Generate an observation for the current trial.
 
         Parameters
@@ -102,7 +104,7 @@ class DecisionProblem(Protocol[ObsT, ActionT, OutcomeT]):
 
         Returns
         -------
-        ObsT
+        ObsProblemT_co
             Observation consumed by the model policy.
         """
 
@@ -112,7 +114,7 @@ class DecisionProblem(Protocol[ObsT, ActionT, OutcomeT]):
         *,
         context: DecisionContext[ActionT],
         rng: np.random.Generator,
-    ) -> OutcomeT:
+    ) -> OutcomeProblemT_co:
         """Apply an action and return trial outcome.
 
         Parameters
@@ -126,13 +128,13 @@ class DecisionProblem(Protocol[ObsT, ActionT, OutcomeT]):
 
         Returns
         -------
-        OutcomeT
+        OutcomeProblemT_co
             Outcome emitted by the problem after action execution.
         """
 
 
 @runtime_checkable
-class AgentModel(Protocol[ObsT, ActionT, OutcomeT]):
+class AgentModel(Protocol[ObsModelT_contra, ActionT, OutcomeModelT_contra]):
     """Interface for models/agents that interact with decision problems.
 
     Notes
@@ -147,7 +149,7 @@ class AgentModel(Protocol[ObsT, ActionT, OutcomeT]):
 
     def action_distribution(
         self,
-        observation: ObsT,
+        observation: ObsModelT_contra,
         *,
         context: DecisionContext[ActionT],
     ) -> Mapping[ActionT, float]:
@@ -155,7 +157,7 @@ class AgentModel(Protocol[ObsT, ActionT, OutcomeT]):
 
         Parameters
         ----------
-        observation : ObsT
+        observation : ObsModelT_contra
             Observation emitted by the problem.
         context : DecisionContext[ActionT]
             Immutable per-trial metadata.
@@ -169,9 +171,9 @@ class AgentModel(Protocol[ObsT, ActionT, OutcomeT]):
 
     def update(
         self,
-        observation: ObsT,
+        observation: ObsModelT_contra,
         action: ActionT,
-        outcome: OutcomeT,
+        outcome: OutcomeModelT_contra,
         *,
         context: DecisionContext[ActionT],
     ) -> None:
@@ -179,11 +181,11 @@ class AgentModel(Protocol[ObsT, ActionT, OutcomeT]):
 
         Parameters
         ----------
-        observation : ObsT
+        observation : ObsModelT_contra
             Trial observation seen before choosing the action.
         action : ActionT
             Action sampled by the runtime.
-        outcome : OutcomeT
+        outcome : OutcomeModelT_contra
             Trial outcome returned by the problem.
         context : DecisionContext[ActionT]
             Immutable per-trial metadata.

@@ -9,7 +9,11 @@ from comp_model.core.data import SubjectData
 from comp_model.io import read_study_decisions_csv, read_trial_decisions_csv
 from comp_model.plugins import PluginRegistry
 
-from .config_dispatch import fit_dataset_auto_from_config, fit_study_auto_from_config, fit_subject_auto_from_config
+from .config_dispatch import (
+    fit_dataset_auto_from_config,
+    fit_study_auto_from_config,
+    fit_subject_auto_from_config,
+)
 
 
 def fit_trial_csv_from_config(

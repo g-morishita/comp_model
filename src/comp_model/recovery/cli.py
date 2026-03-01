@@ -56,46 +56,46 @@ def run_recovery_cli(argv: Sequence[str] | None = None) -> int:
     prefix = str(args.prefix)
 
     if mode == "parameter":
-        result = run_parameter_recovery_from_config(config)
+        parameter_result = run_parameter_recovery_from_config(config)
         case_path = write_parameter_recovery_csv(
-            result,
+            parameter_result,
             output_dir / f"{prefix}_parameter_cases.csv",
         )
         summary_path = _write_json_summary(
             output_dir / f"{prefix}_parameter_summary.json",
             {
                 "mode": "parameter",
-                "n_cases": len(result.cases),
-                "mean_absolute_error": result.mean_absolute_error,
-                "mean_signed_error": result.mean_signed_error,
+                "n_cases": len(parameter_result.cases),
+                "mean_absolute_error": parameter_result.mean_absolute_error,
+                "mean_signed_error": parameter_result.mean_signed_error,
             },
         )
-        print(f"Parameter recovery complete: n_cases={len(result.cases)}")
+        print(f"Parameter recovery complete: n_cases={len(parameter_result.cases)}")
         print(f"Cases CSV: {case_path}")
         print(f"Summary JSON: {summary_path}")
         return 0
 
-    result = run_model_recovery_from_config(config)
+    model_result = run_model_recovery_from_config(config)
     case_path = write_model_recovery_cases_csv(
-        result,
+        model_result,
         output_dir / f"{prefix}_model_cases.csv",
     )
     confusion_path = write_model_recovery_confusion_csv(
-        result,
+        model_result,
         output_dir / f"{prefix}_model_confusion.csv",
     )
     summary_path = _write_json_summary(
         output_dir / f"{prefix}_model_summary.json",
         {
             "mode": "model",
-            "criterion": result.criterion,
-            "n_cases": len(result.cases),
-            "confusion_matrix": result.confusion_matrix,
+            "criterion": model_result.criterion,
+            "n_cases": len(model_result.cases),
+            "confusion_matrix": model_result.confusion_matrix,
         },
     )
     print(
         "Model recovery complete: "
-        f"n_cases={len(result.cases)}, criterion={result.criterion}"
+        f"n_cases={len(model_result.cases)}, criterion={model_result.criterion}"
     )
     print(f"Cases CSV: {case_path}")
     print(f"Confusion CSV: {confusion_path}")

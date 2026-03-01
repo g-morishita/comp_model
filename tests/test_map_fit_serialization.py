@@ -6,7 +6,11 @@ import csv
 from pathlib import Path
 
 from comp_model.inference.bayes import BayesFitResult, PosteriorCandidate
-from comp_model.inference.map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
+from comp_model.inference.map_study_fitting import (
+    MapBlockFitResult,
+    MapStudyFitResult,
+    MapSubjectFitResult,
+)
 from comp_model.inference.serialization import (
     map_block_fit_records,
     map_study_fit_records,

@@ -6,7 +6,7 @@ hierarchical MAP fitting, using declarative mapping/JSON-style configurations.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,6 +18,7 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 from .bayes import (
     BayesFitResult,
     IndependentPriorProgram,
+    MapEstimatorType,
     MapFitSpec,
     PriorProgram,
     beta_log_prior,
@@ -43,7 +44,12 @@ from .map_study_fitting import (
     fit_map_study_data,
     fit_map_subject_data,
 )
-from .transforms import ParameterTransform, identity_transform, positive_log_transform, unit_interval_logit_transform
+from .transforms import (
+    ParameterTransform,
+    identity_transform,
+    positive_log_transform,
+    unit_interval_logit_transform,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,21 +113,25 @@ def map_fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> MapFitSpec:
     """
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
-    estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
-    if estimator_type == "scipy_map":
+    estimator_type_raw = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
+    if estimator_type_raw == "scipy_map":
+        estimator_type: MapEstimatorType = "scipy_map"
         validate_allowed_keys(
             estimator,
             field_name="estimator",
             allowed_keys=("type", "initial_params", "bounds", "method", "tol"),
         )
-    elif estimator_type == "transformed_scipy_map":
+    elif estimator_type_raw == "transformed_scipy_map":
+        estimator_type = "transformed_scipy_map"
         validate_allowed_keys(
             estimator,
             field_name="estimator",
             allowed_keys=("type", "initial_params", "bounds_z", "transforms", "method", "tol"),
         )
     else:
-        validate_allowed_keys(estimator, field_name="estimator", allowed_keys=("type",))
+        raise ValueError(
+            "estimator.type must be one of {'scipy_map', 'transformed_scipy_map'}"
+        )
 
     return MapFitSpec(
         estimator_type=estimator_type,

@@ -11,11 +11,23 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecisio
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
-from .fitting import FitSpec, fit_model_from_registry
+from .fitting import EstimatorType, FitSpec, fit_model_from_registry
 from .likelihood_config import likelihood_program_from_config
 from .mle import MLEFitResult
-from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult, fit_block_data, fit_study_data, fit_subject_data
-from .transforms import ParameterTransform, identity_transform, positive_log_transform, unit_interval_logit_transform
+from .study_fitting import (
+    BlockFitResult,
+    StudyFitResult,
+    SubjectFitResult,
+    fit_block_data,
+    fit_study_data,
+    fit_subject_data,
+)
+from .transforms import (
+    ParameterTransform,
+    identity_transform,
+    positive_log_transform,
+    unit_interval_logit_transform,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,27 +66,33 @@ def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
     """
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
-    estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
-    if estimator_type == "grid_search":
+    estimator_type_raw = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
+    if estimator_type_raw == "grid_search":
+        estimator_type: EstimatorType = "grid_search"
         validate_allowed_keys(
             estimator,
             field_name="estimator",
             allowed_keys=("type", "parameter_grid"),
         )
-    elif estimator_type == "scipy_minimize":
+    elif estimator_type_raw == "scipy_minimize":
+        estimator_type = "scipy_minimize"
         validate_allowed_keys(
             estimator,
             field_name="estimator",
             allowed_keys=("type", "initial_params", "bounds", "method", "tol"),
         )
-    elif estimator_type == "transformed_scipy_minimize":
+    elif estimator_type_raw == "transformed_scipy_minimize":
+        estimator_type = "transformed_scipy_minimize"
         validate_allowed_keys(
             estimator,
             field_name="estimator",
             allowed_keys=("type", "initial_params", "bounds_z", "transforms", "method", "tol"),
         )
     else:
-        validate_allowed_keys(estimator, field_name="estimator", allowed_keys=("type",))
+        raise ValueError(
+            "estimator.type must be one of "
+            "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
+        )
 
     return FitSpec(
         estimator_type=estimator_type,

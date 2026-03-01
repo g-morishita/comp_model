@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision, trace_from_trial_decisions
+from comp_model.core.data import (
+    BlockData,
+    StudyData,
+    SubjectData,
+    TrialDecision,
+    trace_from_trial_decisions,
+)
 from comp_model.io import (
     read_study_decisions_csv,
     read_trial_decisions_csv,

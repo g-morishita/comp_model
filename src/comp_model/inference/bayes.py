@@ -215,7 +215,7 @@ def build_map_fit_function(
     like = likelihood_program if likelihood_program is not None else ActionReplayLikelihood()
 
     if fit_spec.estimator_type == "scipy_map":
-        estimator = ScipyMapBayesEstimator(
+        scipy_map_estimator = ScipyMapBayesEstimator(
             likelihood_program=like,
             model_factory=model_factory,
             prior_program=prior_program,
@@ -223,14 +223,14 @@ def build_map_fit_function(
             method=fit_spec.method,
             tol=fit_spec.tol,
         )
-        return lambda trace: estimator.fit(
+        return lambda trace: scipy_map_estimator.fit(
             trace,
             initial_params=fit_spec.initial_params,
             bounds=fit_spec.bounds,
         )
 
     if fit_spec.estimator_type == "transformed_scipy_map":
-        estimator = TransformedScipyMapBayesEstimator(
+        transformed_map_estimator = TransformedScipyMapBayesEstimator(
             likelihood_program=like,
             model_factory=model_factory,
             prior_program=prior_program,
@@ -239,7 +239,7 @@ def build_map_fit_function(
             method=fit_spec.method,
             tol=fit_spec.tol,
         )
-        return lambda trace: estimator.fit(
+        return lambda trace: transformed_map_estimator.fit(
             trace,
             initial_params=fit_spec.initial_params,
             bounds_z=fit_spec.bounds_z,

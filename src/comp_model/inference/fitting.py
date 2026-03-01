@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from comp_model.core.contracts import AgentModel
-from comp_model.core.data import BlockData, TrialDecision, get_block_trace, trace_from_trial_decisions
+from comp_model.core.data import (
+    BlockData,
+    TrialDecision,
+    get_block_trace,
+    trace_from_trial_decisions,
+)
 from comp_model.core.events import EpisodeTrace, validate_trace
 from comp_model.core.requirements import ComponentRequirements
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -136,25 +141,25 @@ def build_model_fit_function(
         if fit_spec.parameter_grid is None:
             raise ValueError("fit_spec.parameter_grid is required for grid_search")
 
-        estimator = GridSearchMLEEstimator(
+        grid_estimator = GridSearchMLEEstimator(
             likelihood_program=likelihood,
             model_factory=model_factory,
             requirements=requirements,
         )
-        return lambda trace: estimator.fit(trace=trace, parameter_grid=fit_spec.parameter_grid or {})
+        return lambda trace: grid_estimator.fit(trace=trace, parameter_grid=fit_spec.parameter_grid or {})
 
     if fit_spec.estimator_type == "scipy_minimize":
         if fit_spec.initial_params is None:
             raise ValueError("fit_spec.initial_params is required for scipy_minimize")
 
-        estimator = ScipyMinimizeMLEEstimator(
+        scipy_estimator = ScipyMinimizeMLEEstimator(
             likelihood_program=likelihood,
             model_factory=model_factory,
             requirements=requirements,
             method=fit_spec.method,
             tol=fit_spec.tol,
         )
-        return lambda trace: estimator.fit(
+        return lambda trace: scipy_estimator.fit(
             trace=trace,
             initial_params=fit_spec.initial_params or {},
             bounds=fit_spec.bounds,
@@ -164,7 +169,7 @@ def build_model_fit_function(
         if fit_spec.initial_params is None:
             raise ValueError("fit_spec.initial_params is required for transformed_scipy_minimize")
 
-        estimator = TransformedScipyMinimizeMLEEstimator(
+        transformed_estimator = TransformedScipyMinimizeMLEEstimator(
             likelihood_program=likelihood,
             model_factory=model_factory,
             transforms=fit_spec.transforms,
@@ -172,7 +177,7 @@ def build_model_fit_function(
             method=fit_spec.method,
             tol=fit_spec.tol,
         )
-        return lambda trace: estimator.fit(
+        return lambda trace: transformed_estimator.fit(
             trace=trace,
             initial_params=fit_spec.initial_params or {},
             bounds_z=fit_spec.bounds_z,

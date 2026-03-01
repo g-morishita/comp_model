@@ -10,14 +10,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
-from typing import Any
 
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionContext, DecisionProblem
 from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
 from comp_model.runtime.probabilities import normalize_distribution, sample_action
-from comp_model.runtime.program import TrialProgram, SingleStepProgramAdapter
+from comp_model.runtime.program import SingleStepProgramAdapter, TrialProgram
 
 
 @dataclass(frozen=True, slots=True)

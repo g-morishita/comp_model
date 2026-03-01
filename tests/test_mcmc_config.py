@@ -15,11 +15,11 @@ from comp_model.inference import (
     hierarchical_mcmc_estimator_spec_from_config,
     hierarchical_stan_estimator_spec_from_config,
     mcmc_estimator_spec_from_config,
-    sample_study_hierarchical_posterior_from_config,
     sample_posterior_block_from_config,
     sample_posterior_dataset_from_config,
     sample_posterior_study_from_config,
     sample_posterior_subject_from_config,
+    sample_study_hierarchical_posterior_from_config,
     sample_subject_hierarchical_posterior_from_config,
 )
 from comp_model.models import UniformRandomPolicyModel

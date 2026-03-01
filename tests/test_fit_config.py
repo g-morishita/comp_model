@@ -8,7 +8,11 @@ import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.demonstrators import FixedSequenceDemonstrator
-from comp_model.inference import fit_dataset_from_config, fit_spec_from_config, fit_study_from_config
+from comp_model.inference import (
+    fit_dataset_from_config,
+    fit_spec_from_config,
+    fit_study_from_config,
+)
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import TwoStageSocialBanditProgram
 from comp_model.runtime import SimulationConfig, run_trial_program

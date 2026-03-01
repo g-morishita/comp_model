@@ -6,9 +6,9 @@ Discovery scans a package for ``PLUGIN_MANIFESTS`` constants.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import importlib
 import pkgutil
+from dataclasses import dataclass
 from typing import Any, Callable, Literal
 
 from comp_model.core.requirements import ComponentRequirements

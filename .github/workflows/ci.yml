@@ -23,6 +23,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,docs]"
 
+      - name: Run lint (ruff)
+        run: |
+          python -m ruff check src tests
+
+      - name: Run type checks (mypy)
+        run: |
+          python -m mypy src/comp_model
+
       - name: Run tests
         run: |
           python -m pytest -q

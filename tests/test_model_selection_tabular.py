@@ -5,7 +5,10 @@ from __future__ import annotations
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
-from comp_model.inference import compare_study_csv_candidates_from_config, compare_trial_csv_candidates_from_config
+from comp_model.inference import (
+    compare_study_csv_candidates_from_config,
+    compare_trial_csv_candidates_from_config,
+)
 from comp_model.io import write_study_decisions_csv, write_trial_decisions_csv
 
 

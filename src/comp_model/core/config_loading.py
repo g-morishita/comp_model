@@ -9,7 +9,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 SUPPORTED_CONFIG_SUFFIXES: tuple[str, ...] = (".json", ".yaml", ".yml")
 
 

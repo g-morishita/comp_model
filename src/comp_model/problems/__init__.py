@@ -4,11 +4,6 @@ This package contains concrete decision problems under the generic
 ``DecisionProblem`` protocol.
 """
 
-from .stationary_bandit import (
-    BanditOutcome,
-    StationaryBanditProblem,
-    create_stationary_bandit_problem,
-)
 from .social_two_stage_bandit import (
     SocialBanditOutcome,
     TwoStageSocialBanditProgram,
@@ -18,6 +13,11 @@ from .social_two_stage_post_outcome_bandit import (
     SocialBanditPostOutcome,
     TwoStageSocialPostOutcomeBanditProgram,
     create_two_stage_social_post_outcome_bandit_program,
+)
+from .stationary_bandit import (
+    BanditOutcome,
+    StationaryBanditProblem,
+    create_stationary_bandit_problem,
 )
 
 __all__ = [

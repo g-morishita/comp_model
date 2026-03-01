@@ -15,5 +15,11 @@ else
   exit 1
 fi
 
+echo "Running lint (ruff) before push..."
+"${PYTHON_BIN}" -m ruff check src tests
+
+echo "Running type checks (mypy) before push..."
+"${PYTHON_BIN}" -m mypy src/comp_model
+
 echo "Running tests before push..."
 "${PYTHON_BIN}" -m pytest -q

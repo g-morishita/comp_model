@@ -15,11 +15,11 @@ from .hierarchical_mcmc import (
 from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .model_selection import ModelComparisonResult
 from .posterior import PosteriorSummary, posterior_summary_records
+from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
 from .study_model_selection import (
     StudyModelComparisonResult,
     SubjectModelComparisonResult,
 )
-from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
 
 
 def block_fit_records(block_result: BlockFitResult, *, subject_id: str | None = None) -> list[dict[str, Any]]:

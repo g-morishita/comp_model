@@ -22,7 +22,14 @@ from typing import Any
 
 import numpy as np
 
-from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision, get_block_trace, trial_decisions_from_trace
+from comp_model.core.data import (
+    BlockData,
+    StudyData,
+    SubjectData,
+    TrialDecision,
+    get_block_trace,
+    trial_decisions_from_trace,
+)
 from comp_model.core.requirements import ComponentRequirements
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
@@ -589,7 +596,7 @@ def _build_subject_inputs(
                         theta,
                         resolved_transform_kinds[name],
                     )
-                elif name in initial_group_location:
+                elif initial_group_location is not None and name in initial_group_location:
                     block_z_init[block_index, param_index] = group_loc_init[param_index]
                 else:
                     block_z_init[block_index, param_index] = 0.0
@@ -863,4 +870,3 @@ __all__ = [
     "sample_study_hierarchical_posterior_stan",
     "sample_subject_hierarchical_posterior_stan",
 ]
-

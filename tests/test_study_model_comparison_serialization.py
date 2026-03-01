@@ -6,7 +6,12 @@ import csv
 from pathlib import Path
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
-from comp_model.inference import CandidateFitSpec, MLECandidate, MLEFitResult, compare_study_candidate_models
+from comp_model.inference import (
+    CandidateFitSpec,
+    MLECandidate,
+    MLEFitResult,
+    compare_study_candidate_models,
+)
 from comp_model.inference.serialization import (
     study_model_comparison_records,
     study_model_comparison_subject_records,

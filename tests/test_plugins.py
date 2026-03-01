@@ -19,6 +19,7 @@ from comp_model.generators import (
     EventTraceSocialPreChoiceGenerator,
     SocialBlockSpec,
 )
+from comp_model.inference import ActionReplayLikelihood, ActorSubsetReplayLikelihood
 from comp_model.models import (
     AsocialQValueSoftmaxModel,
     AsocialStateQValueSoftmaxModel,
@@ -40,7 +41,6 @@ from comp_model.models import (
     SocialSelfOutcomeValueShapingModel,
     UniformRandomPolicyModel,
 )
-from comp_model.inference import ActionReplayLikelihood, ActorSubsetReplayLikelihood
 from comp_model.plugins import PluginRegistry, build_default_registry
 from comp_model.problems import StationaryBanditProblem
 

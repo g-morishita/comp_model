@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from comp_model.inference import MLECandidate
 from comp_model.recovery.model import CandidateFitSummary, ModelRecoveryCase, ModelRecoveryResult
 from comp_model.recovery.parameter import ParameterRecoveryCase, ParameterRecoveryResult
 from comp_model.recovery.serialization import (

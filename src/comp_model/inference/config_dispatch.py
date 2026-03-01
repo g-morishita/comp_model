@@ -28,13 +28,13 @@ from .config import (
     fit_study_from_config,
     fit_subject_from_config,
 )
-from .mcmc_config import sample_posterior_dataset_from_config
 from .mcmc_config import (
     sample_posterior_block_from_config,
-    sample_study_hierarchical_posterior_from_config,
+    sample_posterior_dataset_from_config,
     sample_posterior_study_from_config,
-    sample_subject_hierarchical_posterior_from_config,
     sample_posterior_subject_from_config,
+    sample_study_hierarchical_posterior_from_config,
+    sample_subject_hierarchical_posterior_from_config,
 )
 
 MLE_ESTIMATORS = {"grid_search", "scipy_minimize", "transformed_scipy_minimize"}

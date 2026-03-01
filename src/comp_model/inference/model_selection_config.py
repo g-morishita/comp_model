@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from comp_model.core.config_validation import validate_allowed_keys
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
@@ -19,7 +19,12 @@ from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
 from .mcmc import sample_posterior_model
 from .mcmc_config import mcmc_estimator_spec_from_config
-from .model_selection import CandidateFitSpec, ModelComparisonResult, compare_candidate_models
+from .model_selection import (
+    CandidateFitSpec,
+    ModelComparisonResult,
+    SelectionCriterion,
+    compare_candidate_models,
+)
 from .study_model_selection import (
     StudyModelComparisonResult,
     SubjectModelComparisonResult,
@@ -84,10 +89,10 @@ def build_fit_function_from_model_config(
         field_name="estimator.type",
     )
     if estimator_type in MLE_ESTIMATORS:
-        fit_spec = fit_spec_from_config(estimator_cfg)
+        mle_fit_spec = fit_spec_from_config(estimator_cfg)
         return build_model_fit_function(
             model_factory=model_factory,
-            fit_spec=fit_spec,
+            fit_spec=mle_fit_spec,
             requirements=manifest.requirements,
             likelihood_program=resolved_likelihood,
         )
@@ -98,11 +103,11 @@ def build_fit_function_from_model_config(
                 f"prior is required for estimator type {estimator_type!r}"
             )
         prior_program = prior_program_from_config(prior_cfg)
-        fit_spec = map_fit_spec_from_config(estimator_cfg)
+        map_fit_spec = map_fit_spec_from_config(estimator_cfg)
         return build_map_fit_function(
             model_factory=model_factory,
             prior_program=prior_program,
-            fit_spec=fit_spec,
+            fit_spec=map_fit_spec,
             requirements=manifest.requirements,
             likelihood_program=resolved_likelihood,
         )
@@ -169,7 +174,10 @@ def compare_dataset_candidates_from_config(
         field_name="config",
         allowed_keys=("candidates", "criterion", "n_observations", "likelihood"),
     )
-    criterion = str(cfg.get("criterion", "log_likelihood"))
+    criterion = _parse_selection_criterion(
+        cfg.get("criterion", "log_likelihood"),
+        field_name="config.criterion",
+    )
     n_observations = int(cfg["n_observations"]) if "n_observations" in cfg else None
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
@@ -218,7 +226,10 @@ def compare_subject_candidates_from_config(
         likelihood_cfg=likelihood_cfg,
         likelihood_program=likelihood_program,
     )
-    criterion = str(cfg.get("criterion", "log_likelihood"))
+    criterion = _parse_selection_criterion(
+        cfg.get("criterion", "log_likelihood"),
+        field_name="config.criterion",
+    )
     return compare_subject_candidate_models(
         subject,
         candidate_specs=candidate_specs,
@@ -252,7 +263,10 @@ def compare_study_candidates_from_config(
         likelihood_cfg=likelihood_cfg,
         likelihood_program=likelihood_program,
     )
-    criterion = str(cfg.get("criterion", "log_likelihood"))
+    criterion = _parse_selection_criterion(
+        cfg.get("criterion", "log_likelihood"),
+        field_name="config.criterion",
+    )
     return compare_study_candidate_models(
         study,
         candidate_specs=candidate_specs,
@@ -328,6 +342,18 @@ def _coerce_non_empty_str(raw: Any, *, field_name: str) -> str:
     if not value:
         raise ValueError(f"{field_name} must be a non-empty string")
     return value
+
+
+def _parse_selection_criterion(raw: Any, *, field_name: str) -> SelectionCriterion:
+    """Parse model-selection criterion into strict literal type."""
+
+    value = _coerce_non_empty_str(raw, field_name=field_name)
+    if value not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
+        raise ValueError(
+            f"{field_name} must be one of "
+            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
+        )
+    return cast(SelectionCriterion, value)
 
 
 def _require_mapping(raw: Any, *, field_name: str) -> dict[str, Any]:

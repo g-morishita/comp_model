@@ -10,16 +10,22 @@ import copy
 import inspect
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
 from comp_model.core import load_config_mapping
 from comp_model.core.config_validation import validate_allowed_keys, validate_required_keys
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
+from comp_model.inference.model_selection import SelectionCriterion
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.plugins import PluginRegistry, build_default_registry
-from comp_model.recovery.model import CandidateModelSpec, GeneratingModelSpec, ModelRecoveryResult, run_model_recovery
+from comp_model.recovery.model import (
+    CandidateModelSpec,
+    GeneratingModelSpec,
+    ModelRecoveryResult,
+    run_model_recovery,
+)
 from comp_model.recovery.parameter import ParameterRecoveryResult, run_parameter_recovery
 
 
@@ -221,13 +227,19 @@ def run_model_recovery_from_config(
         )
         true_params = _coerce_float_mapping(item.get("true_params", {}), field_name=f"generating[{index}].true_params")
 
+        def model_factory(
+            params: dict[str, float],
+            model_ref: ComponentRef = model_ref,
+        ) -> Any:
+            return reg.create_model(
+                model_ref.component_id,
+                **_merge_kwargs(model_ref.kwargs, params),
+            )
+
         generating_specs.append(
             GeneratingModelSpec(
                 name=name,
-                model_factory=lambda params, model_ref=model_ref: reg.create_model(
-                    model_ref.component_id,
-                    **_merge_kwargs(model_ref.kwargs, params),
-                ),
+                model_factory=model_factory,
                 true_params=true_params,
             )
         )
@@ -272,7 +284,10 @@ def run_model_recovery_from_config(
         config.get("n_replications_per_generator"),
         field_name="n_replications_per_generator",
     )
-    criterion = str(config.get("criterion", "log_likelihood"))
+    criterion = _parse_selection_criterion(
+        config.get("criterion", "log_likelihood"),
+        field_name="criterion",
+    )
     seed = int(config.get("seed", 0))
     problem_factory, trace_factory, _ = _build_simulation_sources(
         config=config,
@@ -421,7 +436,7 @@ def _build_simulation_sources(
     parameter_names = tuple(signature.parameters)
 
     if "model" in parameter_names:
-        blocks: list[AsocialBlockSpec] = []
+        asocial_blocks: list[AsocialBlockSpec] = []
         for index, raw_block in enumerate(block_rows):
             block_cfg = _require_mapping(raw_block, field_name=f"simulation.blocks[{index}]")
             validate_allowed_keys(
@@ -432,7 +447,7 @@ def _build_simulation_sources(
             block_n_trials = int(block_cfg.get("n_trials", n_trials))
             if block_n_trials <= 0:
                 raise ValueError(f"simulation.blocks[{index}].n_trials must be > 0")
-            blocks.append(
+            asocial_blocks.append(
                 AsocialBlockSpec(
                     n_trials=block_n_trials,
                     problem_kwargs=_require_mapping(
@@ -447,22 +462,22 @@ def _build_simulation_sources(
                     ),
                 )
             )
-        block_specs = tuple(blocks)
+        block_specs = tuple(asocial_blocks)
 
         def trace_factory(generating_model: Any, simulation_seed: int):
             rng = np.random.default_rng(simulation_seed)
             if simulation_level == "block":
-                block = copy.copy(block_specs[0])
-                block = AsocialBlockSpec(
-                    n_trials=block.n_trials,
-                    problem_kwargs=block.problem_kwargs,
-                    block_id=block.block_id,
+                block_spec = copy.copy(block_specs[0])
+                block_spec = AsocialBlockSpec(
+                    n_trials=block_spec.n_trials,
+                    problem_kwargs=block_spec.problem_kwargs,
+                    block_id=block_spec.block_id,
                     seed=int(simulation_seed),
-                    metadata=block.metadata,
+                    metadata=block_spec.metadata,
                 )
                 block_data = generator.simulate_block(
                     model=generating_model,
-                    block=block,
+                    block=block_spec,
                     rng=rng,
                 )
                 trace = getattr(block_data, "event_trace", None)
@@ -494,7 +509,7 @@ def _build_simulation_sources(
             _require_mapping(simulation_cfg, "demonstrator_model", field_name="simulation"),
             field_name="simulation.demonstrator_model",
         )
-        blocks: list[SocialBlockSpec] = []
+        social_blocks: list[SocialBlockSpec] = []
         for index, raw_block in enumerate(block_rows):
             block_cfg = _require_mapping(raw_block, field_name=f"simulation.blocks[{index}]")
             validate_allowed_keys(
@@ -505,7 +520,7 @@ def _build_simulation_sources(
             block_n_trials = int(block_cfg.get("n_trials", n_trials))
             if block_n_trials <= 0:
                 raise ValueError(f"simulation.blocks[{index}].n_trials must be > 0")
-            blocks.append(
+            social_blocks.append(
                 SocialBlockSpec(
                     n_trials=block_n_trials,
                     program_kwargs=_require_mapping(
@@ -520,7 +535,7 @@ def _build_simulation_sources(
                     ),
                 )
             )
-        block_specs = tuple(blocks)
+        social_block_specs = tuple(social_blocks)
 
         def trace_factory(generating_model: Any, simulation_seed: int):
             rng = np.random.default_rng(simulation_seed)
@@ -532,18 +547,18 @@ def _build_simulation_sources(
                 )
 
             if simulation_level == "block":
-                block = copy.copy(block_specs[0])
-                block = SocialBlockSpec(
-                    n_trials=block.n_trials,
-                    program_kwargs=block.program_kwargs,
-                    block_id=block.block_id,
+                block_spec = copy.copy(social_block_specs[0])
+                block_spec = SocialBlockSpec(
+                    n_trials=block_spec.n_trials,
+                    program_kwargs=block_spec.program_kwargs,
+                    block_id=block_spec.block_id,
                     seed=int(simulation_seed),
-                    metadata=block.metadata,
+                    metadata=block_spec.metadata,
                 )
                 block_data = generator.simulate_block(
                     subject_model=generating_model,
                     demonstrator_model=make_demonstrator(),
-                    block=block,
+                    block=block_spec,
                     rng=rng,
                 )
                 trace = getattr(block_data, "event_trace", None)
@@ -555,7 +570,7 @@ def _build_simulation_sources(
                     subject_id=subject_id,
                     subject_model=generating_model,
                     demonstrator_model=make_demonstrator(),
-                    blocks=block_specs,
+                    blocks=social_block_specs,
                     rng=rng,
                 )
 
@@ -567,7 +582,7 @@ def _build_simulation_sources(
             return generator.simulate_study(
                 subject_models=subject_models,
                 demonstrator_models=demonstrator_models,
-                blocks=block_specs,
+                blocks=social_block_specs,
                 rng=rng,
             )
 
@@ -653,6 +668,18 @@ def _coerce_non_empty_str(raw: Any, *, field_name: str) -> str:
     if not value:
         raise ValueError(f"{field_name} must be a non-empty string")
     return value
+
+
+def _parse_selection_criterion(raw: Any, *, field_name: str) -> SelectionCriterion:
+    """Parse criterion name into strict model-selection literal type."""
+
+    value = _coerce_non_empty_str(raw, field_name=field_name)
+    if value not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
+        raise ValueError(
+            f"{field_name} must be one of "
+            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
+        )
+    return cast(SelectionCriterion, value)
 
 
 def _require_mapping(raw: Any, key: str | None = None, *, field_name: str | None = None) -> dict[str, Any]:

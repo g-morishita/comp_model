@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from comp_model.core.contracts import AgentModel
 from comp_model.core.events import EpisodeTrace

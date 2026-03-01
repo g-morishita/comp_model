@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from comp_model.core.contracts import DecisionContext
+from comp_model.core.data import BlockData, StudyData, SubjectData, trial_decisions_from_trace
 from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
@@ -25,7 +26,6 @@ from comp_model.inference import (
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
-from comp_model.core.data import BlockData, StudyData, SubjectData, trial_decisions_from_trace
 from comp_model.recovery import CandidateModelSpec, GeneratingModelSpec, run_model_recovery
 from comp_model.runtime import SimulationConfig, run_episode, run_trial_program
 
