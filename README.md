@@ -44,6 +44,8 @@ Use `comp_model.inference.fit_model` to fit a model directly from:
 This fitting module is now the shared base used by recovery workflows.
 Recovery workflows can consume both MLE-style and MAP-style fit outputs.
 Config-driven recovery runners support MAP estimators when a `prior` section is provided.
+Recovery model-selection criteria support `waic` and `psis_loo` when candidate
+fitters provide posterior pointwise log-likelihood draws (for example via MCMC).
 Recovery serialization rows now include optional `best_log_posterior` and
 candidate `param__*` columns when available.
 

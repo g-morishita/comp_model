@@ -12,9 +12,12 @@ from comp_model.inference import (
     ActionReplayLikelihood,
     BayesFitResult,
     GridSearchMLEEstimator,
+    IndependentPriorProgram,
     MLECandidate,
     MLEFitResult,
     PosteriorCandidate,
+    sample_posterior_model,
+    uniform_log_prior,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import StationaryBanditProblem
@@ -84,6 +87,31 @@ def _fit_constant_map(trace: Any) -> BayesFitResult:
         log_posterior=-5.5,
     )
     return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
+
+
+def _fit_fixed_choice_mcmc(
+    trace: Any,
+    *,
+    lower: float,
+    upper: float,
+    seed: int,
+):
+    """Fit fixed-choice model with MCMC posterior sampling."""
+
+    return sample_posterior_model(
+        trace,
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        prior_program=IndependentPriorProgram(
+            {"p_right": uniform_log_prior(lower=0.0, upper=1.0)}
+        ),
+        initial_params={"p_right": min(max(0.5, lower + 1e-3), upper - 1e-3)},
+        n_samples=30,
+        n_warmup=30,
+        thin=1,
+        proposal_scales={"p_right": 0.08},
+        bounds={"p_right": (lower, upper)},
+        random_seed=seed,
+    )
 
 
 def test_run_model_recovery_prefers_matching_candidate() -> None:
@@ -194,3 +222,46 @@ def test_run_model_recovery_accepts_map_fit_results() -> None:
     for case in result.cases:
         map_summary = next(item for item in case.candidate_summaries if item.candidate_name == "map_candidate")
         assert map_summary.log_posterior == pytest.approx(-5.5)
+
+
+def test_run_model_recovery_supports_waic_criterion_with_mcmc_candidates() -> None:
+    """Model recovery should support WAIC criterion for posterior-fit candidates."""
+
+    result = run_model_recovery(
+        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
+        generating_specs=(
+            GeneratingModelSpec(
+                name="fixed_choice",
+                model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+                true_params={"p_right": 0.8},
+            ),
+        ),
+        candidate_specs=(
+            CandidateModelSpec(
+                name="good_mcmc",
+                fit_function=lambda trace: _fit_fixed_choice_mcmc(
+                    trace, lower=0.0, upper=1.0, seed=5
+                ),
+                n_parameters=1,
+            ),
+            CandidateModelSpec(
+                name="bad_mcmc",
+                fit_function=lambda trace: _fit_fixed_choice_mcmc(
+                    trace, lower=0.0, upper=0.4, seed=6
+                ),
+                n_parameters=1,
+            ),
+        ),
+        n_trials=60,
+        n_replications_per_generator=2,
+        criterion="waic",
+        seed=21,
+    )
+
+    assert result.criterion == "waic"
+    assert len(result.cases) == 2
+    assert result.confusion_matrix["fixed_choice"].get("good_mcmc", 0) == 2
+    for case in result.cases:
+        summary = next(item for item in case.candidate_summaries if item.candidate_name == "good_mcmc")
+        assert summary.waic is not None
+        assert summary.psis_loo is not None

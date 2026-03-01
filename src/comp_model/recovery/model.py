@@ -78,6 +78,14 @@ class CandidateFitSummary:
         Best log-likelihood from fitting.
     n_parameters : int
         Effective free parameter count.
+    aic : float
+        AIC score for this candidate.
+    bic : float
+        BIC score for this candidate.
+    waic : float | None, optional
+        WAIC score when available.
+    psis_loo : float | None, optional
+        PSIS-LOO information criterion when available.
     score : float
         Selection score under the chosen criterion.
     best_params : dict[str, float]
@@ -89,9 +97,13 @@ class CandidateFitSummary:
     candidate_name: str
     log_likelihood: float
     n_parameters: int
+    aic: float
+    bic: float
     score: float
     best_params: dict[str, float]
     log_posterior: float | None = None
+    waic: float | None = None
+    psis_loo: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,7 +141,7 @@ class ModelRecoveryResult:
         Per-dataset model-recovery records.
     confusion_matrix : dict[str, dict[str, int]]
         Nested counts ``confusion[generating][selected]``.
-    criterion : {"log_likelihood", "aic", "bic"}
+    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}
         Selection criterion used.
     """
 
@@ -162,7 +174,7 @@ def run_model_recovery(
         Number of trials per synthetic dataset.
     n_replications_per_generator : int
         Number of datasets to generate per generating model.
-    criterion : {"log_likelihood", "aic", "bic"}, optional
+    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}, optional
         Selection criterion.
     seed : int, optional
         Master seed for deriving simulation seeds.
@@ -259,11 +271,23 @@ def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
         candidate_name=item.candidate_name,
         log_likelihood=float(item.log_likelihood),
         n_parameters=int(item.n_parameters),
+        aic=float(item.aic),
+        bic=float(item.bic),
         score=float(item.score),
         best_params={key: float(value) for key, value in best.params.items()},
         log_posterior=(
             float(best.log_posterior)
             if best.log_posterior is not None
+            else None
+        ),
+        waic=(
+            float(item.waic)
+            if getattr(item, "waic", None) is not None
+            else None
+        ),
+        psis_loo=(
+            float(item.psis_loo)
+            if getattr(item, "psis_loo", None) is not None
             else None
         ),
     )

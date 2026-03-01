@@ -72,6 +72,18 @@ def model_recovery_case_records(result: ModelRecoveryResult) -> list[dict[str, A
                     else None
                 ),
                 "n_parameters": int(summary.n_parameters),
+                "aic": float(summary.aic),
+                "bic": float(summary.bic),
+                "waic": (
+                    float(summary.waic)
+                    if summary.waic is not None
+                    else None
+                ),
+                "psis_loo": (
+                    float(summary.psis_loo)
+                    if summary.psis_loo is not None
+                    else None
+                ),
                 "score": float(summary.score),
             }
             for key, value in sorted(summary.best_params.items()):

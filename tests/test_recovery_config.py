@@ -306,3 +306,95 @@ def test_recovery_config_requires_prior_for_map_estimators() -> None:
 
     with pytest.raises(ValueError, match="prior is required"):
         run_parameter_recovery_from_config(config)
+
+
+def test_model_recovery_config_supports_waic_with_mcmc_candidates() -> None:
+    """Model recovery config should support WAIC criterion with MCMC candidates."""
+
+    config = {
+        "problem": {
+            "component_id": "stationary_bandit",
+            "kwargs": {"reward_probabilities": [0.2, 0.8]},
+        },
+        "generating": [
+            {
+                "name": "qrl_generator",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "true_params": {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+            },
+        ],
+        "candidates": [
+            {
+                "name": "candidate_good_mcmc",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "prior": {
+                    "type": "independent",
+                    "parameters": {
+                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+                    },
+                },
+                "estimator": {
+                    "type": "random_walk_metropolis",
+                    "initial_params": {"alpha": 0.6, "beta": 3.0, "initial_value": 0.0},
+                    "n_samples": 20,
+                    "n_warmup": 20,
+                    "thin": 1,
+                    "proposal_scales": {"alpha": 0.05, "beta": 0.2, "initial_value": 0.1},
+                    "bounds": {
+                        "alpha": [0.0, 1.0],
+                        "beta": [0.0, 20.0],
+                        "initial_value": [None, None],
+                    },
+                    "random_seed": 5,
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "candidate_bad_mcmc",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "prior": {
+                    "type": "independent",
+                    "parameters": {
+                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+                    },
+                },
+                "estimator": {
+                    "type": "random_walk_metropolis",
+                    "initial_params": {"alpha": 0.2, "beta": 0.1, "initial_value": 0.0},
+                    "n_samples": 20,
+                    "n_warmup": 20,
+                    "thin": 1,
+                    "proposal_scales": {"alpha": 0.02, "beta": 0.05, "initial_value": 0.05},
+                    "bounds": {
+                        "alpha": [0.0, 0.4],
+                        "beta": [0.0, 0.5],
+                        "initial_value": [None, None],
+                    },
+                    "random_seed": 6,
+                },
+                "n_parameters": 3,
+            },
+        ],
+        "n_trials": 30,
+        "n_replications_per_generator": 1,
+        "criterion": "waic",
+        "seed": 22,
+    }
+
+    result = run_model_recovery_from_config(config)
+    assert len(result.cases) == 1
+    assert result.criterion == "waic"
+    assert result.cases[0].selected_candidate_name == "candidate_good_mcmc"
