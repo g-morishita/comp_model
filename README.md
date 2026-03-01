@@ -9,6 +9,9 @@ A clean-slate computational decision modeling library.
 Config schemas and strict validation rules are documented in
 `docs/config_schemas.md`.
 
+Migration notes from the internal v1 codebase are documented in
+`docs/migration_v1_to_comp_model.md`.
+
 This repository starts from generic decision-problem abstractions where:
 
 1. an agent observes a problem state,
@@ -170,3 +173,20 @@ Parity benchmark helpers are also available in `comp_model.analysis`:
 - `load_parity_fixture_file`
 - `run_parity_benchmark`
 - `write_parity_benchmark_csv`
+- `run_parity_benchmark_cli`
+
+Example parity benchmark command:
+
+```bash
+python scripts/run_parity_benchmark.py \
+  --fixture docs/parity_fixture_template.json \
+  --output-csv parity_report.csv
+```
+
+When installed as a package, the script entry point is:
+
+```bash
+comp-model-parity \
+  --fixture docs/parity_fixture_template.json \
+  --output-csv parity_report.csv
+```

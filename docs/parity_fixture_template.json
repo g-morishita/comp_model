@@ -1,0 +1,35 @@
+{
+  "cases": [
+    {
+      "name": "example_case",
+      "model_component_id": "asocial_state_q_value_softmax",
+      "params": {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0
+      },
+      "model_kwargs": {},
+      "expected_log_likelihood": -2.345678,
+      "trial_decisions": [
+        {
+          "trial_index": 0,
+          "decision_index": 0,
+          "actor_id": "subject",
+          "available_actions": [0, 1],
+          "action": 1,
+          "observation": {"state": 0},
+          "outcome": {"reward": 1.0}
+        },
+        {
+          "trial_index": 1,
+          "decision_index": 0,
+          "actor_id": "subject",
+          "available_actions": [0, 1],
+          "action": 0,
+          "observation": {"state": 0},
+          "outcome": {"reward": 0.0}
+        }
+      ]
+    }
+  ]
+}

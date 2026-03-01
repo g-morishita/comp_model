@@ -20,6 +20,9 @@ dev = [
   "pytest>=8.0",
 ]
 
+[project.scripts]
+comp-model-parity = "comp_model.analysis.parity_cli:run_parity_benchmark_cli"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 

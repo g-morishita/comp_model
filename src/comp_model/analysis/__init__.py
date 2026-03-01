@@ -17,6 +17,7 @@ from .parity_benchmark import (
     run_parity_benchmark,
     write_parity_benchmark_csv,
 )
+from .parity_cli import run_parity_benchmark_cli
 
 __all__ = [
     "PSISLOOResult",
@@ -35,6 +36,7 @@ __all__ = [
     "profile_likelihood_1d",
     "profile_likelihood_2d",
     "run_parity_benchmark",
+    "run_parity_benchmark_cli",
     "waic",
     "write_parity_benchmark_csv",
 ]
