@@ -152,20 +152,22 @@ class ModelRecoveryResult:
 
 def run_model_recovery(
     *,
-    problem_factory: Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]],
+    problem_factory: Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]] | None = None,
     generating_specs: Sequence[GeneratingModelSpec],
     candidate_specs: Sequence[CandidateModelSpec],
     n_trials: int,
     n_replications_per_generator: int,
     criterion: SelectionCriterion = "log_likelihood",
     seed: int = 0,
+    trace_factory: Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None = None,
 ) -> ModelRecoveryResult:
     """Run model-recovery simulation and candidate selection.
 
     Parameters
     ----------
-    problem_factory : Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]]
-        Factory returning a fresh problem instance.
+    problem_factory : Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]] | None, optional
+        Factory returning a fresh problem instance. Used when
+        ``trace_factory`` is not provided.
     generating_specs : Sequence[GeneratingModelSpec]
         Generating model definitions.
     candidate_specs : Sequence[CandidateModelSpec]
@@ -178,6 +180,11 @@ def run_model_recovery(
         Selection criterion.
     seed : int, optional
         Master seed for deriving simulation seeds.
+    trace_factory : Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None, optional
+        Optional custom trace simulator receiving ``(generating_model, seed)``
+        and returning a fit-compatible dataset object. This supports model
+        recovery on trial-program and multi-actor traces. When omitted, traces
+        are generated via :func:`comp_model.runtime.run_episode`.
 
     Returns
     -------
@@ -187,7 +194,7 @@ def run_model_recovery(
     Raises
     ------
     ValueError
-        If inputs are invalid.
+        If inputs are invalid or both simulation sources are missing.
     """
 
     if not generating_specs:
@@ -198,6 +205,8 @@ def run_model_recovery(
         raise ValueError("n_trials must be > 0")
     if n_replications_per_generator <= 0:
         raise ValueError("n_replications_per_generator must be > 0")
+    if trace_factory is None and problem_factory is None:
+        raise ValueError("either problem_factory or trace_factory must be provided")
 
     # Compile one reusable candidate set so every simulated dataset is evaluated
     # with exactly the same fitting configuration.
@@ -218,11 +227,17 @@ def run_model_recovery(
             simulation_seed = int(rng.integers(0, 2**31 - 1))
             model = generating.model_factory(dict(generating.true_params))
 
-            trace = run_episode(
-                problem=problem_factory(),
-                model=model,
-                config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
-            )
+            if trace_factory is not None:
+                # Custom simulator path allows recovery on generic canonical
+                # traces, including multi-actor social trial programs.
+                trace = trace_factory(model, simulation_seed)
+            else:
+                assert problem_factory is not None
+                trace = run_episode(
+                    problem=problem_factory(),
+                    model=model,
+                    config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
+                )
 
             comparison = compare_candidate_models(
                 trace,

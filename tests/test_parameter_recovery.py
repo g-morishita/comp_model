@@ -8,15 +8,20 @@ from typing import Any
 import pytest
 
 from comp_model.core.contracts import DecisionContext
+from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
+    ActorSubsetReplayLikelihood,
+    FitSpec,
     GridSearchMLEEstimator,
     IndependentPriorProgram,
     ScipyMapBayesEstimator,
+    fit_model,
     uniform_log_prior,
 )
-from comp_model.problems import StationaryBanditProblem
+from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
 from comp_model.recovery import run_parameter_recovery
+from comp_model.runtime import SimulationConfig, run_trial_program
 
 
 @dataclass
@@ -145,3 +150,63 @@ def test_run_parameter_recovery_accepts_map_fit_functions() -> None:
     assert 0.0 <= result.cases[0].estimated_params["p_right"] <= 1.0
     assert result.cases[0].best_log_posterior is not None
     assert "p_right" in result.mean_absolute_error
+
+
+def test_run_parameter_recovery_supports_custom_social_trace_factory() -> None:
+    """Recovery should support multi-actor traces via trace_factory hook."""
+
+    def fit_function(trace: Any):
+        return fit_model(
+            trace,
+            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+            fit_spec=FitSpec(
+                estimator_type="grid_search",
+                parameter_grid={"p_right": [0.2, 0.5, 0.8]},
+            ),
+            likelihood_program=ActorSubsetReplayLikelihood(
+                fitted_actor_id="subject",
+                scored_actor_ids=("subject",),
+                auto_fill_unmodeled_actors=True,
+            ),
+        )
+
+    def social_trace_factory(model: Any, simulation_seed: int):
+        return run_trial_program(
+            program=TwoStageSocialBanditProgram([0.5, 0.5]),
+            models={
+                "subject": model,
+                "demonstrator": FixedSequenceDemonstrator(sequence=[1] * 80),
+            },
+            config=SimulationConfig(n_trials=80, seed=simulation_seed),
+        )
+
+    result = run_parameter_recovery(
+        problem_factory=None,
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        fit_function=fit_function,
+        true_parameter_sets=({"p_right": 0.8},),
+        n_trials=80,
+        seed=23,
+        trace_factory=social_trace_factory,
+    )
+
+    assert len(result.cases) == 1
+    assert result.cases[0].estimated_params["p_right"] == pytest.approx(0.8)
+
+
+def test_run_parameter_recovery_requires_problem_or_trace_factory() -> None:
+    """Recovery should reject missing simulation source definitions."""
+
+    with pytest.raises(ValueError, match="either problem_factory or trace_factory must be provided"):
+        run_parameter_recovery(
+            problem_factory=None,
+            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+            fit_function=lambda trace: GridSearchMLEEstimator(
+                likelihood_program=ActionReplayLikelihood(),
+                model_factory=lambda fit_params: FixedChoiceModel(
+                    p_right=fit_params["p_right"],
+                ),
+            ).fit(trace=trace, parameter_grid={"p_right": [0.5]}),
+            true_parameter_sets=({"p_right": 0.5},),
+            n_trials=10,
+        )

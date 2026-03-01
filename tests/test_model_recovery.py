@@ -8,20 +8,25 @@ from typing import Any
 import pytest
 
 from comp_model.core.contracts import DecisionContext
+from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
+    ActorSubsetReplayLikelihood,
     BayesFitResult,
+    FitSpec,
     GridSearchMLEEstimator,
     IndependentPriorProgram,
     MLECandidate,
     MLEFitResult,
     PosteriorCandidate,
+    fit_model,
     sample_posterior_model,
     uniform_log_prior,
 )
 from comp_model.models import UniformRandomPolicyModel
-from comp_model.problems import StationaryBanditProblem
+from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
 from comp_model.recovery import CandidateModelSpec, GeneratingModelSpec, run_model_recovery
+from comp_model.runtime import SimulationConfig, run_trial_program
 
 
 @dataclass
@@ -265,3 +270,96 @@ def test_run_model_recovery_supports_waic_criterion_with_mcmc_candidates() -> No
         summary = next(item for item in case.candidate_summaries if item.candidate_name == "good_mcmc")
         assert summary.waic is not None
         assert summary.psis_loo is not None
+
+
+def test_run_model_recovery_supports_custom_social_trace_factory() -> None:
+    """Model recovery should support multi-actor traces via trace_factory hook."""
+
+    def fit_fixed_choice_social(trace: Any) -> MLEFitResult:
+        return fit_model(
+            trace,
+            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+            fit_spec=FitSpec(
+                estimator_type="grid_search",
+                parameter_grid={"p_right": [0.2, 0.5, 0.8]},
+            ),
+            likelihood_program=ActorSubsetReplayLikelihood(
+                fitted_actor_id="subject",
+                scored_actor_ids=("subject",),
+                auto_fill_unmodeled_actors=True,
+            ),
+        )
+
+    def fit_uniform_social(trace: Any) -> MLEFitResult:
+        replay = ActorSubsetReplayLikelihood(
+            fitted_actor_id="subject",
+            scored_actor_ids=("subject",),
+            auto_fill_unmodeled_actors=True,
+        ).evaluate(trace, UniformRandomPolicyModel())
+        candidate = MLECandidate(
+            params={},
+            log_likelihood=float(replay.total_log_likelihood),
+        )
+        return MLEFitResult(best=candidate, candidates=(candidate,))
+
+    def social_trace_factory(model: Any, simulation_seed: int):
+        return run_trial_program(
+            program=TwoStageSocialBanditProgram([0.5, 0.5]),
+            models={
+                "subject": model,
+                "demonstrator": FixedSequenceDemonstrator(sequence=[1] * 90),
+            },
+            config=SimulationConfig(n_trials=90, seed=simulation_seed),
+        )
+
+    result = run_model_recovery(
+        problem_factory=None,
+        generating_specs=(
+            GeneratingModelSpec(
+                name="fixed_choice_social",
+                model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+                true_params={"p_right": 0.8},
+            ),
+        ),
+        candidate_specs=(
+            CandidateModelSpec(
+                name="fixed_choice_social_fit",
+                fit_function=fit_fixed_choice_social,
+                n_parameters=1,
+            ),
+            CandidateModelSpec(
+                name="uniform_social",
+                fit_function=fit_uniform_social,
+                n_parameters=0,
+            ),
+        ),
+        n_trials=90,
+        n_replications_per_generator=4,
+        criterion="log_likelihood",
+        seed=28,
+        trace_factory=social_trace_factory,
+    )
+
+    assert len(result.cases) == 4
+    assert result.confusion_matrix["fixed_choice_social"].get("fixed_choice_social_fit", 0) >= 3
+
+
+def test_run_model_recovery_requires_problem_or_trace_factory() -> None:
+    """Model recovery should reject missing simulation source definitions."""
+
+    with pytest.raises(ValueError, match="either problem_factory or trace_factory must be provided"):
+        run_model_recovery(
+            problem_factory=None,
+            generating_specs=(
+                GeneratingModelSpec(
+                    name="fixed_choice",
+                    model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+                    true_params={"p_right": 0.8},
+                ),
+            ),
+            candidate_specs=(
+                CandidateModelSpec(name="fixed_choice_mle", fit_function=_fit_fixed_choice, n_parameters=1),
+            ),
+            n_trials=20,
+            n_replications_per_generator=1,
+        )

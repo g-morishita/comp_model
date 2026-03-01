@@ -71,19 +71,21 @@ class ParameterRecoveryResult:
 
 def run_parameter_recovery(
     *,
-    problem_factory: Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]],
+    problem_factory: Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]] | None = None,
     model_factory: Callable[[dict[str, float]], AgentModel[ObsT, ActionT, OutcomeT]],
     fit_function: Callable[[Any], Any],
     true_parameter_sets: Sequence[Mapping[str, float]],
     n_trials: int,
     seed: int = 0,
+    trace_factory: Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None = None,
 ) -> ParameterRecoveryResult:
     """Run simulation-based parameter recovery.
 
     Parameters
     ----------
-    problem_factory : Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]]
+    problem_factory : Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]] | None, optional
         Factory returning a fresh problem instance for one synthetic dataset.
+        Used when ``trace_factory`` is not provided.
     model_factory : Callable[[dict[str, float]], AgentModel[ObsT, ActionT, OutcomeT]]
         Factory returning a generating model from true parameters.
     fit_function : Callable[[Any], Any]
@@ -95,6 +97,12 @@ def run_parameter_recovery(
         Number of trials per synthetic dataset.
     seed : int, optional
         Master seed used to derive per-case simulation seeds.
+    trace_factory : Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None, optional
+        Optional custom trace simulator receiving ``(generating_model, seed)``
+        and returning a fit-compatible dataset object. This enables recovery on
+        trial-program and multi-actor traces. When omitted, traces are
+        generated via :func:`comp_model.runtime.run_episode` using
+        ``problem_factory`` and ``n_trials``.
 
     Returns
     -------
@@ -104,13 +112,16 @@ def run_parameter_recovery(
     Raises
     ------
     ValueError
-        If no true parameter sets are provided or ``n_trials`` is non-positive.
+        If no true parameter sets are provided, ``n_trials`` is non-positive,
+        or both simulation sources are missing.
     """
 
     if not true_parameter_sets:
         raise ValueError("true_parameter_sets must not be empty")
     if n_trials <= 0:
         raise ValueError("n_trials must be > 0")
+    if trace_factory is None and problem_factory is None:
+        raise ValueError("either problem_factory or trace_factory must be provided")
 
     rng = np.random.default_rng(seed)
     cases: list[ParameterRecoveryCase] = []
@@ -119,11 +130,17 @@ def run_parameter_recovery(
         simulation_seed = int(rng.integers(0, 2**31 - 1))
 
         generating_model = model_factory({name: float(value) for name, value in params.items()})
-        trace = run_episode(
-            problem=problem_factory(),
-            model=generating_model,
-            config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
-        )
+        if trace_factory is not None:
+            # Custom simulator path supports richer trial programs and
+            # multi-actor data generation while keeping fit_function generic.
+            trace = trace_factory(generating_model, simulation_seed)
+        else:
+            assert problem_factory is not None
+            trace = run_episode(
+                problem=problem_factory(),
+                model=generating_model,
+                config=SimulationConfig(n_trials=n_trials, seed=simulation_seed),
+            )
         fit_result = fit_function(trace)
         best = extract_best_fit_summary(fit_result)
 

@@ -48,6 +48,9 @@ Use `comp_model.inference.fit_model` to fit a model directly from:
 This fitting module is now the shared base used by recovery workflows.
 Recovery workflows can consume both MLE-style and MAP-style fit outputs.
 Config-driven recovery runners support MAP estimators when a `prior` section is provided.
+Core recovery APIs (`run_parameter_recovery`, `run_model_recovery`) also accept
+an optional `trace_factory(model, seed)` hook so social/multi-actor trial
+programs can be recovered without forcing a single-actor `run_episode` path.
 Recovery model-selection criteria support `waic` and `psis_loo` when candidate
 fitters provide posterior pointwise log-likelihood draws (for example via MCMC).
 For multi-actor traces (for example social trial programs), use
