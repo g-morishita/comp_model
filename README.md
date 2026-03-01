@@ -81,3 +81,9 @@ Prior utilities:
 
 These are the first step toward full Bayesian and hierarchical workflows using
 the same canonical replay likelihood semantics as MLE.
+
+Within-subject hierarchical MAP is now available via:
+- `comp_model.inference.fit_subject_hierarchical_map`
+
+This performs partial pooling across blocks for named parameters in transformed
+space, using the same replay likelihood path as all other estimators.

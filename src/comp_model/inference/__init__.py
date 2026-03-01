@@ -30,6 +30,11 @@ from .fitting import (
     fit_model,
     fit_model_from_registry,
 )
+from .hierarchical import (
+    HierarchicalBlockResult,
+    HierarchicalSubjectMapResult,
+    fit_subject_hierarchical_map,
+)
 from .likelihood import ActionReplayLikelihood, LikelihoodProgram
 from .mle import (
     GridSearchMLEEstimator,
@@ -78,6 +83,9 @@ __all__ = [
     "EstimatorType",
     "FitSpec",
     "GridSearchMLEEstimator",
+    "HierarchicalBlockResult",
+    "HierarchicalSubjectMapResult",
+    "IndependentPriorProgram",
     "LikelihoodProgram",
     "MLECandidate",
     "MLEFitResult",
@@ -95,7 +103,6 @@ __all__ = [
     "SubjectFitResult",
     "TransformedScipyMapBayesEstimator",
     "TransformedScipyMinimizeMLEEstimator",
-    "IndependentPriorProgram",
     "assert_trace_compatible",
     "beta_log_prior",
     "block_fit_records",
@@ -112,6 +119,7 @@ __all__ = [
     "fit_spec_from_config",
     "fit_study_data",
     "fit_study_from_config",
+    "fit_subject_hierarchical_map",
     "fit_subject_data",
     "fit_subject_from_config",
     "identity_transform",
