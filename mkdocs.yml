@@ -13,6 +13,7 @@ nav:
       - Fit Existing CSV Data: how-to/fit-existing-csv-data.md
       - Compare Candidate Models: how-to/compare-candidate-models.md
       - Run Recovery Workflows: how-to/run-recovery-workflows.md
+      - Deploy Docs and Enable Hooks: how-to/deploy-docs-and-enable-hooks.md
   - Reference:
       - API Overview: reference/api-overview.md
       - Configuration Schemas: reference/config_schemas.md

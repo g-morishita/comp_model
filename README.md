@@ -48,6 +48,20 @@ Documentation follows the Divio system (Diataxis):
 
 MkDocs config is provided in `mkdocs.yml`.
 
+## Automation
+
+- CI is defined in `.github/workflows/ci.yml` and runs tests plus docs build on
+  push/pull request.
+- Docs deployment is defined in `.github/workflows/deploy-docs.yml` and
+  publishes MkDocs to GitHub Pages from `main`.
+- Local pre-push test hook is provided in `.githooks/pre-push`.
+
+Install local hooks with:
+
+```bash
+./scripts/install_git_hooks.sh
+```
+
 ## Quick Start
 
 ```python
@@ -78,12 +92,3 @@ print(result.best.params)
 ## Credits
 
 - Original internal model suite and research framing: Morishita Lab.
-- `comp_model.inference.sample_study_hierarchical_posterior`
-- `comp_model.inference.sample_subject_hierarchical_posterior_from_config`
-- `comp_model.inference.sample_study_hierarchical_posterior_from_config`
-
-Information-criterion diagnostics are available via `comp_model.analysis`:
-- `aic`
-- `bic`
-- `waic`
-- `psis_loo`
