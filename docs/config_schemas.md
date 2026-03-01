@@ -79,18 +79,41 @@ TransformedScipyMapEstimator = {
 ```python
 MCMCConfig = {
     "model": ComponentRef,
-    "prior": PriorConfig,
-    "estimator": {
-        "type": "random_walk_metropolis",
-        "initial_params": dict[str, float],
-        "n_samples": int,
-        "n_warmup": int,          # optional
-        "thin": int,              # optional
-        "proposal_scales": dict[str, float],  # optional
-        "bounds": dict[str, tuple[float | None, float | None]],  # optional
-        "random_seed": int,       # optional
-    },
+    "prior": PriorConfig,  # required for random_walk_metropolis
+    "estimator": RandomWalkMetropolisEstimator | HierarchicalRandomWalkMetropolisEstimator,
     "likelihood": LikelihoodConfig,  # optional
+}
+
+RandomWalkMetropolisEstimator = {
+    "type": "random_walk_metropolis",
+    "initial_params": dict[str, float],
+    "n_samples": int,
+    "n_warmup": int,          # optional
+    "thin": int,              # optional
+    "proposal_scales": dict[str, float],  # optional
+    "bounds": dict[str, tuple[float | None, float | None]],  # optional
+    "random_seed": int,       # optional
+}
+
+HierarchicalRandomWalkMetropolisEstimator = {
+    "type": "within_subject_hierarchical_random_walk_metropolis",
+    "parameter_names": list[str],
+    "transforms": dict[str, str | {"kind": str}],  # optional
+    "initial_group_location": dict[str, float],     # optional
+    "initial_group_scale": dict[str, float],        # optional
+    "initial_block_params": list[dict[str, float]], # optional (subject-level)
+    "initial_block_params_by_subject": dict[str, list[dict[str, float]]],  # optional (study-level)
+    "mu_prior_mean": float,         # optional
+    "mu_prior_std": float,          # optional
+    "log_sigma_prior_mean": float,  # optional
+    "log_sigma_prior_std": float,   # optional
+    "n_samples": int,
+    "n_warmup": int,                # optional
+    "thin": int,                    # optional
+    "proposal_scale_group_location": float,  # optional
+    "proposal_scale_group_log_scale": float, # optional
+    "proposal_scale_block_z": float,         # optional
+    "random_seed": int,             # optional
 }
 ```
 
@@ -283,4 +306,3 @@ BlockSpec = {
   "seed": 123
 }
 ```
-

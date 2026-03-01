@@ -11,11 +11,14 @@ from comp_model.inference import (
     fit_dataset_auto_from_config,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
+    hierarchical_mcmc_estimator_spec_from_config,
     mcmc_estimator_spec_from_config,
+    sample_study_hierarchical_posterior_from_config,
     sample_posterior_block_from_config,
     sample_posterior_dataset_from_config,
     sample_posterior_study_from_config,
     sample_posterior_subject_from_config,
+    sample_subject_hierarchical_posterior_from_config,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import TwoStageSocialBanditProgram
@@ -75,6 +78,34 @@ def _mcmc_config() -> dict:
                 "initial_value": [None, None],
             },
             "random_seed": 9,
+        },
+    }
+
+
+def _hierarchical_mcmc_config() -> dict:
+    """Build one minimal hierarchical MCMC config."""
+
+    return {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {
+                "beta": 2.0,
+                "initial_value": 0.0,
+            },
+        },
+        "estimator": {
+            "type": "within_subject_hierarchical_random_walk_metropolis",
+            "parameter_names": ["alpha"],
+            "transforms": {"alpha": "unit_interval_logit"},
+            "initial_group_location": {"alpha": 0.5},
+            "initial_group_scale": {"alpha": 0.5},
+            "n_samples": 12,
+            "n_warmup": 8,
+            "thin": 1,
+            "proposal_scale_group_location": 0.08,
+            "proposal_scale_group_log_scale": 0.05,
+            "proposal_scale_block_z": 0.08,
+            "random_seed": 7,
         },
     }
 
@@ -193,3 +224,104 @@ def test_sample_posterior_dataset_from_config_supports_social_actor_subset_likel
 
     result = sample_posterior_dataset_from_config(trace, config=config)
     assert result.posterior_samples.n_draws == 20
+
+
+def test_hierarchical_mcmc_estimator_spec_from_config_parses_fields() -> None:
+    """Hierarchical MCMC parser should construct a full spec."""
+
+    spec = hierarchical_mcmc_estimator_spec_from_config(_hierarchical_mcmc_config()["estimator"])
+    assert spec.parameter_names == ("alpha",)
+    assert spec.transforms is not None
+    assert spec.initial_group_location == {"alpha": pytest.approx(0.5)}
+    assert spec.initial_group_scale == {"alpha": pytest.approx(0.5)}
+    assert spec.n_samples == 12
+    assert spec.n_warmup == 8
+    assert spec.thin == 1
+    assert spec.random_seed == 7
+
+
+def test_hierarchical_mcmc_estimator_spec_from_config_rejects_unknown_keys() -> None:
+    """Hierarchical MCMC parser should reject unknown keys."""
+
+    estimator_cfg = dict(_hierarchical_mcmc_config()["estimator"])
+    estimator_cfg["unexpected"] = 1
+    with pytest.raises(ValueError, match="estimator has unknown keys"):
+        hierarchical_mcmc_estimator_spec_from_config(estimator_cfg)
+
+
+def test_sample_hierarchical_posterior_subject_study_from_config() -> None:
+    """Hierarchical MCMC config helpers should support subject/study inputs."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
+    study = StudyData(subjects=(subject,))
+
+    subject_result = sample_subject_hierarchical_posterior_from_config(
+        subject,
+        config=_hierarchical_mcmc_config(),
+    )
+    assert subject_result.subject_id == "s1"
+    assert len(subject_result.draws) == 12
+
+    study_result = sample_study_hierarchical_posterior_from_config(
+        study,
+        config=_hierarchical_mcmc_config(),
+    )
+    assert study_result.n_subjects == 1
+    assert len(study_result.subject_results[0].draws) == 12
+
+
+def test_fit_auto_dispatches_hierarchical_mcmc_for_subject_and_study() -> None:
+    """Auto-dispatch should route hierarchical MCMC estimator type."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
+    study = StudyData(subjects=(subject,))
+
+    subject_result = fit_subject_auto_from_config(
+        subject,
+        config=_hierarchical_mcmc_config(),
+    )
+    assert len(subject_result.draws) == 12
+
+    study_result = fit_study_auto_from_config(
+        study,
+        config=_hierarchical_mcmc_config(),
+    )
+    assert study_result.n_subjects == 1
+
+
+def test_sample_subject_hierarchical_from_config_rejects_unknown_top_level_keys() -> None:
+    """Hierarchical MCMC config runner should fail fast on unknown keys."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(
+                block_id="b1",
+                trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+            ),
+            BlockData(
+                block_id="b2",
+                trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+            ),
+        ),
+    )
+    config = _hierarchical_mcmc_config()
+    config["typo"] = True
+    with pytest.raises(ValueError, match="config has unknown keys"):
+        sample_subject_hierarchical_posterior_from_config(subject, config=config)

@@ -43,6 +43,7 @@ from .config import (
     model_component_spec_from_config,
 )
 from .config_dispatch import (
+    HIERARCHICAL_MCMC_ESTIMATORS,
     HIERARCHICAL_ESTIMATORS,
     MCMC_ESTIMATORS,
     MAP_ESTIMATORS,
@@ -53,11 +54,15 @@ from .config_dispatch import (
     fit_subject_auto_from_config,
 )
 from .mcmc_config import (
+    HierarchicalMCMCEstimatorSpec,
     MCMCEstimatorSpec,
+    hierarchical_mcmc_estimator_spec_from_config,
     mcmc_estimator_spec_from_config,
     sample_posterior_block_from_config,
     sample_posterior_dataset_from_config,
+    sample_study_hierarchical_posterior_from_config,
     sample_posterior_study_from_config,
+    sample_subject_hierarchical_posterior_from_config,
     sample_posterior_subject_from_config,
 )
 from .fitting import (
@@ -199,7 +204,9 @@ __all__ = [
     "EstimatorType",
     "FitSpec",
     "GridSearchMLEEstimator",
+    "HIERARCHICAL_MCMC_ESTIMATORS",
     "HIERARCHICAL_ESTIMATORS",
+    "HierarchicalMCMCEstimatorSpec",
     "HierarchicalBlockResult",
     "HierarchicalMCMCDraw",
     "HierarchicalPosteriorCandidate",
@@ -304,6 +311,7 @@ __all__ = [
     "sample_posterior_dataset_from_config",
     "sample_posterior_subject_from_config",
     "sample_posterior_study_from_config",
+    "sample_study_hierarchical_posterior_from_config",
     "fit_study_data",
     "fit_study_auto_from_config",
     "fit_study_hierarchical_map",
@@ -313,10 +321,12 @@ __all__ = [
     "fit_subject_hierarchical_map",
     "fit_subject_hierarchical_map_from_config",
     "sample_subject_hierarchical_posterior",
+    "sample_subject_hierarchical_posterior_from_config",
     "fit_subject_auto_from_config",
     "fit_subject_data",
     "fit_subject_from_config",
     "identity_transform",
+    "hierarchical_mcmc_estimator_spec_from_config",
     "hierarchical_map_spec_from_config",
     "log_normal_log_prior",
     "likelihood_program_from_config",

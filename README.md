@@ -186,6 +186,8 @@ Within-subject hierarchical posterior sampling (random-walk Metropolis) is
 also available via:
 - `comp_model.inference.sample_subject_hierarchical_posterior`
 - `comp_model.inference.sample_study_hierarchical_posterior`
+- `comp_model.inference.sample_subject_hierarchical_posterior_from_config`
+- `comp_model.inference.sample_study_hierarchical_posterior_from_config`
 
 Information-criterion diagnostics are available via `comp_model.analysis`:
 - `aic`
