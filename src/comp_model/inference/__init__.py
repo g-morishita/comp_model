@@ -1,5 +1,17 @@
 """Inference interfaces for replay, compatibility checks, and MLE fitting."""
 
+from .bayes import (
+    BayesFitResult,
+    IndependentPriorProgram,
+    PosteriorCandidate,
+    PriorProgram,
+    ScipyMapBayesEstimator,
+    TransformedScipyMapBayesEstimator,
+    beta_log_prior,
+    log_normal_log_prior,
+    normal_log_prior,
+    uniform_log_prior,
+)
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
 from .config import (
     ModelComponentSpec,
@@ -58,6 +70,7 @@ from .transforms import ParameterTransform, identity_transform, positive_log_tra
 
 __all__ = [
     "ActionReplayLikelihood",
+    "BayesFitResult",
     "BlockFitResult",
     "CandidateComparison",
     "CandidateFitSpec",
@@ -70,15 +83,21 @@ __all__ = [
     "MLEFitResult",
     "ModelComparisonResult",
     "ModelComponentSpec",
+    "PosteriorCandidate",
+    "PriorProgram",
     "ParameterTransform",
     "RegistryCandidateFitSpec",
     "ScipyMinimizeDiagnostics",
+    "ScipyMapBayesEstimator",
     "ScipyMinimizeMLEEstimator",
     "SelectionCriterion",
     "StudyFitResult",
     "SubjectFitResult",
+    "TransformedScipyMapBayesEstimator",
     "TransformedScipyMinimizeMLEEstimator",
+    "IndependentPriorProgram",
     "assert_trace_compatible",
+    "beta_log_prior",
     "block_fit_records",
     "build_model_fit_function",
     "check_trace_compatibility",
@@ -96,12 +115,15 @@ __all__ = [
     "fit_subject_data",
     "fit_subject_from_config",
     "identity_transform",
+    "log_normal_log_prior",
     "model_component_spec_from_config",
+    "normal_log_prior",
     "positive_log_transform",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
     "subject_summary_records",
+    "uniform_log_prior",
     "unit_interval_logit_transform",
     "write_records_csv",
     "write_study_fit_records_csv",

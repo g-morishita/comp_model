@@ -65,3 +65,19 @@ For candidate-model comparison on one dataset:
 
 These return per-candidate log-likelihood/AIC/BIC summaries and selected model
 labels under a chosen criterion.
+
+## Bayesian Inference (MAP First)
+
+Bayesian scaffolding now includes MAP estimators built on SciPy optimization:
+- `comp_model.inference.ScipyMapBayesEstimator`
+- `comp_model.inference.TransformedScipyMapBayesEstimator`
+
+Prior utilities:
+- `comp_model.inference.IndependentPriorProgram`
+- `comp_model.inference.normal_log_prior`
+- `comp_model.inference.uniform_log_prior`
+- `comp_model.inference.beta_log_prior`
+- `comp_model.inference.log_normal_log_prior`
+
+These are the first step toward full Bayesian and hierarchical workflows using
+the same canonical replay likelihood semantics as MLE.
