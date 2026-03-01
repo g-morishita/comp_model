@@ -19,6 +19,13 @@ Bandit is intentionally implemented as a specific problem under
 
 from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
+from .io import (
+    read_study_decisions_csv,
+    read_trial_decisions_csv,
+    study_decision_rows,
+    write_study_decisions_csv,
+    write_trial_decisions_csv,
+)
 from .inference import (
     FitSpec,
     ActorSubsetReplayLikelihood,
@@ -166,6 +173,11 @@ __all__ = [
     "run_recovery_cli",
     "run_episode",
     "run_trial_program",
+    "read_study_decisions_csv",
+    "read_trial_decisions_csv",
+    "study_decision_rows",
+    "write_study_decisions_csv",
+    "write_trial_decisions_csv",
     "summarize_posterior",
     "uniform_log_prior",
     "write_hierarchical_study_block_records_csv",

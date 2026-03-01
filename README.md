@@ -91,6 +91,12 @@ For multi-subject datasets, use:
 - `comp_model.inference.fit_subject_data`
 - `comp_model.inference.fit_study_data`
 
+Tabular CSV I/O helpers are available via:
+- `comp_model.read_trial_decisions_csv`
+- `comp_model.write_trial_decisions_csv`
+- `comp_model.read_study_decisions_csv`
+- `comp_model.write_study_decisions_csv`
+
 These APIs run independent fits per block and aggregate summaries at subject and
 study levels.
 
