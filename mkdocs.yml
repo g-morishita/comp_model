@@ -6,6 +6,12 @@ site_url: https://g-morishita.github.io/comp_model/
 theme:
   name: mkdocs
 
+extra_css:
+  - stylesheets/quiz.css
+
+extra_javascript:
+  - javascripts/quiz.js
+
 nav:
   - Home: index.md
   - Tutorials:

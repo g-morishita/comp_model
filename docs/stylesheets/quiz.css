@@ -1,0 +1,45 @@
+/* Click-to-toggle quiz styling for tutorial quick-check questions. */
+.cm-quiz {
+  display: block;
+  margin: 0.2rem 0 0.45rem;
+}
+
+.cm-quiz-question {
+  font-weight: 500;
+}
+
+.cm-quiz-toggle {
+  margin-left: 0.5rem;
+  padding: 0.08rem 0.5rem;
+  border: 1px solid #8b949e;
+  border-radius: 999px;
+  background: #f6f8fa;
+  color: #1f2328;
+  cursor: pointer;
+  font-size: 0.82em;
+  line-height: 1.45;
+}
+
+.cm-quiz-toggle:hover {
+  background: #eaeef2;
+}
+
+.cm-quiz-toggle:focus-visible {
+  outline: 2px solid #2f6feb;
+  outline-offset: 2px;
+}
+
+.cm-quiz-answer {
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #c8d1da;
+  border-radius: 0.35rem;
+  background: #f6f8fa;
+  color: #24292f;
+  line-height: 1.4;
+  font-size: 0.95em;
+}
+
+.cm-quiz-answer strong {
+  margin-right: 0.2rem;
+}
