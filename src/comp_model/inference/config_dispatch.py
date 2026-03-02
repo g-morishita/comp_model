@@ -1,8 +1,7 @@
 """Auto-dispatch config fitting helpers.
 
-These helpers route declarative fitting configs to MLE, MAP, MCMC posterior
-sampling, hierarchical MAP, or hierarchical MCMC entry points based on
-``config.estimator.type``.
+These helpers route declarative fitting configs to MLE, MAP, hierarchical MAP,
+or hierarchical Stan posterior sampling based on ``config.estimator.type``.
 """
 
 from __future__ import annotations
@@ -29,21 +28,14 @@ from .config import (
     fit_subject_from_config,
 )
 from .mcmc_config import (
-    sample_posterior_block_from_config,
-    sample_posterior_dataset_from_config,
-    sample_posterior_study_from_config,
-    sample_posterior_subject_from_config,
     sample_study_hierarchical_posterior_from_config,
     sample_subject_hierarchical_posterior_from_config,
 )
 
 MLE_ESTIMATORS = {"grid_search", "scipy_minimize", "transformed_scipy_minimize"}
 MAP_ESTIMATORS = {"scipy_map", "transformed_scipy_map"}
-MCMC_ESTIMATORS = {"random_walk_metropolis"}
-HIERARCHICAL_MCMC_ESTIMATORS = {
-    "within_subject_hierarchical_random_walk_metropolis",
-    "within_subject_hierarchical_stan_nuts",
-}
+MCMC_ESTIMATORS: set[str] = set()
+HIERARCHICAL_MCMC_ESTIMATORS = {"within_subject_hierarchical_stan_nuts"}
 HIERARCHICAL_ESTIMATORS = {"within_subject_hierarchical_map"}
 
 
@@ -75,11 +67,9 @@ def fit_dataset_auto_from_config(
         return fit_dataset_from_config(data, config=config, registry=registry)
     if estimator_type in MAP_ESTIMATORS:
         return fit_map_dataset_from_config(data, config=config, registry=registry)
-    if estimator_type in MCMC_ESTIMATORS:
-        return sample_posterior_dataset_from_config(data, config=config, registry=registry)
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for dataset fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | MCMC_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)}"
     )
 
 
@@ -96,11 +86,9 @@ def fit_block_auto_from_config(
         return fit_block_from_config(block, config=config, registry=registry)
     if estimator_type in MAP_ESTIMATORS:
         return fit_map_block_from_config(block, config=config, registry=registry)
-    if estimator_type in MCMC_ESTIMATORS:
-        return sample_posterior_block_from_config(block, config=config, registry=registry)
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for block fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | MCMC_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)}"
     )
 
 
@@ -117,8 +105,6 @@ def fit_subject_auto_from_config(
         return fit_subject_from_config(subject, config=config, registry=registry)
     if estimator_type in MAP_ESTIMATORS:
         return fit_map_subject_from_config(subject, config=config, registry=registry)
-    if estimator_type in MCMC_ESTIMATORS:
-        return sample_posterior_subject_from_config(subject, config=config, registry=registry)
     if estimator_type in HIERARCHICAL_ESTIMATORS:
         return fit_subject_hierarchical_map_from_config(
             subject,
@@ -133,7 +119,7 @@ def fit_subject_auto_from_config(
         )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for subject fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | MCMC_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
     )
 
 
@@ -150,8 +136,6 @@ def fit_study_auto_from_config(
         return fit_study_from_config(study, config=config, registry=registry)
     if estimator_type in MAP_ESTIMATORS:
         return fit_map_study_from_config(study, config=config, registry=registry)
-    if estimator_type in MCMC_ESTIMATORS:
-        return sample_posterior_study_from_config(study, config=config, registry=registry)
     if estimator_type in HIERARCHICAL_ESTIMATORS:
         return fit_study_hierarchical_map_from_config(study, config=config, registry=registry)
     if estimator_type in HIERARCHICAL_MCMC_ESTIMATORS:
@@ -162,7 +146,7 @@ def fit_study_auto_from_config(
         )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for study fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | MCMC_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
     )
 
 

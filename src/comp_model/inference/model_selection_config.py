@@ -16,7 +16,6 @@ from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .config import fit_spec_from_config, model_component_spec_from_config
 from .config_dispatch import (
     MAP_ESTIMATORS,
-    MCMC_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
@@ -24,8 +23,6 @@ from .config_dispatch import (
 from .fitting import build_model_fit_function
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
-from .mcmc import sample_posterior_model
-from .mcmc_config import mcmc_estimator_spec_from_config
 from .model_selection import (
     CandidateFitSpec,
     ModelComparisonResult,
@@ -119,29 +116,7 @@ def build_fit_function_from_model_config(
             likelihood_program=resolved_likelihood,
         )
 
-    if estimator_type in MCMC_ESTIMATORS:
-        if prior_cfg is None:
-            raise ValueError(
-                f"prior is required for estimator type {estimator_type!r}"
-            )
-        prior_program = prior_program_from_config(prior_cfg)
-        estimator_spec = mcmc_estimator_spec_from_config(estimator_cfg)
-        return lambda trace: sample_posterior_model(
-            trace,
-            model_factory=model_factory,
-            prior_program=prior_program,
-            initial_params=estimator_spec.initial_params,
-            n_samples=estimator_spec.n_samples,
-            n_warmup=estimator_spec.n_warmup,
-            thin=estimator_spec.thin,
-            proposal_scales=estimator_spec.proposal_scales,
-            bounds=estimator_spec.bounds,
-            requirements=manifest.requirements,
-            likelihood_program=resolved_likelihood,
-            random_seed=estimator_spec.random_seed,
-        )
-
-    supported = sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | MCMC_ESTIMATORS)
+    supported = sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)
     raise ValueError(
         f"estimator.type must be one of {supported}; got {estimator_type!r}"
     )

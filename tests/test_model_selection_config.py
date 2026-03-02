@@ -175,8 +175,8 @@ def test_compare_dataset_candidates_from_config_requires_prior_for_map() -> None
         compare_dataset_candidates_from_config(rows, config=config)
 
 
-def test_compare_dataset_candidates_from_config_supports_mcmc_waic() -> None:
-    """Config model-comparison should support MCMC candidates with WAIC."""
+def test_compare_dataset_candidates_from_config_rejects_random_walk_estimator() -> None:
+    """Config model-comparison should reject removed random-walk estimators."""
 
     rows = tuple(_trial(index, action=1, reward=1.0) for index in range(18))
     config = {
@@ -245,8 +245,8 @@ def test_compare_dataset_candidates_from_config_supports_mcmc_waic() -> None:
         ],
     }
 
-    result = compare_dataset_candidates_from_config(rows, config=config)
-    assert result.selected_candidate_name == "good_mcmc"
+    with pytest.raises(ValueError, match="estimator.type must be one of"):
+        compare_dataset_candidates_from_config(rows, config=config)
 
 
 def test_compare_subject_and_study_candidates_from_config() -> None:

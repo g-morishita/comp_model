@@ -351,8 +351,8 @@ def test_recovery_config_requires_prior_for_map_estimators() -> None:
         run_parameter_recovery_from_config(config)
 
 
-def test_model_recovery_config_supports_waic_with_mcmc_candidates() -> None:
-    """Model recovery config should support WAIC criterion with MCMC candidates."""
+def test_model_recovery_config_rejects_random_walk_candidate_estimators() -> None:
+    """Model recovery config should reject removed random-walk estimators."""
 
     config = {
         "problem": {
@@ -437,10 +437,8 @@ def test_model_recovery_config_supports_waic_with_mcmc_candidates() -> None:
         "seed": 22,
     }
 
-    result = run_model_recovery_from_config(config)
-    assert len(result.cases) == 1
-    assert result.criterion == "waic"
-    assert result.cases[0].selected_candidate_name == "candidate_good_mcmc"
+    with pytest.raises(ValueError, match="estimator.type must be one of"):
+        run_model_recovery_from_config(config)
 
 
 def test_parameter_recovery_supports_likelihood_config() -> None:

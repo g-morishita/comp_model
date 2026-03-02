@@ -33,9 +33,9 @@ surfaces.
 
 - MLE fitting (`fit_model`, config-driven and dataset/study variants)
 - MAP fitting
-- MCMC posterior sampling
+- Stan-backed posterior sampling
 - Subject/study block handling via `block_fit_strategy` (`independent` or `joint`)
-- Hierarchical within-subject MAP and MCMC workflows
+- Hierarchical within-subject MAP and Stan workflows
 - Candidate model comparison APIs
 - CSV-driven fit/comparison CLIs
 

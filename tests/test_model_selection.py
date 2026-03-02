@@ -13,15 +13,12 @@ from comp_model.inference import (
     BayesFitResult,
     CandidateFitSpec,
     FitSpec,
-    IndependentPriorProgram,
     MLECandidate,
     MLEFitResult,
     PosteriorCandidate,
     RegistryCandidateFitSpec,
     compare_candidate_models,
     compare_registry_candidate_models,
-    sample_posterior_model,
-    uniform_log_prior,
 )
 from comp_model.inference.likelihood import ActionReplayLikelihood
 from comp_model.inference.mle import GridSearchMLEEstimator
@@ -108,32 +105,6 @@ def _constant_map_fit(
         log_posterior=float(log_likelihood + log_prior),
     )
     return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
-
-
-def _fit_fixed_choice_mcmc(
-    trace: Any,
-    *,
-    lower: float,
-    upper: float,
-    seed: int,
-):
-    """Fit fixed-choice model with random-walk Metropolis posterior sampling."""
-
-    return sample_posterior_model(
-        trace,
-        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        prior_program=IndependentPriorProgram(
-            {"p_right": uniform_log_prior(lower=0.0, upper=1.0)}
-        ),
-        initial_params={"p_right": min(max(0.5, lower + 1e-3), upper - 1e-3)},
-        n_samples=40,
-        n_warmup=40,
-        thin=1,
-        proposal_scales={"p_right": 0.06},
-        bounds={"p_right": (lower, upper)},
-        random_seed=seed,
-    )
-
 
 
 def test_compare_candidate_models_prefers_higher_log_likelihood() -> None:
@@ -338,64 +309,6 @@ def test_compare_candidate_models_accepts_map_fit_results() -> None:
 
     assert result.selected_candidate_name == "map_good"
     assert len(result.comparisons) == 2
-
-
-def test_compare_candidate_models_supports_waic_and_psis_loo_with_mcmc() -> None:
-    """Model comparison should support WAIC/PSIS-LOO with posterior draw fits."""
-
-    generating_model = FixedChoiceModel(p_right=0.8)
-    trace = run_episode(
-        problem=StationaryBanditProblem([0.5, 0.5]),
-        model=generating_model,
-        config=SimulationConfig(n_trials=80, seed=11),
-    )
-
-    waic_result = compare_candidate_models(
-        trace,
-        candidate_specs=(
-            CandidateFitSpec(
-                name="good_mcmc",
-                fit_function=lambda t: _fit_fixed_choice_mcmc(
-                    t, lower=0.0, upper=1.0, seed=2
-                ),
-                n_parameters=1,
-            ),
-            CandidateFitSpec(
-                name="bad_mcmc",
-                fit_function=lambda t: _fit_fixed_choice_mcmc(
-                    t, lower=0.0, upper=0.4, seed=3
-                ),
-                n_parameters=1,
-            ),
-        ),
-        criterion="waic",
-    )
-    assert waic_result.selected_candidate_name == "good_mcmc"
-    by_name = {item.candidate_name: item for item in waic_result.comparisons}
-    assert by_name["good_mcmc"].waic is not None
-    assert by_name["good_mcmc"].psis_loo is not None
-
-    loo_result = compare_candidate_models(
-        trace,
-        candidate_specs=(
-            CandidateFitSpec(
-                name="good_mcmc",
-                fit_function=lambda t: _fit_fixed_choice_mcmc(
-                    t, lower=0.0, upper=1.0, seed=2
-                ),
-                n_parameters=1,
-            ),
-            CandidateFitSpec(
-                name="bad_mcmc",
-                fit_function=lambda t: _fit_fixed_choice_mcmc(
-                    t, lower=0.0, upper=0.4, seed=3
-                ),
-                n_parameters=1,
-            ),
-        ),
-        criterion="psis_loo",
-    )
-    assert loo_result.selected_candidate_name == "good_mcmc"
 
 
 def test_compare_candidate_models_waic_rejects_non_posterior_fit_results() -> None:
