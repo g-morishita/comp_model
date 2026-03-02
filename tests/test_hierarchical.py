@@ -9,7 +9,10 @@ import pytest
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import BlockData, StudyData, SubjectData
-from comp_model.inference import fit_study_hierarchical_map, fit_subject_hierarchical_map
+from comp_model.inference.hierarchical import (
+    fit_study_hierarchical_map,
+    fit_subject_hierarchical_map,
+)
 from comp_model.inference.transforms import unit_interval_logit_transform
 from comp_model.problems import StationaryBanditProblem
 from comp_model.runtime import SimulationConfig, run_episode
@@ -91,4 +94,3 @@ def test_fit_study_hierarchical_map_is_removed() -> None:
             parameter_names=("p_right",),
             transforms={"p_right": unit_interval_logit_transform()},
         )
-
