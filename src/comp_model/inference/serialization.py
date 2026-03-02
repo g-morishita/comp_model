@@ -74,9 +74,12 @@ def study_fit_records(study_result: StudyFitResult) -> list[dict[str, Any]]:
 def subject_summary_records(subject_result: SubjectFitResult) -> list[dict[str, Any]]:
     """Convert one subject fit result to summary row."""
 
+    fit_mode, input_n_blocks = _subject_fit_mode_and_input_n_blocks(subject_result)
     row: dict[str, Any] = {
         "subject_id": subject_result.subject_id,
         "n_blocks": len(subject_result.block_results),
+        "input_n_blocks": int(input_n_blocks),
+        "fit_mode": fit_mode,
         "total_log_likelihood": float(subject_result.total_log_likelihood),
     }
     for key, value in sorted(subject_result.mean_best_params.items()):
@@ -341,9 +344,12 @@ def map_study_fit_records(study_result: MapStudyFitResult) -> list[dict[str, Any
 def map_subject_summary_records(subject_result: MapSubjectFitResult) -> list[dict[str, Any]]:
     """Convert one MAP subject fit result to summary row."""
 
+    fit_mode, input_n_blocks = _subject_fit_mode_and_input_n_blocks(subject_result)
     row: dict[str, Any] = {
         "subject_id": subject_result.subject_id,
         "n_blocks": len(subject_result.block_results),
+        "input_n_blocks": int(input_n_blocks),
+        "fit_mode": fit_mode,
         "total_log_likelihood": float(subject_result.total_log_likelihood),
         "total_log_posterior": float(subject_result.total_log_posterior),
     }
@@ -530,6 +536,26 @@ def write_hierarchical_mcmc_study_summary_csv(
     """Write hierarchical-MCMC study summary rows to CSV."""
 
     return write_records_csv(hierarchical_mcmc_study_summary_records(study_result), path)
+
+
+def _subject_fit_mode_and_input_n_blocks(subject_result: Any) -> tuple[str, int]:
+    """Resolve fit-mode metadata for subject-level fit outputs."""
+
+    fit_mode_raw = getattr(subject_result, "fit_mode", None)
+    if fit_mode_raw is not None:
+        fit_mode = str(fit_mode_raw)
+    else:
+        block_results = tuple(getattr(subject_result, "block_results", ()))
+        is_joint = len(block_results) == 1 and getattr(block_results[0], "block_id", None) == "__joint__"
+        fit_mode = "joint" if is_joint else "independent"
+
+    input_n_blocks_raw = getattr(subject_result, "input_n_blocks", None)
+    if input_n_blocks_raw is not None:
+        input_n_blocks = int(input_n_blocks_raw)
+    else:
+        input_n_blocks = int(len(getattr(subject_result, "block_results", ())))
+
+    return fit_mode, input_n_blocks
 
 
 def write_map_study_fit_records_csv(study_result: MapStudyFitResult, path: str | Path) -> Path:

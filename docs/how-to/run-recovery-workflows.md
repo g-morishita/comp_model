@@ -46,3 +46,5 @@ Model recovery writes:
 - Keep simulation and fitting likelihood settings aligned.
 - For social workflows, prefer generator-based simulation configs with explicit
   actor timing semantics.
+- For subject/study model recovery, set `block_fit_strategy` to `joint` when
+  you want one shared parameter set per subject across blocks.

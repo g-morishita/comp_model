@@ -17,6 +17,11 @@ import numpy as np
 from comp_model.core import load_config_mapping
 from comp_model.core.config_validation import validate_allowed_keys, validate_required_keys
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
+from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
+from comp_model.inference.config_dispatch import (
+    fit_study_auto_from_config,
+    fit_subject_auto_from_config,
+)
 from comp_model.inference.model_selection import SelectionCriterion
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -197,6 +202,7 @@ def run_model_recovery_from_config(
             "generating",
             "candidates",
             "likelihood",
+            "block_fit_strategy",
             "n_trials",
             "n_replications_per_generator",
             "criterion",
@@ -211,6 +217,10 @@ def run_model_recovery_from_config(
 
     generating_cfg = _require_sequence(config.get("generating"), field_name="generating")
     candidate_cfg = _require_sequence(config.get("candidates"), field_name="candidates")
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        config.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
+    )
     global_likelihood_cfg = (
         _require_mapping(config["likelihood"], field_name="likelihood")
         if "likelihood" in config
@@ -267,6 +277,20 @@ def run_model_recovery_from_config(
             registry=reg,
             fitting_ref=model_ref,
         )
+        candidate_fit_config: dict[str, Any] = {
+            "model": {
+                "component_id": model_ref.component_id,
+                "kwargs": dict(model_ref.kwargs),
+            },
+            "estimator": dict(estimator_cfg),
+            "block_fit_strategy": block_fit_strategy,
+        }
+        if prior_cfg is not None:
+            candidate_fit_config["prior"] = dict(
+                _require_mapping(prior_cfg, field_name=f"candidates[{index}].prior")
+            )
+        if candidate_likelihood_cfg is not None:
+            candidate_fit_config["likelihood"] = dict(candidate_likelihood_cfg)
 
         n_parameters_raw = item.get("n_parameters")
         n_parameters = int(n_parameters_raw) if n_parameters_raw is not None else None
@@ -276,6 +300,20 @@ def run_model_recovery_from_config(
                 name=name,
                 fit_function=fit_function,
                 n_parameters=n_parameters,
+                fit_subject_function=(
+                    lambda subject, config=candidate_fit_config, reg=reg: fit_subject_auto_from_config(
+                        subject,
+                        config=config,
+                        registry=reg,
+                    )
+                ),
+                fit_study_function=(
+                    lambda study, config=candidate_fit_config, reg=reg: fit_study_auto_from_config(
+                        study,
+                        config=config,
+                        registry=reg,
+                    )
+                ),
             )
         )
 
@@ -304,6 +342,7 @@ def run_model_recovery_from_config(
         criterion=criterion,
         seed=seed,
         trace_factory=trace_factory,
+        block_fit_strategy=block_fit_strategy,
     )
 
 

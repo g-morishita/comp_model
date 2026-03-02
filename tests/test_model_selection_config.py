@@ -305,6 +305,69 @@ def test_compare_subject_and_study_candidates_from_config() -> None:
     assert study_result.n_subjects == 1
 
 
+def test_compare_subject_candidates_from_config_supports_joint_block_strategy() -> None:
+    """Subject/study config comparison should support joint block fitting mode."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(
+                block_id="b0",
+                trials=tuple(_trial(index, action=1, reward=1.0) for index in range(6)),
+            ),
+            BlockData(
+                block_id="b1",
+                trials=tuple(_trial(index, action=1, reward=1.0) for index in range(6)),
+            ),
+        ),
+    )
+    study = StudyData(subjects=(subject,))
+    config = {
+        "criterion": "log_likelihood",
+        "block_fit_strategy": "joint",
+        "candidates": [
+            {
+                "name": "good_mle",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.8],
+                        "beta": [8.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "bad_mle",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.2],
+                        "beta": [0.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+        ],
+    }
+
+    subject_result = compare_subject_candidates_from_config(subject, config=config)
+    assert subject_result.selected_candidate_name == "good_mle"
+
+    study_result = compare_study_candidates_from_config(study, config=config)
+    assert study_result.selected_candidate_name == "good_mle"
+
+
 def test_compare_dataset_candidates_from_config_rejects_unknown_top_level_keys() -> None:
     """Model-selection config should fail fast on unknown top-level keys."""
 

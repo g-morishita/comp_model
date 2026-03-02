@@ -34,6 +34,7 @@ surfaces.
 - MLE fitting (`fit_model`, config-driven and dataset/study variants)
 - MAP fitting
 - MCMC posterior sampling
+- Subject/study block handling via `block_fit_strategy` (`independent` or `joint`)
 - Hierarchical within-subject MAP and MCMC workflows
 - Candidate model comparison APIs
 - CSV-driven fit/comparison CLIs
@@ -42,6 +43,7 @@ surfaces.
 
 - Parameter recovery runners and serializers
 - Model recovery runners and serializers
+- Model-recovery support for subject/study `block_fit_strategy`
 - Config-driven recovery CLI
 
 ## `comp_model.analysis`

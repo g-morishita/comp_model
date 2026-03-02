@@ -906,3 +906,84 @@ def test_model_recovery_supports_study_level_generator_simulation() -> None:
     result = run_model_recovery_from_config(config)
     assert len(result.cases) == 2
     assert sum(result.confusion_matrix["qrl_generator"].values()) == 2
+
+
+def test_model_recovery_supports_joint_block_fit_strategy() -> None:
+    """Model recovery config should support joint subject-level block fitting."""
+
+    config = {
+        "simulation": {
+            "type": "generator",
+            "level": "study",
+            "n_subjects": 2,
+            "generator": {
+                "component_id": "event_trace_asocial_generator",
+                "kwargs": {},
+            },
+            "blocks": [
+                {
+                    "n_trials": 25,
+                    "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+                    "block_id": "b1",
+                },
+                {
+                    "n_trials": 25,
+                    "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+                    "block_id": "b2",
+                },
+            ],
+        },
+        "generating": [
+            {
+                "name": "qrl_generator",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "true_params": {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+            },
+        ],
+        "candidates": [
+            {
+                "name": "candidate_good",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.3],
+                        "beta": [2.0],
+                        "initial_value": [0.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+            {
+                "name": "candidate_bad",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {},
+                },
+                "estimator": {
+                    "type": "grid_search",
+                    "parameter_grid": {
+                        "alpha": [0.9],
+                        "beta": [0.1],
+                        "initial_value": [1.0],
+                    },
+                },
+                "n_parameters": 3,
+            },
+        ],
+        "block_fit_strategy": "joint",
+        "n_trials": 25,
+        "n_replications_per_generator": 2,
+        "criterion": "log_likelihood",
+        "seed": 57,
+    }
+
+    result = run_model_recovery_from_config(config)
+    assert len(result.cases) == 2
+    assert sum(result.confusion_matrix["qrl_generator"].values()) == 2

@@ -10,6 +10,7 @@ from comp_model.analysis.information_criteria import aic, bic
 from comp_model.core.data import StudyData, SubjectData, get_block_trace
 from comp_model.core.events import EventPhase
 
+from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .criteria import compute_pointwise_information_criteria
 from .fit_result import extract_best_fit_summary
 from .model_selection import CandidateFitSpec
@@ -102,12 +103,17 @@ def compare_subject_candidate_models(
     *,
     candidate_specs: Sequence[CandidateFitSpec],
     criterion: SelectionCriterion = "log_likelihood",
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> SubjectModelComparisonResult:
     """Compare candidate models on all blocks for one subject."""
 
     if not candidate_specs:
         raise ValueError("candidate_specs must not be empty")
     _validate_criterion(criterion)
+    strategy = coerce_block_fit_strategy(
+        block_fit_strategy,
+        field_name="block_fit_strategy",
+    )
 
     n_observations = 0
     block_traces = []
@@ -120,91 +126,21 @@ def compare_subject_candidate_models(
 
     comparisons: list[SubjectCandidateComparison] = []
     for spec in candidate_specs:
-        total_log_likelihood = 0.0
-        total_log_posterior = 0.0
-        has_posterior = True
-        total_waic = 0.0
-        total_looic = 0.0
-        has_pointwise_criteria = True
-        first_param_count: int | None = None
-
-        for trace in block_traces:
-            fit_result = spec.fit_function(trace)
-            best = extract_best_fit_summary(fit_result)
-            total_log_likelihood += float(best.log_likelihood)
-            if best.log_posterior is None:
-                has_posterior = False
-            else:
-                total_log_posterior += float(best.log_posterior)
-            if first_param_count is None:
-                first_param_count = len(best.params)
-            try:
-                block_waic, block_looic = compute_pointwise_information_criteria(fit_result)
-                total_waic += float(block_waic)
-                total_looic += float(block_looic)
-            except (TypeError, ValueError) as exc:
-                has_pointwise_criteria = False
-                if criterion in {"waic", "psis_loo"}:
-                    raise ValueError(
-                        f"candidate {spec.name!r} does not support criterion "
-                        f"{criterion!r}: {exc}"
-                    ) from exc
-
-        n_parameters = (
-            int(spec.n_parameters)
-            if spec.n_parameters is not None
-            else int(first_param_count or 0)
-        )
-        if n_parameters < 0:
-            raise ValueError(f"n_parameters must be >= 0 for candidate {spec.name!r}")
-
-        aic_value = aic(log_likelihood=total_log_likelihood, n_parameters=n_parameters)
-        bic_value = bic(
-            log_likelihood=total_log_likelihood,
-            n_parameters=n_parameters,
-            n_observations=n_observations,
-        )
-        score = _selection_score(
-            criterion=criterion,
-            log_likelihood=total_log_likelihood,
-            aic_value=aic_value,
-            bic_value=bic_value,
-            waic_value=(
-                float(total_waic)
-                if has_pointwise_criteria
-                else None
-            ),
-            looic_value=(
-                float(total_looic)
-                if has_pointwise_criteria
-                else None
-            ),
-        )
-        comparisons.append(
-            SubjectCandidateComparison(
-                candidate_name=str(spec.name),
-                log_likelihood=float(total_log_likelihood),
-                log_posterior=(
-                    float(total_log_posterior)
-                    if has_posterior
-                    else None
-                ),
-                n_parameters=n_parameters,
-                aic=float(aic_value),
-                bic=float(bic_value),
-                waic=(
-                    float(total_waic)
-                    if has_pointwise_criteria
-                    else None
-                ),
-                psis_loo=(
-                    float(total_looic)
-                    if has_pointwise_criteria
-                    else None
-                ),
-                score=float(score),
+        if strategy == "joint":
+            comparison = _compare_candidate_joint_subject(
+                subject=subject,
+                spec=spec,
+                criterion=criterion,
+                n_observations=n_observations,
             )
-        )
+        else:
+            comparison = _compare_candidate_independent_subject(
+                block_traces=tuple(block_traces),
+                spec=spec,
+                criterion=criterion,
+                n_observations=n_observations,
+            )
+        comparisons.append(comparison)
 
     selected = _select_subject_candidate(comparisons, criterion=criterion)
     return SubjectModelComparisonResult(
@@ -221,6 +157,7 @@ def compare_study_candidate_models(
     *,
     candidate_specs: Sequence[CandidateFitSpec],
     criterion: SelectionCriterion = "log_likelihood",
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> StudyModelComparisonResult:
     """Compare candidate models across all study subjects."""
 
@@ -233,6 +170,7 @@ def compare_study_candidate_models(
             subject,
             candidate_specs=candidate_specs,
             criterion=criterion,
+            block_fit_strategy=block_fit_strategy,
         )
         for subject in study.subjects
     )
@@ -318,6 +256,190 @@ def _validate_criterion(criterion: str) -> None:
             "criterion must be one of "
             "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
         )
+
+
+def _compare_candidate_independent_subject(
+    *,
+    block_traces: tuple,
+    spec: CandidateFitSpec,
+    criterion: SelectionCriterion,
+    n_observations: int,
+) -> SubjectCandidateComparison:
+    """Aggregate candidate fit metrics by fitting each block independently."""
+
+    total_log_likelihood = 0.0
+    total_log_posterior = 0.0
+    has_posterior = True
+    total_waic = 0.0
+    total_looic = 0.0
+    has_pointwise_criteria = True
+    first_param_count: int | None = None
+
+    for trace in block_traces:
+        fit_result = spec.fit_function(trace)
+        best = extract_best_fit_summary(fit_result)
+        total_log_likelihood += float(best.log_likelihood)
+        if best.log_posterior is None:
+            has_posterior = False
+        else:
+            total_log_posterior += float(best.log_posterior)
+        if first_param_count is None:
+            first_param_count = len(best.params)
+        try:
+            block_waic, block_looic = compute_pointwise_information_criteria(fit_result)
+            total_waic += float(block_waic)
+            total_looic += float(block_looic)
+        except (TypeError, ValueError) as exc:
+            has_pointwise_criteria = False
+            if criterion in {"waic", "psis_loo"}:
+                raise ValueError(
+                    f"candidate {spec.name!r} does not support criterion "
+                    f"{criterion!r}: {exc}"
+                ) from exc
+
+    n_parameters = (
+        int(spec.n_parameters)
+        if spec.n_parameters is not None
+        else int(first_param_count or 0)
+    )
+    if n_parameters < 0:
+        raise ValueError(f"n_parameters must be >= 0 for candidate {spec.name!r}")
+
+    aic_value = aic(log_likelihood=total_log_likelihood, n_parameters=n_parameters)
+    bic_value = bic(
+        log_likelihood=total_log_likelihood,
+        n_parameters=n_parameters,
+        n_observations=n_observations,
+    )
+    score = _selection_score(
+        criterion=criterion,
+        log_likelihood=total_log_likelihood,
+        aic_value=aic_value,
+        bic_value=bic_value,
+        waic_value=(
+            float(total_waic)
+            if has_pointwise_criteria
+            else None
+        ),
+        looic_value=(
+            float(total_looic)
+            if has_pointwise_criteria
+            else None
+        ),
+    )
+    return SubjectCandidateComparison(
+        candidate_name=str(spec.name),
+        log_likelihood=float(total_log_likelihood),
+        log_posterior=(
+            float(total_log_posterior)
+            if has_posterior
+            else None
+        ),
+        n_parameters=n_parameters,
+        aic=float(aic_value),
+        bic=float(bic_value),
+        waic=(
+            float(total_waic)
+            if has_pointwise_criteria
+            else None
+        ),
+        psis_loo=(
+            float(total_looic)
+            if has_pointwise_criteria
+            else None
+        ),
+        score=float(score),
+    )
+
+
+def _compare_candidate_joint_subject(
+    *,
+    subject: SubjectData,
+    spec: CandidateFitSpec,
+    criterion: SelectionCriterion,
+    n_observations: int,
+) -> SubjectCandidateComparison:
+    """Aggregate candidate fit metrics by fitting one shared subject model."""
+
+    if spec.fit_subject_function is None:
+        raise ValueError(
+            f"candidate {spec.name!r} does not provide subject-level fitting "
+            "required for block_fit_strategy='joint'"
+        )
+
+    fit_result = spec.fit_subject_function(subject)
+    params, log_likelihood, log_posterior = _extract_joint_subject_summary(fit_result)
+    n_parameters = (
+        int(spec.n_parameters)
+        if spec.n_parameters is not None
+        else int(len(params))
+    )
+    if n_parameters < 0:
+        raise ValueError(f"n_parameters must be >= 0 for candidate {spec.name!r}")
+
+    aic_value = aic(log_likelihood=log_likelihood, n_parameters=n_parameters)
+    bic_value = bic(
+        log_likelihood=log_likelihood,
+        n_parameters=n_parameters,
+        n_observations=n_observations,
+    )
+    if criterion in {"waic", "psis_loo"}:
+        raise ValueError(
+            "joint block_fit_strategy currently supports criteria "
+            "{'log_likelihood', 'aic', 'bic'}"
+        )
+
+    score = _selection_score(
+        criterion=criterion,
+        log_likelihood=log_likelihood,
+        aic_value=aic_value,
+        bic_value=bic_value,
+        waic_value=None,
+        looic_value=None,
+    )
+    return SubjectCandidateComparison(
+        candidate_name=str(spec.name),
+        log_likelihood=float(log_likelihood),
+        log_posterior=(
+            float(log_posterior)
+            if log_posterior is not None
+            else None
+        ),
+        n_parameters=n_parameters,
+        aic=float(aic_value),
+        bic=float(bic_value),
+        score=float(score),
+        waic=None,
+        psis_loo=None,
+    )
+
+
+def _extract_joint_subject_summary(fit_result: object) -> tuple[dict[str, float], float, float | None]:
+    """Extract best summary for subject-level joint fit outputs."""
+
+    total_log_likelihood = getattr(fit_result, "total_log_likelihood", None)
+    if total_log_likelihood is not None:
+        params_raw = getattr(fit_result, "mean_best_params", None)
+        if params_raw is None:
+            params_raw = getattr(fit_result, "mean_map_params", None)
+        if params_raw is None:
+            params_raw = getattr(fit_result, "mean_block_map_params", None)
+        if isinstance(params_raw, dict):
+            log_posterior = getattr(fit_result, "total_log_posterior", None)
+            if log_posterior is None:
+                log_posterior = getattr(fit_result, "total_map_log_posterior", None)
+            return (
+                {str(key): float(value) for key, value in params_raw.items()},
+                float(total_log_likelihood),
+                float(log_posterior) if log_posterior is not None else None,
+            )
+
+    best = extract_best_fit_summary(fit_result)
+    return (
+        {str(key): float(value) for key, value in best.params.items()},
+        float(best.log_likelihood),
+        float(best.log_posterior) if best.log_posterior is not None else None,
+    )
 
 
 def _selection_score(

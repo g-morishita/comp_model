@@ -52,12 +52,18 @@ class SubjectFitResult:
     mean_best_params : dict[str, float]
         Mean best-fit parameter values across blocks for keys shared by all
         block best-parameter mappings.
+    fit_mode : {"independent", "joint"}
+        Block-fitting strategy used for this subject.
+    input_n_blocks : int | None
+        Number of blocks in the original input subject data.
     """
 
     subject_id: str
     block_results: tuple[BlockFitResult, ...]
     total_log_likelihood: float
     mean_best_params: dict[str, float]
+    fit_mode: BlockFitStrategy = "independent"
+    input_n_blocks: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +192,8 @@ def fit_subject_data(
             block_results=block_results,
             total_log_likelihood=total_log_likelihood,
             mean_best_params=mean_best_params,
+            fit_mode="independent",
+            input_n_blocks=len(subject.blocks),
         )
 
     block_traces = tuple(get_block_trace(block) for block in subject.blocks)
@@ -218,6 +226,8 @@ def fit_subject_data(
         block_results=block_results,
         total_log_likelihood=float(joint_fit.best.log_likelihood),
         mean_best_params=dict(joint_fit.best.params),
+        fit_mode="joint",
+        input_n_blocks=len(subject.blocks),
     )
 
 

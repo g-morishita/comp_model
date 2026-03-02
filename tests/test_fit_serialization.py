@@ -78,6 +78,8 @@ def test_study_records_and_summary_rows() -> None:
     assert len(candidate_rows) == 4
     assert len(summary_rows) == 2
     assert {row["subject_id"] for row in summary_rows} == {"s1", "s2"}
+    assert {row["fit_mode"] for row in summary_rows} == {"independent"}
+    assert {row["input_n_blocks"] for row in summary_rows} == {1}
 
 
 def test_fit_serialization_csv_writers(tmp_path: Path) -> None:

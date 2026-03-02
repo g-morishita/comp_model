@@ -20,6 +20,7 @@ nav:
       - Connect a Problem, Generator, and Demonstrator: how-to/connect-problem-generator-and-demonstrator.md
       - Run Recovery Workflows: how-to/run-recovery-workflows.md
       - Compare Candidate Models: how-to/compare-candidate-models.md
+      - Choose a Block Fit Strategy: how-to/choose-block-fit-strategy.md
       - Fit Existing CSV Data: how-to/fit-existing-csv-data.md
       - Deploy Docs and Enable Hooks: how-to/deploy-docs-and-enable-hooks.md
       - Contribute New Models and Tasks: how-to/contribute-new-models-and-tasks.md

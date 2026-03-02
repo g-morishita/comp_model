@@ -57,6 +57,10 @@ class MapSubjectFitResult:
         Sum of block-level MAP log-posterior values.
     mean_map_params : dict[str, float]
         Mean MAP parameter values across shared parameter keys.
+    fit_mode : {"independent", "joint"}
+        Block-fitting strategy used for this subject.
+    input_n_blocks : int | None
+        Number of blocks in the original input subject data.
     """
 
     subject_id: str
@@ -64,6 +68,8 @@ class MapSubjectFitResult:
     total_log_likelihood: float
     total_log_posterior: float
     mean_map_params: dict[str, float]
+    fit_mode: BlockFitStrategy = "independent"
+    input_n_blocks: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +192,8 @@ def fit_map_subject_data(
             total_log_likelihood=total_log_likelihood,
             total_log_posterior=total_log_posterior,
             mean_map_params=mean_map_params,
+            fit_mode="independent",
+            input_n_blocks=len(subject.blocks),
         )
 
     block_traces = tuple(get_block_trace(block) for block in subject.blocks)
@@ -220,6 +228,8 @@ def fit_map_subject_data(
         total_log_likelihood=float(joint_fit.map_candidate.log_likelihood),
         total_log_posterior=float(joint_fit.map_candidate.log_posterior),
         mean_map_params=dict(joint_fit.map_candidate.params),
+        fit_mode="joint",
+        input_n_blocks=len(subject.blocks),
     )
 
 

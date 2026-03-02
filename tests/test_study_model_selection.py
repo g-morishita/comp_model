@@ -9,10 +9,12 @@ import numpy as np
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     BayesFitResult,
+    BlockFitResult,
     CandidateFitSpec,
     MLECandidate,
     MLEFitResult,
     PosteriorCandidate,
+    SubjectFitResult,
     compare_study_candidate_models,
     compare_subject_candidate_models,
 )
@@ -239,3 +241,43 @@ def test_compare_subject_candidate_models_supports_waic_psis_loo() -> None:
         criterion="psis_loo",
     )
     assert loo_result.selected_candidate_name == "good_post"
+
+
+def test_compare_subject_candidate_models_supports_joint_block_strategy() -> None:
+    """Subject-level comparison should support one joint fit per candidate."""
+
+    subject = _subject("s1")
+
+    def _joint_subject_fit(log_likelihood: float) -> SubjectFitResult:
+        candidate = MLECandidate(params={"alpha": 0.3}, log_likelihood=log_likelihood)
+        fit = MLEFitResult(best=candidate, candidates=(candidate,))
+        return SubjectFitResult(
+            subject_id="s1",
+            block_results=(BlockFitResult(block_id="__joint__", n_trials=4, fit_result=fit),),
+            total_log_likelihood=log_likelihood,
+            mean_best_params={"alpha": 0.3},
+            fit_mode="joint",
+            input_n_blocks=2,
+        )
+
+    result = compare_subject_candidate_models(
+        subject,
+        candidate_specs=(
+            CandidateFitSpec(
+                name="joint_bad",
+                fit_function=_constant_mle_fit(log_likelihood=-100.0),
+                fit_subject_function=lambda _subject: _joint_subject_fit(-12.0),
+                n_parameters=1,
+            ),
+            CandidateFitSpec(
+                name="joint_good",
+                fit_function=_constant_mle_fit(log_likelihood=-100.0),
+                fit_subject_function=lambda _subject: _joint_subject_fit(-8.0),
+                n_parameters=1,
+            ),
+        ),
+        criterion="log_likelihood",
+        block_fit_strategy="joint",
+    )
+
+    assert result.selected_candidate_name == "joint_good"

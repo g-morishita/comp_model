@@ -56,6 +56,10 @@ class MCMCSubjectResult:
         Sum of block-level retained MAP log-posterior values.
     mean_block_map_params : dict[str, float]
         Mean block-level retained MAP parameters across shared keys.
+    fit_mode : {"independent", "joint"}
+        Block-fitting strategy used for this subject.
+    input_n_blocks : int | None
+        Number of blocks in the original input subject data.
     """
 
     subject_id: str
@@ -63,6 +67,8 @@ class MCMCSubjectResult:
     total_map_log_likelihood: float
     total_map_log_posterior: float
     mean_block_map_params: dict[str, float]
+    fit_mode: BlockFitStrategy = "independent"
+    input_n_blocks: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,6 +233,8 @@ def sample_posterior_subject_data(
             total_map_log_likelihood=total_map_log_likelihood,
             total_map_log_posterior=total_map_log_posterior,
             mean_block_map_params=mean_block_map_params,
+            fit_mode="independent",
+            input_n_blocks=len(subject.blocks),
         )
 
     block_traces = tuple(get_block_trace(block) for block in subject.blocks)
@@ -266,6 +274,8 @@ def sample_posterior_subject_data(
         total_map_log_likelihood=float(joint_posterior.map_candidate.log_likelihood),
         total_map_log_posterior=float(joint_posterior.map_candidate.log_posterior),
         mean_block_map_params=dict(joint_posterior.map_candidate.params),
+        fit_mode="joint",
+        input_n_blocks=len(subject.blocks),
     )
 
 

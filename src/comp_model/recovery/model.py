@@ -14,6 +14,7 @@ import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
 from comp_model.core.data import StudyData, SubjectData
+from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from comp_model.inference.fit_result import extract_best_fit_summary
 from comp_model.inference.model_selection import (
     CandidateFitSpec,
@@ -64,11 +65,19 @@ class CandidateModelSpec:
     n_parameters : int | None, optional
         Number of effective free parameters for information criteria.
         If ``None``, this defaults to ``len(fit_result.best.params)``.
+    fit_subject_function : Callable[[SubjectData], Any] | None, optional
+        Optional subject-level fit callable used when block aggregation strategy
+        requires one joint fit per subject.
+    fit_study_function : Callable[[StudyData], Any] | None, optional
+        Optional study-level fit callable used when block aggregation strategy
+        requires one joint fit per subject.
     """
 
     name: str
     fit_function: Callable[[Any], Any]
     n_parameters: int | None = None
+    fit_subject_function: Callable[[SubjectData], Any] | None = None
+    fit_study_function: Callable[[StudyData], Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +174,7 @@ def run_model_recovery(
     criterion: SelectionCriterion = "log_likelihood",
     seed: int = 0,
     trace_factory: Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None = None,
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> ModelRecoveryResult:
     """Run model-recovery simulation and candidate selection.
 
@@ -190,6 +200,9 @@ def run_model_recovery(
         and returning a fit-compatible dataset object. This supports model
         recovery on trial-program and multi-actor traces. When omitted, traces
         are generated via :func:`comp_model.runtime.run_episode`.
+    block_fit_strategy : {"independent", "joint"}, optional
+        Subject/study block aggregation strategy used when generated datasets
+        are :class:`SubjectData` or :class:`StudyData`.
 
     Returns
     -------
@@ -212,17 +225,23 @@ def run_model_recovery(
         raise ValueError("n_replications_per_generator must be > 0")
     if trace_factory is None and problem_factory is None:
         raise ValueError("either problem_factory or trace_factory must be provided")
+    strategy = coerce_block_fit_strategy(
+        block_fit_strategy,
+        field_name="block_fit_strategy",
+    )
 
     # Compile one reusable candidate set so every simulated dataset is evaluated
     # with exactly the same fitting configuration.
     compiled_candidates = tuple(
-        CandidateFitSpec(
-            name=candidate.name,
-            fit_function=candidate.fit_function,
-            n_parameters=candidate.n_parameters,
+            CandidateFitSpec(
+                name=candidate.name,
+                fit_function=candidate.fit_function,
+                n_parameters=candidate.n_parameters,
+                fit_subject_function=candidate.fit_subject_function,
+                fit_study_function=candidate.fit_study_function,
+            )
+            for candidate in candidate_specs
         )
-        for candidate in candidate_specs
-    )
 
     rng = np.random.default_rng(seed)
     cases: list[ModelRecoveryCase] = []
@@ -250,12 +269,14 @@ def run_model_recovery(
                     trace,
                     candidate_specs=compiled_candidates,
                     criterion=criterion,
+                    block_fit_strategy=strategy,
                 )
             elif isinstance(trace, StudyData):
                 comparison = compare_study_candidate_models(
                     trace,
                     candidate_specs=compiled_candidates,
                     criterion=criterion,
+                    block_fit_strategy=strategy,
                 )
             else:
                 comparison = compare_candidate_models(

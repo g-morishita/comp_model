@@ -75,6 +75,8 @@ def test_map_record_helpers_emit_expected_shapes() -> None:
     assert len(summary_rows) == 2
     assert set(block_rows[0]) >= {"subject_id", "block_id", "log_likelihood", "log_prior", "log_posterior"}
     assert set(summary_rows[0]) >= {"subject_id", "total_log_likelihood", "total_log_posterior"}
+    assert {row["fit_mode"] for row in summary_rows} == {"independent"}
+    assert {row["input_n_blocks"] for row in summary_rows} == {1}
 
     subject_rows = map_subject_fit_records(study.subject_results[0])
     assert len(subject_rows) == 1

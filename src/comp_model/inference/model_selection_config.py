@@ -12,8 +12,15 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .bayes import build_map_fit_function
 from .bayes_config import map_fit_spec_from_config, prior_program_from_config
+from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .config import fit_spec_from_config, model_component_spec_from_config
-from .config_dispatch import MAP_ESTIMATORS, MCMC_ESTIMATORS, MLE_ESTIMATORS
+from .config_dispatch import (
+    MAP_ESTIMATORS,
+    MCMC_ESTIMATORS,
+    MLE_ESTIMATORS,
+    fit_study_auto_from_config,
+    fit_subject_auto_from_config,
+)
 from .fitting import build_model_fit_function
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
@@ -213,7 +220,11 @@ def compare_subject_candidates_from_config(
     validate_allowed_keys(
         cfg,
         field_name="config",
-        allowed_keys=("candidates", "criterion", "likelihood"),
+        allowed_keys=("candidates", "criterion", "likelihood", "block_fit_strategy"),
+    )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
     )
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
@@ -234,6 +245,7 @@ def compare_subject_candidates_from_config(
         subject,
         candidate_specs=candidate_specs,
         criterion=criterion,
+        block_fit_strategy=block_fit_strategy,
     )
 
 
@@ -250,7 +262,11 @@ def compare_study_candidates_from_config(
     validate_allowed_keys(
         cfg,
         field_name="config",
-        allowed_keys=("candidates", "criterion", "likelihood"),
+        allowed_keys=("candidates", "criterion", "likelihood", "block_fit_strategy"),
+    )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
     )
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
@@ -271,6 +287,7 @@ def compare_study_candidates_from_config(
         study,
         candidate_specs=candidate_specs,
         criterion=criterion,
+        block_fit_strategy=block_fit_strategy,
     )
 
 
@@ -318,6 +335,16 @@ def _candidate_specs_from_config(
             likelihood_cfg=candidate_likelihood_cfg,
             likelihood_program=likelihood_program,
         )
+        candidate_fit_config: dict[str, Any] = {
+            "model": dict(model_cfg),
+            "estimator": dict(estimator_cfg),
+        }
+        if prior_cfg is not None:
+            candidate_fit_config["prior"] = dict(prior_cfg)
+        if candidate_likelihood_cfg is not None:
+            candidate_fit_config["likelihood"] = dict(candidate_likelihood_cfg)
+        if "block_fit_strategy" in cfg:
+            candidate_fit_config["block_fit_strategy"] = cfg["block_fit_strategy"]
 
         n_parameters_raw = item.get("n_parameters")
         n_parameters = int(n_parameters_raw) if n_parameters_raw is not None else None
@@ -326,6 +353,16 @@ def _candidate_specs_from_config(
                 name=name,
                 fit_function=fit_function,
                 n_parameters=n_parameters,
+                fit_subject_function=lambda subject, config=candidate_fit_config, reg=reg: fit_subject_auto_from_config(
+                    subject,
+                    config=config,
+                    registry=reg,
+                ),
+                fit_study_function=lambda study, config=candidate_fit_config, reg=reg: fit_study_auto_from_config(
+                    study,
+                    config=config,
+                    registry=reg,
+                ),
             )
         )
 

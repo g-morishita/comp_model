@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from comp_model.analysis.information_criteria import aic, bic
-from comp_model.core.data import BlockData, TrialDecision
+from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
@@ -39,11 +39,19 @@ class CandidateFitSpec:
     n_parameters : int | None, optional
         Effective free parameter count used by information criteria.
         If ``None``, ``len(fit_result.best.params)`` is used.
+    fit_subject_function : Callable[[SubjectData], Any] | None, optional
+        Optional subject-level fit callable used when block aggregation strategy
+        requires one joint fit per subject.
+    fit_study_function : Callable[[StudyData], Any] | None, optional
+        Optional study-level fit callable used when block aggregation strategy
+        requires one joint fit per subject.
     """
 
     name: str
     fit_function: Callable[[EpisodeTrace], Any]
     n_parameters: int | None = None
+    fit_subject_function: Callable[[SubjectData], Any] | None = None
+    fit_study_function: Callable[[StudyData], Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)

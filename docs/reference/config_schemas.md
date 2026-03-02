@@ -152,6 +152,7 @@ ModelSelectionConfig = {
     "criterion": "log_likelihood" | "aic" | "bic" | "waic" | "psis_loo",  # optional
     "n_observations": int,  # dataset-level only, optional
     "likelihood": LikelihoodConfig,  # optional global default
+    "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
 }
 
 CandidateConfig = {
@@ -228,6 +229,7 @@ ModelRecoveryConfig = {
     }],
     "candidates": list[CandidateConfig],
     "likelihood": LikelihoodConfig,  # optional global default
+    "block_fit_strategy": "independent" | "joint",  # optional; subject/study simulation levels
     "n_trials": int,
     "n_replications_per_generator": int,
     "criterion": "log_likelihood" | "aic" | "bic" | "waic" | "psis_loo",  # optional
