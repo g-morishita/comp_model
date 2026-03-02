@@ -39,7 +39,7 @@ def _comparison_config() -> dict:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [8.0],
@@ -55,7 +55,7 @@ def _comparison_config() -> dict:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.2],
                         "beta": [0.0],

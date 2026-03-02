@@ -206,6 +206,8 @@ class ScipyMinimizeMLEEstimator:
         initial_params: Mapping[str, float],
         *,
         bounds: Mapping[str, tuple[float | None, float | None]] | None = None,
+        n_starts: int = 5,
+        random_seed: int | None = 0,
     ) -> MLEFitResult:
         """Fit model parameters using SciPy minimization.
 
@@ -217,6 +219,10 @@ class ScipyMinimizeMLEEstimator:
             Initial parameter values.
         bounds : Mapping[str, tuple[float | None, float | None]] | None, optional
             Box bounds by parameter name. Missing bounds default to ``(None, None)``.
+        n_starts : int, optional
+            Number of optimizer starts. Must be >= 2.
+        random_seed : int | None, optional
+            Random seed used to generate additional randomized starts.
 
         Returns
         -------
@@ -241,49 +247,79 @@ class ScipyMinimizeMLEEstimator:
         names = tuple(sorted(initial_params))
         if not names:
             raise ValueError("initial_params must include at least one parameter")
+        if n_starts < 2:
+            raise ValueError("n_starts must be >= 2 for scipy_minimize")
 
         x0 = np.asarray([float(initial_params[name]) for name in names], dtype=float)
         scipy_bounds = _normalize_scipy_bounds(names, bounds)
+        start_vectors = _generate_multistart_vectors(
+            base_vector=x0,
+            bounds=scipy_bounds,
+            n_starts=n_starts,
+            random_seed=random_seed,
+        )
 
         candidates: list[MLECandidate] = []
+        best_result: Any | None = None
+        best_run_log_likelihood = float("-inf")
+        total_n_iterations = 0
+        total_n_function_evaluations = 0
 
-        def objective(x: np.ndarray) -> float:
-            params = _vector_to_params(names, x)
-            model = self._model_factory(params)
-            replay_result = self._likelihood_program.evaluate(trace, model)
-            log_likelihood = float(replay_result.total_log_likelihood)
-            candidates.append(MLECandidate(params=params, log_likelihood=log_likelihood))
+        for start_vector in start_vectors:
+            run_candidates: list[MLECandidate] = []
 
-            if not np.isfinite(log_likelihood):
-                return 1e15
-            return -log_likelihood
+            def objective(x: np.ndarray) -> float:
+                params = _vector_to_params(names, x)
+                model = self._model_factory(params)
+                replay_result = self._likelihood_program.evaluate(trace, model)
+                log_likelihood = float(replay_result.total_log_likelihood)
+                candidate = MLECandidate(params=params, log_likelihood=log_likelihood)
+                run_candidates.append(candidate)
+                candidates.append(candidate)
 
-        result = minimize(
-            objective,
-            x0,
-            method=self._method,
-            bounds=scipy_bounds,
-            tol=self._tol,
-            options=self._options,
-        )
+                if not np.isfinite(log_likelihood):
+                    return 1e15
+                return -log_likelihood
 
-        final_params = _vector_to_params(names, np.asarray(result.x, dtype=float))
-        final_model = self._model_factory(final_params)
-        final_replay = self._likelihood_program.evaluate(trace, final_model)
-        final_candidate = MLECandidate(
-            params=final_params,
-            log_likelihood=float(final_replay.total_log_likelihood),
-        )
-        candidates.append(final_candidate)
+            result = minimize(
+                objective,
+                start_vector,
+                method=self._method,
+                bounds=scipy_bounds,
+                tol=self._tol,
+                options=self._options,
+            )
+
+            final_params = _vector_to_params(names, np.asarray(result.x, dtype=float))
+            final_model = self._model_factory(final_params)
+            final_replay = self._likelihood_program.evaluate(trace, final_model)
+            final_candidate = MLECandidate(
+                params=final_params,
+                log_likelihood=float(final_replay.total_log_likelihood),
+            )
+            run_candidates.append(final_candidate)
+            candidates.append(final_candidate)
+
+            run_best = max(run_candidates, key=lambda item: item.log_likelihood)
+            if run_best.log_likelihood > best_run_log_likelihood:
+                best_run_log_likelihood = run_best.log_likelihood
+                best_result = result
+
+            total_n_iterations += max(0, int(getattr(result, "nit", 0)))
+            total_n_function_evaluations += max(
+                0,
+                int(getattr(result, "nfev", len(run_candidates))),
+            )
 
         best = max(candidates, key=lambda item: item.log_likelihood)
+        chosen_result = best_result if best_result is not None else result
         diagnostics = ScipyMinimizeDiagnostics(
             method=self._method,
-            success=bool(result.success),
-            status=int(result.status),
-            message=str(result.message),
-            n_iterations=int(getattr(result, "nit", -1)),
-            n_function_evaluations=int(getattr(result, "nfev", len(candidates))),
+            success=bool(chosen_result.success),
+            status=int(chosen_result.status),
+            message=str(chosen_result.message),
+            n_iterations=total_n_iterations,
+            n_function_evaluations=total_n_function_evaluations,
         )
         return MLEFitResult(
             best=best,
@@ -362,6 +398,58 @@ def _vector_to_params(names: tuple[str, ...], vector: np.ndarray) -> dict[str, f
     """Convert ordered parameter vector to named parameter mapping."""
 
     return {name: float(value) for name, value in zip(names, vector, strict=True)}
+
+
+def _generate_multistart_vectors(
+    *,
+    base_vector: np.ndarray,
+    bounds: tuple[tuple[float | None, float | None], ...],
+    n_starts: int,
+    random_seed: int | None,
+) -> tuple[np.ndarray, ...]:
+    """Generate one deterministic base start plus randomized additional starts."""
+
+    starts: list[np.ndarray] = [np.asarray(base_vector, dtype=float).copy()]
+    if n_starts <= 1:
+        return tuple(starts)
+
+    rng = np.random.default_rng(random_seed)
+    for _ in range(n_starts - 1):
+        sampled = [
+            _sample_start_value(
+                rng=rng,
+                base=float(base_vector[index]),
+                lower=bound[0],
+                upper=bound[1],
+            )
+            for index, bound in enumerate(bounds)
+        ]
+        starts.append(np.asarray(sampled, dtype=float))
+
+    return tuple(starts)
+
+
+def _sample_start_value(
+    *,
+    rng: np.random.Generator,
+    base: float,
+    lower: float | None,
+    upper: float | None,
+) -> float:
+    """Sample one randomized start value while respecting optional bounds."""
+
+    if lower is not None and upper is not None:
+        if lower == upper:
+            return float(lower)
+        return float(rng.uniform(lower, upper))
+
+    scale = max(1.0, abs(base) * 0.5 + 1e-6)
+    sample = float(base + rng.normal(loc=0.0, scale=scale))
+    if lower is not None:
+        return float(max(lower, sample))
+    if upper is not None:
+        return float(min(upper, sample))
+    return sample
 
 
 def _iter_parameter_grid(parameter_grid: dict[str, list[float]]) -> tuple[dict[str, float], ...]:
@@ -446,6 +534,8 @@ class TransformedScipyMinimizeMLEEstimator:
         initial_params: Mapping[str, float],
         *,
         bounds_z: Mapping[str, tuple[float | None, float | None]] | None = None,
+        n_starts: int = 5,
+        random_seed: int | None = 0,
     ) -> MLEFitResult:
         """Fit model parameters in transformed unconstrained space.
 
@@ -457,6 +547,10 @@ class TransformedScipyMinimizeMLEEstimator:
             Initial constrained parameter values.
         bounds_z : Mapping[str, tuple[float | None, float | None]] | None, optional
             Optional optimizer-space bounds by parameter name.
+        n_starts : int, optional
+            Number of optimizer starts. Must be >= 2.
+        random_seed : int | None, optional
+            Random seed used to generate additional randomized starts.
 
         Returns
         -------
@@ -481,6 +575,8 @@ class TransformedScipyMinimizeMLEEstimator:
         names = tuple(sorted(initial_params))
         if not names:
             raise ValueError("initial_params must include at least one parameter")
+        if n_starts < 2:
+            raise ValueError("n_starts must be >= 2 for transformed_scipy_minimize")
 
         transforms = {
             name: self._transforms.get(name, identity_transform())
@@ -492,50 +588,78 @@ class TransformedScipyMinimizeMLEEstimator:
             dtype=float,
         )
         scipy_bounds = _normalize_scipy_bounds(names, bounds_z)
+        start_vectors = _generate_multistart_vectors(
+            base_vector=z0,
+            bounds=scipy_bounds,
+            n_starts=n_starts,
+            random_seed=random_seed,
+        )
 
         candidates: list[MLECandidate] = []
+        best_result: Any | None = None
+        best_run_log_likelihood = float("-inf")
+        total_n_iterations = 0
+        total_n_function_evaluations = 0
 
-        def objective(z_vector: np.ndarray) -> float:
-            params = _vector_to_constrained_params(names, z_vector, transforms=transforms)
-            model = self._model_factory(params)
-            replay_result = self._likelihood_program.evaluate(trace, model)
-            log_likelihood = float(replay_result.total_log_likelihood)
-            candidates.append(MLECandidate(params=params, log_likelihood=log_likelihood))
+        for start_vector in start_vectors:
+            run_candidates: list[MLECandidate] = []
 
-            if not np.isfinite(log_likelihood):
-                return 1e15
-            return -log_likelihood
+            def objective(z_vector: np.ndarray) -> float:
+                params = _vector_to_constrained_params(names, z_vector, transforms=transforms)
+                model = self._model_factory(params)
+                replay_result = self._likelihood_program.evaluate(trace, model)
+                log_likelihood = float(replay_result.total_log_likelihood)
+                candidate = MLECandidate(params=params, log_likelihood=log_likelihood)
+                run_candidates.append(candidate)
+                candidates.append(candidate)
 
-        result = minimize(
-            objective,
-            z0,
-            method=self._method,
-            bounds=scipy_bounds,
-            tol=self._tol,
-            options=self._options,
-        )
+                if not np.isfinite(log_likelihood):
+                    return 1e15
+                return -log_likelihood
 
-        final_params = _vector_to_constrained_params(
-            names,
-            np.asarray(result.x, dtype=float),
-            transforms=transforms,
-        )
-        final_model = self._model_factory(final_params)
-        final_replay = self._likelihood_program.evaluate(trace, final_model)
-        final_candidate = MLECandidate(
-            params=final_params,
-            log_likelihood=float(final_replay.total_log_likelihood),
-        )
-        candidates.append(final_candidate)
+            result = minimize(
+                objective,
+                start_vector,
+                method=self._method,
+                bounds=scipy_bounds,
+                tol=self._tol,
+                options=self._options,
+            )
+
+            final_params = _vector_to_constrained_params(
+                names,
+                np.asarray(result.x, dtype=float),
+                transforms=transforms,
+            )
+            final_model = self._model_factory(final_params)
+            final_replay = self._likelihood_program.evaluate(trace, final_model)
+            final_candidate = MLECandidate(
+                params=final_params,
+                log_likelihood=float(final_replay.total_log_likelihood),
+            )
+            run_candidates.append(final_candidate)
+            candidates.append(final_candidate)
+
+            run_best = max(run_candidates, key=lambda item: item.log_likelihood)
+            if run_best.log_likelihood > best_run_log_likelihood:
+                best_run_log_likelihood = run_best.log_likelihood
+                best_result = result
+
+            total_n_iterations += max(0, int(getattr(result, "nit", 0)))
+            total_n_function_evaluations += max(
+                0,
+                int(getattr(result, "nfev", len(run_candidates))),
+            )
 
         best = max(candidates, key=lambda item: item.log_likelihood)
+        chosen_result = best_result if best_result is not None else result
         diagnostics = ScipyMinimizeDiagnostics(
             method=self._method,
-            success=bool(result.success),
-            status=int(result.status),
-            message=str(result.message),
-            n_iterations=int(getattr(result, "nit", -1)),
-            n_function_evaluations=int(getattr(result, "nfev", len(candidates))),
+            success=bool(chosen_result.success),
+            status=int(chosen_result.status),
+            message=str(chosen_result.message),
+            n_iterations=total_n_iterations,
+            n_function_evaluations=total_n_function_evaluations,
         )
         return MLEFitResult(
             best=best,

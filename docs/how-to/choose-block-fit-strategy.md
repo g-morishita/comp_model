@@ -21,7 +21,7 @@ result = fit_subject_data(
     subject_data,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=FitSpec(
-        estimator_type="scipy_minimize",
+        inference="mle",
         initial_params={"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
         bounds={"alpha": (0.0, 1.0), "beta": (0.01, 20.0), "initial_value": (None, None)},
     ),
@@ -40,7 +40,7 @@ model:
   kwargs: {}
 
 estimator:
-  type: scipy_minimize
+  type: mle
   initial_params:
     alpha: 0.3
     beta: 2.0

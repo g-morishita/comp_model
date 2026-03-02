@@ -24,7 +24,7 @@ def test_recovery_cli_parameter_mode_writes_outputs(tmp_path, capsys) -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -64,7 +64,7 @@ def test_recovery_cli_model_mode_writes_outputs(tmp_path, capsys) -> None:
     """Model mode should write model-case, confusion, and summary files."""
 
     grid_estimator = {
-        "type": "grid_search",
+        "type": "mle", "solver": "grid_search",
         "parameter_grid": {
             "alpha": [0.3],
             "beta": [2.0],
@@ -141,7 +141,7 @@ def test_recovery_cli_auto_mode_infers_parameter_from_config(tmp_path) -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -189,7 +189,8 @@ def test_recovery_cli_accepts_yaml_config(tmp_path, capsys) -> None:
                 "  component_id: asocial_state_q_value_softmax",
                 "  kwargs: {}",
                 "estimator:",
-                "  type: grid_search",
+                "  type: mle",
+                "  solver: grid_search",
                 "  parameter_grid:",
                 "    alpha: [0.3]",
                 "    beta: [2.0]",

@@ -31,7 +31,7 @@ def test_parameter_recovery_runs_from_json_config(tmp_path) -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -76,7 +76,8 @@ def test_parameter_recovery_runs_from_yaml_config(tmp_path) -> None:
                 "  component_id: asocial_state_q_value_softmax",
                 "  kwargs: {}",
                 "estimator:",
-                "  type: grid_search",
+                "  type: mle",
+                "  solver: grid_search",
                 "  parameter_grid:",
                 "    alpha: [0.3]",
                 "    beta: [2.0]",
@@ -126,7 +127,7 @@ def test_model_recovery_runs_from_mapping_config() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.3],
                         "beta": [2.0],
@@ -142,7 +143,7 @@ def test_model_recovery_runs_from_mapping_config() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.9],
                         "beta": [0.1],
@@ -294,7 +295,7 @@ def test_model_recovery_rejects_removed_scipy_map_candidates() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.3],
                         "beta": [2.0],
@@ -456,7 +457,7 @@ def test_parameter_recovery_supports_likelihood_config() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -506,7 +507,7 @@ def test_model_recovery_config_rejects_invalid_candidate_likelihood() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.3],
                         "beta": [2.0],
@@ -555,7 +556,7 @@ def test_parameter_recovery_supports_generator_social_simulation_config() -> Non
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [4.0],
@@ -618,7 +619,7 @@ def test_model_recovery_supports_generator_social_simulation_config() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.3],
                         "beta": [4.0],
@@ -634,7 +635,7 @@ def test_model_recovery_supports_generator_social_simulation_config() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [0.1],
@@ -685,7 +686,7 @@ def test_generator_social_simulation_requires_demonstrator_model() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [4.0],
@@ -720,7 +721,7 @@ def test_parameter_recovery_config_rejects_unknown_top_level_keys() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -763,7 +764,7 @@ def test_generator_simulation_block_rejects_unknown_keys() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -806,7 +807,7 @@ def test_parameter_recovery_rejects_non_block_simulation_levels() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -867,7 +868,7 @@ def test_model_recovery_supports_study_level_generator_simulation() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.3],
                         "beta": [2.0],
@@ -883,7 +884,7 @@ def test_model_recovery_supports_study_level_generator_simulation() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.9],
                         "beta": [0.1],
@@ -947,7 +948,7 @@ def test_model_recovery_supports_joint_block_fit_strategy() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.3],
                         "beta": [2.0],
@@ -963,7 +964,7 @@ def test_model_recovery_supports_joint_block_fit_strategy() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.9],
                         "beta": [0.1],

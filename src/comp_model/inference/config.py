@@ -12,7 +12,7 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import coerce_block_fit_strategy
-from .fitting import EstimatorType, FitSpec, fit_model_from_registry
+from .fitting import FitInferenceType, FitSpec, MLESolverType, fit_model_from_registry
 from .likelihood_config import likelihood_program_from_config
 from .mle import MLEFitResult
 from .study_fitting import (
@@ -68,63 +68,136 @@ def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
     """
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
-    estimator_type_raw = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
-    if estimator_type_raw == "grid_search":
-        estimator_type: EstimatorType = "grid_search"
-        validate_allowed_keys(
-            estimator,
-            field_name="estimator",
-            allowed_keys=("type", "parameter_grid"),
-        )
-    elif estimator_type_raw == "scipy_minimize":
-        estimator_type = "scipy_minimize"
-        validate_allowed_keys(
-            estimator,
-            field_name="estimator",
-            allowed_keys=("type", "initial_params", "bounds", "method", "tol"),
-        )
-    elif estimator_type_raw == "transformed_scipy_minimize":
-        estimator_type = "transformed_scipy_minimize"
-        validate_allowed_keys(
-            estimator,
-            field_name="estimator",
-            allowed_keys=("type", "initial_params", "bounds_z", "transforms", "method", "tol"),
-        )
-    else:
+    inference_raw = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
+    inference = _coerce_fit_inference(inference_raw, field_name="estimator.type")
+    if inference == "bayesian":
         raise ValueError(
-            "estimator.type must be one of "
-            "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
+            "fit_spec_from_config currently supports only estimator.type='mle'. "
+            "For Bayesian inference, use Stan hierarchical estimator types "
+            "with fit_*_auto_from_config."
         )
 
+    solver_raw = estimator.get("solver")
+    if solver_raw is not None:
+        solver_name = _coerce_non_empty_str(solver_raw, field_name="estimator.solver")
+        solver = _coerce_mle_solver(solver_name, field_name="estimator.solver")
+    else:
+        if "parameter_grid" in estimator:
+            solver = "grid_search"
+        elif "bounds_z" in estimator or "transforms" in estimator:
+            solver = "transformed_scipy_minimize"
+        else:
+            solver = "scipy_minimize"
+
+    _validate_estimator_keys_for_solver(
+        estimator,
+        solver=solver,
+        allow_solver_key=True,
+    )
+
     return FitSpec(
-        estimator_type=estimator_type,
+        inference=inference,
+        solver=solver,
         parameter_grid=(
             _coerce_float_list_mapping(estimator.get("parameter_grid"), field_name="estimator.parameter_grid")
-            if estimator_type == "grid_search"
+            if solver == "grid_search"
             else None
         ),
         initial_params=(
             _coerce_float_mapping(estimator.get("initial_params"), field_name="estimator.initial_params")
-            if estimator_type in {"scipy_minimize", "transformed_scipy_minimize"}
+            if solver in {"scipy_minimize", "transformed_scipy_minimize"}
             else None
         ),
         bounds=(
             _coerce_bounds_mapping(estimator.get("bounds"), field_name="estimator.bounds")
-            if estimator_type == "scipy_minimize"
+            if solver == "scipy_minimize"
             else None
         ),
         bounds_z=(
             _coerce_bounds_mapping(estimator.get("bounds_z"), field_name="estimator.bounds_z")
-            if estimator_type == "transformed_scipy_minimize"
+            if solver == "transformed_scipy_minimize"
             else None
         ),
         transforms=(
             _parse_transforms_mapping(estimator.get("transforms", {}), field_name="estimator.transforms")
-            if estimator_type == "transformed_scipy_minimize"
+            if solver == "transformed_scipy_minimize"
             else None
         ),
         method=str(estimator.get("method", "L-BFGS-B")),
         tol=float(estimator["tol"]) if "tol" in estimator else None,
+        n_starts=int(estimator.get("n_starts", 5)),
+        random_seed=(
+            int(estimator["random_seed"])
+            if "random_seed" in estimator and estimator["random_seed"] is not None
+            else None
+            if "random_seed" in estimator
+            else 0
+        ),
+    )
+
+
+def _validate_estimator_keys_for_solver(
+    estimator: Mapping[str, Any],
+    *,
+    solver: MLESolverType,
+    allow_solver_key: bool,
+) -> None:
+    """Validate estimator config keys for one MLE solver branch."""
+
+    allowed: tuple[str, ...]
+    if solver == "grid_search":
+        allowed = ("type", "parameter_grid")
+    elif solver == "scipy_minimize":
+        allowed = ("type", "initial_params", "bounds", "method", "tol", "n_starts", "random_seed")
+    elif solver == "transformed_scipy_minimize":
+        allowed = (
+            "type",
+            "initial_params",
+            "bounds_z",
+            "transforms",
+            "method",
+            "tol",
+            "n_starts",
+            "random_seed",
+        )
+    else:
+        raise ValueError(
+            "solver must be one of "
+            "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
+        )
+
+    if allow_solver_key:
+        allowed = (*allowed, "solver")
+
+    validate_allowed_keys(
+        estimator,
+        field_name="estimator",
+        allowed_keys=allowed,
+    )
+
+
+def _coerce_fit_inference(raw: str, *, field_name: str) -> FitInferenceType:
+    """Coerce a string to a supported fit inference literal."""
+
+    if raw == "mle":
+        return "mle"
+    if raw == "bayesian":
+        return "bayesian"
+    raise ValueError(f"{field_name} must be one of {{'mle', 'bayesian'}}")
+
+
+def _coerce_mle_solver(raw: str, *, field_name: str) -> MLESolverType:
+    """Coerce a string to a supported MLE solver literal."""
+
+    if raw == "grid_search":
+        return "grid_search"
+    if raw == "scipy_minimize":
+        return "scipy_minimize"
+    if raw == "transformed_scipy_minimize":
+        return "transformed_scipy_minimize"
+    raise ValueError(
+        f"{field_name} must be one of "
+        "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
     )
 
 

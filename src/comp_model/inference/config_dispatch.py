@@ -25,7 +25,7 @@ from .mcmc_config import (
     sample_subject_hierarchical_posterior_from_config,
 )
 
-MLE_ESTIMATORS = {"grid_search", "scipy_minimize", "transformed_scipy_minimize"}
+MLE_ESTIMATORS = {"mle"}
 MAP_ESTIMATORS: set[str] = set()
 MCMC_ESTIMATORS: set[str] = set()
 HIERARCHICAL_MCMC_ESTIMATORS = {"within_subject_hierarchical_stan_nuts"}

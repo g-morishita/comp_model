@@ -19,32 +19,43 @@ ComponentRef = {
 ```python
 MLEFitConfig = {
     "model": ComponentRef,
-    "estimator": GridSearchEstimator | ScipyMinimizeEstimator | TransformedScipyMinimizeEstimator,
+    "estimator": MLEEstimator,
     "likelihood": LikelihoodConfig,  # optional
     "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
 }
 
-GridSearchEstimator = {
-    "type": "grid_search",
+MLEEstimator = {
+    "type": "mle",
+    "solver": "grid_search" | "scipy_minimize" | "transformed_scipy_minimize",  # optional
+    # plus one solver option block (below)
+    # when solver is omitted:
+    #   - grid_search if parameter_grid is present
+    #   - otherwise scipy_minimize
+}
+
+GridSearchOptions = {
     "parameter_grid": dict[str, list[float]],
 }
 
-ScipyMinimizeEstimator = {
-    "type": "scipy_minimize",
+ScipyMinimizeOptions = {
     "initial_params": dict[str, float],
     "bounds": dict[str, tuple[float | None, float | None]],  # optional
     "method": str,  # optional
     "tol": float,   # optional
+    "n_starts": int,      # optional, default 5
+    "random_seed": int | None,  # optional, default 0
 }
 
-TransformedScipyMinimizeEstimator = {
-    "type": "transformed_scipy_minimize",
+TransformedScipyMinimizeOptions = {
     "initial_params": dict[str, float],
     "bounds_z": dict[str, tuple[float | None, float | None]],  # optional
     "transforms": dict[str, str | {"kind": str}],              # optional
     "method": str,  # optional
     "tol": float,   # optional
+    "n_starts": int,      # optional, default 5
+    "random_seed": int | None,  # optional, default 0
 }
+
 ```
 
 ### Stan MAP / Posterior (`sample_*_hierarchical_posterior_from_config`)
@@ -280,7 +291,7 @@ BlockSpec = {
         "kwargs": {}
       },
       "estimator": {
-        "type": "grid_search",
+        "type": "mle", "solver": "grid_search",
         "parameter_grid": {
           "alpha": [0.3],
           "beta": [2.0],

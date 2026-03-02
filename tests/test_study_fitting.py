@@ -29,7 +29,7 @@ def _fit_spec() -> FitSpec:
     """Return deterministic one-candidate fit spec for asocial state model."""
 
     return FitSpec(
-        estimator_type="grid_search",
+        solver="grid_search",
         parameter_grid={
             "alpha": [0.3],
             "beta": [2.0],

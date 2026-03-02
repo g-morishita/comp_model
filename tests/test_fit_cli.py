@@ -31,7 +31,7 @@ def _mle_config() -> dict:
     return {
         "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3, 0.5],
                 "beta": [2.0],
@@ -164,7 +164,8 @@ def test_fit_cli_accepts_yaml_config(tmp_path, capsys) -> None:
                 "  component_id: asocial_state_q_value_softmax",
                 "  kwargs: {}",
                 "estimator:",
-                "  type: grid_search",
+                "  type: mle",
+                "  solver: grid_search",
                 "  parameter_grid:",
                 "    alpha: [0.3, 0.5]",
                 "    beta: [2.0]",

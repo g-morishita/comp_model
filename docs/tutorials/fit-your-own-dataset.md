@@ -14,7 +14,7 @@ Create `fit_config.json` (or `fit_config.yaml` with the same fields):
     "kwargs": {}
   },
   "estimator": {
-    "type": "grid_search",
+    "type": "mle", "solver": "grid_search",
     "parameter_grid": {
       "alpha": [0.1, 0.2, 0.3],
       "beta": [1.0, 2.0, 3.0],

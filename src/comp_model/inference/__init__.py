@@ -41,8 +41,9 @@ from .config_dispatch import (
 )
 from .fit_result import BestFitSummary, extract_best_fit_summary
 from .fitting import (
-    EstimatorType,
+    FitInferenceType,
     FitSpec,
+    MLESolverType,
     build_model_fit_function,
     coerce_episode_trace,
     fit_model,
@@ -178,7 +179,7 @@ __all__ = [
     "CandidateComparison",
     "CandidateFitSpec",
     "CompatibilityReport",
-    "EstimatorType",
+    "FitInferenceType",
     "FitSpec",
     "GridSearchMLEEstimator",
     "HIERARCHICAL_MCMC_ESTIMATORS",
@@ -200,6 +201,7 @@ __all__ = [
     "BestFitSummary",
     "MLECandidate",
     "MLEFitResult",
+    "MLESolverType",
     "ModelComparisonResult",
     "ModelComponentSpec",
     "PosteriorCandidate",

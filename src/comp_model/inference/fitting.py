@@ -26,7 +26,8 @@ from .mle import (
 )
 from .transforms import ParameterTransform
 
-EstimatorType = Literal["grid_search", "scipy_minimize", "transformed_scipy_minimize"]
+FitInferenceType = Literal["mle", "bayesian"]
+MLESolverType = Literal["grid_search", "scipy_minimize", "transformed_scipy_minimize"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,8 +36,14 @@ class FitSpec:
 
     Parameters
     ----------
-    estimator_type : {"grid_search", "scipy_minimize", "transformed_scipy_minimize"}
-        Estimator backend.
+    inference : {"mle", "bayesian"}, optional
+        High-level inference family. ``fit_model`` currently supports
+        ``"mle"`` only; ``"bayesian"`` is routed through Stan posterior APIs.
+    solver : {"grid_search", "scipy_minimize", "transformed_scipy_minimize"} | None, optional
+        Concrete MLE solver/backend. If omitted, a solver is chosen
+        automatically:
+        - ``"grid_search"`` when ``parameter_grid`` is provided,
+        - otherwise ``"scipy_minimize"``.
     parameter_grid : dict[str, list[float]] | None, optional
         Required for ``grid_search``.
     initial_params : dict[str, float] | None, optional
@@ -51,9 +58,16 @@ class FitSpec:
         SciPy optimizer method.
     tol : float | None, optional
         SciPy optimizer tolerance.
+    n_starts : int, optional
+        Number of optimizer starts for SciPy-based MLE.
+        Multiple starts are evaluated and the best likelihood is retained.
+    random_seed : int | None, optional
+        Random seed used to generate additional randomized starts.
+        Set to ``None`` to disable deterministic seeding.
     """
 
-    estimator_type: EstimatorType
+    inference: FitInferenceType = "mle"
+    solver: MLESolverType | None = None
     parameter_grid: dict[str, list[float]] | None = None
     initial_params: dict[str, float] | None = None
     bounds: dict[str, tuple[float | None, float | None]] | None = None
@@ -61,6 +75,8 @@ class FitSpec:
     transforms: dict[str, ParameterTransform] | None = None
     method: str = "L-BFGS-B"
     tol: float | None = None
+    n_starts: int = 5
+    random_seed: int | None = 0
 
 
 def coerce_episode_trace(data: EpisodeTrace | BlockData | Sequence[TrialDecision]) -> EpisodeTrace:
@@ -137,7 +153,9 @@ def build_model_fit_function(
 
     likelihood = likelihood_program if likelihood_program is not None else ActionReplayLikelihood()
 
-    if fit_spec.estimator_type == "grid_search":
+    solver = _resolve_mle_solver(fit_spec)
+
+    if solver == "grid_search":
         if fit_spec.parameter_grid is None:
             raise ValueError("fit_spec.parameter_grid is required for grid_search")
 
@@ -148,7 +166,7 @@ def build_model_fit_function(
         )
         return lambda trace: grid_estimator.fit(trace=trace, parameter_grid=fit_spec.parameter_grid or {})
 
-    if fit_spec.estimator_type == "scipy_minimize":
+    if solver == "scipy_minimize":
         if fit_spec.initial_params is None:
             raise ValueError("fit_spec.initial_params is required for scipy_minimize")
 
@@ -163,9 +181,11 @@ def build_model_fit_function(
             trace=trace,
             initial_params=fit_spec.initial_params or {},
             bounds=fit_spec.bounds,
+            n_starts=fit_spec.n_starts,
+            random_seed=fit_spec.random_seed,
         )
 
-    if fit_spec.estimator_type == "transformed_scipy_minimize":
+    if solver == "transformed_scipy_minimize":
         if fit_spec.initial_params is None:
             raise ValueError("fit_spec.initial_params is required for transformed_scipy_minimize")
 
@@ -181,12 +201,52 @@ def build_model_fit_function(
             trace=trace,
             initial_params=fit_spec.initial_params or {},
             bounds_z=fit_spec.bounds_z,
+            n_starts=fit_spec.n_starts,
+            random_seed=fit_spec.random_seed,
         )
 
     raise ValueError(
-        "fit_spec.estimator_type must be one of "
+        "fit_spec.solver must be one of "
         "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
     )
+
+
+def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
+    """Resolve high-level fit spec into one concrete MLE solver.
+
+    Parameters
+    ----------
+    fit_spec : FitSpec
+        Fit specification containing inference family and optional solver hints.
+
+    Returns
+    -------
+    MLESolverType
+        Concrete solver name used by MLE fitting.
+
+    Raises
+    ------
+    ValueError
+        If inference type is unsupported in ``fit_model`` or solver hints
+        are contradictory.
+    """
+
+    if fit_spec.inference == "bayesian":
+        raise ValueError(
+            "fit_model currently supports only inference='mle'. "
+            "Use Stan Bayesian APIs (for example, sample_subject_hierarchical_posterior_stan)."
+        )
+    if fit_spec.inference != "mle":
+        raise ValueError("fit_spec.inference must be either 'mle' or 'bayesian'")
+
+    solver = fit_spec.solver
+    if solver is None:
+        if fit_spec.parameter_grid is not None:
+            solver = "grid_search"
+        else:
+            solver = "scipy_minimize"
+
+    return solver
 
 
 def fit_model(
@@ -285,8 +345,9 @@ def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[
 
 
 __all__ = [
-    "EstimatorType",
+    "FitInferenceType",
     "FitSpec",
+    "MLESolverType",
     "build_model_fit_function",
     "coerce_episode_trace",
     "fit_model",

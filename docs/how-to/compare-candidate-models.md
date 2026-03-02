@@ -17,7 +17,7 @@ Create `compare_config.json`:
         "kwargs": {}
       },
       "estimator": {
-        "type": "grid_search",
+        "type": "mle", "solver": "grid_search",
         "parameter_grid": {
           "alpha": [0.1, 0.2, 0.3],
           "beta": [1.0, 2.0, 3.0],
@@ -33,7 +33,7 @@ Create `compare_config.json`:
         "kwargs": {}
       },
       "estimator": {
-        "type": "grid_search",
+        "type": "mle", "solver": "grid_search",
         "parameter_grid": {
           "alpha": [0.1, 0.2, 0.3],
           "beta": [1.0, 2.0, 3.0],

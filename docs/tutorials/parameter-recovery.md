@@ -24,7 +24,7 @@ Create `parameter_recovery.json` (or `parameter_recovery.yaml` with the same fie
     "kwargs": {}
   },
   "estimator": {
-    "type": "grid_search",
+    "type": "mle", "solver": "grid_search",
     "parameter_grid": {
       "alpha": [0.3],
       "beta": [2.0],

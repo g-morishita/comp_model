@@ -207,7 +207,7 @@ def test_compare_registry_candidate_models_runs_end_to_end() -> None:
                 name="good",
                 model_component_id="asocial_state_q_value_softmax",
                 fit_spec=FitSpec(
-                    estimator_type="grid_search",
+                    solver="grid_search",
                     parameter_grid={
                         "alpha": [0.3],
                         "beta": [2.0],
@@ -220,7 +220,7 @@ def test_compare_registry_candidate_models_runs_end_to_end() -> None:
                 name="bad",
                 model_component_id="asocial_state_q_value_softmax",
                 fit_spec=FitSpec(
-                    estimator_type="grid_search",
+                    solver="grid_search",
                     parameter_grid={
                         "alpha": [0.95],
                         "beta": [0.1],

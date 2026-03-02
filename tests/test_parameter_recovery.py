@@ -155,7 +155,7 @@ def test_run_parameter_recovery_supports_custom_social_trace_factory() -> None:
             trace,
             model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
             fit_spec=FitSpec(
-                estimator_type="grid_search",
+                solver="grid_search",
                 parameter_grid={"p_right": [0.2, 0.5, 0.8]},
             ),
             likelihood_program=ActorSubsetReplayLikelihood(

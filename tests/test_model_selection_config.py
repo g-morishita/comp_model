@@ -67,7 +67,7 @@ def test_compare_dataset_candidates_from_config_supports_mle() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [8.0],
@@ -83,7 +83,7 @@ def test_compare_dataset_candidates_from_config_supports_mle() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.2],
                         "beta": [0.0],
@@ -225,7 +225,7 @@ def test_compare_subject_and_study_candidates_from_config() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [8.0],
@@ -241,7 +241,7 @@ def test_compare_subject_and_study_candidates_from_config() -> None:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.2],
                         "beta": [0.0],
@@ -368,7 +368,7 @@ def test_compare_subject_candidates_from_config_supports_joint_block_strategy() 
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [8.0],
@@ -384,7 +384,7 @@ def test_compare_subject_candidates_from_config_supports_joint_block_strategy() 
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.2],
                         "beta": [0.0],
@@ -413,7 +413,7 @@ def test_compare_dataset_candidates_from_config_rejects_unknown_top_level_keys()
                 "name": "mle",
                 "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {"alpha": [0.5], "beta": [1.0], "initial_value": [0.0]},
                 },
             },
@@ -435,7 +435,7 @@ def test_compare_dataset_candidates_from_config_rejects_unknown_candidate_keys()
                 "name": "mle",
                 "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {"alpha": [0.5], "beta": [1.0], "initial_value": [0.0]},
                 },
                 "oops": 1,
@@ -461,7 +461,7 @@ def test_compare_dataset_candidates_from_config_supports_candidate_likelihood_co
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.2],
                         "beta": [1.0],
@@ -483,7 +483,7 @@ def test_compare_dataset_candidates_from_config_supports_candidate_likelihood_co
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [6.0],

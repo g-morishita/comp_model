@@ -34,7 +34,7 @@ def _mle_config() -> dict:
     return {
         "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],

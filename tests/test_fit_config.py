@@ -51,7 +51,7 @@ def test_fit_spec_from_config_grid_search() -> None:
 
     spec = fit_spec_from_config(
         {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.2],
                 "beta": [2.0],
@@ -60,8 +60,34 @@ def test_fit_spec_from_config_grid_search() -> None:
         }
     )
 
-    assert spec.estimator_type == "grid_search"
+    assert spec.solver == "grid_search"
     assert spec.parameter_grid == {"alpha": [0.2], "beta": [2.0], "initial_value": [0.0]}
+
+
+def test_fit_spec_from_config_mle_defaults_solver_for_numeric_optimization() -> None:
+    """High-level estimator.type='mle' should default to scipy_minimize when no solver is given."""
+
+    spec = fit_spec_from_config(
+        {
+            "type": "mle",
+            "initial_params": {"alpha": 0.3, "beta": 2.0},
+            "bounds": {"alpha": [0.0, 1.0], "beta": [0.01, 10.0]},
+            "method": "L-BFGS-B",
+        }
+    )
+
+    assert spec.inference == "mle"
+    assert spec.solver == "scipy_minimize"
+    assert spec.initial_params == {"alpha": 0.3, "beta": 2.0}
+    assert spec.n_starts == 5
+    assert spec.random_seed == 0
+
+
+def test_fit_spec_from_config_rejects_bayesian_type_for_mle_parser() -> None:
+    """MLE FitSpec parser should reject estimator.type='bayesian' with guidance."""
+
+    with pytest.raises(ValueError, match="supports only estimator.type='mle'"):
+        fit_spec_from_config({"type": "bayesian"})
 
 
 def test_fit_spec_from_config_rejects_unknown_transform() -> None:
@@ -70,7 +96,7 @@ def test_fit_spec_from_config_rejects_unknown_transform() -> None:
     with pytest.raises(ValueError, match="unsupported transform"):
         fit_spec_from_config(
             {
-                "type": "transformed_scipy_minimize",
+                "type": "mle", "solver": "transformed_scipy_minimize",
                 "initial_params": {"alpha": 0.2},
                 "transforms": {"alpha": "not_a_transform"},
             }
@@ -83,7 +109,7 @@ def test_fit_spec_from_config_rejects_unknown_estimator_keys() -> None:
     with pytest.raises(ValueError, match="estimator has unknown keys"):
         fit_spec_from_config(
             {
-                "type": "grid_search",
+                "type": "mle", "solver": "grid_search",
                 "parameter_grid": {"alpha": [0.2]},
                 "unexpected": 1,
             }
@@ -100,7 +126,7 @@ def test_fit_dataset_from_config_on_trial_rows() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -124,7 +150,7 @@ def test_fit_dataset_from_config_rejects_unknown_top_level_keys() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -164,7 +190,7 @@ def test_fit_study_from_config_runs_all_subjects() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.2],
                 "beta": [1.5],
@@ -195,7 +221,7 @@ def test_fit_subject_from_config_supports_joint_block_fit_strategy() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.2],
                 "beta": [1.5],
@@ -224,7 +250,7 @@ def test_fit_subject_from_config_rejects_unknown_block_fit_strategy() -> None:
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.2],
                 "beta": [1.5],
@@ -248,7 +274,7 @@ def test_fit_dataset_from_config_supports_social_actor_subset_likelihood() -> No
             "kwargs": {},
         },
         "estimator": {
-            "type": "grid_search",
+            "type": "mle", "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.2],
                 "beta": [1.0],

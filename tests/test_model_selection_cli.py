@@ -38,7 +38,7 @@ def _comparison_config() -> dict:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.8],
                         "beta": [8.0],
@@ -54,7 +54,7 @@ def _comparison_config() -> dict:
                     "kwargs": {},
                 },
                 "estimator": {
-                    "type": "grid_search",
+                    "type": "mle", "solver": "grid_search",
                     "parameter_grid": {
                         "alpha": [0.2],
                         "beta": [0.0],
@@ -199,7 +199,8 @@ def test_model_comparison_cli_accepts_yaml_config(tmp_path, capsys) -> None:
                 "      component_id: asocial_state_q_value_softmax",
                 "      kwargs: {}",
                 "    estimator:",
-                "      type: grid_search",
+                "      type: mle",
+                "      solver: grid_search",
                 "      parameter_grid:",
                 "        alpha: [0.8]",
                 "        beta: [8.0]",
@@ -210,7 +211,8 @@ def test_model_comparison_cli_accepts_yaml_config(tmp_path, capsys) -> None:
                 "      component_id: asocial_state_q_value_softmax",
                 "      kwargs: {}",
                 "    estimator:",
-                "      type: grid_search",
+                "      type: mle",
+                "      solver: grid_search",
                 "      parameter_grid:",
                 "        alpha: [0.2]",
                 "        beta: [0.0]",
