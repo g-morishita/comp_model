@@ -1,7 +1,10 @@
 """Stan NUTS backend for within-subject hierarchical Bayesian estimation.
 
-The current Stan backend targets one model family:
-``asocial_state_q_value_softmax``.
+The Stan backend supports:
+
+- ``asocial_state_q_value_softmax`` (asocial state-indexed Q model)
+- all social model families registered in
+  :mod:`comp_model.inference.hierarchical_stan_social`
 
 Design notes
 ------------
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -39,12 +43,20 @@ from .hierarchical_mcmc import (
     HierarchicalStudyPosteriorResult,
     HierarchicalSubjectPosteriorResult,
 )
+from .hierarchical_stan_social import (
+    build_social_subject_inputs,
+    load_social_stan_code,
+    social_cache_tag,
+    social_supported_component_ids,
+)
 from .mcmc import MCMCDiagnostics
 from .stan_backend import compile_cmdstan_model
 
-_SUPPORTED_COMPONENT_ID = "asocial_state_q_value_softmax"
+_ASOCIAL_COMPONENT_ID = "asocial_state_q_value_softmax"
+_SUPPORTED_SOCIAL_COMPONENT_IDS = frozenset(social_supported_component_ids())
+_SUPPORTED_COMPONENT_IDS = frozenset({_ASOCIAL_COMPONENT_ID, *_SUPPORTED_SOCIAL_COMPONENT_IDS})
 
-_PARAM_CODE_BY_NAME: dict[str, int] = {
+_ASOCIAL_PARAM_CODE_BY_NAME: dict[str, int] = {
     "alpha": 1,
     "beta": 2,
     "initial_value": 3,
@@ -56,160 +68,19 @@ _TRANSFORM_CODE_BY_KIND: dict[str, int] = {
     "positive_log": 2,
 }
 
-_ASOCIAL_STAN_CODE = r"""
-data {
-  int<lower=1> B;
-  int<lower=1> K;
-  int<lower=1> S;
-  int<lower=1> A;
-  int<lower=1> T_max;
-  array[B] int<lower=1, upper=T_max> T;
-  array[B, T_max] int<lower=1, upper=S> state_idx;
-  array[B, T_max] int<lower=1, upper=A> action_idx;
-  array[B, T_max] real reward;
-  array[B, T_max, A] int<lower=0, upper=1> is_available;
-  array[K] int<lower=1, upper=3> param_codes;
-  array[K] int<lower=0, upper=2> transform_codes;
-  real fixed_alpha;
-  real fixed_beta;
-  real fixed_initial_value;
-  real mu_prior_mean;
-  real<lower=0> mu_prior_std;
-  real log_sigma_prior_mean;
-  real<lower=0> log_sigma_prior_std;
-}
+_STAN_WITHIN_SUBJECT_DIR = Path(__file__).with_name("stan") / "within_subject"
 
-parameters {
-  vector[K] group_loc_z;
-  vector[K] group_log_scale;
-  array[B] vector[K] block_z;
-}
 
-transformed parameters {
-  array[B] vector[K] block_param;
-  for (b in 1:B) {
-    for (k in 1:K) {
-      if (transform_codes[k] == 0) {
-        block_param[b][k] = block_z[b][k];
-      } else if (transform_codes[k] == 1) {
-        block_param[b][k] = inv_logit(block_z[b][k]);
-      } else {
-        block_param[b][k] = exp(block_z[b][k]);
-      }
-    }
-  }
-}
+def _load_stan_source(filename: str) -> str:
+    """Read one Stan program file from package-local stan directory."""
 
-model {
-  for (k in 1:K) {
-    target += normal_lpdf(group_loc_z[k] | mu_prior_mean, mu_prior_std);
-    target += normal_lpdf(group_log_scale[k] | log_sigma_prior_mean, log_sigma_prior_std);
-  }
+    path = _STAN_WITHIN_SUBJECT_DIR / filename
+    if not path.exists():
+        raise RuntimeError(f"Stan program file is missing: {path}")
+    return path.read_text(encoding="utf-8")
 
-  for (b in 1:B) {
-    for (k in 1:K) {
-      target += normal_lpdf(block_z[b][k] | group_loc_z[k], exp(group_log_scale[k]));
-    }
-  }
 
-  for (b in 1:B) {
-    real alpha = fixed_alpha;
-    real beta = fixed_beta;
-    real initial_value = fixed_initial_value;
-
-    for (k in 1:K) {
-      if (param_codes[k] == 1) {
-        alpha = block_param[b][k];
-      } else if (param_codes[k] == 2) {
-        beta = block_param[b][k];
-      } else if (param_codes[k] == 3) {
-        initial_value = block_param[b][k];
-      }
-    }
-
-    array[S] vector[A] q;
-    for (s in 1:S) {
-      for (a in 1:A) {
-        q[s][a] = initial_value;
-      }
-    }
-
-    for (t in 1:T[b]) {
-      int s = state_idx[b, t];
-      int a_obs = action_idx[b, t];
-      vector[A] logits;
-      for (a in 1:A) {
-        if (is_available[b, t, a] == 1) {
-          logits[a] = beta * q[s][a];
-        } else {
-          logits[a] = -1e12;
-        }
-      }
-
-      target += categorical_logit_lpmf(a_obs | logits);
-      q[s][a_obs] = q[s][a_obs] + alpha * (reward[b, t] - q[s][a_obs]);
-    }
-  }
-}
-
-generated quantities {
-  real log_prior_total = 0;
-  real log_likelihood_total = 0;
-  real log_posterior_total;
-
-  for (k in 1:K) {
-    log_prior_total += normal_lpdf(group_loc_z[k] | mu_prior_mean, mu_prior_std);
-    log_prior_total += normal_lpdf(group_log_scale[k] | log_sigma_prior_mean, log_sigma_prior_std);
-  }
-
-  for (b in 1:B) {
-    for (k in 1:K) {
-      log_prior_total += normal_lpdf(block_z[b][k] | group_loc_z[k], exp(group_log_scale[k]));
-    }
-  }
-
-  for (b in 1:B) {
-    real alpha = fixed_alpha;
-    real beta = fixed_beta;
-    real initial_value = fixed_initial_value;
-
-    for (k in 1:K) {
-      if (param_codes[k] == 1) {
-        alpha = block_param[b][k];
-      } else if (param_codes[k] == 2) {
-        beta = block_param[b][k];
-      } else if (param_codes[k] == 3) {
-        initial_value = block_param[b][k];
-      }
-    }
-
-    array[S] vector[A] q;
-    for (s in 1:S) {
-      for (a in 1:A) {
-        q[s][a] = initial_value;
-      }
-    }
-
-    for (t in 1:T[b]) {
-      int s = state_idx[b, t];
-      int a_obs = action_idx[b, t];
-      vector[A] logits;
-      for (a in 1:A) {
-        if (is_available[b, t, a] == 1) {
-          logits[a] = beta * q[s][a];
-        } else {
-          logits[a] = -1e12;
-        }
-      }
-
-      log_likelihood_total += categorical_logit_lpmf(a_obs | logits);
-      q[s][a_obs] = q[s][a_obs] + alpha * (reward[b, t] - q[s][a_obs]);
-    }
-  }
-
-  log_posterior_total = log_prior_total + log_likelihood_total;
-}
-"""
+_ASOCIAL_STAN_CODE = _load_stan_source("asocial_state_q_value_softmax.stan")
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,10 +103,10 @@ def sample_subject_hierarchical_posterior_stan(
     initial_group_location: Mapping[str, float] | None = None,
     initial_group_scale: Mapping[str, float] | None = None,
     initial_block_params: Sequence[Mapping[str, float]] | None = None,
-    mu_prior_mean: float = 0.0,
-    mu_prior_std: float = 2.0,
-    log_sigma_prior_mean: float = -1.0,
-    log_sigma_prior_std: float = 1.0,
+    mu_prior_mean: float | Mapping[str, float] = 0.0,
+    mu_prior_std: float | Mapping[str, float] = 2.0,
+    log_sigma_prior_mean: float | Mapping[str, float] = -1.0,
+    log_sigma_prior_std: float | Mapping[str, float] = 1.0,
     n_samples: int = 1000,
     n_warmup: int = 500,
     thin: int = 1,
@@ -254,8 +125,7 @@ def sample_subject_hierarchical_posterior_stan(
     subject : SubjectData
         Subject dataset.
     model_component_id : str
-        Model component ID. Currently must be
-        ``"asocial_state_q_value_softmax"``.
+        Model component ID supported by the Stan backend.
     model_kwargs : Mapping[str, Any] | None
         Fixed model keyword arguments for parameters not listed in
         ``parameter_names``.
@@ -273,14 +143,18 @@ def sample_subject_hierarchical_posterior_stan(
         Optional positive initial group-scale values.
     initial_block_params : Sequence[Mapping[str, float]] | None, optional
         Optional constrained per-block initial parameter values.
-    mu_prior_mean : float, optional
-        Normal prior mean for group-location in latent space.
-    mu_prior_std : float, optional
-        Positive Normal prior standard deviation for group-location.
-    log_sigma_prior_mean : float, optional
-        Normal prior mean for group log-scale.
-    log_sigma_prior_std : float, optional
-        Positive Normal prior standard deviation for group log-scale.
+    mu_prior_mean : float | Mapping[str, float], optional
+        Group-location latent prior mean. When a mapping is provided, values
+        are applied per sampled parameter name.
+    mu_prior_std : float | Mapping[str, float], optional
+        Group-location latent prior standard deviation (must be > 0). Mapping
+        form applies per sampled parameter name.
+    log_sigma_prior_mean : float | Mapping[str, float], optional
+        Group log-scale latent prior mean. Mapping form applies per sampled
+        parameter name.
+    log_sigma_prior_std : float | Mapping[str, float], optional
+        Group log-scale latent prior standard deviation (must be > 0). Mapping
+        form applies per sampled parameter name.
     n_samples : int, optional
         Number of retained post-warmup draws per chain.
     n_warmup : int, optional
@@ -308,10 +182,11 @@ def sample_subject_hierarchical_posterior_stan(
         Subject-level hierarchical posterior output.
     """
 
-    if model_component_id != _SUPPORTED_COMPONENT_ID:
+    if model_component_id not in _SUPPORTED_COMPONENT_IDS:
         raise ValueError(
-            f"Stan hierarchical backend currently supports only {_SUPPORTED_COMPONENT_ID!r}; "
-            f"got {model_component_id!r}"
+            "Stan hierarchical backend does not support "
+            f"{model_component_id!r}; supported component IDs are "
+            f"{sorted(_SUPPORTED_COMPONENT_IDS)}"
         )
     if n_samples <= 0:
         raise ValueError("n_samples must be > 0")
@@ -327,11 +202,6 @@ def sample_subject_hierarchical_posterior_stan(
         raise ValueError("adapt_delta must be in (0, 1)")
     if max_treedepth <= 0:
         raise ValueError("max_treedepth must be > 0")
-    if mu_prior_std <= 0.0:
-        raise ValueError("mu_prior_std must be > 0")
-    if log_sigma_prior_std <= 0.0:
-        raise ValueError("log_sigma_prior_std must be > 0")
-
     compatibility: CompatibilityReport | None = None
     if requirements is not None:
         for block in subject.blocks:
@@ -339,22 +209,48 @@ def sample_subject_hierarchical_posterior_stan(
             compatibility = check_trace_compatibility(trace, requirements)
             assert_trace_compatible(trace, requirements)
 
-    built = _build_subject_inputs(
-        subject=subject,
-        parameter_names=parameter_names,
-        transform_kinds=transform_kinds,
-        model_kwargs=model_kwargs,
-        initial_group_location=initial_group_location,
-        initial_group_scale=initial_group_scale,
-        initial_block_params=initial_block_params,
-        mu_prior_mean=float(mu_prior_mean),
-        mu_prior_std=float(mu_prior_std),
-        log_sigma_prior_mean=float(log_sigma_prior_mean),
-        log_sigma_prior_std=float(log_sigma_prior_std),
-    )
+    if model_component_id == _ASOCIAL_COMPONENT_ID:
+        built = _build_asocial_subject_inputs(
+            subject=subject,
+            parameter_names=parameter_names,
+            transform_kinds=transform_kinds,
+            model_kwargs=model_kwargs,
+            initial_group_location=initial_group_location,
+            initial_group_scale=initial_group_scale,
+            initial_block_params=initial_block_params,
+            mu_prior_mean=mu_prior_mean,
+            mu_prior_std=mu_prior_std,
+            log_sigma_prior_mean=log_sigma_prior_mean,
+            log_sigma_prior_std=log_sigma_prior_std,
+        )
+        stan_code = _ASOCIAL_STAN_CODE
+        cache_tag = "hierarchical_asocial_state_q_value_softmax"
+    else:
+        social_stan_data, social_param_names, social_n_blocks = build_social_subject_inputs(
+            subject=subject,
+            component_id=model_component_id,
+            parameter_names=parameter_names,
+            transform_kinds=transform_kinds,
+            model_kwargs=model_kwargs,
+            initial_group_location=initial_group_location,
+            initial_group_scale=initial_group_scale,
+            initial_block_params=initial_block_params,
+            mu_prior_mean=mu_prior_mean,
+            mu_prior_std=mu_prior_std,
+            log_sigma_prior_mean=log_sigma_prior_mean,
+            log_sigma_prior_std=log_sigma_prior_std,
+        )
+        built = _SubjectBuild(
+            stan_data=social_stan_data,
+            parameter_names=social_param_names,
+            n_blocks=social_n_blocks,
+        )
+        stan_code = load_social_stan_code()
+        cache_tag = social_cache_tag(model_component_id)
+
     fit = _run_stan_hierarchical_nuts(
-        stan_code=_ASOCIAL_STAN_CODE,
-        cache_tag="hierarchical_asocial_state_q_value_softmax",
+        stan_code=stan_code,
+        cache_tag=cache_tag,
         stan_data=built.stan_data,
         n_samples=int(n_samples),
         n_warmup=int(n_warmup),
@@ -398,10 +294,10 @@ def sample_study_hierarchical_posterior_stan(
     initial_group_location: Mapping[str, float] | None = None,
     initial_group_scale: Mapping[str, float] | None = None,
     initial_block_params_by_subject: Mapping[str, Sequence[Mapping[str, float]]] | None = None,
-    mu_prior_mean: float = 0.0,
-    mu_prior_std: float = 2.0,
-    log_sigma_prior_mean: float = -1.0,
-    log_sigma_prior_std: float = 1.0,
+    mu_prior_mean: float | Mapping[str, float] = 0.0,
+    mu_prior_std: float | Mapping[str, float] = 2.0,
+    log_sigma_prior_mean: float | Mapping[str, float] = -1.0,
+    log_sigma_prior_std: float | Mapping[str, float] = 1.0,
     n_samples: int = 1000,
     n_warmup: int = 500,
     thin: int = 1,
@@ -452,7 +348,7 @@ def sample_study_hierarchical_posterior_stan(
     return HierarchicalStudyPosteriorResult(subject_results=tuple(subject_results))
 
 
-def _build_subject_inputs(
+def _build_asocial_subject_inputs(
     *,
     subject: SubjectData,
     parameter_names: Sequence[str],
@@ -461,10 +357,10 @@ def _build_subject_inputs(
     initial_group_location: Mapping[str, float] | None,
     initial_group_scale: Mapping[str, float] | None,
     initial_block_params: Sequence[Mapping[str, float]] | None,
-    mu_prior_mean: float,
-    mu_prior_std: float,
-    log_sigma_prior_mean: float,
-    log_sigma_prior_std: float,
+    mu_prior_mean: float | Mapping[str, float],
+    mu_prior_std: float | Mapping[str, float],
+    log_sigma_prior_mean: float | Mapping[str, float],
+    log_sigma_prior_std: float | Mapping[str, float],
 ) -> _SubjectBuild:
     """Build Stan data dictionary and metadata for one subject."""
 
@@ -474,16 +370,42 @@ def _build_subject_inputs(
     if len(set(names)) != len(names):
         raise ValueError("parameter_names must be unique")
 
-    unknown = [name for name in names if name not in _PARAM_CODE_BY_NAME]
+    unknown = [name for name in names if name not in _ASOCIAL_PARAM_CODE_BY_NAME]
     if unknown:
         raise ValueError(
             "unsupported parameter_names for Stan backend: "
-            f"{unknown!r}; supported {sorted(_PARAM_CODE_BY_NAME)}"
+            f"{unknown!r}; supported {sorted(_ASOCIAL_PARAM_CODE_BY_NAME)}"
         )
 
     resolved_transform_kinds = _resolve_transform_kinds(
         parameter_names=names,
         transform_kinds=transform_kinds,
+    )
+    mu_prior_mean_vec = _resolve_prior_vector(
+        mu_prior_mean,
+        parameter_names=names,
+        default_value=0.0,
+        field_name="mu_prior_mean",
+    )
+    mu_prior_std_vec = _resolve_prior_vector(
+        mu_prior_std,
+        parameter_names=names,
+        default_value=2.0,
+        field_name="mu_prior_std",
+        must_be_positive=True,
+    )
+    log_sigma_prior_mean_vec = _resolve_prior_vector(
+        log_sigma_prior_mean,
+        parameter_names=names,
+        default_value=-1.0,
+        field_name="log_sigma_prior_mean",
+    )
+    log_sigma_prior_std_vec = _resolve_prior_vector(
+        log_sigma_prior_std,
+        parameter_names=names,
+        default_value=1.0,
+        field_name="log_sigma_prior_std",
+        must_be_positive=True,
     )
     defaults = {
         "alpha": 0.2,
@@ -618,15 +540,15 @@ def _build_subject_inputs(
         "action_idx": action_idx.tolist(),
         "reward": reward.tolist(),
         "is_available": is_available.tolist(),
-        "param_codes": [_PARAM_CODE_BY_NAME[name] for name in names],
+        "param_codes": [_ASOCIAL_PARAM_CODE_BY_NAME[name] for name in names],
         "transform_codes": [_TRANSFORM_CODE_BY_KIND[resolved_transform_kinds[name]] for name in names],
         "fixed_alpha": float(fixed["alpha"]),
         "fixed_beta": float(fixed["beta"]),
         "fixed_initial_value": float(fixed["initial_value"]),
-        "mu_prior_mean": float(mu_prior_mean),
-        "mu_prior_std": float(mu_prior_std),
-        "log_sigma_prior_mean": float(log_sigma_prior_mean),
-        "log_sigma_prior_std": float(log_sigma_prior_std),
+        "mu_prior_mean": mu_prior_mean_vec.tolist(),
+        "mu_prior_std": mu_prior_std_vec.tolist(),
+        "log_sigma_prior_mean": log_sigma_prior_mean_vec.tolist(),
+        "log_sigma_prior_std": log_sigma_prior_std_vec.tolist(),
         "group_loc_init": group_loc_init.tolist(),
         "group_log_scale_init": group_log_scale_init.tolist(),
         "block_z_init": block_z_init.tolist(),
@@ -697,6 +619,36 @@ def _resolve_transform_kinds(
             )
         out[name] = kind
     return out
+
+
+def _resolve_prior_vector(
+    spec: float | Mapping[str, float],
+    *,
+    parameter_names: tuple[str, ...],
+    default_value: float,
+    field_name: str,
+    must_be_positive: bool = False,
+) -> np.ndarray:
+    """Resolve scalar/mapping prior input into parameter-aligned vector."""
+
+    values = np.full(len(parameter_names), float(default_value), dtype=float)
+    if isinstance(spec, Mapping):
+        mapping = {str(key): float(value) for key, value in spec.items()}
+        unknown = sorted(set(mapping).difference(parameter_names))
+        if unknown:
+            raise ValueError(
+                f"{field_name} has unknown parameter names {unknown!r}; "
+                f"expected subset of {list(parameter_names)!r}"
+            )
+        for index, name in enumerate(parameter_names):
+            if name in mapping:
+                values[index] = float(mapping[name])
+    else:
+        values[:] = float(spec)
+
+    if must_be_positive and np.any(values <= 0.0):
+        raise ValueError(f"{field_name} values must be > 0")
+    return values
 
 
 def _default_transform_kind(parameter_name: str) -> str:

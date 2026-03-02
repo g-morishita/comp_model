@@ -299,6 +299,24 @@ def test_hierarchical_stan_estimator_spec_from_config_parses_fields() -> None:
     assert spec.random_seed == 7
 
 
+def test_hierarchical_stan_estimator_spec_from_config_supports_prior_mappings() -> None:
+    """Hierarchical Stan parser should accept per-parameter prior mappings."""
+
+    estimator_cfg = _hierarchical_stan_config()["estimator"]
+    estimator_cfg["parameter_names"] = ["alpha", "beta"]
+    estimator_cfg["mu_prior_mean"] = {"alpha": 0.1, "beta": 0.2}
+    estimator_cfg["mu_prior_std"] = {"alpha": 1.1, "beta": 1.2}
+    estimator_cfg["log_sigma_prior_mean"] = {"alpha": -0.9, "beta": -0.8}
+    estimator_cfg["log_sigma_prior_std"] = {"alpha": 0.7, "beta": 0.8}
+
+    spec = hierarchical_stan_estimator_spec_from_config(estimator_cfg)
+    assert spec.parameter_names == ("alpha", "beta")
+    assert spec.mu_prior_mean == {"alpha": pytest.approx(0.1), "beta": pytest.approx(0.2)}
+    assert spec.mu_prior_std == {"alpha": pytest.approx(1.1), "beta": pytest.approx(1.2)}
+    assert spec.log_sigma_prior_mean == {"alpha": pytest.approx(-0.9), "beta": pytest.approx(-0.8)}
+    assert spec.log_sigma_prior_std == {"alpha": pytest.approx(0.7), "beta": pytest.approx(0.8)}
+
+
 def test_hierarchical_stan_estimator_spec_from_config_rejects_unknown_keys() -> None:
     """Hierarchical Stan parser should reject unknown keys."""
 

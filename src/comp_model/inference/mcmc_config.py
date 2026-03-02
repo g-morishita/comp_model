@@ -154,14 +154,18 @@ class HierarchicalStanEstimatorSpec:
         Optional per-block initial constrained parameter values.
     initial_block_params_by_subject : dict[str, tuple[dict[str, float], ...]] | None
         Optional subject-specific per-block initial parameter mappings.
-    mu_prior_mean : float
-        Group-location prior mean in latent space.
-    mu_prior_std : float
-        Group-location prior standard deviation in latent space.
-    log_sigma_prior_mean : float
-        Group log-scale prior mean.
-    log_sigma_prior_std : float
-        Group log-scale prior standard deviation.
+    mu_prior_mean : float | dict[str, float]
+        Group-location prior mean in latent space. A mapping applies
+        parameter-specific values by name.
+    mu_prior_std : float | dict[str, float]
+        Group-location prior standard deviation in latent space. A mapping
+        applies parameter-specific values by name.
+    log_sigma_prior_mean : float | dict[str, float]
+        Group log-scale prior mean. A mapping applies parameter-specific values
+        by name.
+    log_sigma_prior_std : float | dict[str, float]
+        Group log-scale prior standard deviation. A mapping applies
+        parameter-specific values by name.
     n_samples : int
         Number of post-warmup draws per chain.
     n_warmup : int
@@ -190,10 +194,10 @@ class HierarchicalStanEstimatorSpec:
     initial_group_scale: dict[str, float] | None = None
     initial_block_params: tuple[dict[str, float], ...] | None = None
     initial_block_params_by_subject: dict[str, tuple[dict[str, float], ...]] | None = None
-    mu_prior_mean: float = 0.0
-    mu_prior_std: float = 2.0
-    log_sigma_prior_mean: float = -1.0
-    log_sigma_prior_std: float = 1.0
+    mu_prior_mean: float | dict[str, float] = 0.0
+    mu_prior_std: float | dict[str, float] = 2.0
+    log_sigma_prior_mean: float | dict[str, float] = -1.0
+    log_sigma_prior_std: float | dict[str, float] = 1.0
     n_samples: int = 1000
     n_warmup: int = 500
     thin: int = 1
@@ -558,10 +562,22 @@ def hierarchical_stan_estimator_spec_from_config(
         ),
         initial_block_params=initial_block_params,
         initial_block_params_by_subject=initial_block_params_by_subject,
-        mu_prior_mean=float(estimator.get("mu_prior_mean", 0.0)),
-        mu_prior_std=float(estimator.get("mu_prior_std", 2.0)),
-        log_sigma_prior_mean=float(estimator.get("log_sigma_prior_mean", -1.0)),
-        log_sigma_prior_std=float(estimator.get("log_sigma_prior_std", 1.0)),
+        mu_prior_mean=_coerce_float_or_mapping(
+            estimator.get("mu_prior_mean", 0.0),
+            field_name="estimator.mu_prior_mean",
+        ),
+        mu_prior_std=_coerce_float_or_mapping(
+            estimator.get("mu_prior_std", 2.0),
+            field_name="estimator.mu_prior_std",
+        ),
+        log_sigma_prior_mean=_coerce_float_or_mapping(
+            estimator.get("log_sigma_prior_mean", -1.0),
+            field_name="estimator.log_sigma_prior_mean",
+        ),
+        log_sigma_prior_std=_coerce_float_or_mapping(
+            estimator.get("log_sigma_prior_std", 1.0),
+            field_name="estimator.log_sigma_prior_std",
+        ),
         n_samples=n_samples,
         n_warmup=n_warmup,
         thin=thin,
@@ -1178,6 +1194,14 @@ def _coerce_float_mapping(raw: Any, *, field_name: str) -> dict[str, float]:
 
     mapping = _require_mapping(raw, field_name=field_name)
     return {str(key): float(value) for key, value in mapping.items()}
+
+
+def _coerce_float_or_mapping(raw: Any, *, field_name: str) -> float | dict[str, float]:
+    """Coerce one numeric prior spec as float or mapping of floats."""
+
+    if isinstance(raw, Mapping):
+        return _coerce_float_mapping(raw, field_name=field_name)
+    return float(raw)
 
 
 def _coerce_non_empty_str(raw: Any, *, field_name: str) -> str:
