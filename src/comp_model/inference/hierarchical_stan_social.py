@@ -3,7 +3,7 @@
 This module provides:
 
 - Supported social component IDs for the Stan backend.
-- A generic social Stan program covering all social model families.
+- One Stan program file per supported social model component.
 - Input-building helpers that convert subject block data into Stan arrays while
   preserving trial-event timing (subject and demonstrator decision rows).
 """
@@ -342,15 +342,22 @@ def _build_social_specs() -> dict[str, _SocialStanSpec]:
 _SOCIAL_STAN_SPECS = _build_social_specs()
 
 _STAN_WITHIN_SUBJECT_DIR = Path(__file__).with_name("stan") / "within_subject"
-_SOCIAL_STAN_FILENAME = "social_generic.stan"
 
 
-def load_social_stan_code() -> str:
-    """Load the shared social Stan program source from file."""
+def load_social_stan_code(component_id: str) -> str:
+    """Load one social-model Stan program source by component ID."""
 
-    path = _STAN_WITHIN_SUBJECT_DIR / _SOCIAL_STAN_FILENAME
+    if component_id not in _SOCIAL_STAN_SPECS:
+        raise ValueError(
+            f"unsupported social component_id {component_id!r}; "
+            f"supported {sorted(_SOCIAL_STAN_SPECS)}"
+        )
+
+    path = _STAN_WITHIN_SUBJECT_DIR / f"{component_id}.stan"
     if not path.exists():
-        raise RuntimeError(f"Stan program file is missing: {path}")
+        raise RuntimeError(
+            f"Stan program file is missing for component {component_id!r}: {path}"
+        )
     return path.read_text(encoding="utf-8")
 
 

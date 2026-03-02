@@ -245,7 +245,7 @@ def sample_subject_hierarchical_posterior_stan(
             parameter_names=social_param_names,
             n_blocks=social_n_blocks,
         )
-        stan_code = load_social_stan_code()
+        stan_code = load_social_stan_code(model_component_id)
         cache_tag = social_cache_tag(model_component_id)
 
     fit = _run_stan_hierarchical_nuts(

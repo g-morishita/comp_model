@@ -10,6 +10,10 @@ from comp_model.core.data import BlockData, SubjectData, TrialDecision
 from comp_model.inference.hierarchical_stan import (
     sample_subject_hierarchical_posterior_stan,
 )
+from comp_model.inference.hierarchical_stan_social import (
+    load_social_stan_code,
+    social_supported_component_ids,
+)
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
@@ -205,6 +209,15 @@ def test_sample_subject_hierarchical_posterior_stan_supports_social_models(
     assert isinstance(stan_data, dict)
     assert stan_data["actor_code"][0][0] == 2
     assert stan_data["actor_code"][0][1] == 1
+
+
+def test_social_stan_loader_uses_per_model_files() -> None:
+    """Each social component should resolve to a dedicated Stan source file."""
+
+    for component_id in social_supported_component_ids():
+        source = load_social_stan_code(component_id)
+        assert f"component: {component_id}" in source
+        assert "data {" in source
 
 
 def test_sample_subject_hierarchical_posterior_stan_rejects_unsupported_model() -> None:

@@ -1,3 +1,6 @@
+// Stan program for social model component: social_observed_outcome_value_shaping
+// This file is intentionally per-model for researcher-facing traceability.
+
 functions {
   real determinism_reliability(vector probabilities, int n_actions) {
     if (n_actions <= 1) {
