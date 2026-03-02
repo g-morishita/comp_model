@@ -198,8 +198,9 @@ def fit_subject_data(
 
     block_traces = tuple(get_block_trace(block) for block in subject.blocks)
     requirements = reg.get("model", model_component_id).requirements
-    for trace in block_traces:
-        assert_trace_compatible(trace, requirements)
+    if requirements is not None:
+        for trace in block_traces:
+            assert_trace_compatible(trace, requirements)
 
     joint_likelihood = JointBlockLikelihoodProgram(
         block_traces=block_traces,

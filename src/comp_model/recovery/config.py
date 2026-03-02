@@ -295,25 +295,37 @@ def run_model_recovery_from_config(
         n_parameters_raw = item.get("n_parameters")
         n_parameters = int(n_parameters_raw) if n_parameters_raw is not None else None
 
+        def fit_subject_from_candidate(
+            subject: Any,
+            *,
+            _config: dict[str, Any] = candidate_fit_config,
+            _registry: PluginRegistry = reg,
+        ) -> Any:
+            return fit_subject_auto_from_config(
+                subject,
+                config=_config,
+                registry=_registry,
+            )
+
+        def fit_study_from_candidate(
+            study: Any,
+            *,
+            _config: dict[str, Any] = candidate_fit_config,
+            _registry: PluginRegistry = reg,
+        ) -> Any:
+            return fit_study_auto_from_config(
+                study,
+                config=_config,
+                registry=_registry,
+            )
+
         candidate_specs.append(
             CandidateModelSpec(
                 name=name,
                 fit_function=fit_function,
                 n_parameters=n_parameters,
-                fit_subject_function=(
-                    lambda subject, config=candidate_fit_config, reg=reg: fit_subject_auto_from_config(
-                        subject,
-                        config=config,
-                        registry=reg,
-                    )
-                ),
-                fit_study_function=(
-                    lambda study, config=candidate_fit_config, reg=reg: fit_study_auto_from_config(
-                        study,
-                        config=config,
-                        registry=reg,
-                    )
-                ),
+                fit_subject_function=fit_subject_from_candidate,
+                fit_study_function=fit_study_from_candidate,
             )
         )
 
