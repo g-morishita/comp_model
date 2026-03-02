@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+import comp_model.inference.model_selection_config as model_selection_config_module
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
@@ -41,6 +42,15 @@ def _social_trace(*, n_trials: int, seed: int):
         },
         config=SimulationConfig(n_trials=n_trials, seed=seed),
     )
+
+
+class _FakeJointResult:
+    """Minimal subject-level fit result used for joint-comparison tests."""
+
+    def __init__(self, *, log_likelihood: float, log_posterior: float, alpha: float) -> None:
+        self.total_log_likelihood = float(log_likelihood)
+        self.total_log_posterior = float(log_posterior)
+        self.mean_map_params = {"alpha": float(alpha)}
 
 
 def test_compare_dataset_candidates_from_config_supports_mle() -> None:
@@ -303,6 +313,85 @@ def test_compare_subject_and_study_candidates_from_config() -> None:
     study_result = compare_study_candidates_from_config(study, config=config)
     assert study_result.selected_candidate_name == "good_mle"
     assert study_result.n_subjects == 1
+
+
+def test_compare_subject_candidates_from_config_supports_hierarchical_stan_estimators(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Subject config comparison should accept hierarchical Stan candidate estimators."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(
+                block_id="b0",
+                trials=tuple(_trial(index, action=1, reward=1.0) for index in range(4)),
+            ),
+            BlockData(
+                block_id="b1",
+                trials=tuple(_trial(index, action=1, reward=1.0) for index in range(4)),
+            ),
+        ),
+    )
+    config = {
+        "criterion": "log_likelihood",
+        "block_fit_strategy": "joint",
+        "candidates": [
+            {
+                "name": "hier_good",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {"beta": 2.0, "initial_value": 0.0},
+                },
+                "estimator": {
+                    "type": "within_subject_hierarchical_stan_nuts",
+                    "parameter_names": ["alpha"],
+                    "transforms": {"alpha": "unit_interval_logit"},
+                    "n_samples": 4,
+                    "n_warmup": 2,
+                    "n_chains": 2,
+                },
+                "n_parameters": 1,
+            },
+            {
+                "name": "hier_bad",
+                "model": {
+                    "component_id": "asocial_state_q_value_softmax",
+                    "kwargs": {"beta": 0.2, "initial_value": 0.0},
+                },
+                "estimator": {
+                    "type": "within_subject_hierarchical_stan_nuts",
+                    "parameter_names": ["alpha"],
+                    "transforms": {"alpha": "unit_interval_logit"},
+                    "n_samples": 4,
+                    "n_warmup": 2,
+                    "n_chains": 2,
+                },
+                "n_parameters": 1,
+            },
+        ],
+    }
+
+    def _fake_fit_subject_auto_from_config(
+        subject_data: SubjectData,
+        *,
+        config: dict,
+        **kwargs: object,
+    ) -> object:
+        assert subject_data.subject_id == "s1"
+        beta = float(config["model"]["kwargs"]["beta"])
+        if beta > 1.0:
+            return _FakeJointResult(log_likelihood=-5.0, log_posterior=-5.5, alpha=0.3)
+        return _FakeJointResult(log_likelihood=-9.0, log_posterior=-9.5, alpha=0.3)
+
+    monkeypatch.setattr(
+        model_selection_config_module,
+        "fit_subject_auto_from_config",
+        _fake_fit_subject_auto_from_config,
+    )
+
+    result = compare_subject_candidates_from_config(subject, config=config)
+    assert result.selected_candidate_name == "hier_good"
 
 
 def test_compare_subject_candidates_from_config_supports_joint_block_strategy() -> None:

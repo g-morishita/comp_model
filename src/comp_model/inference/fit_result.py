@@ -67,6 +67,25 @@ def extract_best_fit_summary(fit_result: Any) -> BestFitSummary:
     # MAP-style result: ``result.map_candidate.params`` etc.
     map_candidate = getattr(fit_result, "map_candidate", None)
     if map_candidate is not None:
+        # Hierarchical posterior-style result:
+        # ``result.map_candidate.block_params`` with per-block parameters.
+        if hasattr(map_candidate, "block_params"):
+            params = _hierarchical_params_from_map_candidate(map_candidate)
+            log_likelihood = _coerce_float(
+                getattr(map_candidate, "log_likelihood", None),
+                field_name="fit_result.map_candidate.log_likelihood",
+            )
+            log_posterior = _coerce_float(
+                getattr(map_candidate, "log_posterior", None),
+                field_name="fit_result.map_candidate.log_posterior",
+            )
+            return BestFitSummary(
+                params=params,
+                log_likelihood=log_likelihood,
+                log_posterior=log_posterior,
+                raw_result=fit_result,
+            )
+
         params = _coerce_float_mapping(
             getattr(map_candidate, "params", None),
             field_name="fit_result.map_candidate.params",
@@ -90,6 +109,51 @@ def extract_best_fit_summary(fit_result: Any) -> BestFitSummary:
         "unsupported fit result type; expected an object with either "
         "`.best` (MLE-style) or `.map_candidate` (MAP-style)"
     )
+
+
+def _hierarchical_params_from_map_candidate(map_candidate: Any) -> dict[str, float]:
+    """Extract one representative parameter mapping from hierarchical MAP candidate.
+
+    Parameters
+    ----------
+    map_candidate : Any
+        MAP candidate object exposing ``block_params`` and optionally
+        ``parameter_names``.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean parameter values across block-specific maps.
+    """
+
+    block_params_raw = getattr(map_candidate, "block_params", None)
+    if not isinstance(block_params_raw, (tuple, list)):
+        raise TypeError("fit_result.map_candidate.block_params must be a sequence")
+    if len(block_params_raw) == 0:
+        return {}
+
+    block_params: list[dict[str, float]] = []
+    for index, block in enumerate(block_params_raw):
+        block_params.append(
+            _coerce_float_mapping(
+                block,
+                field_name=f"fit_result.map_candidate.block_params[{index}]",
+            )
+        )
+
+    names_raw = getattr(map_candidate, "parameter_names", None)
+    if isinstance(names_raw, (tuple, list)) and len(names_raw) > 0:
+        names = tuple(str(name) for name in names_raw)
+    else:
+        names = tuple(block_params[0].keys())
+
+    out: dict[str, float] = {}
+    for name in names:
+        values = [float(block[name]) for block in block_params if name in block]
+        if not values:
+            continue
+        out[name] = float(sum(values) / len(values))
+    return out
 
 
 def _coerce_float_mapping(raw: Any, *, field_name: str) -> dict[str, float]:

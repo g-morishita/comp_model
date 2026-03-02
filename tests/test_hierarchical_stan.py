@@ -150,6 +150,119 @@ def test_sample_subject_hierarchical_posterior_stan_decodes_draws(monkeypatch: p
 
 
 @pytest.mark.parametrize(
+    ("component_id", "parameter_names", "model_kwargs"),
+    [
+        (
+            "asocial_q_value_softmax",
+            ["alpha"],
+            {"beta": 2.0, "initial_value": 0.0},
+        ),
+        (
+            "asocial_state_q_value_softmax_perseveration",
+            ["alpha", "kappa"],
+            {"beta": 2.0, "initial_value": 0.0},
+        ),
+        (
+            "asocial_state_q_value_softmax_split_alpha",
+            ["alpha_1", "alpha_2"],
+            {"beta": 2.0, "initial_value": 0.0},
+        ),
+    ],
+)
+def test_sample_subject_hierarchical_posterior_stan_supports_additional_asocial_models(
+    monkeypatch: pytest.MonkeyPatch,
+    component_id: str,
+    parameter_names: list[str],
+    model_kwargs: dict[str, float],
+) -> None:
+    """Stan helper should support all asocial model component IDs."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+
+    fake_fit = _fake_fit(n_draws=6, n_blocks=1, n_params=len(parameter_names), block_param_value=0.37)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
+
+    result = sample_subject_hierarchical_posterior_stan(
+        subject,
+        model_component_id=component_id,
+        model_kwargs=model_kwargs,
+        parameter_names=parameter_names,
+        n_samples=3,
+        n_warmup=2,
+        thin=1,
+        n_chains=2,
+        random_seed=14,
+    )
+
+    assert result.subject_id == "s1"
+    assert result.parameter_names == tuple(parameter_names)
+    assert len(result.draws) == 6
+    for name in parameter_names:
+        assert result.draws[0].candidate.block_params[0][name] == pytest.approx(0.37)
+    assert captured["cache_tag"] == f"hierarchical_{component_id}"
+
+
+def test_asocial_q_hierarchical_stan_ignores_state_index(monkeypatch: pytest.MonkeyPatch) -> None:
+    """State-free asocial Q model should collapse all observations to one state in Stan data."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(
+            TrialDecision(
+                trial_index=0,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 1.0},
+            ),
+            TrialDecision(
+                trial_index=1,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=0,
+                observation={"state": 7},
+                outcome={"reward": 0.0},
+            ),
+        ),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    fake_fit = _fake_fit(n_draws=4, n_blocks=1, n_params=1, block_param_value=0.28)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
+    sample_subject_hierarchical_posterior_stan(
+        subject,
+        model_component_id="asocial_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        n_samples=2,
+        n_warmup=1,
+        n_chains=2,
+    )
+
+    stan_data = captured["stan_data"]
+    assert isinstance(stan_data, dict)
+    assert stan_data["S"] == 1
+
+
+@pytest.mark.parametrize(
     ("component_id", "parameter_name"),
     [
         ("social_observed_outcome_q", "alpha_observed"),

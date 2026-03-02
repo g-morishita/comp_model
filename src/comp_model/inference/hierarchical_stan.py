@@ -2,7 +2,11 @@
 
 The Stan backend supports:
 
-- ``asocial_state_q_value_softmax`` (asocial state-indexed Q model)
+- asocial family:
+  - ``asocial_q_value_softmax``
+  - ``asocial_state_q_value_softmax``
+  - ``asocial_state_q_value_softmax_perseveration``
+  - ``asocial_state_q_value_softmax_split_alpha``
 - all social model families registered in
   :mod:`comp_model.inference.hierarchical_stan_social`
 
@@ -53,13 +57,27 @@ from .mcmc import MCMCDiagnostics
 from .stan_backend import compile_cmdstan_model
 
 _ASOCIAL_COMPONENT_ID = "asocial_state_q_value_softmax"
+_ASOCIAL_PERSEVERATION_COMPONENT_ID = "asocial_state_q_value_softmax_perseveration"
+_ASOCIAL_SPLIT_ALPHA_COMPONENT_ID = "asocial_state_q_value_softmax_split_alpha"
+_ASOCIAL_Q_COMPONENT_ID = "asocial_q_value_softmax"
+_ASOCIAL_COMPONENT_IDS = frozenset(
+    {
+        _ASOCIAL_COMPONENT_ID,
+        _ASOCIAL_PERSEVERATION_COMPONENT_ID,
+        _ASOCIAL_SPLIT_ALPHA_COMPONENT_ID,
+        _ASOCIAL_Q_COMPONENT_ID,
+    }
+)
 _SUPPORTED_SOCIAL_COMPONENT_IDS = frozenset(social_supported_component_ids())
-_SUPPORTED_COMPONENT_IDS = frozenset({_ASOCIAL_COMPONENT_ID, *_SUPPORTED_SOCIAL_COMPONENT_IDS})
+_SUPPORTED_COMPONENT_IDS = frozenset({*_ASOCIAL_COMPONENT_IDS, *_SUPPORTED_SOCIAL_COMPONENT_IDS})
 
-_ASOCIAL_PARAM_CODE_BY_NAME: dict[str, int] = {
+_ASOCIAL_EXTERNAL_PARAM_CODE_BY_NAME: dict[str, int] = {
     "alpha": 1,
-    "beta": 2,
-    "initial_value": 3,
+    "alpha_1": 1,
+    "alpha_2": 2,
+    "beta": 3,
+    "kappa": 4,
+    "initial_value": 5,
 }
 
 _TRANSFORM_CODE_BY_KIND: dict[str, int] = {
@@ -90,6 +108,73 @@ class _SubjectBuild:
     stan_data: dict[str, Any]
     parameter_names: tuple[str, ...]
     n_blocks: int
+
+
+@dataclass(frozen=True, slots=True)
+class _AsocialModelSpec:
+    """Configuration for one asocial model family in the Stan backend."""
+
+    component_id: str
+    default_params: dict[str, float]
+    allowed_parameter_names: frozenset[str]
+    allowed_model_kwargs: frozenset[str]
+    stateful: bool
+
+
+def _build_asocial_specs() -> dict[str, _AsocialModelSpec]:
+    """Create asocial component mapping used by the Stan backend."""
+
+    return {
+        _ASOCIAL_COMPONENT_ID: _AsocialModelSpec(
+            component_id=_ASOCIAL_COMPONENT_ID,
+            default_params={
+                "alpha": 0.2,
+                "beta": 5.0,
+                "initial_value": 0.0,
+            },
+            allowed_parameter_names=frozenset({"alpha", "beta", "initial_value"}),
+            allowed_model_kwargs=frozenset({"alpha", "beta", "initial_value"}),
+            stateful=True,
+        ),
+        _ASOCIAL_PERSEVERATION_COMPONENT_ID: _AsocialModelSpec(
+            component_id=_ASOCIAL_PERSEVERATION_COMPONENT_ID,
+            default_params={
+                "alpha": 0.2,
+                "beta": 5.0,
+                "kappa": 1.0,
+                "initial_value": 0.0,
+            },
+            allowed_parameter_names=frozenset({"alpha", "beta", "kappa", "initial_value"}),
+            allowed_model_kwargs=frozenset({"alpha", "beta", "kappa", "initial_value"}),
+            stateful=True,
+        ),
+        _ASOCIAL_SPLIT_ALPHA_COMPONENT_ID: _AsocialModelSpec(
+            component_id=_ASOCIAL_SPLIT_ALPHA_COMPONENT_ID,
+            default_params={
+                "alpha_1": 0.2,
+                "alpha_2": 0.2,
+                "beta": 5.0,
+                "initial_value": 0.0,
+            },
+            allowed_parameter_names=frozenset({"alpha_1", "alpha_2", "beta", "initial_value"}),
+            allowed_model_kwargs=frozenset({"alpha_1", "alpha_2", "beta", "initial_value"}),
+            stateful=True,
+        ),
+        _ASOCIAL_Q_COMPONENT_ID: _AsocialModelSpec(
+            component_id=_ASOCIAL_Q_COMPONENT_ID,
+            default_params={
+                "alpha": 0.2,
+                "beta": 3.0,
+                "initial_value": 0.0,
+            },
+            allowed_parameter_names=frozenset({"alpha", "beta", "initial_value"}),
+            allowed_model_kwargs=frozenset({"alpha", "beta", "initial_value"}),
+            stateful=False,
+        ),
+    }
+
+
+_ASOCIAL_SPECS = _build_asocial_specs()
 
 
 def sample_subject_hierarchical_posterior_stan(
@@ -209,8 +294,9 @@ def sample_subject_hierarchical_posterior_stan(
             compatibility = check_trace_compatibility(trace, requirements)
             assert_trace_compatible(trace, requirements)
 
-    if model_component_id == _ASOCIAL_COMPONENT_ID:
+    if model_component_id in _ASOCIAL_COMPONENT_IDS:
         built = _build_asocial_subject_inputs(
+            model_component_id=model_component_id,
             subject=subject,
             parameter_names=parameter_names,
             transform_kinds=transform_kinds,
@@ -224,7 +310,7 @@ def sample_subject_hierarchical_posterior_stan(
             log_sigma_prior_std=log_sigma_prior_std,
         )
         stan_code = _ASOCIAL_STAN_CODE
-        cache_tag = "hierarchical_asocial_state_q_value_softmax"
+        cache_tag = f"hierarchical_{model_component_id}"
     else:
         social_stan_data, social_param_names, social_n_blocks = build_social_subject_inputs(
             subject=subject,
@@ -350,6 +436,7 @@ def sample_study_hierarchical_posterior_stan(
 
 def _build_asocial_subject_inputs(
     *,
+    model_component_id: str,
     subject: SubjectData,
     parameter_names: Sequence[str],
     transform_kinds: Mapping[str, str] | None,
@@ -364,17 +451,24 @@ def _build_asocial_subject_inputs(
 ) -> _SubjectBuild:
     """Build Stan data dictionary and metadata for one subject."""
 
+    if model_component_id not in _ASOCIAL_SPECS:
+        raise ValueError(
+            f"unsupported asocial model_component_id {model_component_id!r}; "
+            f"expected one of {sorted(_ASOCIAL_SPECS)}"
+        )
+    spec = _ASOCIAL_SPECS[model_component_id]
+
     names = tuple(str(name) for name in parameter_names)
     if len(names) == 0:
         raise ValueError("parameter_names must include at least one parameter")
     if len(set(names)) != len(names):
         raise ValueError("parameter_names must be unique")
 
-    unknown = [name for name in names if name not in _ASOCIAL_PARAM_CODE_BY_NAME]
+    unknown = [name for name in names if name not in spec.allowed_parameter_names]
     if unknown:
         raise ValueError(
             "unsupported parameter_names for Stan backend: "
-            f"{unknown!r}; supported {sorted(_ASOCIAL_PARAM_CODE_BY_NAME)}"
+            f"{unknown!r}; supported {sorted(spec.allowed_parameter_names)}"
         )
 
     resolved_transform_kinds = _resolve_transform_kinds(
@@ -407,27 +501,33 @@ def _build_asocial_subject_inputs(
         field_name="log_sigma_prior_std",
         must_be_positive=True,
     )
-    defaults = {
-        "alpha": 0.2,
-        "beta": 5.0,
-        "initial_value": 0.0,
-    }
-    fixed = dict(defaults)
+    fixed_external = dict(spec.default_params)
     provided_kwargs = dict(model_kwargs or {})
     for key in provided_kwargs:
-        if key not in defaults:
+        if key not in spec.allowed_model_kwargs:
             raise ValueError(
-                f"unsupported model kwarg {key!r} for Stan backend; supported keys are {sorted(defaults)}"
+                f"unsupported model kwarg {key!r} for Stan backend; "
+                f"supported keys are {sorted(spec.allowed_model_kwargs)}"
             )
         if key in names:
             raise ValueError(
                 f"model kwarg {key!r} conflicts with sampled parameter_names; remove one source"
             )
-        fixed[key] = float(provided_kwargs[key])
+        fixed_external[key] = float(provided_kwargs[key])
 
-    if fixed["alpha"] < 0.0 or fixed["alpha"] > 1.0:
-        raise ValueError("fixed alpha must be in [0, 1]")
-    if fixed["beta"] < 0.0:
+    fixed_internal = {
+        "alpha_1": float(fixed_external.get("alpha_1", fixed_external.get("alpha", 0.2))),
+        "alpha_2": float(fixed_external.get("alpha_2", 0.0)),
+        "beta": float(fixed_external.get("beta", 5.0)),
+        "kappa": float(fixed_external.get("kappa", 0.0)),
+        "initial_value": float(fixed_external.get("initial_value", 0.0)),
+    }
+
+    if fixed_internal["alpha_1"] < 0.0 or fixed_internal["alpha_1"] > 1.0:
+        raise ValueError("fixed alpha_1 must be in [0, 1]")
+    if fixed_internal["alpha_2"] < 0.0 or fixed_internal["alpha_2"] > 1.0:
+        raise ValueError("fixed alpha_2 must be in [0, 1]")
+    if fixed_internal["beta"] < 0.0:
         raise ValueError("fixed beta must be >= 0")
 
     block_rows = tuple(_rows_for_actor(block, actor_id="subject") for block in subject.blocks)
@@ -444,7 +544,7 @@ def _build_asocial_subject_inputs(
             if row.action is None:
                 raise ValueError("trial decision requires action for Stan backend")
 
-            state = _state_from_observation(row.observation)
+            state = _state_from_observation(row.observation) if spec.stateful else 0
             if state not in state_to_index:
                 state_to_index[state] = len(state_to_index) + 1
 
@@ -475,7 +575,7 @@ def _build_asocial_subject_inputs(
 
     for block_index, rows in enumerate(block_rows):
         for decision_index, row in enumerate(rows):
-            state_value = _state_from_observation(row.observation)
+            state_value = _state_from_observation(row.observation) if spec.stateful else 0
             if row.available_actions is None or row.action is None:
                 raise ValueError("trial decision is missing actions for Stan backend")
 
@@ -540,11 +640,13 @@ def _build_asocial_subject_inputs(
         "action_idx": action_idx.tolist(),
         "reward": reward.tolist(),
         "is_available": is_available.tolist(),
-        "param_codes": [_ASOCIAL_PARAM_CODE_BY_NAME[name] for name in names],
+        "param_codes": [_ASOCIAL_EXTERNAL_PARAM_CODE_BY_NAME[name] for name in names],
         "transform_codes": [_TRANSFORM_CODE_BY_KIND[resolved_transform_kinds[name]] for name in names],
-        "fixed_alpha": float(fixed["alpha"]),
-        "fixed_beta": float(fixed["beta"]),
-        "fixed_initial_value": float(fixed["initial_value"]),
+        "fixed_alpha_1": float(fixed_internal["alpha_1"]),
+        "fixed_alpha_2": float(fixed_internal["alpha_2"]),
+        "fixed_beta": float(fixed_internal["beta"]),
+        "fixed_kappa": float(fixed_internal["kappa"]),
+        "fixed_initial_value": float(fixed_internal["initial_value"]),
         "mu_prior_mean": mu_prior_mean_vec.tolist(),
         "mu_prior_std": mu_prior_std_vec.tolist(),
         "log_sigma_prior_mean": log_sigma_prior_mean_vec.tolist(),
@@ -654,7 +756,7 @@ def _resolve_prior_vector(
 def _default_transform_kind(parameter_name: str) -> str:
     """Return safe default transform kind for known parameters."""
 
-    if parameter_name == "alpha":
+    if parameter_name in {"alpha", "alpha_1", "alpha_2"}:
         return "unit_interval_logit"
     if parameter_name == "beta":
         return "positive_log"

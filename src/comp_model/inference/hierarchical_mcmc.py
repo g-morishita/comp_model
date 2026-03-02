@@ -59,6 +59,43 @@ class HierarchicalSubjectPosteriorResult:
             return 0
         return len(self.draws[0].candidate.block_params)
 
+    @property
+    def total_log_likelihood(self) -> float:
+        """Return MAP-candidate total log-likelihood."""
+
+        return float(self.map_candidate.log_likelihood)
+
+    @property
+    def total_log_posterior(self) -> float:
+        """Return MAP-candidate total log-posterior."""
+
+        return float(self.map_candidate.log_posterior)
+
+    @property
+    def mean_map_params(self) -> dict[str, float]:
+        """Return mean MAP block parameters across blocks.
+
+        Returns
+        -------
+        dict[str, float]
+            Parameter mapping averaged across block-level MAP parameters.
+            Returns an empty mapping when no blocks are present.
+        """
+
+        if self.n_blocks == 0:
+            return {}
+        out: dict[str, float] = {}
+        for name in self.parameter_names:
+            values = [float(block[name]) for block in self.map_candidate.block_params]
+            out[name] = float(sum(values) / len(values))
+        return out
+
+    @property
+    def mean_block_map_params(self) -> dict[str, float]:
+        """Backward-compatible alias for mean MAP block parameters."""
+
+        return self.mean_map_params
+
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalStudyPosteriorResult:

@@ -15,6 +15,8 @@ from .bayes_config import map_fit_spec_from_config, prior_program_from_config
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .config import fit_spec_from_config, model_component_spec_from_config
 from .config_dispatch import (
+    HIERARCHICAL_ESTIMATORS,
+    HIERARCHICAL_MCMC_ESTIMATORS,
     MAP_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_study_auto_from_config,
@@ -116,7 +118,49 @@ def build_fit_function_from_model_config(
             likelihood_program=resolved_likelihood,
         )
 
-    supported = sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)
+    if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
+        if prior_cfg is not None:
+            raise ValueError(
+                f"prior is not supported for estimator type {estimator_type!r}"
+            )
+        if estimator_type in HIERARCHICAL_MCMC_ESTIMATORS and likelihood_cfg is not None:
+            raise ValueError(
+                "likelihood config is not supported for hierarchical Stan estimators"
+            )
+
+        fit_config: dict[str, Any] = {
+            "model": {
+                "component_id": model_spec.component_id,
+                "kwargs": dict(model_spec.kwargs),
+            },
+            "estimator": dict(estimator_cfg),
+        }
+        if estimator_type in HIERARCHICAL_ESTIMATORS and likelihood_cfg is not None:
+            fit_config["likelihood"] = dict(likelihood_cfg)
+
+        def _fit_trace_with_hierarchical_estimator(trace: EpisodeTrace) -> Any:
+            """Fit one dataset by wrapping it as a one-block subject."""
+
+            wrapped_subject = SubjectData(
+                subject_id="__dataset__",
+                blocks=(
+                    BlockData(
+                        block_id="__dataset__",
+                        event_trace=trace,
+                    ),
+                ),
+            )
+            return fit_subject_auto_from_config(
+                wrapped_subject,
+                config=fit_config,
+                registry=registry,
+            )
+
+        return _fit_trace_with_hierarchical_estimator
+
+    supported = sorted(
+        MLE_ESTIMATORS | MAP_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS
+    )
     raise ValueError(
         f"estimator.type must be one of {supported}; got {estimator_type!r}"
     )
