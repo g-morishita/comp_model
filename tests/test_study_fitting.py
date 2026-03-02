@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import FitSpec
 from comp_model.inference.study_fitting import fit_block_data, fit_study_data, fit_subject_data
@@ -116,3 +118,51 @@ def test_fit_study_data_runs_all_subjects() -> None:
 
     subject_ids = {subject.subject_id for subject in result.subject_results}
     assert subject_ids == {"s1", "s2"}
+
+
+def test_fit_subject_data_supports_joint_block_strategy() -> None:
+    """Joint strategy should fit one shared parameter set over all blocks."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(block_id="b1", trials=(_make_trial(0, 1, 1.0), _make_trial(1, 1, 1.0))),
+            BlockData(block_id="b2", trials=(_make_trial(0, 0, 0.0), _make_trial(1, 1, 1.0))),
+        ),
+    )
+
+    joint = fit_subject_data(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        fit_spec=_fit_spec(),
+        block_fit_strategy="joint",
+    )
+    independent = fit_subject_data(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        fit_spec=_fit_spec(),
+        block_fit_strategy="independent",
+    )
+
+    assert len(joint.block_results) == 1
+    assert joint.block_results[0].block_id == "__joint__"
+    assert joint.block_results[0].n_trials == 4
+    assert joint.mean_best_params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
+    assert joint.total_log_likelihood == pytest.approx(independent.total_log_likelihood)
+
+
+def test_fit_subject_data_rejects_unknown_block_fit_strategy() -> None:
+    """Subject fitting should reject unsupported block-fit strategy values."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(BlockData(block_id="b1", trials=(_make_trial(0, 1, 1.0),)),),
+    )
+
+    with pytest.raises(ValueError, match="block_fit_strategy must be one of"):
+        fit_subject_data(
+            subject,
+            model_component_id="asocial_state_q_value_softmax",
+            fit_spec=_fit_spec(),
+            block_fit_strategy="bad_mode",  # type: ignore[arg-type]
+        )

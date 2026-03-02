@@ -12,6 +12,7 @@ from comp_model.inference import (
     fit_dataset_from_config,
     fit_spec_from_config,
     fit_study_from_config,
+    fit_subject_from_config,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import TwoStageSocialBanditProgram
@@ -176,6 +177,65 @@ def test_fit_study_from_config_runs_all_subjects() -> None:
     assert result.n_subjects == 2
     assert {subject.subject_id for subject in result.subject_results} == {"s1", "s2"}
     assert math.isfinite(result.total_log_likelihood)
+
+
+def test_fit_subject_from_config_supports_joint_block_fit_strategy() -> None:
+    """Subject config fitting should support joint block likelihood fitting."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(block_id="b1", trials=(_trial(0, 1, 1.0), _trial(1, 1, 1.0))),
+            BlockData(block_id="b2", trials=(_trial(0, 0, 0.0), _trial(1, 0, 0.0))),
+        ),
+    )
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.2],
+                "beta": [1.5],
+                "initial_value": [0.0],
+            },
+        },
+        "block_fit_strategy": "joint",
+    }
+
+    result = fit_subject_from_config(subject, config=config)
+    assert len(result.block_results) == 1
+    assert result.block_results[0].block_id == "__joint__"
+    assert result.block_results[0].n_trials == 4
+
+
+def test_fit_subject_from_config_rejects_unknown_block_fit_strategy() -> None:
+    """Subject config fitting should reject unknown block-fit strategy values."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(BlockData(block_id="b1", trials=(_trial(0, 1, 1.0), _trial(1, 1, 1.0))),),
+    )
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.2],
+                "beta": [1.5],
+                "initial_value": [0.0],
+            },
+        },
+        "block_fit_strategy": "not_a_strategy",
+    }
+
+    with pytest.raises(ValueError, match="config.block_fit_strategy must be one of"):
+        fit_subject_from_config(subject, config=config)
 
 
 def test_fit_dataset_from_config_supports_social_actor_subset_likelihood() -> None:

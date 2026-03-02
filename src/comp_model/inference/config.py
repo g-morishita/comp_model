@@ -11,11 +11,13 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecisio
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
+from .block_strategy import coerce_block_fit_strategy
 from .fitting import EstimatorType, FitSpec, fit_model_from_registry
 from .likelihood_config import likelihood_program_from_config
 from .mle import MLEFitResult
 from .study_fitting import (
     BlockFitResult,
+    BlockFitStrategy,
     StudyFitResult,
     SubjectFitResult,
     fit_block_data,
@@ -218,13 +220,21 @@ def fit_subject_from_config(
     """Fit one subject using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
-    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "estimator", "likelihood", "block_fit_strategy"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
         else None
+    )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
     )
 
     reg = registry if registry is not None else build_default_registry()
@@ -235,6 +245,7 @@ def fit_subject_from_config(
         model_kwargs=model_spec.kwargs,
         registry=reg,
         likelihood_program=likelihood_program_from_config(likelihood_cfg),
+        block_fit_strategy=block_fit_strategy,
     )
 
 
@@ -247,13 +258,21 @@ def fit_study_from_config(
     """Fit one study using declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
-    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
+    validate_allowed_keys(
+        cfg,
+        field_name="config",
+        allowed_keys=("model", "estimator", "likelihood", "block_fit_strategy"),
+    )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
         else None
+    )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
     )
 
     reg = registry if registry is not None else build_default_registry()
@@ -264,6 +283,7 @@ def fit_study_from_config(
         model_kwargs=model_spec.kwargs,
         registry=reg,
         likelihood_program=likelihood_program_from_config(likelihood_cfg),
+        block_fit_strategy=block_fit_strategy,
     )
 
 

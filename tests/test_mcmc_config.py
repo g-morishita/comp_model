@@ -222,6 +222,28 @@ def test_sample_posterior_block_subject_study_from_config() -> None:
     assert len(study_result.subject_results) == 1
 
 
+def test_sample_posterior_subject_from_config_supports_joint_block_fit_strategy() -> None:
+    """MCMC subject config sampling should support joint block likelihood fitting."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
+    config = _mcmc_config()
+    config["block_fit_strategy"] = "joint"
+
+    result = sample_posterior_subject_from_config(subject, config=config)
+    assert len(result.block_results) == 1
+    assert result.block_results[0].block_id == "__joint__"
+    assert result.block_results[0].n_trials == 6
+    assert result.block_results[0].posterior_result.posterior_samples.n_draws == 20
+
+
 def test_fit_auto_dispatches_mcmc_for_all_dataset_levels() -> None:
     """Auto-dispatch should route MCMC estimator type across all levels."""
 

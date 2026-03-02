@@ -27,6 +27,7 @@ from .bayes import (
     normal_log_prior,
     uniform_log_prior,
 )
+from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .config import model_component_spec_from_config
 from .hierarchical import (
     HierarchicalStudyMapResult,
@@ -423,7 +424,7 @@ def fit_map_subject_from_config(
     validate_allowed_keys(
         cfg,
         field_name="config",
-        allowed_keys=("model", "prior", "estimator", "likelihood"),
+        allowed_keys=("model", "prior", "estimator", "likelihood", "block_fit_strategy"),
     )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
@@ -438,6 +439,10 @@ def fit_map_subject_from_config(
         if likelihood_program is not None
         else likelihood_program_from_config(likelihood_cfg)
     )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_map_subject_data(
@@ -448,6 +453,7 @@ def fit_map_subject_from_config(
         model_kwargs=model_spec.kwargs,
         registry=reg,
         likelihood_program=resolved_likelihood,
+        block_fit_strategy=block_fit_strategy,
     )
 
 
@@ -464,7 +470,7 @@ def fit_map_study_from_config(
     validate_allowed_keys(
         cfg,
         field_name="config",
-        allowed_keys=("model", "prior", "estimator", "likelihood"),
+        allowed_keys=("model", "prior", "estimator", "likelihood", "block_fit_strategy"),
     )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     prior_program = prior_program_from_config(_require_mapping(cfg.get("prior"), field_name="config.prior"))
@@ -479,6 +485,10 @@ def fit_map_study_from_config(
         if likelihood_program is not None
         else likelihood_program_from_config(likelihood_cfg)
     )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return fit_map_study_data(
@@ -489,6 +499,7 @@ def fit_map_study_from_config(
         model_kwargs=model_spec.kwargs,
         registry=reg,
         likelihood_program=resolved_likelihood,
+        block_fit_strategy=block_fit_strategy,
     )
 
 

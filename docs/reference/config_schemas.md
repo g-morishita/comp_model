@@ -21,6 +21,7 @@ MLEFitConfig = {
     "model": ComponentRef,
     "estimator": GridSearchEstimator | ScipyMinimizeEstimator | TransformedScipyMinimizeEstimator,
     "likelihood": LikelihoodConfig,  # optional
+    "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
 }
 
 GridSearchEstimator = {
@@ -54,6 +55,7 @@ MAPFitConfig = {
     "prior": PriorConfig,
     "estimator": ScipyMapEstimator | TransformedScipyMapEstimator,
     "likelihood": LikelihoodConfig,  # optional
+    "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
 }
 
 ScipyMapEstimator = {
@@ -82,6 +84,7 @@ MCMCConfig = {
     "prior": PriorConfig,  # required for random_walk_metropolis
     "estimator": RandomWalkMetropolisEstimator | HierarchicalRandomWalkMetropolisEstimator | HierarchicalStanNUTSEstimator,
     "likelihood": LikelihoodConfig,  # optional
+    "block_fit_strategy": "independent" | "joint",  # optional; random_walk subject/study APIs only
 }
 
 RandomWalkMetropolisEstimator = {

@@ -289,6 +289,55 @@ def test_map_study_fit_from_config_runs_block_subject_study() -> None:
     assert math.isfinite(study_result.total_log_posterior)
 
 
+def test_fit_map_subject_from_config_supports_joint_block_fit_strategy() -> None:
+    """MAP subject config fitting should support joint block likelihood fitting."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(
+                block_id="b1",
+                trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+            ),
+            BlockData(
+                block_id="b2",
+                trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+            ),
+        ),
+    )
+    config = {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "prior": {
+            "type": "independent",
+            "parameters": {
+                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
+                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
+            },
+        },
+        "estimator": {
+            "type": "scipy_map",
+            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
+            "bounds": {
+                "alpha": [0.0, 1.0],
+                "beta": [0.0, 20.0],
+                "initial_value": [None, None],
+            },
+        },
+        "block_fit_strategy": "joint",
+    }
+
+    result = fit_map_subject_from_config(subject, config=config)
+    assert len(result.block_results) == 1
+    assert result.block_results[0].block_id == "__joint__"
+    assert result.block_results[0].n_trials == 6
+    assert math.isfinite(result.total_log_likelihood)
+    assert math.isfinite(result.total_log_posterior)
+
+
 def test_fit_map_dataset_from_config_supports_social_actor_subset_likelihood() -> None:
     """MAP config runner should parse actor-subset likelihood on social traces."""
 

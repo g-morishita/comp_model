@@ -4,13 +4,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from comp_model.core.data import BlockData, StudyData, SubjectData
+from comp_model.core.data import BlockData, StudyData, SubjectData, get_block_trace
 from comp_model.inference.bayes import (
     BayesFitResult,
     MapFitSpec,
     PriorProgram,
     fit_map_model_from_registry,
 )
+from comp_model.inference.block_strategy import (
+    JOINT_BLOCK_ID,
+    BlockFitStrategy,
+    JointBlockLikelihoodProgram,
+    coerce_block_fit_strategy,
+)
+from comp_model.inference.compatibility import assert_trace_compatible
 from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.plugins import PluginRegistry, build_default_registry
 
@@ -121,36 +128,98 @@ def fit_map_subject_data(
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> MapSubjectFitResult:
-    """Fit one model with MAP independently to all blocks for one subject."""
+    """Fit one model with MAP across all blocks for one subject.
+
+    Parameters
+    ----------
+    subject : SubjectData
+        Subject dataset.
+    model_component_id : str
+        Registered model component ID.
+    prior_program : PriorProgram
+        Prior evaluator.
+    fit_spec : MapFitSpec
+        MAP estimator specification.
+    model_kwargs : dict[str, object] | None, optional
+        Fixed model constructor kwargs.
+    registry : PluginRegistry | None, optional
+        Optional registry instance.
+    likelihood_program : LikelihoodProgram | None, optional
+        Optional likelihood evaluator.
+    block_fit_strategy : {"independent", "joint"}, optional
+        ``"independent"`` fits each block separately and aggregates fit
+        summaries. ``"joint"`` fits one shared parameter set by summing block
+        likelihoods.
+    """
 
     reg = registry if registry is not None else build_default_registry()
-    block_results = tuple(
-        fit_map_block_data(
-            block,
-            model_component_id=model_component_id,
-            prior_program=prior_program,
-            fit_spec=fit_spec,
-            model_kwargs=model_kwargs,
-            registry=reg,
-            likelihood_program=likelihood_program,
-        )
-        for block in subject.blocks
+    strategy = coerce_block_fit_strategy(
+        block_fit_strategy,
+        field_name="block_fit_strategy",
     )
 
-    total_log_likelihood = float(
-        sum(block.fit_result.map_candidate.log_likelihood for block in block_results)
+    if strategy == "independent":
+        block_results = tuple(
+            fit_map_block_data(
+                block,
+                model_component_id=model_component_id,
+                prior_program=prior_program,
+                fit_spec=fit_spec,
+                model_kwargs=model_kwargs,
+                registry=reg,
+                likelihood_program=likelihood_program,
+            )
+            for block in subject.blocks
+        )
+        total_log_likelihood = float(
+            sum(block.fit_result.map_candidate.log_likelihood for block in block_results)
+        )
+        total_log_posterior = float(
+            sum(block.fit_result.map_candidate.log_posterior for block in block_results)
+        )
+        mean_map_params = _mean_map_params_across_blocks(block_results)
+        return MapSubjectFitResult(
+            subject_id=subject.subject_id,
+            block_results=block_results,
+            total_log_likelihood=total_log_likelihood,
+            total_log_posterior=total_log_posterior,
+            mean_map_params=mean_map_params,
+        )
+
+    block_traces = tuple(get_block_trace(block) for block in subject.blocks)
+    requirements = reg.get("model", model_component_id).requirements
+    for trace in block_traces:
+        assert_trace_compatible(trace, requirements)
+
+    joint_likelihood = JointBlockLikelihoodProgram(
+        block_traces=block_traces,
+        likelihood_program=likelihood_program,
     )
-    total_log_posterior = float(
-        sum(block.fit_result.map_candidate.log_posterior for block in block_results)
+    joint_fit = fit_map_model_from_registry(
+        subject.blocks[0],
+        model_component_id=model_component_id,
+        prior_program=prior_program,
+        fit_spec=fit_spec,
+        model_kwargs=model_kwargs,
+        registry=reg,
+        likelihood_program=joint_likelihood,
     )
-    mean_map_params = _mean_map_params_across_blocks(block_results)
+    block_results = (
+        MapBlockFitResult(
+            block_id=JOINT_BLOCK_ID,
+            n_trials=int(sum(block.n_trials for block in subject.blocks)),
+            fit_result=joint_fit,
+        ),
+    )
+
     return MapSubjectFitResult(
         subject_id=subject.subject_id,
         block_results=block_results,
-        total_log_likelihood=total_log_likelihood,
-        total_log_posterior=total_log_posterior,
-        mean_map_params=mean_map_params,
+        total_log_likelihood=float(joint_fit.map_candidate.log_likelihood),
+        total_log_posterior=float(joint_fit.map_candidate.log_posterior),
+        mean_map_params=dict(joint_fit.map_candidate.params),
     )
 
 
@@ -163,8 +232,29 @@ def fit_map_study_data(
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> MapStudyFitResult:
-    """Fit one model with MAP independently to all study subjects/blocks."""
+    """Fit one model with MAP across all study subjects/blocks.
+
+    Parameters
+    ----------
+    study : StudyData
+        Study dataset.
+    model_component_id : str
+        Registered model component ID.
+    prior_program : PriorProgram
+        Prior evaluator.
+    fit_spec : MapFitSpec
+        MAP estimator specification.
+    model_kwargs : dict[str, object] | None, optional
+        Fixed model constructor kwargs.
+    registry : PluginRegistry | None, optional
+        Optional registry instance.
+    likelihood_program : LikelihoodProgram | None, optional
+        Optional likelihood evaluator.
+    block_fit_strategy : {"independent", "joint"}, optional
+        Block handling strategy passed to :func:`fit_map_subject_data`.
+    """
 
     reg = registry if registry is not None else build_default_registry()
     subject_results = tuple(
@@ -176,6 +266,7 @@ def fit_map_study_data(
             model_kwargs=model_kwargs,
             registry=reg,
             likelihood_program=likelihood_program,
+            block_fit_strategy=block_fit_strategy,
         )
         for subject in study.subjects
     )
@@ -212,6 +303,7 @@ def _mean_map_params_across_blocks(block_results: tuple[MapBlockFitResult, ...])
 
 
 __all__ = [
+    "BlockFitStrategy",
     "MapBlockFitResult",
     "MapStudyFitResult",
     "MapSubjectFitResult",

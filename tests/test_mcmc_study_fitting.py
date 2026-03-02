@@ -119,3 +119,47 @@ def test_sample_posterior_block_subject_study_data() -> None:
     assert len(study_result.subject_results) == 1
     assert math.isfinite(study_result.total_map_log_likelihood)
     assert math.isfinite(study_result.total_map_log_posterior)
+
+
+def test_sample_posterior_subject_data_supports_joint_block_strategy() -> None:
+    """MCMC subject sampling should support one shared posterior across blocks."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(
+                block_id="b1",
+                trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+            ),
+            BlockData(
+                block_id="b2",
+                trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+            ),
+        ),
+    )
+
+    result = sample_posterior_subject_data(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        prior_program=_prior_program(),
+        initial_params={"alpha": 0.4, "beta": 2.0, "initial_value": 0.0},
+        n_samples=20,
+        n_warmup=20,
+        thin=1,
+        proposal_scales={"alpha": 0.05, "beta": 0.2, "initial_value": 0.1},
+        bounds={
+            "alpha": (0.0, 1.0),
+            "beta": (0.0, 20.0),
+            "initial_value": (-5.0, 5.0),
+        },
+        random_seed=2,
+        block_fit_strategy="joint",
+    )
+
+    assert result.subject_id == "s1"
+    assert len(result.block_results) == 1
+    assert result.block_results[0].block_id == "__joint__"
+    assert result.block_results[0].n_trials == 6
+    assert result.block_results[0].posterior_result.posterior_samples.n_draws == 20
+    assert math.isfinite(result.total_map_log_likelihood)
+    assert math.isfinite(result.total_map_log_posterior)

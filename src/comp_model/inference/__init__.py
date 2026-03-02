@@ -32,6 +32,7 @@ from .bayes_config import (
     map_fit_spec_from_config,
     prior_program_from_config,
 )
+from .block_strategy import BlockFitStrategy
 from .cli import run_fit_cli
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
 from .config import (
@@ -222,6 +223,7 @@ __all__ = [
     "ActorSubsetReplayLikelihood",
     "BayesFitResult",
     "BlockFitResult",
+    "BlockFitStrategy",
     "CandidateComparison",
     "CandidateFitSpec",
     "CompatibilityReport",

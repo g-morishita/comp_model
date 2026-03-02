@@ -13,6 +13,7 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .bayes import PriorProgram
 from .bayes_config import prior_program_from_config
+from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .config import model_component_spec_from_config
 from .hierarchical_mcmc import (
     HierarchicalStudyPosteriorResult,
@@ -757,7 +758,7 @@ def sample_posterior_subject_from_config(
     validate_allowed_keys(
         cfg,
         field_name="config",
-        allowed_keys=("model", "prior", "estimator", "likelihood"),
+        allowed_keys=("model", "prior", "estimator", "likelihood", "block_fit_strategy"),
     )
     model_spec = model_component_spec_from_config(
         _require_mapping(cfg.get("model"), field_name="config.model")
@@ -778,6 +779,10 @@ def sample_posterior_subject_from_config(
         if likelihood_program is not None
         else likelihood_program_from_config(likelihood_cfg)
     )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return sample_posterior_subject_data(
@@ -794,6 +799,7 @@ def sample_posterior_subject_from_config(
         registry=reg,
         likelihood_program=resolved_likelihood,
         random_seed=estimator_spec.random_seed,
+        block_fit_strategy=block_fit_strategy,
     )
 
 
@@ -823,7 +829,7 @@ def sample_posterior_study_from_config(
     validate_allowed_keys(
         cfg,
         field_name="config",
-        allowed_keys=("model", "prior", "estimator", "likelihood"),
+        allowed_keys=("model", "prior", "estimator", "likelihood", "block_fit_strategy"),
     )
     model_spec = model_component_spec_from_config(
         _require_mapping(cfg.get("model"), field_name="config.model")
@@ -844,6 +850,10 @@ def sample_posterior_study_from_config(
         if likelihood_program is not None
         else likelihood_program_from_config(likelihood_cfg)
     )
+    block_fit_strategy: BlockFitStrategy = coerce_block_fit_strategy(
+        cfg.get("block_fit_strategy"),
+        field_name="config.block_fit_strategy",
+    )
 
     reg = registry if registry is not None else build_default_registry()
     return sample_posterior_study_data(
@@ -860,6 +870,7 @@ def sample_posterior_study_from_config(
         registry=reg,
         likelihood_program=resolved_likelihood,
         random_seed=estimator_spec.random_seed,
+        block_fit_strategy=block_fit_strategy,
     )
 
 

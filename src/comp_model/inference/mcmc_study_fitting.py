@@ -6,10 +6,17 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from comp_model.core.data import BlockData, StudyData, SubjectData
+from comp_model.core.data import BlockData, StudyData, SubjectData, get_block_trace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .bayes import PriorProgram
+from .block_strategy import (
+    JOINT_BLOCK_ID,
+    BlockFitStrategy,
+    JointBlockLikelihoodProgram,
+    coerce_block_fit_strategy,
+)
+from .compatibility import assert_trace_compatible
 from .likelihood import LikelihoodProgram
 from .mcmc import MCMCPosteriorResult, sample_posterior_model_from_registry
 
@@ -138,48 +145,127 @@ def sample_posterior_subject_data(
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
     random_seed: int | None = None,
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> MCMCSubjectResult:
-    """Sample posterior draws independently for all blocks of one subject."""
+    """Sample posterior draws across all blocks of one subject.
+
+    Parameters
+    ----------
+    subject : SubjectData
+        Subject dataset.
+    model_component_id : str
+        Registered model component ID.
+    prior_program : PriorProgram
+        Prior evaluator.
+    initial_params : Mapping[str, float]
+        Initial constrained parameter values.
+    n_samples : int
+        Number of retained posterior draws.
+    n_warmup : int, optional
+        Warmup iterations.
+    thin : int, optional
+        Thinning interval.
+    proposal_scales : Mapping[str, float] | None, optional
+        Optional proposal scales.
+    bounds : Mapping[str, tuple[float | None, float | None]] | None, optional
+        Optional hard parameter bounds.
+    model_kwargs : Mapping[str, Any] | None, optional
+        Fixed model constructor kwargs.
+    registry : PluginRegistry | None, optional
+        Optional registry instance.
+    likelihood_program : LikelihoodProgram | None, optional
+        Optional likelihood evaluator.
+    random_seed : int | None, optional
+        Random seed.
+    block_fit_strategy : {"independent", "joint"}, optional
+        ``"independent"`` samples each block separately and aggregates block MAP
+        summaries. ``"joint"`` samples one shared parameter set by summing block
+        likelihoods.
+    """
 
     reg = registry if registry is not None else build_default_registry()
-    block_results = tuple(
-        sample_posterior_block_data(
-            block,
-            model_component_id=model_component_id,
-            prior_program=prior_program,
-            initial_params=initial_params,
-            n_samples=n_samples,
-            n_warmup=n_warmup,
-            thin=thin,
-            proposal_scales=proposal_scales,
-            bounds=bounds,
-            model_kwargs=model_kwargs,
-            registry=reg,
-            likelihood_program=likelihood_program,
-            random_seed=None if random_seed is None else int(random_seed) + index,
-        )
-        for index, block in enumerate(subject.blocks)
+    strategy = coerce_block_fit_strategy(
+        block_fit_strategy,
+        field_name="block_fit_strategy",
     )
 
-    total_map_log_likelihood = float(
-        sum(
-            block.posterior_result.map_candidate.log_likelihood
-            for block in block_results
+    if strategy == "independent":
+        block_results = tuple(
+            sample_posterior_block_data(
+                block,
+                model_component_id=model_component_id,
+                prior_program=prior_program,
+                initial_params=initial_params,
+                n_samples=n_samples,
+                n_warmup=n_warmup,
+                thin=thin,
+                proposal_scales=proposal_scales,
+                bounds=bounds,
+                model_kwargs=model_kwargs,
+                registry=reg,
+                likelihood_program=likelihood_program,
+                random_seed=None if random_seed is None else int(random_seed) + index,
+            )
+            for index, block in enumerate(subject.blocks)
         )
-    )
-    total_map_log_posterior = float(
-        sum(
-            block.posterior_result.map_candidate.log_posterior
-            for block in block_results
+        total_map_log_likelihood = float(
+            sum(
+                block.posterior_result.map_candidate.log_likelihood
+                for block in block_results
+            )
         )
+        total_map_log_posterior = float(
+            sum(
+                block.posterior_result.map_candidate.log_posterior
+                for block in block_results
+            )
+        )
+        mean_block_map_params = _mean_block_map_params(block_results)
+        return MCMCSubjectResult(
+            subject_id=subject.subject_id,
+            block_results=block_results,
+            total_map_log_likelihood=total_map_log_likelihood,
+            total_map_log_posterior=total_map_log_posterior,
+            mean_block_map_params=mean_block_map_params,
+        )
+
+    block_traces = tuple(get_block_trace(block) for block in subject.blocks)
+    requirements = reg.get("model", model_component_id).requirements
+    for trace in block_traces:
+        assert_trace_compatible(trace, requirements)
+
+    joint_likelihood = JointBlockLikelihoodProgram(
+        block_traces=block_traces,
+        likelihood_program=likelihood_program,
     )
-    mean_block_map_params = _mean_block_map_params(block_results)
+    joint_posterior = sample_posterior_model_from_registry(
+        subject.blocks[0],
+        model_component_id=model_component_id,
+        prior_program=prior_program,
+        initial_params=initial_params,
+        n_samples=n_samples,
+        n_warmup=n_warmup,
+        thin=thin,
+        proposal_scales=proposal_scales,
+        bounds=bounds,
+        model_kwargs=model_kwargs,
+        registry=reg,
+        likelihood_program=joint_likelihood,
+        random_seed=random_seed,
+    )
+    block_results = (
+        MCMCBlockResult(
+            block_id=JOINT_BLOCK_ID,
+            n_trials=int(sum(block.n_trials for block in subject.blocks)),
+            posterior_result=joint_posterior,
+        ),
+    )
     return MCMCSubjectResult(
         subject_id=subject.subject_id,
         block_results=block_results,
-        total_map_log_likelihood=total_map_log_likelihood,
-        total_map_log_posterior=total_map_log_posterior,
-        mean_block_map_params=mean_block_map_params,
+        total_map_log_likelihood=float(joint_posterior.map_candidate.log_likelihood),
+        total_map_log_posterior=float(joint_posterior.map_candidate.log_posterior),
+        mean_block_map_params=dict(joint_posterior.map_candidate.params),
     )
 
 
@@ -198,8 +284,41 @@ def sample_posterior_study_data(
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
     random_seed: int | None = None,
+    block_fit_strategy: BlockFitStrategy = "independent",
 ) -> MCMCStudyResult:
-    """Sample posterior draws independently for all study subjects/blocks."""
+    """Sample posterior draws across all study subjects/blocks.
+
+    Parameters
+    ----------
+    study : StudyData
+        Study dataset.
+    model_component_id : str
+        Registered model component ID.
+    prior_program : PriorProgram
+        Prior evaluator.
+    initial_params : Mapping[str, float]
+        Initial constrained parameter values.
+    n_samples : int
+        Number of retained posterior draws.
+    n_warmup : int, optional
+        Warmup iterations.
+    thin : int, optional
+        Thinning interval.
+    proposal_scales : Mapping[str, float] | None, optional
+        Optional proposal scales.
+    bounds : Mapping[str, tuple[float | None, float | None]] | None, optional
+        Optional hard parameter bounds.
+    model_kwargs : Mapping[str, Any] | None, optional
+        Fixed model constructor kwargs.
+    registry : PluginRegistry | None, optional
+        Optional registry instance.
+    likelihood_program : LikelihoodProgram | None, optional
+        Optional likelihood evaluator.
+    random_seed : int | None, optional
+        Random seed.
+    block_fit_strategy : {"independent", "joint"}, optional
+        Block handling strategy passed to :func:`sample_posterior_subject_data`.
+    """
 
     reg = registry if registry is not None else build_default_registry()
     subject_results = tuple(
@@ -217,6 +336,7 @@ def sample_posterior_study_data(
             registry=reg,
             likelihood_program=likelihood_program,
             random_seed=None if random_seed is None else int(random_seed) + index * 1000,
+            block_fit_strategy=block_fit_strategy,
         )
         for index, subject in enumerate(study.subjects)
     )
@@ -258,6 +378,7 @@ def _mean_block_map_params(
 
 
 __all__ = [
+    "BlockFitStrategy",
     "MCMCBlockResult",
     "MCMCStudyResult",
     "MCMCSubjectResult",

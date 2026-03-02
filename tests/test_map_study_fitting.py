@@ -105,3 +105,37 @@ def test_fit_map_block_subject_study_data() -> None:
     assert len(study_result.subject_results) == 1
     assert math.isfinite(study_result.total_log_likelihood)
     assert math.isfinite(study_result.total_log_posterior)
+
+
+def test_fit_map_subject_data_supports_joint_block_strategy() -> None:
+    """MAP subject fitting should support one shared fit across all blocks."""
+
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(
+                block_id="b1",
+                trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+            ),
+            BlockData(
+                block_id="b2",
+                trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
+            ),
+        ),
+    )
+
+    result = fit_map_subject_data(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        prior_program=_prior_program(),
+        fit_spec=_fit_spec(),
+        block_fit_strategy="joint",
+    )
+
+    assert result.subject_id == "s1"
+    assert len(result.block_results) == 1
+    assert result.block_results[0].block_id == "__joint__"
+    assert result.block_results[0].n_trials == 6
+    assert math.isfinite(result.total_log_likelihood)
+    assert math.isfinite(result.total_log_posterior)
+    assert set(result.mean_map_params) == {"alpha", "beta", "initial_value"}
