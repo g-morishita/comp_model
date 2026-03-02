@@ -100,12 +100,11 @@ def test_compare_dataset_candidates_from_config_supports_mle() -> None:
     assert len(result.comparisons) == 2
 
 
-def test_compare_dataset_candidates_from_config_supports_map_candidates() -> None:
-    """Config model-comparison should run MAP candidate definitions."""
+def test_compare_dataset_candidates_from_config_rejects_removed_scipy_map() -> None:
+    """Config model-comparison should reject removed SciPy MAP estimators."""
 
-    rows = tuple(_trial(index, action=1, reward=1.0) for index in range(8))
+    rows = (_trial(0, action=1, reward=1.0),)
     config = {
-        "criterion": "log_likelihood",
         "candidates": [
             {
                 "name": "map_candidate",
@@ -117,71 +116,18 @@ def test_compare_dataset_candidates_from_config_supports_map_candidates() -> Non
                     "type": "independent",
                     "parameters": {
                         "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
                     },
                 },
                 "estimator": {
                     "type": "scipy_map",
-                    "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
-                    "bounds": {
-                        "alpha": [0.0, 1.0],
-                        "beta": [0.0, 20.0],
-                        "initial_value": [None, None],
-                    },
-                },
-                "n_parameters": 3,
-            },
-            {
-                "name": "mle_candidate",
-                "model": {
-                    "component_id": "asocial_state_q_value_softmax",
-                    "kwargs": {},
-                },
-                "estimator": {
-                    "type": "grid_search",
-                    "parameter_grid": {
-                        "alpha": [0.5],
-                        "beta": [1.0],
-                        "initial_value": [0.0],
-                    },
-                },
-                "n_parameters": 3,
-            },
-        ],
-    }
-
-    result = compare_dataset_candidates_from_config(rows, config=config)
-    assert len(result.comparisons) == 2
-    assert {item.candidate_name for item in result.comparisons} == {"map_candidate", "mle_candidate"}
-
-
-def test_compare_dataset_candidates_from_config_requires_prior_for_map() -> None:
-    """MAP estimator candidates should fail without prior config."""
-
-    rows = (_trial(0, action=1, reward=1.0),)
-    config = {
-        "candidates": [
-            {
-                "name": "map_candidate",
-                "model": {
-                    "component_id": "asocial_state_q_value_softmax",
-                    "kwargs": {},
-                },
-                "estimator": {
-                    "type": "scipy_map",
-                    "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
-                    "bounds": {
-                        "alpha": [0.0, 1.0],
-                        "beta": [0.0, 20.0],
-                        "initial_value": [None, None],
-                    },
+                    "initial_params": {"alpha": 0.5},
+                    "bounds": {"alpha": [0.0, 1.0]},
                 },
             },
         ],
     }
 
-    with pytest.raises(ValueError, match="prior is required"):
+    with pytest.raises(ValueError, match="estimator.type must be one of"):
         compare_dataset_candidates_from_config(rows, config=config)
 
 

@@ -14,10 +14,7 @@ from comp_model.inference import (
     ActorSubsetReplayLikelihood,
     FitSpec,
     GridSearchMLEEstimator,
-    IndependentPriorProgram,
-    ScipyMapBayesEstimator,
     fit_model,
-    uniform_log_prior,
 )
 from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
 from comp_model.recovery import run_parameter_recovery
@@ -119,21 +116,19 @@ def test_run_parameter_recovery_validates_inputs() -> None:
 def test_run_parameter_recovery_accepts_map_fit_functions() -> None:
     """Recovery should accept MAP fit outputs in addition to MLE outputs."""
 
+    class _MapCandidate:
+        def __init__(self, p_right: float) -> None:
+            self.params = {"p_right": float(p_right)}
+            self.log_likelihood = -10.0
+            self.log_posterior = -10.5
+
+    class _MapLikeResult:
+        def __init__(self, p_right: float) -> None:
+            self.map_candidate = _MapCandidate(p_right)
+
     def fit_function(trace: Any):
-        estimator = ScipyMapBayesEstimator(
-            likelihood_program=ActionReplayLikelihood(),
-            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-            prior_program=IndependentPriorProgram(
-                {
-                    "p_right": uniform_log_prior(lower=0.0, upper=1.0),
-                }
-            ),
-        )
-        return estimator.fit(
-            trace,
-            initial_params={"p_right": 0.5},
-            bounds={"p_right": (0.0, 1.0)},
-        )
+        del trace
+        return _MapLikeResult(0.7)
 
     result = run_parameter_recovery(
         problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),

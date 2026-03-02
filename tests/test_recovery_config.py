@@ -199,8 +199,8 @@ def test_recovery_config_rejects_unknown_estimator_type() -> None:
         run_parameter_recovery_from_config(config)
 
 
-def test_parameter_recovery_runs_from_map_config() -> None:
-    """Parameter recovery should support MAP estimator configs with priors."""
+def test_parameter_recovery_rejects_removed_scipy_map_config() -> None:
+    """Parameter recovery should reject removed SciPy MAP estimator configs."""
 
     config = {
         "problem": {
@@ -239,13 +239,12 @@ def test_parameter_recovery_runs_from_map_config() -> None:
         "seed": 13,
     }
 
-    result = run_parameter_recovery_from_config(config)
-    assert len(result.cases) == 1
-    assert set(result.cases[0].estimated_params) == {"alpha", "beta", "initial_value"}
+    with pytest.raises(ValueError, match="estimator.type must be one of"):
+        run_parameter_recovery_from_config(config)
 
 
-def test_model_recovery_supports_map_candidates_in_config() -> None:
-    """Model recovery config should support MAP candidate definitions."""
+def test_model_recovery_rejects_removed_scipy_map_candidates() -> None:
+    """Model recovery config should reject removed SciPy MAP candidate definitions."""
 
     config = {
         "problem": {
@@ -311,13 +310,12 @@ def test_model_recovery_supports_map_candidates_in_config() -> None:
         "seed": 21,
     }
 
-    result = run_model_recovery_from_config(config)
-    assert len(result.cases) == 2
-    assert set(result.confusion_matrix["qrl_generator"]).issubset({"candidate_map", "candidate_grid"})
+    with pytest.raises(ValueError, match="estimator.type must be one of"):
+        run_model_recovery_from_config(config)
 
 
-def test_recovery_config_requires_prior_for_map_estimators() -> None:
-    """MAP recovery config should require explicit prior specification."""
+def test_recovery_config_rejects_removed_scipy_map_estimators() -> None:
+    """Recovery config should reject removed SciPy MAP estimator types."""
 
     config = {
         "problem": {
@@ -347,7 +345,7 @@ def test_recovery_config_requires_prior_for_map_estimators() -> None:
         "n_trials": 10,
     }
 
-    with pytest.raises(ValueError, match="prior is required"):
+    with pytest.raises(ValueError, match="estimator.type must be one of"):
         run_parameter_recovery_from_config(config)
 
 

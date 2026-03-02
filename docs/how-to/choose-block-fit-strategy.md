@@ -56,8 +56,7 @@ block_fit_strategy: joint
 This key is supported in subject- and study-level config entrypoints for:
 
 - MLE (`fit_subject_from_config`, `fit_study_from_config`)
-- MAP (`fit_map_subject_from_config`, `fit_map_study_from_config`)
-- hierarchical Stan posterior sampling
+- hierarchical Stan MAP and posterior sampling
   (`sample_subject_hierarchical_posterior_from_config`,
   `sample_study_hierarchical_posterior_from_config`)
 

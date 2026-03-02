@@ -1,8 +1,7 @@
-"""Tests for within-subject hierarchical MAP fitting."""
+"""Tests for removed SciPy hierarchical MAP APIs."""
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -47,7 +46,7 @@ class FixedChoiceModel:
         """No-op update."""
 
 
-def _make_block(*, block_id: str, p_right: float, seed: int, n_trials: int = 40) -> BlockData:
+def _make_block(*, block_id: str, p_right: float, seed: int, n_trials: int = 20) -> BlockData:
     """Generate one synthetic block trace."""
 
     trace = run_episode(
@@ -58,99 +57,38 @@ def _make_block(*, block_id: str, p_right: float, seed: int, n_trials: int = 40)
     return BlockData(block_id=block_id, event_trace=trace)
 
 
-def _make_subject() -> SubjectData:
-    """Build one multi-block synthetic subject for hierarchical tests."""
+def test_fit_subject_hierarchical_map_is_removed() -> None:
+    """Subject-level SciPy hierarchical MAP should be removed."""
 
-    return SubjectData(
+    subject = SubjectData(
         subject_id="s1",
         blocks=(
             _make_block(block_id="b1", p_right=0.2, seed=1),
-            _make_block(block_id="b2", p_right=0.5, seed=2),
-            _make_block(block_id="b3", p_right=0.8, seed=3),
+            _make_block(block_id="b2", p_right=0.8, seed=2),
         ),
     )
-
-
-def test_fit_subject_hierarchical_map_runs_and_returns_block_parameters() -> None:
-    """Hierarchical MAP should fit all subject blocks with pooled parameters."""
-
-    subject = _make_subject()
-    result = fit_subject_hierarchical_map(
-        subject,
-        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        parameter_names=("p_right",),
-        transforms={"p_right": unit_interval_logit_transform()},
-        initial_group_location={"p_right": 0.5},
-        initial_group_scale={"p_right": 0.5},
-    )
-
-    assert result.subject_id == "s1"
-    assert result.parameter_names == ("p_right",)
-    assert len(result.block_results) == 3
-    assert result.group_scale_z["p_right"] > 0.0
-    assert math.isfinite(result.total_log_likelihood)
-    assert math.isfinite(result.total_log_prior)
-    assert math.isfinite(result.total_log_posterior)
-
-    for block in result.block_results:
-        assert 0.0 < block.params["p_right"] < 1.0
-        assert math.isfinite(block.log_likelihood)
-
-
-def test_fit_subject_hierarchical_map_validates_initial_block_length() -> None:
-    """Initial block parameter list must align with subject block count."""
-
-    subject = _make_subject()
-    with pytest.raises(ValueError, match="must match number of subject blocks"):
+    with pytest.raises(RuntimeError, match="has been removed"):
         fit_subject_hierarchical_map(
             subject,
             model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
             parameter_names=("p_right",),
             transforms={"p_right": unit_interval_logit_transform()},
-            initial_block_params=({"p_right": 0.5},),
         )
 
 
-def test_fit_subject_hierarchical_map_validates_positive_group_scale() -> None:
-    """Group-scale initialization must be positive."""
+def test_fit_study_hierarchical_map_is_removed() -> None:
+    """Study-level SciPy hierarchical MAP should be removed."""
 
-    subject = _make_subject()
-    with pytest.raises(ValueError, match="must be > 0"):
-        fit_subject_hierarchical_map(
-            subject,
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(_make_block(block_id="b1", p_right=0.2, seed=1),),
+    )
+    study = StudyData(subjects=(subject,))
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_study_hierarchical_map(
+            study,
             model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
             parameter_names=("p_right",),
             transforms={"p_right": unit_interval_logit_transform()},
-            initial_group_scale={"p_right": 0.0},
         )
 
-
-def test_fit_study_hierarchical_map_runs_all_subjects() -> None:
-    """Study-level hierarchical wrapper should fit every subject."""
-
-    study = StudyData(
-        subjects=(
-            _make_subject(),
-            SubjectData(
-                subject_id="s2",
-                blocks=(
-                    _make_block(block_id="b1", p_right=0.3, seed=11),
-                    _make_block(block_id="b2", p_right=0.6, seed=12),
-                ),
-            ),
-        )
-    )
-    result = fit_study_hierarchical_map(
-        study,
-        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        parameter_names=("p_right",),
-        transforms={"p_right": unit_interval_logit_transform()},
-        initial_group_location={"p_right": 0.5},
-        initial_group_scale={"p_right": 0.5},
-    )
-
-    assert result.n_subjects == 2
-    assert len(result.subject_results) == 2
-    assert math.isfinite(result.total_log_likelihood)
-    assert math.isfinite(result.total_log_prior)
-    assert math.isfinite(result.total_log_posterior)

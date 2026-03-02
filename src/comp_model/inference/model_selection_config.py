@@ -10,8 +10,6 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecisio
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
-from .bayes import build_map_fit_function
-from .bayes_config import map_fit_spec_from_config, prior_program_from_config
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .config import fit_spec_from_config, model_component_spec_from_config
 from .config_dispatch import (
@@ -57,7 +55,7 @@ def build_fit_function_from_model_config(
     estimator_cfg : Mapping[str, Any]
         Estimator config mapping.
     prior_cfg : Mapping[str, Any] | None
-        Prior config for MAP estimators. Required for MAP estimator types.
+        Prior config (unsupported for Stan-only Bayesian estimators).
     registry : PluginRegistry
         Plugin registry used to resolve model components.
     likelihood_cfg : Mapping[str, Any] | None, optional
@@ -73,7 +71,7 @@ def build_fit_function_from_model_config(
     Raises
     ------
     ValueError
-        If estimator type is unsupported or MAP prior is missing.
+        If estimator type is unsupported or prior usage is invalid.
     """
 
     model_spec = model_component_spec_from_config(model_cfg)
@@ -104,18 +102,9 @@ def build_fit_function_from_model_config(
         )
 
     if estimator_type in MAP_ESTIMATORS:
-        if prior_cfg is None:
-            raise ValueError(
-                f"prior is required for estimator type {estimator_type!r}"
-            )
-        prior_program = prior_program_from_config(prior_cfg)
-        map_fit_spec = map_fit_spec_from_config(estimator_cfg)
-        return build_map_fit_function(
-            model_factory=model_factory,
-            prior_program=prior_program,
-            fit_spec=map_fit_spec,
-            requirements=manifest.requirements,
-            likelihood_program=resolved_likelihood,
+        raise ValueError(
+            "MAP estimator types backed by SciPy have been removed; "
+            "use estimator.type='within_subject_hierarchical_stan_map' for Bayesian MAP via Stan."
         )
 
     if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:

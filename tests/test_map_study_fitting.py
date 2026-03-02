@@ -1,23 +1,16 @@
-"""Tests for study-level MAP fitting workflows."""
+"""Tests for removed study-level MAP fitting wrappers."""
 
 from __future__ import annotations
 
-import math
+import pytest
 
-from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
-from comp_model.inference import (
-    IndependentPriorProgram,
-    MapFitSpec,
-    fit_map_block_data,
-    fit_map_study_data,
-    fit_map_subject_data,
-    normal_log_prior,
-    uniform_log_prior,
-)
+from comp_model.core.data import BlockData, SubjectData, TrialDecision
+from comp_model.inference.bayes import IndependentPriorProgram, MapFitSpec, uniform_log_prior
+from comp_model.inference.map_study_fitting import fit_map_block_data, fit_map_subject_data
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
-    """Build one trial row for MAP study-fitting tests."""
+    """Build one trial row for map-study compatibility tests."""
 
     return TrialDecision(
         trial_index=trial_index,
@@ -31,111 +24,56 @@ def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
 
 
 def _fit_spec() -> MapFitSpec:
-    """Return deterministic MAP fit specification for tests."""
+    """Build one legacy MAP fit spec."""
 
     return MapFitSpec(
         estimator_type="scipy_map",
-        initial_params={"alpha": 0.4, "beta": 1.0, "initial_value": 0.0},
-        bounds={
-            "alpha": (0.0, 1.0),
-            "beta": (0.0, 20.0),
-            "initial_value": (None, None),
-        },
+        initial_params={"alpha": 0.5},
+        bounds={"alpha": (0.0, 1.0)},
     )
 
 
 def _prior_program() -> IndependentPriorProgram:
-    """Return independent priors for built-in asocial Q-value model."""
+    """Build one legacy independent prior."""
 
     return IndependentPriorProgram(
-        {
-            "alpha": uniform_log_prior(lower=0.0, upper=1.0),
-            "beta": uniform_log_prior(lower=0.0, upper=20.0),
-            "initial_value": normal_log_prior(mean=0.0, std=1.0),
-        }
+        {"alpha": uniform_log_prior(lower=0.0, upper=1.0)},
+        require_all=False,
     )
 
 
-def test_fit_map_block_subject_study_data() -> None:
-    """MAP study-fitting helpers should produce finite aggregated outputs."""
+def test_fit_map_block_data_raises_removed_runtime_error() -> None:
+    """Legacy map-study block fitting should fail fast with guidance."""
 
     block = BlockData(
         block_id="b0",
-        trials=(
-            _trial(0, 1, 1.0),
-            _trial(1, 0, 0.0),
-            _trial(2, 1, 1.0),
-        ),
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
     )
-    subject = SubjectData(
-        subject_id="s1",
-        blocks=(block,),
-    )
-    study = StudyData(subjects=(subject,))
-
-    block_result = fit_map_block_data(
-        block,
-        model_component_id="asocial_state_q_value_softmax",
-        prior_program=_prior_program(),
-        fit_spec=_fit_spec(),
-    )
-    assert block_result.block_id == "b0"
-    assert block_result.n_trials == 3
-    assert set(block_result.fit_result.map_params) == {"alpha", "beta", "initial_value"}
-
-    subject_result = fit_map_subject_data(
-        subject,
-        model_component_id="asocial_state_q_value_softmax",
-        prior_program=_prior_program(),
-        fit_spec=_fit_spec(),
-    )
-    assert subject_result.subject_id == "s1"
-    assert len(subject_result.block_results) == 1
-    assert math.isfinite(subject_result.total_log_likelihood)
-    assert math.isfinite(subject_result.total_log_posterior)
-    assert set(subject_result.mean_map_params) == {"alpha", "beta", "initial_value"}
-
-    study_result = fit_map_study_data(
-        study,
-        model_component_id="asocial_state_q_value_softmax",
-        prior_program=_prior_program(),
-        fit_spec=_fit_spec(),
-    )
-    assert study_result.n_subjects == 1
-    assert len(study_result.subject_results) == 1
-    assert math.isfinite(study_result.total_log_likelihood)
-    assert math.isfinite(study_result.total_log_posterior)
+    with pytest.raises(RuntimeError, match="no longer supported"):
+        fit_map_block_data(
+            block,
+            model_component_id="asocial_state_q_value_softmax",
+            prior_program=_prior_program(),
+            fit_spec=_fit_spec(),
+        )
 
 
-def test_fit_map_subject_data_supports_joint_block_strategy() -> None:
-    """MAP subject fitting should support one shared fit across all blocks."""
+def test_fit_map_subject_data_raises_removed_runtime_error() -> None:
+    """Legacy map-study subject fitting should fail fast with guidance."""
 
     subject = SubjectData(
         subject_id="s1",
         blocks=(
-            BlockData(
-                block_id="b1",
-                trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
-            ),
-            BlockData(
-                block_id="b2",
-                trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
-            ),
+            BlockData(block_id="b0", trials=(_trial(0, 1, 1.0),)),
+            BlockData(block_id="b1", trials=(_trial(0, 0, 0.0),)),
         ),
     )
+    with pytest.raises(RuntimeError, match="no longer supported"):
+        fit_map_subject_data(
+            subject,
+            model_component_id="asocial_state_q_value_softmax",
+            prior_program=_prior_program(),
+            fit_spec=_fit_spec(),
+            block_fit_strategy="joint",
+        )
 
-    result = fit_map_subject_data(
-        subject,
-        model_component_id="asocial_state_q_value_softmax",
-        prior_program=_prior_program(),
-        fit_spec=_fit_spec(),
-        block_fit_strategy="joint",
-    )
-
-    assert result.subject_id == "s1"
-    assert len(result.block_results) == 1
-    assert result.block_results[0].block_id == "__joint__"
-    assert result.block_results[0].n_trials == 6
-    assert math.isfinite(result.total_log_likelihood)
-    assert math.isfinite(result.total_log_posterior)
-    assert set(result.mean_map_params) == {"alpha", "beta", "initial_value"}

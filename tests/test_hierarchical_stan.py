@@ -8,6 +8,7 @@ import pytest
 import comp_model.inference.hierarchical_stan as hierarchical_stan_module
 from comp_model.core.data import BlockData, SubjectData, TrialDecision
 from comp_model.inference.hierarchical_stan import (
+    optimize_subject_hierarchical_posterior_stan,
     sample_subject_hierarchical_posterior_stan,
 )
 from comp_model.inference.hierarchical_stan_social import (
@@ -147,6 +148,42 @@ def test_sample_subject_hierarchical_posterior_stan_decodes_draws(monkeypatch: p
     assert result.draws[0].candidate.log_likelihood == pytest.approx(-5.0)
     assert result.diagnostics.method == "within_subject_hierarchical_stan_nuts"
     assert result.diagnostics.n_kept_draws == n_draws
+
+
+def test_optimize_subject_hierarchical_posterior_stan_decodes_single_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stan MAP helper should decode one optimized mode candidate."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    fake_fit = _fake_fit(n_draws=1, n_blocks=1, n_params=1, block_param_value=0.33)
+
+    monkeypatch.setattr(
+        hierarchical_stan_module,
+        "_run_stan_hierarchical_optimize",
+        lambda **kwargs: fake_fit,
+    )
+
+    result = optimize_subject_hierarchical_posterior_stan(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        transform_kinds={"alpha": "unit_interval_logit"},
+        method="lbfgs",
+        max_iterations=100,
+        random_seed=9,
+    )
+
+    assert result.subject_id == "s1"
+    assert result.parameter_names == ("alpha",)
+    assert len(result.draws) == 1
+    assert result.draws[0].candidate.block_params[0]["alpha"] == pytest.approx(0.33)
+    assert result.diagnostics.method == "within_subject_hierarchical_stan_map"
 
 
 @pytest.mark.parametrize(

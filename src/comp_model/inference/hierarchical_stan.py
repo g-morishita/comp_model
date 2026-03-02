@@ -267,12 +267,6 @@ def sample_subject_hierarchical_posterior_stan(
         Subject-level hierarchical posterior output.
     """
 
-    if model_component_id not in _SUPPORTED_COMPONENT_IDS:
-        raise ValueError(
-            "Stan hierarchical backend does not support "
-            f"{model_component_id!r}; supported component IDs are "
-            f"{sorted(_SUPPORTED_COMPONENT_IDS)}"
-        )
     if n_samples <= 0:
         raise ValueError("n_samples must be > 0")
     if n_warmup < 0:
@@ -287,52 +281,21 @@ def sample_subject_hierarchical_posterior_stan(
         raise ValueError("adapt_delta must be in (0, 1)")
     if max_treedepth <= 0:
         raise ValueError("max_treedepth must be > 0")
-    compatibility: CompatibilityReport | None = None
-    if requirements is not None:
-        for block in subject.blocks:
-            trace = get_block_trace(block)
-            compatibility = check_trace_compatibility(trace, requirements)
-            assert_trace_compatible(trace, requirements)
-
-    if model_component_id in _ASOCIAL_COMPONENT_IDS:
-        built = _build_asocial_subject_inputs(
-            model_component_id=model_component_id,
-            subject=subject,
-            parameter_names=parameter_names,
-            transform_kinds=transform_kinds,
-            model_kwargs=model_kwargs,
-            initial_group_location=initial_group_location,
-            initial_group_scale=initial_group_scale,
-            initial_block_params=initial_block_params,
-            mu_prior_mean=mu_prior_mean,
-            mu_prior_std=mu_prior_std,
-            log_sigma_prior_mean=log_sigma_prior_mean,
-            log_sigma_prior_std=log_sigma_prior_std,
-        )
-        stan_code = _ASOCIAL_STAN_CODE
-        cache_tag = f"hierarchical_{model_component_id}"
-    else:
-        social_stan_data, social_param_names, social_n_blocks = build_social_subject_inputs(
-            subject=subject,
-            component_id=model_component_id,
-            parameter_names=parameter_names,
-            transform_kinds=transform_kinds,
-            model_kwargs=model_kwargs,
-            initial_group_location=initial_group_location,
-            initial_group_scale=initial_group_scale,
-            initial_block_params=initial_block_params,
-            mu_prior_mean=mu_prior_mean,
-            mu_prior_std=mu_prior_std,
-            log_sigma_prior_mean=log_sigma_prior_mean,
-            log_sigma_prior_std=log_sigma_prior_std,
-        )
-        built = _SubjectBuild(
-            stan_data=social_stan_data,
-            parameter_names=social_param_names,
-            n_blocks=social_n_blocks,
-        )
-        stan_code = load_social_stan_code(model_component_id)
-        cache_tag = social_cache_tag(model_component_id)
+    built, stan_code, cache_tag, compatibility = _build_subject_stan_job(
+        subject=subject,
+        model_component_id=model_component_id,
+        model_kwargs=model_kwargs,
+        parameter_names=parameter_names,
+        transform_kinds=transform_kinds,
+        requirements=requirements,
+        initial_group_location=initial_group_location,
+        initial_group_scale=initial_group_scale,
+        initial_block_params=initial_block_params,
+        mu_prior_mean=mu_prior_mean,
+        mu_prior_std=mu_prior_std,
+        log_sigma_prior_mean=log_sigma_prior_mean,
+        log_sigma_prior_std=log_sigma_prior_std,
+    )
 
     fit = _run_stan_hierarchical_nuts(
         stan_code=stan_code,
@@ -432,6 +395,242 @@ def sample_study_hierarchical_posterior_stan(
         )
 
     return HierarchicalStudyPosteriorResult(subject_results=tuple(subject_results))
+
+
+def optimize_subject_hierarchical_posterior_stan(
+    subject: SubjectData,
+    *,
+    model_component_id: str,
+    model_kwargs: Mapping[str, Any] | None,
+    parameter_names: Sequence[str],
+    transform_kinds: Mapping[str, str] | None = None,
+    requirements: ComponentRequirements | None = None,
+    initial_group_location: Mapping[str, float] | None = None,
+    initial_group_scale: Mapping[str, float] | None = None,
+    initial_block_params: Sequence[Mapping[str, float]] | None = None,
+    mu_prior_mean: float | Mapping[str, float] = 0.0,
+    mu_prior_std: float | Mapping[str, float] = 2.0,
+    log_sigma_prior_mean: float | Mapping[str, float] = -1.0,
+    log_sigma_prior_std: float | Mapping[str, float] = 1.0,
+    method: str = "lbfgs",
+    max_iterations: int = 2000,
+    jacobian: bool = False,
+    init_alpha: float | None = None,
+    tol_obj: float | None = None,
+    tol_rel_obj: float | None = None,
+    tol_grad: float | None = None,
+    tol_rel_grad: float | None = None,
+    tol_param: float | None = None,
+    history_size: int | None = None,
+    random_seed: int | None = None,
+    refresh: int = 0,
+) -> HierarchicalSubjectPosteriorResult:
+    """Compute one within-subject hierarchical posterior mode with Stan.
+
+    This uses CmdStan ``optimize`` and returns a
+    :class:`HierarchicalSubjectPosteriorResult` with one retained draw
+    representing the optimized mode.
+    """
+
+    method_name = str(method).strip().lower()
+    if method_name not in {"lbfgs", "bfgs", "newton"}:
+        raise ValueError("method must be one of {'lbfgs', 'bfgs', 'newton'}")
+    if max_iterations <= 0:
+        raise ValueError("max_iterations must be > 0")
+    if init_alpha is not None and init_alpha <= 0.0:
+        raise ValueError("init_alpha must be > 0 when provided")
+    if refresh < 0:
+        raise ValueError("refresh must be >= 0")
+    if history_size is not None and history_size <= 0:
+        raise ValueError("history_size must be > 0 when provided")
+
+    built, stan_code, cache_tag, compatibility = _build_subject_stan_job(
+        subject=subject,
+        model_component_id=model_component_id,
+        model_kwargs=model_kwargs,
+        parameter_names=parameter_names,
+        transform_kinds=transform_kinds,
+        requirements=requirements,
+        initial_group_location=initial_group_location,
+        initial_group_scale=initial_group_scale,
+        initial_block_params=initial_block_params,
+        mu_prior_mean=mu_prior_mean,
+        mu_prior_std=mu_prior_std,
+        log_sigma_prior_mean=log_sigma_prior_mean,
+        log_sigma_prior_std=log_sigma_prior_std,
+    )
+
+    fit = _run_stan_hierarchical_optimize(
+        stan_code=stan_code,
+        cache_tag=cache_tag,
+        stan_data=built.stan_data,
+        method=method_name,
+        max_iterations=int(max_iterations),
+        jacobian=bool(jacobian),
+        init_alpha=init_alpha,
+        tol_obj=tol_obj,
+        tol_rel_obj=tol_rel_obj,
+        tol_grad=tol_grad,
+        tol_rel_grad=tol_rel_grad,
+        tol_param=tol_param,
+        history_size=history_size,
+        random_seed=random_seed,
+        refresh=int(refresh),
+    )
+    result = _decode_subject_optimize_fit(
+        fit=fit,
+        subject_id=subject.subject_id,
+        parameter_names=built.parameter_names,
+        n_blocks=built.n_blocks,
+        random_seed=random_seed,
+    )
+    return HierarchicalSubjectPosteriorResult(
+        subject_id=result.subject_id,
+        parameter_names=result.parameter_names,
+        draws=result.draws,
+        diagnostics=result.diagnostics,
+        compatibility=compatibility,
+    )
+
+
+def optimize_study_hierarchical_posterior_stan(
+    study: StudyData,
+    *,
+    model_component_id: str,
+    model_kwargs: Mapping[str, Any] | None,
+    parameter_names: Sequence[str],
+    transform_kinds: Mapping[str, str] | None = None,
+    requirements: ComponentRequirements | None = None,
+    initial_group_location: Mapping[str, float] | None = None,
+    initial_group_scale: Mapping[str, float] | None = None,
+    initial_block_params_by_subject: Mapping[str, Sequence[Mapping[str, float]]] | None = None,
+    mu_prior_mean: float | Mapping[str, float] = 0.0,
+    mu_prior_std: float | Mapping[str, float] = 2.0,
+    log_sigma_prior_mean: float | Mapping[str, float] = -1.0,
+    log_sigma_prior_std: float | Mapping[str, float] = 1.0,
+    method: str = "lbfgs",
+    max_iterations: int = 2000,
+    jacobian: bool = False,
+    init_alpha: float | None = None,
+    tol_obj: float | None = None,
+    tol_rel_obj: float | None = None,
+    tol_grad: float | None = None,
+    tol_rel_grad: float | None = None,
+    tol_param: float | None = None,
+    history_size: int | None = None,
+    random_seed: int | None = None,
+    refresh: int = 0,
+) -> HierarchicalStudyPosteriorResult:
+    """Compute within-subject hierarchical posterior modes for all subjects."""
+
+    subject_results: list[HierarchicalSubjectPosteriorResult] = []
+    for index, subject in enumerate(study.subjects):
+        subject_initial_block_params = None
+        if initial_block_params_by_subject is not None:
+            subject_initial_block_params = initial_block_params_by_subject.get(subject.subject_id)
+
+        subject_results.append(
+            optimize_subject_hierarchical_posterior_stan(
+                subject,
+                model_component_id=model_component_id,
+                model_kwargs=model_kwargs,
+                parameter_names=parameter_names,
+                transform_kinds=transform_kinds,
+                requirements=requirements,
+                initial_group_location=initial_group_location,
+                initial_group_scale=initial_group_scale,
+                initial_block_params=subject_initial_block_params,
+                mu_prior_mean=mu_prior_mean,
+                mu_prior_std=mu_prior_std,
+                log_sigma_prior_mean=log_sigma_prior_mean,
+                log_sigma_prior_std=log_sigma_prior_std,
+                method=method,
+                max_iterations=max_iterations,
+                jacobian=jacobian,
+                init_alpha=init_alpha,
+                tol_obj=tol_obj,
+                tol_rel_obj=tol_rel_obj,
+                tol_grad=tol_grad,
+                tol_rel_grad=tol_rel_grad,
+                tol_param=tol_param,
+                history_size=history_size,
+                random_seed=None if random_seed is None else int(random_seed) + (index * 1000),
+                refresh=refresh,
+            )
+        )
+
+    return HierarchicalStudyPosteriorResult(subject_results=tuple(subject_results))
+
+
+def _build_subject_stan_job(
+    *,
+    subject: SubjectData,
+    model_component_id: str,
+    model_kwargs: Mapping[str, Any] | None,
+    parameter_names: Sequence[str],
+    transform_kinds: Mapping[str, str] | None,
+    requirements: ComponentRequirements | None,
+    initial_group_location: Mapping[str, float] | None,
+    initial_group_scale: Mapping[str, float] | None,
+    initial_block_params: Sequence[Mapping[str, float]] | None,
+    mu_prior_mean: float | Mapping[str, float],
+    mu_prior_std: float | Mapping[str, float],
+    log_sigma_prior_mean: float | Mapping[str, float],
+    log_sigma_prior_std: float | Mapping[str, float],
+) -> tuple[_SubjectBuild, str, str, CompatibilityReport | None]:
+    """Assemble validated Stan inputs and source code for one subject."""
+
+    if model_component_id not in _SUPPORTED_COMPONENT_IDS:
+        raise ValueError(
+            "Stan hierarchical backend does not support "
+            f"{model_component_id!r}; supported component IDs are "
+            f"{sorted(_SUPPORTED_COMPONENT_IDS)}"
+        )
+
+    compatibility: CompatibilityReport | None = None
+    if requirements is not None:
+        for block in subject.blocks:
+            trace = get_block_trace(block)
+            compatibility = check_trace_compatibility(trace, requirements)
+            assert_trace_compatible(trace, requirements)
+
+    if model_component_id in _ASOCIAL_COMPONENT_IDS:
+        built = _build_asocial_subject_inputs(
+            model_component_id=model_component_id,
+            subject=subject,
+            parameter_names=parameter_names,
+            transform_kinds=transform_kinds,
+            model_kwargs=model_kwargs,
+            initial_group_location=initial_group_location,
+            initial_group_scale=initial_group_scale,
+            initial_block_params=initial_block_params,
+            mu_prior_mean=mu_prior_mean,
+            mu_prior_std=mu_prior_std,
+            log_sigma_prior_mean=log_sigma_prior_mean,
+            log_sigma_prior_std=log_sigma_prior_std,
+        )
+        return built, _ASOCIAL_STAN_CODE, f"hierarchical_{model_component_id}", compatibility
+
+    social_stan_data, social_param_names, social_n_blocks = build_social_subject_inputs(
+        subject=subject,
+        component_id=model_component_id,
+        parameter_names=parameter_names,
+        transform_kinds=transform_kinds,
+        model_kwargs=model_kwargs,
+        initial_group_location=initial_group_location,
+        initial_group_scale=initial_group_scale,
+        initial_block_params=initial_block_params,
+        mu_prior_mean=mu_prior_mean,
+        mu_prior_std=mu_prior_std,
+        log_sigma_prior_mean=log_sigma_prior_mean,
+        log_sigma_prior_std=log_sigma_prior_std,
+    )
+    built = _SubjectBuild(
+        stan_data=social_stan_data,
+        parameter_names=social_param_names,
+        n_blocks=social_n_blocks,
+    )
+    return built, load_social_stan_code(model_component_id), social_cache_tag(model_component_id), compatibility
 
 
 def _build_asocial_subject_inputs(
@@ -823,6 +1022,61 @@ def _run_stan_hierarchical_nuts(
     return model.sample(**sample_kwargs)
 
 
+def _run_stan_hierarchical_optimize(
+    *,
+    stan_code: str,
+    cache_tag: str,
+    stan_data: Mapping[str, Any],
+    method: str,
+    max_iterations: int,
+    jacobian: bool,
+    init_alpha: float | None,
+    tol_obj: float | None,
+    tol_rel_obj: float | None,
+    tol_grad: float | None,
+    tol_rel_grad: float | None,
+    tol_param: float | None,
+    history_size: int | None,
+    random_seed: int | None,
+    refresh: int,
+) -> Any:
+    """Compile and optimize one Stan hierarchical model."""
+
+    model = compile_cmdstan_model(stan_code, cache_tag=cache_tag)
+    init_data = {
+        "group_loc_z": list(stan_data["group_loc_init"]),
+        "group_log_scale": list(stan_data["group_log_scale_init"]),
+        "block_z": list(stan_data["block_z_init"]),
+    }
+
+    optimize_kwargs: dict[str, Any] = {
+        "data": {key: value for key, value in stan_data.items() if not key.endswith("_init")},
+        "inits": init_data,
+        "algorithm": method,
+        "iter": int(max_iterations),
+        "jacobian": bool(jacobian),
+        "refresh": int(refresh),
+    }
+    if random_seed is not None:
+        optimize_kwargs["seed"] = int(random_seed)
+    if init_alpha is not None:
+        optimize_kwargs["init_alpha"] = float(init_alpha)
+    if tol_obj is not None:
+        optimize_kwargs["tol_obj"] = float(tol_obj)
+    if tol_rel_obj is not None:
+        optimize_kwargs["tol_rel_obj"] = float(tol_rel_obj)
+    if tol_grad is not None:
+        optimize_kwargs["tol_grad"] = float(tol_grad)
+    if tol_rel_grad is not None:
+        optimize_kwargs["tol_rel_grad"] = float(tol_rel_grad)
+    if tol_param is not None:
+        optimize_kwargs["tol_param"] = float(tol_param)
+    if history_size is not None:
+        optimize_kwargs["history_size"] = int(history_size)
+
+    return model.optimize(**optimize_kwargs)
+
+
 def _decode_subject_fit(
     *,
     fit: Any,
@@ -920,7 +1174,49 @@ def _decode_subject_fit(
     )
 
 
+def _decode_subject_optimize_fit(
+    *,
+    fit: Any,
+    subject_id: str,
+    parameter_names: tuple[str, ...],
+    n_blocks: int,
+    random_seed: int | None,
+) -> HierarchicalSubjectPosteriorResult:
+    """Decode one CmdStan optimize result as a single retained posterior draw."""
+
+    decoded = _decode_subject_fit(
+        fit=fit,
+        subject_id=subject_id,
+        parameter_names=parameter_names,
+        n_blocks=n_blocks,
+        n_samples=1,
+        n_warmup=0,
+        thin=1,
+        n_chains=1,
+        random_seed=random_seed,
+    )
+    diagnostics = MCMCDiagnostics(
+        method="within_subject_hierarchical_stan_map",
+        n_iterations=1,
+        n_warmup=0,
+        n_kept_draws=len(decoded.draws),
+        thin=1,
+        n_accepted=1,
+        acceptance_rate=1.0,
+        random_seed=random_seed,
+    )
+    return HierarchicalSubjectPosteriorResult(
+        subject_id=decoded.subject_id,
+        parameter_names=decoded.parameter_names,
+        draws=decoded.draws,
+        diagnostics=diagnostics,
+        compatibility=None,
+    )
+
+
 __all__ = [
+    "optimize_study_hierarchical_posterior_stan",
+    "optimize_subject_hierarchical_posterior_stan",
     "sample_study_hierarchical_posterior_stan",
     "sample_subject_hierarchical_posterior_stan",
 ]

@@ -1,30 +1,25 @@
-"""Tests for config-driven Bayesian fitting helpers."""
+"""Tests for legacy Bayesian config API behavior."""
 
 from __future__ import annotations
-
-import math
 
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
-from comp_model.demonstrators import FixedSequenceDemonstrator
-from comp_model.inference import (
+from comp_model.inference.bayes_config import (
     fit_map_block_from_config,
     fit_map_dataset_from_config,
     fit_map_study_from_config,
     fit_map_subject_from_config,
     fit_study_hierarchical_map_from_config,
     fit_subject_hierarchical_map_from_config,
+    hierarchical_map_spec_from_config,
     map_fit_spec_from_config,
     prior_program_from_config,
 )
-from comp_model.models import UniformRandomPolicyModel
-from comp_model.problems import TwoStageSocialBanditProgram
-from comp_model.runtime import SimulationConfig, run_trial_program
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
-    """Build one trial row for Bayesian config tests."""
+    """Build one trial row for config tests."""
 
     return TrialDecision(
         trial_index=trial_index,
@@ -37,340 +32,93 @@ def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
     )
 
 
-def _social_trace(*, n_trials: int, seed: int):
-    """Generate one two-actor social trace for Bayesian config tests."""
+def _scipy_map_config() -> dict:
+    """Build one removed SciPy MAP config."""
 
-    return run_trial_program(
-        program=TwoStageSocialBanditProgram([0.5, 0.5]),
-        models={
-            "subject": UniformRandomPolicyModel(),
-            "demonstrator": FixedSequenceDemonstrator(sequence=[1] * n_trials),
+    return {
+        "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
+        "prior": {
+            "type": "independent",
+            "parameters": {
+                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+            },
         },
-        config=SimulationConfig(n_trials=n_trials, seed=seed),
-    )
+        "estimator": {
+            "type": "scipy_map",
+            "initial_params": {"alpha": 0.5},
+            "bounds": {"alpha": [0.0, 1.0]},
+        },
+    }
 
 
-def test_map_fit_spec_from_config_transformed() -> None:
-    """MAP estimator parser should construct transformed MAP fit specs."""
+def test_map_fit_spec_from_config_rejects_removed_scipy_estimators() -> None:
+    """Legacy SciPy MAP parser should reject removed estimator types."""
 
-    spec = map_fit_spec_from_config(
+    with pytest.raises(ValueError, match="no longer supported"):
+        map_fit_spec_from_config(_scipy_map_config()["estimator"])
+
+
+def test_hierarchical_map_spec_from_config_rejects_removed_estimator_type() -> None:
+    """Legacy hierarchical MAP parser should reject removed estimator type."""
+
+    with pytest.raises(ValueError, match="has been removed"):
+        hierarchical_map_spec_from_config(
+            {
+                "type": "within_subject_hierarchical_map",
+                "parameter_names": ["alpha"],
+            }
+        )
+
+
+def test_prior_program_from_config_still_supports_independent_priors() -> None:
+    """Independent prior parsing should remain available for utility use."""
+
+    prior = prior_program_from_config(
         {
-            "type": "transformed_scipy_map",
-            "initial_params": {"alpha": 0.2},
-            "bounds_z": {"alpha": [-5.0, 5.0]},
-            "transforms": {"alpha": "unit_interval_logit"},
-            "method": "L-BFGS-B",
-            "tol": 1e-6,
+            "type": "independent",
+            "parameters": {
+                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+            },
         }
     )
-
-    assert spec.estimator_type == "transformed_scipy_map"
-    assert spec.initial_params == {"alpha": 0.2}
-    assert spec.bounds_z == {"alpha": (-5.0, 5.0)}
-    assert spec.transforms is not None
-    assert "alpha" in spec.transforms
-    assert spec.method == "L-BFGS-B"
-    assert spec.tol == pytest.approx(1e-6)
+    assert prior.log_prior({"alpha": 0.3}) == pytest.approx(0.0)
 
 
-def test_prior_program_from_config_rejects_unknown_distribution() -> None:
-    """Prior parser should fail on unsupported distribution names."""
+def test_removed_map_fit_helpers_raise_runtime() -> None:
+    """Legacy fit_map_* config entry points should fail with migration guidance."""
 
-    with pytest.raises(ValueError, match="unsupported prior distribution"):
-        prior_program_from_config(
-            {
-                "type": "independent",
-                "parameters": {
-                    "alpha": {"distribution": "not_a_distribution"},
-                },
-            }
-        )
-
-
-def test_prior_program_from_config_rejects_unknown_distribution_keys() -> None:
-    """Prior parser should reject unknown keys for known distributions."""
-
-    with pytest.raises(ValueError, match="unknown keys"):
-        prior_program_from_config(
-            {
-                "type": "independent",
-                "parameters": {
-                    "alpha": {
-                        "distribution": "uniform",
-                        "lower": 0.0,
-                        "upper": 1.0,
-                        "extra": 1.0,
-                    },
-                },
-            }
-        )
-
-
-def test_fit_map_dataset_from_config_runs_end_to_end() -> None:
-    """Config-driven MAP fit should run on trial-row datasets."""
-
-    rows = (_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0), _trial(3, 1, 1.0))
-    config = {
-        "model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "prior": {
-            "type": "independent",
-            "parameters": {
-                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-            },
-        },
-        "estimator": {
-            "type": "scipy_map",
-            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
-            "bounds": {
-                "alpha": [0.0, 1.0],
-                "beta": [0.0, 20.0],
-                "initial_value": [None, None],
-            },
-        },
-    }
-
-    result = fit_map_dataset_from_config(rows, config=config)
-    assert set(result.map_params) == {"alpha", "beta", "initial_value"}
-    assert math.isfinite(result.map_candidate.log_likelihood)
-    assert math.isfinite(result.map_candidate.log_posterior)
-
-
-def test_fit_map_dataset_from_config_rejects_unknown_top_level_keys() -> None:
-    """MAP dataset config should fail fast on unknown top-level keys."""
-
-    rows = (_trial(0, 1, 1.0), _trial(1, 0, 0.0))
-    config = {
-        "model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "prior": {
-            "type": "independent",
-            "parameters": {
-                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-            },
-        },
-        "estimator": {
-            "type": "scipy_map",
-            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
-            "bounds": {
-                "alpha": [0.0, 1.0],
-                "beta": [0.0, 20.0],
-                "initial_value": [None, None],
-            },
-        },
-        "typo_field": True,
-    }
-
-    with pytest.raises(ValueError, match="config has unknown keys"):
-        fit_map_dataset_from_config(rows, config=config)
-
-
-def test_hierarchical_map_from_config_runs_subject_and_study() -> None:
-    """Hierarchical config runners should support subject and study inputs."""
-
-    subject_1 = SubjectData(
-        subject_id="s1",
-        blocks=(
-            BlockData(block_id="b1", trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0))),
-            BlockData(block_id="b2", trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0))),
-        ),
-    )
-    subject_2 = SubjectData(
-        subject_id="s2",
-        blocks=(
-            BlockData(block_id="b1", trials=(_trial(0, 0, 0.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0))),
-            BlockData(block_id="b2", trials=(_trial(0, 1, 1.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0))),
-        ),
-    )
-
-    config = {
-        "model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "estimator": {
-            "type": "within_subject_hierarchical_map",
-            "parameter_names": ["alpha", "beta", "initial_value"],
-            "transforms": {
-                "alpha": "unit_interval_logit",
-                "beta": "positive_log",
-                "initial_value": "identity",
-            },
-            "initial_group_location": {
-                "alpha": 0.4,
-                "beta": 1.0,
-                "initial_value": 0.0,
-            },
-            "initial_group_scale": {
-                "alpha": 0.5,
-                "beta": 0.5,
-                "initial_value": 0.5,
-            },
-            "initial_block_params_by_subject": {
-                "s1": [
-                    {"alpha": 0.4, "beta": 1.0, "initial_value": 0.0},
-                    {"alpha": 0.4, "beta": 1.0, "initial_value": 0.0},
-                ]
-            },
-            "mu_prior_mean": 0.0,
-            "mu_prior_std": 2.0,
-            "log_sigma_prior_mean": -1.0,
-            "log_sigma_prior_std": 1.0,
-            "method": "L-BFGS-B",
-        },
-    }
-
-    subject_result = fit_subject_hierarchical_map_from_config(subject_1, config=config)
-    assert subject_result.subject_id == "s1"
-    assert len(subject_result.block_results) == 2
-    assert math.isfinite(subject_result.total_log_posterior)
-
-    study_result = fit_study_hierarchical_map_from_config(
-        StudyData(subjects=(subject_1, subject_2)),
-        config=config,
-    )
-    assert study_result.n_subjects == 2
-    assert len(study_result.subject_results) == 2
-    assert math.isfinite(study_result.total_log_posterior)
-
-
-def test_map_study_fit_from_config_runs_block_subject_study() -> None:
-    """MAP config runners should support block, subject, and study inputs."""
-
-    block = BlockData(
-        block_id="b0",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
-    )
+    rows = (_trial(0, 1, 1.0),)
+    block = BlockData(block_id="b0", trials=rows)
     subject = SubjectData(subject_id="s1", blocks=(block,))
     study = StudyData(subjects=(subject,))
+    config = _scipy_map_config()
 
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_map_dataset_from_config(rows, config=config)
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_map_block_from_config(block, config=config)
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_map_subject_from_config(subject, config=config)
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_map_study_from_config(study, config=config)
+
+
+def test_removed_legacy_hierarchical_map_helpers_raise_runtime() -> None:
+    """Legacy hierarchical MAP config entry points should fail fast."""
+
+    block = BlockData(block_id="b0", trials=(_trial(0, 1, 1.0),))
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
     config = {
-        "model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "prior": {
-            "type": "independent",
-            "parameters": {
-                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-            },
-        },
+        "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
         "estimator": {
-            "type": "scipy_map",
-            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
-            "bounds": {
-                "alpha": [0.0, 1.0],
-                "beta": [0.0, 20.0],
-                "initial_value": [None, None],
-            },
+            "type": "within_subject_hierarchical_map",
+            "parameter_names": ["alpha"],
         },
     }
 
-    block_result = fit_map_block_from_config(block, config=config)
-    assert block_result.block_id == "b0"
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_subject_hierarchical_map_from_config(subject, config=config)
+    with pytest.raises(RuntimeError, match="has been removed"):
+        fit_study_hierarchical_map_from_config(study, config=config)
 
-    subject_result = fit_map_subject_from_config(subject, config=config)
-    assert subject_result.subject_id == "s1"
-    assert len(subject_result.block_results) == 1
-    assert math.isfinite(subject_result.total_log_posterior)
-
-    study_result = fit_map_study_from_config(study, config=config)
-    assert study_result.n_subjects == 1
-    assert math.isfinite(study_result.total_log_posterior)
-
-
-def test_fit_map_subject_from_config_supports_joint_block_fit_strategy() -> None:
-    """MAP subject config fitting should support joint block likelihood fitting."""
-
-    subject = SubjectData(
-        subject_id="s1",
-        blocks=(
-            BlockData(
-                block_id="b1",
-                trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
-            ),
-            BlockData(
-                block_id="b2",
-                trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
-            ),
-        ),
-    )
-    config = {
-        "model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "prior": {
-            "type": "independent",
-            "parameters": {
-                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-            },
-        },
-        "estimator": {
-            "type": "scipy_map",
-            "initial_params": {"alpha": 0.5, "beta": 1.0, "initial_value": 0.0},
-            "bounds": {
-                "alpha": [0.0, 1.0],
-                "beta": [0.0, 20.0],
-                "initial_value": [None, None],
-            },
-        },
-        "block_fit_strategy": "joint",
-    }
-
-    result = fit_map_subject_from_config(subject, config=config)
-    assert len(result.block_results) == 1
-    assert result.block_results[0].block_id == "__joint__"
-    assert result.block_results[0].n_trials == 6
-    assert math.isfinite(result.total_log_likelihood)
-    assert math.isfinite(result.total_log_posterior)
-
-
-def test_fit_map_dataset_from_config_supports_social_actor_subset_likelihood() -> None:
-    """MAP config runner should parse actor-subset likelihood on social traces."""
-
-    trace = _social_trace(n_trials=12, seed=7)
-    config = {
-        "model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "prior": {
-            "type": "independent",
-            "parameters": {
-                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-            },
-        },
-        "estimator": {
-            "type": "scipy_map",
-            "initial_params": {"alpha": 0.4, "beta": 1.0, "initial_value": 0.0},
-            "bounds": {
-                "alpha": [0.0, 1.0],
-                "beta": [0.0, 20.0],
-                "initial_value": [None, None],
-            },
-        },
-        "likelihood": {
-            "type": "actor_subset_replay",
-            "fitted_actor_id": "subject",
-            "scored_actor_ids": ["subject"],
-            "auto_fill_unmodeled_actors": True,
-        },
-    }
-
-    result = fit_map_dataset_from_config(trace, config=config)
-    assert math.isfinite(result.map_candidate.log_likelihood)

@@ -19,11 +19,10 @@ from comp_model.core.contracts import AgentModel
 from comp_model.core.data import BlockData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.core.requirements import ComponentRequirements
-from comp_model.plugins import PluginRegistry, build_default_registry
+from comp_model.plugins import PluginRegistry
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from .fitting import coerce_episode_trace
-from .likelihood import ActionReplayLikelihood, LikelihoodProgram
+from .likelihood import LikelihoodProgram
 from .mle import ScipyMinimizeDiagnostics
 from .transforms import ParameterTransform, identity_transform
 
@@ -212,42 +211,10 @@ def build_map_fit_function(
         If ``fit_spec`` is invalid.
     """
 
-    like = likelihood_program if likelihood_program is not None else ActionReplayLikelihood()
-
-    if fit_spec.estimator_type == "scipy_map":
-        scipy_map_estimator = ScipyMapBayesEstimator(
-            likelihood_program=like,
-            model_factory=model_factory,
-            prior_program=prior_program,
-            requirements=requirements,
-            method=fit_spec.method,
-            tol=fit_spec.tol,
-        )
-        return lambda trace: scipy_map_estimator.fit(
-            trace,
-            initial_params=fit_spec.initial_params,
-            bounds=fit_spec.bounds,
-        )
-
-    if fit_spec.estimator_type == "transformed_scipy_map":
-        transformed_map_estimator = TransformedScipyMapBayesEstimator(
-            likelihood_program=like,
-            model_factory=model_factory,
-            prior_program=prior_program,
-            transforms=fit_spec.transforms,
-            requirements=requirements,
-            method=fit_spec.method,
-            tol=fit_spec.tol,
-        )
-        return lambda trace: transformed_map_estimator.fit(
-            trace,
-            initial_params=fit_spec.initial_params,
-            bounds_z=fit_spec.bounds_z,
-        )
-
-    raise ValueError(
-        "fit_spec.estimator_type must be one of "
-        "{'scipy_map', 'transformed_scipy_map'}"
+    raise RuntimeError(
+        "SciPy Bayesian MAP estimators have been removed. "
+        "Use Stan estimators via estimator.type='within_subject_hierarchical_stan_map' "
+        "or estimator.type='within_subject_hierarchical_stan_nuts'."
     )
 
 
@@ -283,15 +250,10 @@ def fit_map_model(
         MAP fit output.
     """
 
-    trace = coerce_episode_trace(data)
-    fit_function = build_map_fit_function(
-        model_factory=model_factory,
-        prior_program=prior_program,
-        fit_spec=fit_spec,
-        requirements=requirements,
-        likelihood_program=likelihood_program,
+    raise RuntimeError(
+        "fit_map_model is no longer supported. "
+        "Use Stan hierarchical Bayesian APIs instead."
     )
-    return fit_function(trace)
 
 
 def fit_map_model_from_registry(
@@ -329,21 +291,9 @@ def fit_map_model_from_registry(
         MAP fit output.
     """
 
-    reg = registry if registry is not None else build_default_registry()
-    manifest = reg.get("model", model_component_id)
-    fixed_kwargs = dict(model_kwargs) if model_kwargs is not None else {}
-
-    model_factory = lambda params: reg.create_model(
-        model_component_id,
-        **_merge_kwargs(fixed_kwargs, params),
-    )
-    return fit_map_model(
-        data,
-        model_factory=model_factory,
-        prior_program=prior_program,
-        fit_spec=fit_spec,
-        requirements=manifest.requirements,
-        likelihood_program=likelihood_program,
+    raise RuntimeError(
+        "fit_map_model_from_registry is no longer supported. "
+        "Use Stan hierarchical Bayesian APIs instead."
     )
 
 
@@ -529,6 +479,10 @@ class ScipyMapBayesEstimator:
         self._method = str(method)
         self._tol = tol
         self._options = dict(options) if options is not None else None
+        raise RuntimeError(
+            "ScipyMapBayesEstimator has been removed. "
+            "Use Stan Bayesian estimators instead."
+        )
 
     def fit(
         self,
@@ -666,6 +620,10 @@ class TransformedScipyMapBayesEstimator:
         self._method = str(method)
         self._tol = tol
         self._options = dict(options) if options is not None else None
+        raise RuntimeError(
+            "TransformedScipyMapBayesEstimator has been removed. "
+            "Use Stan Bayesian estimators instead."
+        )
 
     def fit(
         self,

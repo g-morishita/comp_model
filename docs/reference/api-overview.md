@@ -32,10 +32,9 @@ surfaces.
 ## `comp_model.inference`
 
 - MLE fitting (`fit_model`, config-driven and dataset/study variants)
-- MAP fitting
-- Stan-backed posterior sampling
+- Stan-backed MAP and posterior sampling
 - Subject/study block handling via `block_fit_strategy` (`independent` or `joint`)
-- Hierarchical within-subject MAP and Stan workflows
+- Hierarchical within-subject Stan workflows
 - Candidate model comparison APIs
 - CSV-driven fit/comparison CLIs
 

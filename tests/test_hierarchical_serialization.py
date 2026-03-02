@@ -2,93 +2,63 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-
-from comp_model.core.contracts import DecisionContext
-from comp_model.core.data import BlockData, StudyData, SubjectData
 from comp_model.inference import (
-    fit_study_hierarchical_map,
+    HierarchicalBlockResult,
+    HierarchicalStudyMapResult,
+    HierarchicalSubjectMapResult,
     hierarchical_study_block_records,
     hierarchical_study_summary_records,
     write_hierarchical_study_block_records_csv,
     write_hierarchical_study_summary_csv,
 )
-from comp_model.inference.transforms import unit_interval_logit_transform
-from comp_model.problems import StationaryBanditProblem
-from comp_model.runtime import SimulationConfig, run_episode
+from comp_model.inference.mle import ScipyMinimizeDiagnostics
 
 
-@dataclass
-class FixedChoiceModel:
-    """Toy model with one free right-choice probability parameter."""
+def _make_subject(subject_id: str, p1: float, p2: float) -> HierarchicalSubjectMapResult:
+    """Build one synthetic hierarchical subject result row set."""
 
-    p_right: float
-
-    def start_episode(self) -> None:
-        """No-op reset."""
-
-    def action_distribution(
-        self,
-        observation: Any,
-        *,
-        context: DecisionContext[int],
-    ) -> dict[int, float]:
-        """Return fixed Bernoulli action probabilities."""
-
-        assert context.available_actions == (0, 1)
-        return {0: 1.0 - self.p_right, 1: self.p_right}
-
-    def update(
-        self,
-        observation: Any,
-        action: int,
-        outcome: Any,
-        *,
-        context: DecisionContext[int],
-    ) -> None:
-        """No-op update."""
-
-
-def _make_block(block_id: str, p_right: float, seed: int) -> BlockData:
-    """Generate one synthetic block."""
-
-    trace = run_episode(
-        problem=StationaryBanditProblem([0.5, 0.5]),
-        model=FixedChoiceModel(p_right=p_right),
-        config=SimulationConfig(n_trials=20, seed=seed),
-    )
-    return BlockData(block_id=block_id, event_trace=trace)
-
-
-def _make_study_result():
-    """Fit a minimal study and return hierarchical MAP result."""
-
-    study = StudyData(
-        subjects=(
-            SubjectData(
-                subject_id="s1",
-                blocks=(
-                    _make_block("b1", 0.2, 1),
-                    _make_block("b2", 0.7, 2),
-                ),
-            ),
-            SubjectData(
-                subject_id="s2",
-                blocks=(
-                    _make_block("b1", 0.3, 3),
-                    _make_block("b2", 0.8, 4),
-                ),
-            ),
-        )
-    )
-    return fit_study_hierarchical_map(
-        study,
-        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+    return HierarchicalSubjectMapResult(
+        subject_id=subject_id,
         parameter_names=("p_right",),
-        transforms={"p_right": unit_interval_logit_transform()},
-        initial_group_location={"p_right": 0.5},
-        initial_group_scale={"p_right": 0.5},
+        group_location_z={"p_right": 0.0},
+        group_scale_z={"p_right": 1.0},
+        block_results=(
+            HierarchicalBlockResult(
+                block_id="b1",
+                params={"p_right": p1},
+                log_likelihood=-3.0,
+            ),
+            HierarchicalBlockResult(
+                block_id="b2",
+                params={"p_right": p2},
+                log_likelihood=-2.0,
+            ),
+        ),
+        total_log_likelihood=-5.0,
+        total_log_prior=-1.0,
+        total_log_posterior=-6.0,
+        scipy_diagnostics=ScipyMinimizeDiagnostics(
+            method="legacy",
+            success=True,
+            status=0,
+            message="ok",
+            n_iterations=1,
+            n_function_evaluations=1,
+        ),
+    )
+
+
+def _make_study_result() -> HierarchicalStudyMapResult:
+    """Build one synthetic hierarchical study result."""
+
+    return HierarchicalStudyMapResult(
+        subject_results=(
+            _make_subject("s1", 0.2, 0.7),
+            _make_subject("s2", 0.3, 0.8),
+        ),
+        total_log_likelihood=-10.0,
+        total_log_prior=-2.0,
+        total_log_posterior=-12.0,
     )
 
 
@@ -119,3 +89,4 @@ def test_write_hierarchical_csv_helpers(tmp_path) -> None:
     assert out_summary.exists()
     assert out_block.read_text(encoding="utf-8").startswith("subject_id,")
     assert out_summary.read_text(encoding="utf-8").startswith("subject_id,")
+

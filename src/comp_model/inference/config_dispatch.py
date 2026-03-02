@@ -1,7 +1,7 @@
 """Auto-dispatch config fitting helpers.
 
-These helpers route declarative fitting configs to MLE, MAP, hierarchical MAP,
-or hierarchical Stan posterior sampling based on ``config.estimator.type``.
+These helpers route declarative fitting configs to MLE or Stan-backed Bayesian
+estimators based on ``config.estimator.type``.
 """
 
 from __future__ import annotations
@@ -13,30 +13,23 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecisio
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry
 
-from .bayes_config import (
-    fit_map_block_from_config,
-    fit_map_dataset_from_config,
-    fit_map_study_from_config,
-    fit_map_subject_from_config,
-    fit_study_hierarchical_map_from_config,
-    fit_subject_hierarchical_map_from_config,
-)
 from .config import (
     fit_block_from_config,
     fit_dataset_from_config,
     fit_study_from_config,
     fit_subject_from_config,
 )
+from .fitting import coerce_episode_trace
 from .mcmc_config import (
     sample_study_hierarchical_posterior_from_config,
     sample_subject_hierarchical_posterior_from_config,
 )
 
 MLE_ESTIMATORS = {"grid_search", "scipy_minimize", "transformed_scipy_minimize"}
-MAP_ESTIMATORS = {"scipy_map", "transformed_scipy_map"}
+MAP_ESTIMATORS: set[str] = set()
 MCMC_ESTIMATORS: set[str] = set()
 HIERARCHICAL_MCMC_ESTIMATORS = {"within_subject_hierarchical_stan_nuts"}
-HIERARCHICAL_ESTIMATORS = {"within_subject_hierarchical_map"}
+HIERARCHICAL_ESTIMATORS = {"within_subject_hierarchical_stan_map"}
 
 
 def fit_dataset_auto_from_config(
@@ -59,17 +52,28 @@ def fit_dataset_auto_from_config(
     Returns
     -------
     Any
-        Fit result object (MLE, MAP, or MCMC), depending on estimator type.
+        Fit result object (MLE or Stan Bayesian), depending on estimator type.
     """
 
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_dataset_from_config(data, config=config, registry=registry)
-    if estimator_type in MAP_ESTIMATORS:
-        return fit_map_dataset_from_config(data, config=config, registry=registry)
+    if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
+        if isinstance(data, BlockData):
+            block = data
+        else:
+            trace = coerce_episode_trace(data)
+            block = BlockData(block_id="__dataset__", event_trace=trace)
+        subject = SubjectData(subject_id="__dataset__", blocks=(block,))
+        return sample_subject_hierarchical_posterior_from_config(
+            subject,
+            config=config,
+            registry=registry,
+        )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for dataset fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)}"
+        f"expected one of "
+        f"{sorted(MLE_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
     )
 
 
@@ -84,11 +88,17 @@ def fit_block_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_block_from_config(block, config=config, registry=registry)
-    if estimator_type in MAP_ESTIMATORS:
-        return fit_map_block_from_config(block, config=config, registry=registry)
+    if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
+        wrapped_subject = SubjectData(subject_id="__block__", blocks=(block,))
+        return sample_subject_hierarchical_posterior_from_config(
+            wrapped_subject,
+            config=config,
+            registry=registry,
+        )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for block fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS)}"
+        f"expected one of "
+        f"{sorted(MLE_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
     )
 
 
@@ -103,15 +113,7 @@ def fit_subject_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_subject_from_config(subject, config=config, registry=registry)
-    if estimator_type in MAP_ESTIMATORS:
-        return fit_map_subject_from_config(subject, config=config, registry=registry)
-    if estimator_type in HIERARCHICAL_ESTIMATORS:
-        return fit_subject_hierarchical_map_from_config(
-            subject,
-            config=config,
-            registry=registry,
-        )
-    if estimator_type in HIERARCHICAL_MCMC_ESTIMATORS:
+    if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
         return sample_subject_hierarchical_posterior_from_config(
             subject,
             config=config,
@@ -119,7 +121,7 @@ def fit_subject_auto_from_config(
         )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for subject fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
     )
 
 
@@ -134,11 +136,7 @@ def fit_study_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_study_from_config(study, config=config, registry=registry)
-    if estimator_type in MAP_ESTIMATORS:
-        return fit_map_study_from_config(study, config=config, registry=registry)
-    if estimator_type in HIERARCHICAL_ESTIMATORS:
-        return fit_study_hierarchical_map_from_config(study, config=config, registry=registry)
-    if estimator_type in HIERARCHICAL_MCMC_ESTIMATORS:
+    if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
         return sample_study_hierarchical_posterior_from_config(
             study,
             config=config,
@@ -146,7 +144,7 @@ def fit_study_auto_from_config(
         )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for study fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | MAP_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS)}"
     )
 
 

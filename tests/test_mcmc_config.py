@@ -59,10 +59,36 @@ def _hierarchical_stan_config() -> dict:
     }
 
 
+def _hierarchical_stan_map_config() -> dict:
+    """Build one minimal hierarchical Stan MAP config."""
+
+    return {
+        "model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {
+                "initial_value": 0.0,
+            },
+        },
+        "estimator": {
+            "type": "within_subject_hierarchical_stan_map",
+            "parameter_names": ["alpha", "beta"],
+            "transforms": {"alpha": "unit_interval_logit", "beta": "positive_log"},
+            "initial_group_location": {"alpha": 0.5, "beta": 1.0},
+            "initial_group_scale": {"alpha": 0.5, "beta": 0.5},
+            "method": "lbfgs",
+            "max_iterations": 80,
+            "jacobian": False,
+            "random_seed": 7,
+            "refresh": 0,
+        },
+    }
+
+
 def test_hierarchical_stan_estimator_spec_from_config_parses_fields() -> None:
     """Hierarchical Stan parser should construct a full spec."""
 
     spec = hierarchical_stan_estimator_spec_from_config(_hierarchical_stan_config()["estimator"])
+    assert spec.estimator_type == "within_subject_hierarchical_stan_nuts"
     assert spec.parameter_names == ("alpha",)
     assert spec.transform_kinds == {"alpha": "unit_interval_logit"}
     assert spec.initial_group_location == {"alpha": pytest.approx(0.5)}
@@ -74,6 +100,17 @@ def test_hierarchical_stan_estimator_spec_from_config_parses_fields() -> None:
     assert spec.parallel_chains == 2
     assert spec.adapt_delta == pytest.approx(0.9)
     assert spec.max_treedepth == 10
+    assert spec.random_seed == 7
+
+
+def test_hierarchical_stan_map_estimator_spec_from_config_parses_fields() -> None:
+    """Hierarchical Stan parser should construct MAP optimizer specs."""
+
+    spec = hierarchical_stan_estimator_spec_from_config(_hierarchical_stan_map_config()["estimator"])
+    assert spec.estimator_type == "within_subject_hierarchical_stan_map"
+    assert spec.parameter_names == ("alpha", "beta")
+    assert spec.method == "lbfgs"
+    assert spec.max_iterations == 80
     assert spec.random_seed == 7
 
 
@@ -141,6 +178,45 @@ def test_sample_hierarchical_stan_posterior_subject_study_from_config_dispatches
         study_result = sample_study_hierarchical_posterior_from_config(
             study,
             config=_hierarchical_stan_config(),
+        )
+        assert study_result is sentinel_study
+    finally:
+        monkeypatch.undo()
+
+
+def test_stan_map_subject_study_from_config_dispatches_to_optimize() -> None:
+    """Stan MAP config runner should route optimizer estimator type."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    sentinel_subject = object()
+    sentinel_study = object()
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "optimize_subject_hierarchical_posterior_stan",
+        lambda *args, **kwargs: sentinel_subject,
+    )
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "optimize_study_hierarchical_posterior_stan",
+        lambda *args, **kwargs: sentinel_study,
+    )
+    try:
+        subject_result = sample_subject_hierarchical_posterior_from_config(
+            subject,
+            config=_hierarchical_stan_map_config(),
+        )
+        assert subject_result is sentinel_subject
+
+        study_result = sample_study_hierarchical_posterior_from_config(
+            study,
+            config=_hierarchical_stan_map_config(),
         )
         assert study_result is sentinel_study
     finally:

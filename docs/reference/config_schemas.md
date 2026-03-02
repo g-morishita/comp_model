@@ -47,41 +47,12 @@ TransformedScipyMinimizeEstimator = {
 }
 ```
 
-### MAP (`fit_map_*_from_config`)
-
-```python
-MAPFitConfig = {
-    "model": ComponentRef,
-    "prior": PriorConfig,
-    "estimator": ScipyMapEstimator | TransformedScipyMapEstimator,
-    "likelihood": LikelihoodConfig,  # optional
-    "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
-}
-
-ScipyMapEstimator = {
-    "type": "scipy_map",
-    "initial_params": dict[str, float],
-    "bounds": dict[str, tuple[float | None, float | None]],  # optional
-    "method": str,  # optional
-    "tol": float,   # optional
-}
-
-TransformedScipyMapEstimator = {
-    "type": "transformed_scipy_map",
-    "initial_params": dict[str, float],
-    "bounds_z": dict[str, tuple[float | None, float | None]],  # optional
-    "transforms": dict[str, str | {"kind": str}],              # optional
-    "method": str,  # optional
-    "tol": float,   # optional
-}
-```
-
-### Stan Posterior Sampling (`sample_*_hierarchical_posterior_from_config`)
+### Stan MAP / Posterior (`sample_*_hierarchical_posterior_from_config`)
 
 ```python
 StanPosteriorConfig = {
     "model": ComponentRef,
-    "estimator": HierarchicalStanNUTSEstimator,
+    "estimator": HierarchicalStanNUTSEstimator | HierarchicalStanMapEstimator,
 }
 
 HierarchicalStanNUTSEstimator = {
@@ -107,6 +78,32 @@ HierarchicalStanNUTSEstimator = {
     "refresh": int,                 # optional
     "random_seed": int,             # optional
 }
+
+HierarchicalStanMapEstimator = {
+    "type": "within_subject_hierarchical_stan_map",
+    "parameter_names": list[str],
+    "transforms": dict[str, str | {"kind": str}],  # optional
+    "initial_group_location": dict[str, float],     # optional
+    "initial_group_scale": dict[str, float],        # optional
+    "initial_block_params": list[dict[str, float]], # optional (subject-level)
+    "initial_block_params_by_subject": dict[str, list[dict[str, float]]],  # optional (study-level)
+    "mu_prior_mean": float | dict[str, float],        # optional
+    "mu_prior_std": float | dict[str, float],         # optional
+    "log_sigma_prior_mean": float | dict[str, float], # optional
+    "log_sigma_prior_std": float | dict[str, float],  # optional
+    "method": "lbfgs" | "bfgs" | "newton",  # optional
+    "max_iterations": int,                   # optional
+    "jacobian": bool,                        # optional
+    "init_alpha": float,                     # optional
+    "tol_obj": float,                        # optional
+    "tol_rel_obj": float,                    # optional
+    "tol_grad": float,                       # optional
+    "tol_rel_grad": float,                   # optional
+    "tol_param": float,                      # optional
+    "history_size": int,                     # optional
+    "refresh": int,                          # optional
+    "random_seed": int,                      # optional
+}
 ```
 
 ### Model Selection (`compare_*_candidates_from_config`)
@@ -124,7 +121,7 @@ CandidateConfig = {
     "name": str,
     "model": ComponentRef,
     "estimator": dict[str, Any],  # estimator schema above
-    "prior": PriorConfig,         # required for MAP estimators
+    "prior": PriorConfig,         # legacy only (removed estimators reject this)
     "likelihood": LikelihoodConfig,  # optional candidate override
     "n_parameters": int,          # optional
 }
@@ -159,6 +156,11 @@ PriorDistribution = (
     | {"distribution": "log_normal", "mean_log": float, "std_log": float}
 )
 ```
+
+Note: `PriorConfig` is retained for legacy parser compatibility. Current
+Stan-based Bayesian estimators (`within_subject_hierarchical_stan_map` and
+`within_subject_hierarchical_stan_nuts`) encode priors through estimator fields
+(`mu_prior_*`, `log_sigma_prior_*`) instead of `prior`.
 
 ## Recovery Configs
 
