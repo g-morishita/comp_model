@@ -418,9 +418,9 @@ Minimum checks before moving on:
 
 ## Next Steps
 
-- Continue with [Parameter Recovery](parameter-recovery.md).
-- Then run [Model Recovery](model-recovery.md).
-- Finish with [Fit Your Own Dataset](fit-your-own-dataset.md).
+- Continue with next tutorial: [Parameter Recovery](parameter-recovery.md).
+
+or move on to [How to fit Bayesian hierarchical model](../how-to/how-to-fit-bayesian-hierarchical-model.md).
 
 ## References
 
