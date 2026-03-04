@@ -1,16 +1,8 @@
-# Tutorial: First End-to-End Fit
+# Tutorial: End-to-End Simulation and Fit
 
-Before fitting a computational model to real participant data, first check that
-your model workflow behaves as expected and is free of obvious implementation
-bugs. A standard first check is simulation: generate synthetic behavior from a
-known parameter setting, then fit the same model back to that synthetic trace
-(Wilson and Collins, 2019).
-In this tutorial, you will learn how to perform a standard
-reinforcement-learning workflow through a concrete example: simulate behavior
-with `AsocialStateQValueSoftmaxModel` (a Q-learning model with a softmax choice
-rule) on a `StationaryBanditProblem` (a two-armed task with fixed reward
-probabilities), then fit the model back to synthetic data as a first
-validation step before parameter recovery.
+Before fitting a computational model to real participant data, you should first verify that your workflow behaves as expected and is free of obvious implementation bugs. A standard initial check is to simulate synthetic behavior from known parameter values and then fit the same model back to those simulated data (Wilson & Collins, 2019). This end-to-end procedure validates your full pipeline, both statistically and programmatically.
+
+In this tutorial, you will walk through an end-to-end simulation workflow using a concrete example: simulate behavior with `AsocialStateQValueSoftmaxModel` (a Q-learning model with a softmax choice rule) on a `StationaryBanditProblem` (a two-armed task with fixed reward probabilities), then fit the model back to the synthetic data as a first validation step before parameter recovery.
 
 ## Prerequisites
 
@@ -20,22 +12,10 @@ validation step before parameter recovery.
 If you have not installed and verified your environment yet, complete
 [Install and Verify](install-and-verify.md) first.
 
-## Terms Used in This Tutorial
+## Step 1: Instantiate a task
 
-- `episode`: one full simulation run across consecutive trials.
-- `event trace`: the recorded trial-by-trial log of what happened
-  (using `comp_model` event labels).
-- `comp_model` event labels (library-specific, not universal terms):
-  `observation` (task information shown) -> `decision` (choice made) ->
-  `outcome` (feedback/reward returned) -> `update` (model state update).
-- `replay`: score how well a model explains observed choices by running the
-  model on the same trial history and computing choice probabilities.
-- `inference` (estimation): fit parameters or compare models using replay-based
-  scores (for example, log-likelihood).
-
-## Step 1: Instantiate a Problem
-
-First decide what task you want to model. Here, we want a simple stationary two-option
+First decide which task (environment) you want your model to act in.
+Here, we want a simple stationary two-option
 bandit task where option 0 gives reward with probability 0.2 and option 1 gives
 reward with probability 0.8. In `comp_model`, task environments are
 implemented as Problem classes (`DecisionProblem` interface), and this specific
@@ -58,7 +38,8 @@ Click `Show answer` to reveal the answer, then click `Hide answer` to collapse i
 - <span class="cm-quiz" data-answer="Use reward_probabilities=[0.5, 0.8].">If you want to change option 0 reward probability from 0.2 to 0.5, what should you change in code?</span>
 - <span class="cm-quiz" data-answer="Add one more entry: reward_probabilities=[0.2, 0.8, 0.5].">If you add a third option with reward probability 0.5, how should reward_probabilities look?</span>
 
-### Optional: Interact with the Problem Directly
+<details>
+<summary><strong>Optional: Interact with the Problem Directly</strong> (click to show/hide)</summary>
 
 This subsection is optional and covers low-level implementation details. You can skip to
 [Step 2: Instantiate a Model](#step-2-instantiate-a-model).
@@ -90,7 +71,9 @@ print("observation:", observation)
 print("outcome:", outcome)
 ```
 
-## Step 2: Instantiate a Model
+</details>
+
+## Step 2: Instantiate a model
 
 Next decide what kind of computational model you want to simulate. Here, we want a
 standard asocial RL learner that updates action values from rewards and chooses
@@ -133,7 +116,8 @@ except ValueError as exc:
     print(exc)  # alpha must be in [0, 1]
 ```
 
-### Optional: Run One Trial Loop Manually
+<details>
+<summary><strong>Optional: Run One Trial Loop Manually</strong> (click to show/hide)</summary>
 
 This subsection is optional and covers low-level implementation details. You can
 skip to [Step 3: Run a Pilot Episode](#step-3-run-a-pilot-episode).
@@ -168,6 +152,8 @@ print("updated_q:", generating_model.q_values_snapshot())
 This single loop is the core interaction contract:
 `observe -> action_distribution -> transition -> update`.
 
+</details>
+
 ## Step 3: Run a Pilot Episode
 
 Now decide how much data to generate for a quick sanity check. In `comp_model`,
@@ -181,7 +167,7 @@ where:
 
 - `problem` is the task environment,
 - `model` is the computational model you want to simulate,
-- `SimulationConfig(n_trials=3, seed=10)` sets trial count and RNG seed for
+- `config` sets trial count and RNG seed for
   reproducibility.
 
 ```python
@@ -208,7 +194,7 @@ In each printed line:
   probabilities; in an `outcome` event it includes the feedback/reward info.
 
 You should see four ordered `comp_model` event labels for each trial:
-`observation` (task info) -> `decision` (choice) -> `outcome` (feedback) ->
+`observation` (env info) -> `decision` (choice) -> `outcome` (feedback) ->
 `update` (model learning step).
 
 `run_episode` automates the trial loop and records an event trace. That trace is
@@ -270,18 +256,33 @@ print("pilot best params:", pilot_fit_result.best.params)
 
 ### How `model_factory` Works
 
-`model_factory` tells `fit_model` what model family you are fitting and which
-parameters are free versus fixed.
+Short version: `model_factory` is a Python function that takes candidate
+parameter values and returns a model built with those values.
 
-In this example:
+`fit_model` uses that returned model to compute likelihood on the observed
+trace.
 
-- `alpha` and `beta` are free parameters because they come from `params`.
-- `initial_value=0.0` is fixed, so it is not estimated.
+You can think of `model_factory` as a translator:
+candidate parameters -> model instance -> likelihood score.
 
-Conceptually, `fit_model` repeatedly proposes candidate parameter values,
-constructs a fresh model using `model_factory`, evaluates how well that model
-explains the observed choices in `pilot_trace`, and then searches for the
-best-scoring parameter values.
+During fitting, the loop is:
+
+1. propose candidate values (for example `alpha=0.27`, `beta=1.9`),
+2. call `model_factory(params)` to build a model with those values,
+3. replay that model on `pilot_trace` and compute fit quality,
+4. repeat many times and keep the best-scoring parameters.
+
+`model_factory` must return a fresh model instance each time. This prevents
+state leakage from previous candidates.
+
+Free versus fixed parameters follow one rule:
+
+- if a value comes from `params[...]`, that parameter is estimated,
+- if a value is written as a constant (for example `initial_value=0.0`), that
+  parameter is fixed.
+
+In this example, `alpha` and `beta` are estimated (`params["alpha"]`,
+`params["beta"]`), while `initial_value` is fixed (`0.0`).
 
 ### What `fit_spec` Specifies Here
 
@@ -414,14 +415,6 @@ Minimum checks before moving on:
    `beta > 0`),
 4. recovered values are at least directionally close to generating values when
    trial counts are moderate.
-
-## Common Mistakes
-
-What if you fail:
-
-1. Reusing a model that has already learned from a previous run.
-2. Using too few trials (recovery becomes unstable).
-3. Setting bounds too tight for plausible parameter values.
 
 ## Next Steps
 
