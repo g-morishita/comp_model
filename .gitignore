@@ -2,3 +2,12 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 site/
+.venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+AGENTS.md
+plan.md
+skills/
+.ipynb_checkpoints/
+.virtual_documents/
