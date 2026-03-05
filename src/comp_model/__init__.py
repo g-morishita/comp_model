@@ -83,7 +83,12 @@ from .recovery import (
     run_parameter_recovery_from_config,
     run_recovery_cli,
 )
-from .runtime.engine import SimulationConfig, run_episode, run_trial_program
+from .runtime.engine import (
+    SimulationConfig,
+    run_episode,
+    run_social_episode,
+    run_trial_program,
+)
 
 __all__ = [
     "AgentModel",
@@ -132,6 +137,7 @@ __all__ = [
     "run_parameter_recovery_from_config",
     "run_recovery_cli",
     "run_episode",
+    "run_social_episode",
     "run_trial_program",
     "read_study_decisions_csv",
     "read_trial_decisions_csv",

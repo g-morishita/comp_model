@@ -1,9 +1,10 @@
 """Simulation engines for generic decision problems and trial programs.
 
-This module provides two runtime entry points:
+This module provides three runtime entry points:
 
 - :func:`run_trial_program`: multi-phase, multi-actor episode runner.
 - :func:`run_episode`: single-problem convenience wrapper.
+- :func:`run_social_episode`: social two-actor convenience wrapper.
 """
 
 from __future__ import annotations
@@ -224,6 +225,66 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
 
     program = SingleStepProgramAdapter(problem)
     return run_trial_program(program=program, models={"subject": model}, config=config)
+
+
+def run_social_episode(
+    *,
+    program: TrialProgram,
+    subject_model: AgentModel,
+    demonstrator_model: AgentModel,
+    config: SimulationConfig,
+    subject_actor_id: str = "subject",
+    demonstrator_actor_id: str = "demonstrator",
+) -> EpisodeTrace:
+    """Run a social program with explicit subject/demonstrator model arguments.
+
+    Parameters
+    ----------
+    program : TrialProgram
+        Multi-phase social program.
+    subject_model : AgentModel
+        Subject actor model.
+    demonstrator_model : AgentModel
+        Demonstrator actor model.
+    config : SimulationConfig
+        Episode runtime options.
+    subject_actor_id : str, optional
+        Actor ID used by the program for the subject model.
+    demonstrator_actor_id : str, optional
+        Actor ID used by the program for the demonstrator model.
+
+    Returns
+    -------
+    EpisodeTrace
+        Canonical event trace for the configured episode.
+
+    Raises
+    ------
+    ValueError
+        If actor IDs are empty or collide.
+
+    Notes
+    -----
+    This is a thin convenience wrapper around :func:`run_trial_program`.
+    """
+
+    subject_id = str(subject_actor_id).strip()
+    demonstrator_id = str(demonstrator_actor_id).strip()
+    if subject_id == "":
+        raise ValueError("subject_actor_id must be a non-empty string")
+    if demonstrator_id == "":
+        raise ValueError("demonstrator_actor_id must be a non-empty string")
+    if subject_id == demonstrator_id:
+        raise ValueError("subject_actor_id and demonstrator_actor_id must differ")
+
+    return run_trial_program(
+        program=program,
+        models={
+            subject_id: subject_model,
+            demonstrator_id: demonstrator_model,
+        },
+        config=config,
+    )
 
 
 def _get_actor_model(models: Mapping[str, AgentModel], actor_id: str) -> AgentModel:

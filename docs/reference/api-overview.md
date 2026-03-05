@@ -13,6 +13,7 @@ surfaces.
 
 - Simulation engines:
   - `run_episode` (single-agent episode wrapper)
+  - `run_social_episode` (two-actor social wrapper for subject + demonstrator)
   - `run_trial_program` (multi-phase/multi-actor trial program execution)
 - Replay engine:
   - canonical replay semantics for likelihood evaluation

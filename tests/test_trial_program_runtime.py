@@ -8,7 +8,12 @@ import pytest
 from comp_model.core.events import EventPhase, validate_trace
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import TwoStageSocialBanditProgram
-from comp_model.runtime import SimulationConfig, replay_trial_program, run_trial_program
+from comp_model.runtime import (
+    SimulationConfig,
+    replay_trial_program,
+    run_social_episode,
+    run_trial_program,
+)
 
 
 def test_run_trial_program_emits_two_phase_blocks_per_trial() -> None:
@@ -83,3 +88,39 @@ def test_replay_trial_program_supports_multi_actor_trace() -> None:
 
     expected = 8 * float(np.log(0.5))
     assert replay.total_log_likelihood == pytest.approx(expected)
+
+
+def test_run_social_episode_matches_direct_trial_program_execution() -> None:
+    """Social wrapper should match explicit run_trial_program wiring."""
+
+    direct_trace = run_trial_program(
+        program=TwoStageSocialBanditProgram(reward_probabilities=[0.2, 0.8]),
+        models={
+            "demonstrator": UniformRandomPolicyModel(),
+            "subject": UniformRandomPolicyModel(),
+        },
+        config=SimulationConfig(n_trials=5, seed=17),
+    )
+    wrapped_trace = run_social_episode(
+        program=TwoStageSocialBanditProgram(reward_probabilities=[0.2, 0.8]),
+        subject_model=UniformRandomPolicyModel(),
+        demonstrator_model=UniformRandomPolicyModel(),
+        config=SimulationConfig(n_trials=5, seed=17),
+    )
+
+    assert wrapped_trace == direct_trace
+
+
+def test_run_social_episode_validates_actor_ids() -> None:
+    """Social wrapper should reject invalid actor ID configuration."""
+
+    program = TwoStageSocialBanditProgram(reward_probabilities=[0.2, 0.8])
+    with pytest.raises(ValueError, match="must differ"):
+        run_social_episode(
+            program=program,
+            subject_model=UniformRandomPolicyModel(),
+            demonstrator_model=UniformRandomPolicyModel(),
+            config=SimulationConfig(n_trials=1, seed=1),
+            subject_actor_id="subject",
+            demonstrator_actor_id="subject",
+        )
