@@ -5,11 +5,9 @@ Use this guide to add a new `DecisionProblem` implementation.
 ## When to Use This
 
 - Your task has one decision per trial.
-- You can express task dynamics with `available_actions`, `observe`, and
-  `transition`.
+- You can express task dynamics with `available_actions`, `observe`, and `transition`.
 
-For multi-phase tasks with multiple decision nodes per trial, use
-[Build a Multi-Phase Social Problem](build-a-multi-phase-social-problem.md).
+For multi-phase tasks with multiple decision nodes per trial, use [Build a Multi-Phase Social Problem](build-a-multi-phase-social-problem.md).
 
 ## 1. Implement `DecisionProblem`
 

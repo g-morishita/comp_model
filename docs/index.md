@@ -7,10 +7,11 @@ GitHub page is [here](https://github.com/g-morishita/comp_model).
 
 Documentation is organized into:
 
-- **Tutorials**: learning-oriented, end-to-end walkthroughs.
+- **[Tutorials](tutorials/index.md)**: learning-oriented, end-to-end walkthroughs.
 - **How-to guides**: task-oriented instructions for specific outcomes.
 - **Reference**: technical facts, API contracts, and schemas.
 - **Explanation**: architectural rationale and design tradeoffs.
+- **Contribution**: implement and merge a new task/model.
 
 ## Start Here
 
