@@ -31,7 +31,80 @@ columns:
 If you have only one subject or one block, keep one fixed value in
 `subject_id`/`block_id`.
 
+## What You Must Build (canonical data model)
+
+For this tutorial, the fitter expects a `StudyData` object. Its shape is:
+
+1. `StudyData(subjects=...)`
+2. each item is `SubjectData(subject_id=..., blocks=...)`
+3. each block is `BlockData(block_id=..., trials=...)`
+4. each trial row is `TrialDecision(...)`
+
+Minimal meaning of each type:
+
+- `TrialDecision`: one observed decision row inside one trial.
+- `BlockData`: one block/session for one subject.
+- `SubjectData`: one subject containing one or more blocks.
+- `StudyData`: all subjects in your dataset.
+
+Validation rules that matter during conversion:
+
+- `SubjectData.subject_id` must be non-empty.
+- `StudyData.subject_id` values must be unique across subjects.
+- each `SubjectData` must include at least one block.
+- each `BlockData` must include `trials` (or `event_trace`).
+- trial rows in one block must be sorted by `(trial_index, decision_index)`.
+- `trial_index` must be contiguous starting at `0` within each block.
+
+Raw CSV -> canonical field mapping used in this tutorial:
+
+| raw column | canonical target |
+|---|---|
+| `subject_id` | `SubjectData.subject_id` |
+| `block_id` | `BlockData.block_id` |
+| `trial_number` | `TrialDecision.trial_index` (converted to `0..N-1`) |
+| `choice` | `TrialDecision.action` |
+| `reward` | `TrialDecision.reward` and `TrialDecision.outcome={"reward": ...}` |
+
+`TrialDecision` fields set by this tutorial script:
+
+- `trial_index`: `0..N-1` per block (required by validation)
+- `decision_index`: `0` (single decision per trial)
+- `actor_id`: `"subject"`
+- `available_actions`: `(0, 1)` (edit this for your task)
+- `action`: value from `choice`
+- `observation`: `{"trial_number": original_trial_number}`
+- `outcome`: `{"reward": reward}`
+- `reward`: numeric reward
+
+## Why This Differs From `run_episode` Output
+
+- `run_episode(...)` returns an `EpisodeTrace` for one simulated episode
+  (event stream: observation/decision/outcome/update).
+- `StudyData` is a dataset container for fitting many subjects and blocks.
+
+So they are different layers:
+
+- Runtime/simulation layer: `EpisodeTrace`
+- Data/analysis layer: `TrialDecision` -> `BlockData` -> `SubjectData` -> `StudyData`
+
+You can bridge between them:
+
+- `trial_decisions_from_trace(trace)` converts one trace to tabular decisions.
+- `trace_from_trial_decisions(decisions)` converts tabular decisions to one trace.
+- `BlockData(..., event_trace=trace)` stores a trace directly in a block.
+
+Which API to use:
+
+- one dataset/one block: `fit_model(...)` accepts `EpisodeTrace`, `BlockData`, or
+  `Sequence[TrialDecision]`.
+- many subjects/blocks: `fit_study_data(...)` expects `StudyData`.
+
 ## Step 1: Convert your data
+
+`comp_model` does not provide one universal `convert_raw_csv(...)` API for
+arbitrary source schemas. Raw datasets differ by project, so this step is a
+small user-defined mapping into canonical `TrialDecision`/`StudyData`.
 
 Create `scripts/fit_your_own_dataset.py`:
 
@@ -51,8 +124,8 @@ from comp_model.inference import (
 )
 from comp_model.io import read_study_decisions_csv, study_decision_rows, write_study_decisions_csv
 
-RAW_INPUT_CSV = Path("data/raw/my_choices.csv"). # Change to a path to your own dataset
-CANONICAL_STUDY_CSV = Path("data/processed/study_decisions.csv"). # Change to a path to processed data
+RAW_INPUT_CSV = Path("data/raw/my_choices.csv")  # Change to your raw dataset path
+CANONICAL_STUDY_CSV = Path("data/processed/study_decisions.csv")  # Change to processed-data path
 OUTPUT_DIR = Path("fit_out")
 
 # Update when your action set differs.
@@ -237,6 +310,31 @@ It verifies the converted file by:
 - `fit_out/study_fit_rows.csv` (candidate-level rows),
 - `fit_out/study_fit_summary.csv` (subject-level summary),
 - `fit_out/study_fit_overview.json` (compact summary for quick inspection).
+
+`fit_study_csv_from_config(...)` is a normal Python API call. In this tutorial,
+`FIT_CONFIG` is an in-script Python dictionary (not a required YAML file).
+
+If you prefer a no-config API, you can call `fit_study_data(...)` with
+`FitSpec(...)` directly:
+
+```python
+from comp_model.inference import FitSpec, fit_study_data
+from comp_model.io import read_study_decisions_csv
+
+study = read_study_decisions_csv(canonical_csv_path)
+result = fit_study_data(
+    study,
+    model_component_id="asocial_state_q_value_softmax",
+    fit_spec=FitSpec(
+        solver="grid_search",
+        parameter_grid={
+            "alpha": [0.1, 0.3, 0.5, 0.7],
+            "beta": [1.0, 2.0, 4.0, 8.0],
+            "initial_value": [0.0],
+        },
+    ),
+)
+```
 
 ## Step 4: See the result
 
