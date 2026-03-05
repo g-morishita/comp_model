@@ -4,7 +4,7 @@ repo_name: comp_model
 site_url: https://g-morishita.github.io/comp_model/
 
 theme:
-  name: mkdocs
+  name: material
 
 extra_css:
   - stylesheets/quiz.css
@@ -12,9 +12,15 @@ extra_css:
 extra_javascript:
   - javascripts/quiz.js
 
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
 nav:
   - Home: index.md
   - Tutorials:
+      - Overview: tutorials/index.md
       - Install and Verify: tutorials/install-and-verify.md
       - First End-to-End Fit: tutorials/first-end-to-end-fit.md
       - Parameter Recovery: tutorials/parameter-recovery.md
