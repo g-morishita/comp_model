@@ -9,6 +9,14 @@ This workflow uses the within-subject hierarchical estimators:
 - `within_subject_pooled_stan_nuts`
 - `within_subject_pooled_stan_map`
 
+For `within_subject_hierarchical_stan_*` (non-pooled), block-level latent
+parameters are grouped by block condition labels:
+`block.metadata["condition"]`, `block.metadata["block_condition"]`, or
+`block.metadata["condition_label"]`.
+
+If two blocks use the same condition label, they share one latent estimate.
+If condition labels are omitted, each block is treated as its own condition.
+
 ## 1. Prerequisites
 
 - Install and import `comp_model`.
