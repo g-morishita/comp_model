@@ -25,6 +25,8 @@ dev = [
 ]
 docs = [
   "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "pymdown-extensions>=10.2",
 ]
 stan = [
   "cmdstanpy>=1.2",
