@@ -3,9 +3,7 @@
 `comp_model` provides a generic framework for computational decision modeling:
 simulation, replay, inference, model comparison, and recovery.
 
-Published site:
-
-- https://g-morishita.github.io/comp_model/
+GitHub page is [here](https://github.com/g-morishita/comp_model).
 
 Documentation is organized into:
 

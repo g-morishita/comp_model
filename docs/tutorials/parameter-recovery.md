@@ -1,15 +1,12 @@
 # Tutorial: Parameter Recovery (Python Workflow)
 
-In this tutorial, we'll walk through a model recovery analysis.
-In [the first tutorial](first-end-to-end-fit.md), you verified that one simulation-and-fit cycle runs end to end. 
-That is necessary, but not sufficient.
+In this tutorial, we’ll walk through a parameter recovery analysis: a practical check of whether your model-fitting procedure can recover known parameter values across many simulated datasets.
 
-Before fitting real participant data, you should also check whether your model can recover known parameter values across many synthetic datasets.
-This is parameter recovery.
+Why do this? Because parameter recovery helps you understand identifiability—which parameters (and which ranges) can be reliably estimated from the kind of data your task produces, and where the model starts to struggle (Wilson & Collins 2019).
 
-In short, parameter recovery asks:
+Parameter recovery asks a simple question:
 
-"If the true parameter is X, does fitting return a value close to X?"
+"If the true parameter value is X, and we fit the model to data generated with X, do we get back something close to X—and over what range does this hold?"
 
 In this tutorial, you will:
 
@@ -28,7 +25,7 @@ If you have not installed and verified your environment yet, complete
 
 ## Step 1: Build a reusable fitting function
 
-We will use the same model family for generation and fitting:
+We will use the reinforcement learning model family for generation and fitting:
 `AsocialStateQValueSoftmaxModel` on `StationaryBanditProblem`.
 
 First, define small reusable functions:
