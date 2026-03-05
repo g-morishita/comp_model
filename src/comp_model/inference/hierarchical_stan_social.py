@@ -421,6 +421,7 @@ def build_social_subject_inputs(
     mu_prior_std: float | Mapping[str, float],
     log_sigma_prior_mean: float | Mapping[str, float],
     log_sigma_prior_std: float | Mapping[str, float],
+    condition_index_by_block: Sequence[int] | None,
 ) -> tuple[dict[str, Any], tuple[str, ...], int]:
     """Build Stan data arrays for one social model and subject."""
 
@@ -536,6 +537,13 @@ def build_social_subject_inputs(
         raise ValueError("no states found for Stan backend")
 
     n_blocks = len(block_rows)
+    condition_index_array: tuple[int, ...] = ()
+    if condition_index_by_block is not None:
+        condition_index_array = tuple(int(value) for value in condition_index_by_block)
+        if len(condition_index_array) != n_blocks:
+            raise ValueError("condition_index_by_block must match number of subject blocks")
+        if any(value <= 0 for value in condition_index_array):
+            raise ValueError("condition_index_by_block values must be >= 1")
     block_lengths = [len(rows) for rows in block_rows]
     if any(length <= 0 for length in block_lengths):
         raise ValueError("each block must include at least one decision")
@@ -598,6 +606,12 @@ def build_social_subject_inputs(
         initial_group_scale=initial_group_scale,
         initial_block_params=initial_block_params,
     )
+    condition_z_init = None
+    if condition_index_by_block is not None:
+        condition_z_init = _condition_z_init_from_block_z_init(
+            block_z_init=block_z_init,
+            condition_index_by_block=condition_index_array,
+        )
 
     stan_data: dict[str, Any] = {
         "B": n_blocks,
@@ -638,6 +652,10 @@ def build_social_subject_inputs(
         "group_log_scale_init": group_log_scale_init.tolist(),
         "block_z_init": block_z_init.tolist(),
     }
+    if condition_z_init is not None:
+        stan_data["C"] = int(condition_z_init.shape[0])
+        stan_data["condition_idx"] = [int(value) for value in condition_index_array]
+        stan_data["condition_z_init"] = condition_z_init.tolist()
     stan_data.update(spec.flags())
     return stan_data, names, n_blocks
 
@@ -814,6 +832,41 @@ def _build_latent_initialization(
             block_z_init[:, param_index] = default_value
 
     return group_loc_init, group_log_scale_init, block_z_init
+
+
+def _condition_z_init_from_block_z_init(
+    *,
+    block_z_init: np.ndarray,
+    condition_index_by_block: Sequence[int],
+) -> np.ndarray:
+    """Project per-block latent initialization into unique per-condition values."""
+
+    if block_z_init.ndim != 2:
+        raise ValueError("block_z_init must be a 2D array")
+    if block_z_init.shape[0] != len(condition_index_by_block):
+        raise ValueError("condition_index_by_block length must match block_z_init rows")
+
+    n_conditions = max(int(value) for value in condition_index_by_block)
+    condition_z_init = np.zeros((n_conditions, block_z_init.shape[1]), dtype=float)
+    seen = np.zeros(n_conditions, dtype=bool)
+    for block_index, condition_index in enumerate(condition_index_by_block):
+        condition_zero_based = int(condition_index) - 1
+        if condition_zero_based < 0 or condition_zero_based >= n_conditions:
+            raise ValueError("condition_index_by_block contains out-of-range value")
+        if not seen[condition_zero_based]:
+            condition_z_init[condition_zero_based, :] = block_z_init[block_index, :]
+            seen[condition_zero_based] = True
+            continue
+        if not np.allclose(
+            condition_z_init[condition_zero_based, :],
+            block_z_init[block_index, :],
+            atol=1e-12,
+            rtol=0.0,
+        ):
+            raise ValueError(
+                "initial_block_params must be identical across blocks sharing the same condition"
+            )
+    return condition_z_init
 
 
 def _inverse_transform(value: float, kind: str) -> float:

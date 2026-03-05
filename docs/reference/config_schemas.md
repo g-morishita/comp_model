@@ -117,6 +117,15 @@ HierarchicalStanMapEstimator = {
 }
 ```
 
+Note: For `within_subject_hierarchical_stan_*` (non-pooled), block-level
+latent parameters are indexed by block condition labels from
+`block.metadata["condition"]`, `block.metadata["block_condition"]`, or
+`block.metadata["condition_label"]`.
+
+If multiple blocks share the same condition label, they share one latent
+parameter estimate. If condition labels are omitted, each block is treated as a
+separate condition.
+
 ### Model Selection (`compare_*_candidates_from_config`)
 
 ```python

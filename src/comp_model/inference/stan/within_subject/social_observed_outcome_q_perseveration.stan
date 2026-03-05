@@ -31,6 +31,8 @@ functions {
 
 data {
   int<lower=1> B;
+  int<lower=1> C;
+  array[B] int<lower=1, upper=C> condition_idx;
   int<lower=1> K;
   int<lower=1> S;
   int<lower=1> A;
@@ -85,11 +87,15 @@ data {
 parameters {
   vector[K] group_loc_z;
   vector[K] group_log_scale;
-  array[B] vector[K] block_z;
+  array[C] vector[K] condition_z;
 }
 
 transformed parameters {
+  array[B] vector[K] block_z;
   array[B] vector[K] block_param;
+  for (b in 1:B) {
+    block_z[b] = condition_z[condition_idx[b]];
+  }
   for (b in 1:B) {
     for (k in 1:K) {
       if (transform_codes[k] == 0) {
@@ -109,9 +115,9 @@ model {
     target += normal_lpdf(group_log_scale[k] | log_sigma_prior_mean[k], log_sigma_prior_std[k]);
   }
 
-  for (b in 1:B) {
+  for (c in 1:C) {
     for (k in 1:K) {
-      target += normal_lpdf(block_z[b][k] | group_loc_z[k], exp(group_log_scale[k]));
+      target += normal_lpdf(condition_z[c][k] | group_loc_z[k], exp(group_log_scale[k]));
     }
   }
 
@@ -318,9 +324,9 @@ generated quantities {
     log_prior_total += normal_lpdf(group_log_scale[k] | log_sigma_prior_mean[k], log_sigma_prior_std[k]);
   }
 
-  for (b in 1:B) {
+  for (c in 1:C) {
     for (k in 1:K) {
-      log_prior_total += normal_lpdf(block_z[b][k] | group_loc_z[k], exp(group_log_scale[k]));
+      log_prior_total += normal_lpdf(condition_z[c][k] | group_loc_z[k], exp(group_log_scale[k]));
     }
   }
 

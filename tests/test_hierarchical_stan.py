@@ -377,6 +377,114 @@ def test_asocial_q_hierarchical_stan_ignores_state_index(monkeypatch: pytest.Mon
     assert stan_data["S"] == 1
 
 
+def test_hierarchical_stan_pools_latents_by_repeated_block_condition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Blocks sharing one condition should map to one latent condition index."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        metadata={"condition": "A"},
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        metadata={"condition": "A"},
+        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0)),
+    )
+    block_3 = BlockData(
+        block_id="b3",
+        metadata={"condition": "B"},
+        trials=(_trial(0, 1, 1.0), _trial(1, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2, block_3))
+    fake_fit = _fake_fit(n_draws=4, n_blocks=3, n_params=1, block_param_value=0.25)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
+    sample_subject_hierarchical_posterior_stan(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        n_samples=2,
+        n_warmup=1,
+        n_chains=2,
+    )
+
+    stan_data = captured["stan_data"]
+    assert isinstance(stan_data, dict)
+    assert captured["init_parameter_names"] == ("group_loc_z", "group_log_scale", "condition_z")
+    assert stan_data["C"] == 2
+    assert stan_data["condition_idx"] == [1, 1, 2]
+
+
+def test_hierarchical_stan_social_pools_latents_by_repeated_block_condition(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Social Stan inputs should use one latent condition per repeated condition label."""
+
+    block_1 = BlockData(block_id="b1", metadata={"condition": "A"}, trials=_social_trials())
+    block_2 = BlockData(block_id="b2", metadata={"condition": "A"}, trials=_social_trials())
+    block_3 = BlockData(block_id="b3", metadata={"condition": "B"}, trials=_social_trials())
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2, block_3))
+    fake_fit = _fake_fit(n_draws=4, n_blocks=3, n_params=1, block_param_value=0.35)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
+    sample_subject_hierarchical_posterior_stan(
+        subject,
+        model_component_id="social_observed_outcome_q",
+        model_kwargs={},
+        parameter_names=["alpha_observed"],
+        n_samples=2,
+        n_warmup=1,
+        n_chains=2,
+    )
+
+    stan_data = captured["stan_data"]
+    assert isinstance(stan_data, dict)
+    assert captured["init_parameter_names"] == ("group_loc_z", "group_log_scale", "condition_z")
+    assert stan_data["C"] == 2
+    assert stan_data["condition_idx"] == [1, 1, 2]
+
+
+def test_hierarchical_stan_rejects_conflicting_initial_block_params_for_same_condition() -> None:
+    """Repeated conditions require one shared initial point when initial block params are provided."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        metadata={"condition": "A"},
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        metadata={"condition": "A"},
+        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
+
+    with pytest.raises(ValueError, match="identical across blocks sharing the same condition"):
+        sample_subject_hierarchical_posterior_stan(
+            subject,
+            model_component_id="asocial_state_q_value_softmax",
+            model_kwargs={"beta": 2.0, "initial_value": 0.0},
+            parameter_names=["alpha"],
+            initial_block_params=({"alpha": 0.2}, {"alpha": 0.8}),
+            n_samples=2,
+            n_warmup=1,
+            n_chains=2,
+        )
+
+
 @pytest.mark.parametrize(
     ("component_id", "parameter_name"),
     [

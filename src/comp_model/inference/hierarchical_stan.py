@@ -178,6 +178,37 @@ def _build_asocial_specs() -> dict[str, _AsocialModelSpec]:
 
 
 _ASOCIAL_SPECS = _build_asocial_specs()
+_CONDITION_METADATA_KEYS: tuple[str, ...] = ("condition", "block_condition", "condition_label")
+
+
+def _subject_block_condition_indices(blocks: Sequence[BlockData]) -> tuple[int, ...]:
+    """Build one 1-based condition index per block from block metadata."""
+
+    condition_to_index: dict[str, int] = {}
+    out: list[int] = []
+    for block_index, block in enumerate(blocks):
+        label = _block_condition_label(block=block, block_index=block_index)
+        if label not in condition_to_index:
+            condition_to_index[label] = len(condition_to_index) + 1
+        out.append(condition_to_index[label])
+    return tuple(out)
+
+
+def _block_condition_label(*, block: BlockData, block_index: int) -> str:
+    """Resolve block-level condition label or fall back to per-block unique labels."""
+
+    metadata = block.metadata if isinstance(block.metadata, Mapping) else {}
+    for key in _CONDITION_METADATA_KEYS:
+        if key not in metadata:
+            continue
+        value = str(metadata[key]).strip()
+        if value == "":
+            raise ValueError(
+                f"block {block.block_id!r} has empty metadata[{key!r}]; "
+                "condition labels must be non-empty when provided"
+            )
+        return value
+    return f"__block_{block_index + 1}"
 
 
 def sample_subject_hierarchical_posterior_stan(
@@ -231,7 +262,9 @@ def sample_subject_hierarchical_posterior_stan(
     initial_group_scale : Mapping[str, float] | None, optional
         Optional positive initial group-scale values.
     initial_block_params : Sequence[Mapping[str, float]] | None, optional
-        Optional constrained per-block initial parameter values.
+        Optional constrained per-block initial parameter values. When multiple
+        blocks share the same condition label, initial values must match across
+        those blocks.
     mu_prior_mean : float | Mapping[str, float], optional
         Group-location latent prior mean. When a mapping is provided, values
         are applied per sampled parameter name.
@@ -267,6 +300,9 @@ def sample_subject_hierarchical_posterior_stan(
     pooled_across_blocks : bool, optional
         When ``True``, fit one shared parameter set across all blocks of the
         subject while preserving per-block reset dynamics.
+        When ``False``, blocks are grouped by condition label from block
+        metadata keys ``condition``, ``block_condition``, or
+        ``condition_label``.
 
     Returns
     -------
@@ -308,7 +344,7 @@ def sample_subject_hierarchical_posterior_stan(
     init_parameter_names = ("group_loc_z",) if pooled_across_blocks else (
         "group_loc_z",
         "group_log_scale",
-        "block_z",
+        "condition_z",
     )
     fit = _run_stan_hierarchical_nuts(
         stan_code=stan_code,
@@ -486,7 +522,7 @@ def optimize_subject_hierarchical_posterior_stan(
     init_parameter_names = ("group_loc_z",) if pooled_across_blocks else (
         "group_loc_z",
         "group_log_scale",
-        "block_z",
+        "condition_z",
     )
     fit = _run_stan_hierarchical_optimize(
         stan_code=stan_code,
@@ -683,6 +719,10 @@ def _build_subject_stan_job(
             compatibility = check_trace_compatibility(trace, requirements)
             assert_trace_compatible(trace, requirements)
 
+    condition_index_by_block = None
+    if not pooled_across_blocks:
+        condition_index_by_block = _subject_block_condition_indices(subject.blocks)
+
     if model_component_id in _ASOCIAL_COMPONENT_IDS:
         built = _build_asocial_subject_inputs(
             model_component_id=model_component_id,
@@ -697,6 +737,7 @@ def _build_subject_stan_job(
             mu_prior_std=mu_prior_std,
             log_sigma_prior_mean=log_sigma_prior_mean,
             log_sigma_prior_std=log_sigma_prior_std,
+            condition_index_by_block=condition_index_by_block,
         )
         if pooled_across_blocks:
             return built, _ASOCIAL_POOLED_STAN_CODE, f"pooled_{model_component_id}", compatibility
@@ -715,6 +756,7 @@ def _build_subject_stan_job(
         mu_prior_std=mu_prior_std,
         log_sigma_prior_mean=log_sigma_prior_mean,
         log_sigma_prior_std=log_sigma_prior_std,
+        condition_index_by_block=condition_index_by_block,
     )
     built = _SubjectBuild(
         stan_data=social_stan_data,
@@ -745,6 +787,7 @@ def _build_asocial_subject_inputs(
     mu_prior_std: float | Mapping[str, float],
     log_sigma_prior_mean: float | Mapping[str, float],
     log_sigma_prior_std: float | Mapping[str, float],
+    condition_index_by_block: Sequence[int] | None,
 ) -> _SubjectBuild:
     """Build Stan data dictionary and metadata for one subject."""
 
@@ -857,6 +900,13 @@ def _build_asocial_subject_inputs(
         raise ValueError("no states found for Stan backend")
 
     n_blocks = len(block_rows)
+    condition_index_array: tuple[int, ...] = ()
+    if condition_index_by_block is not None:
+        condition_index_array = tuple(int(value) for value in condition_index_by_block)
+        if len(condition_index_array) != n_blocks:
+            raise ValueError("condition_index_by_block must match number of subject blocks")
+        if any(value <= 0 for value in condition_index_array):
+            raise ValueError("condition_index_by_block values must be >= 1")
     block_lengths = [len(rows) for rows in block_rows]
     if any(length <= 0 for length in block_lengths):
         raise ValueError("each block must include at least one subject decision")
@@ -926,6 +976,13 @@ def _build_asocial_subject_inputs(
                 default_value = group_loc_init[param_index]
             block_z_init[:, param_index] = default_value
 
+    condition_z_init = None
+    if condition_index_by_block is not None:
+        condition_z_init = _condition_z_init_from_block_z_init(
+            block_z_init=block_z_init,
+            condition_index_by_block=condition_index_array,
+        )
+
     stan_data: dict[str, Any] = {
         "B": n_blocks,
         "K": len(names),
@@ -952,6 +1009,10 @@ def _build_asocial_subject_inputs(
         "group_log_scale_init": group_log_scale_init.tolist(),
         "block_z_init": block_z_init.tolist(),
     }
+    if condition_z_init is not None:
+        stan_data["C"] = int(condition_z_init.shape[0])
+        stan_data["condition_idx"] = [int(value) for value in condition_index_array]
+        stan_data["condition_z_init"] = condition_z_init.tolist()
     return _SubjectBuild(stan_data=stan_data, parameter_names=names, n_blocks=n_blocks)
 
 
@@ -997,6 +1058,41 @@ def _state_from_observation(observation: Any) -> int:
     if isinstance(observation, Mapping) and "state" in observation:
         return int(observation["state"])
     return 0
+
+
+def _condition_z_init_from_block_z_init(
+    *,
+    block_z_init: np.ndarray,
+    condition_index_by_block: Sequence[int],
+) -> np.ndarray:
+    """Project per-block latent initialization into unique per-condition values."""
+
+    if block_z_init.ndim != 2:
+        raise ValueError("block_z_init must be a 2D array")
+    if block_z_init.shape[0] != len(condition_index_by_block):
+        raise ValueError("condition_index_by_block length must match block_z_init rows")
+
+    n_conditions = max(int(value) for value in condition_index_by_block)
+    condition_z_init = np.zeros((n_conditions, block_z_init.shape[1]), dtype=float)
+    seen = np.zeros(n_conditions, dtype=bool)
+    for block_index, condition_index in enumerate(condition_index_by_block):
+        condition_zero_based = int(condition_index) - 1
+        if condition_zero_based < 0 or condition_zero_based >= n_conditions:
+            raise ValueError("condition_index_by_block contains out-of-range value")
+        if not seen[condition_zero_based]:
+            condition_z_init[condition_zero_based, :] = block_z_init[block_index, :]
+            seen[condition_zero_based] = True
+            continue
+        if not np.allclose(
+            condition_z_init[condition_zero_based, :],
+            block_z_init[block_index, :],
+            atol=1e-12,
+            rtol=0.0,
+        ):
+            raise ValueError(
+                "initial_block_params must be identical across blocks sharing the same condition"
+            )
+    return condition_z_init
 
 
 def _resolve_transform_kinds(
@@ -1101,6 +1197,8 @@ def _run_stan_hierarchical_nuts(
         init_data["group_log_scale"] = list(stan_data["group_log_scale_init"])
     if "block_z" in init_parameter_names:
         init_data["block_z"] = list(stan_data["block_z_init"])
+    if "condition_z" in init_parameter_names:
+        init_data["condition_z"] = list(stan_data["condition_z_init"])
 
     sample_kwargs: dict[str, Any] = {
         "data": {key: value for key, value in stan_data.items() if not key.endswith("_init")},
@@ -1152,6 +1250,8 @@ def _run_stan_hierarchical_optimize(
         init_data["group_log_scale"] = list(stan_data["group_log_scale_init"])
     if "block_z" in init_parameter_names:
         init_data["block_z"] = list(stan_data["block_z_init"])
+    if "condition_z" in init_parameter_names:
+        init_data["condition_z"] = list(stan_data["condition_z_init"])
 
     optimize_kwargs: dict[str, Any] = {
         "data": {key: value for key, value in stan_data.items() if not key.endswith("_init")},
