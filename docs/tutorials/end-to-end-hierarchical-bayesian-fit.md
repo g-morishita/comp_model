@@ -69,66 +69,41 @@ This gives us a realistic `StudyData` object for hierarchical fitting.
 ```python
 from __future__ import annotations
 
-import numpy as np
-
-from comp_model.core import BlockData, StudyData, SubjectData, trial_decisions_from_trace
+from comp_model.generators import (
+    AsocialBlockSpec,
+    simulate_asocial_study_dataset_with_sampled_subject_params,
+)
 from comp_model.models import AsocialStateQValueSoftmaxModel
-from comp_model.problems import StationaryBanditProblem
-from comp_model.runtime import SimulationConfig, run_episode
-
-rng = np.random.default_rng(21)
 
 n_subjects = 6
 n_blocks_per_subject = 2
 n_trials_per_block = 80
 
-subjects: list[SubjectData] = []
-true_params_by_subject: dict[str, dict[str, float]] = {}
-
-for subject_index in range(n_subjects):
-    subject_id = f"s{subject_index + 1:02d}"
-
-    # True subject-level parameters used to generate this subject's data.
-    alpha_true = float(np.clip(rng.normal(0.25, 0.08), 0.05, 0.95))
-    beta_true = float(np.clip(rng.lognormal(mean=1.0, sigma=0.25), 0.2, 12.0))
-    true_params_by_subject[subject_id] = {
-        "alpha": alpha_true,
-        "beta": beta_true,
-    }
-
-    block_list: list[BlockData] = []
-    for block_index in range(n_blocks_per_subject):
-        block_problem = StationaryBanditProblem(reward_probabilities=[0.2, 0.8])
-        block_model = AsocialStateQValueSoftmaxModel(
-            alpha=alpha_true,
-            beta=beta_true,
-            initial_value=0.0,
-        )
-
-        trace = run_episode(
-            problem=block_problem,
-            model=block_model,
-            config=SimulationConfig(
-                n_trials=n_trials_per_block,
-                seed=int(rng.integers(1, 1_000_000_000)),
-            ),
-        )
-
-        block_list.append(
-            BlockData(
-                block_id=f"b{block_index + 1}",
-                trials=trial_decisions_from_trace(trace),
-            )
-        )
-
-    subjects.append(
-        SubjectData(
-            subject_id=subject_id,
-            blocks=tuple(block_list),
-        )
+blocks = tuple(
+    AsocialBlockSpec(
+        n_trials=n_trials_per_block,
+        block_id=f"b{block_index + 1}",
+        problem_kwargs={"reward_probabilities": [0.2, 0.8]},
     )
+    for block_index in range(n_blocks_per_subject)
+)
 
-study = StudyData(subjects=tuple(subjects))
+simulation = simulate_asocial_study_dataset_with_sampled_subject_params(
+    n_subjects=n_subjects,
+    blocks=blocks,
+    model_factory=lambda params: AsocialStateQValueSoftmaxModel(
+        alpha=params["alpha"],
+        beta=params["beta"],
+        initial_value=0.0,
+    ),
+    true_parameter_distributions={
+        "alpha": {"distribution": "beta", "alpha": 3.5, "beta": 10.5},
+        "beta": {"distribution": "log_normal", "mean_log": 1.0, "std_log": 0.25},
+    },
+    seed=21,
+)
+study = simulation.study
+true_params_by_subject = simulation.true_params_by_subject
 
 print("n_subjects:", study.n_subjects)
 print("total_blocks:", sum(len(subject.blocks) for subject in study.subjects))

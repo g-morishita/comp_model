@@ -18,6 +18,16 @@ surfaces.
 - Replay engine:
   - canonical replay semantics for likelihood evaluation
 
+## `comp_model.generators`
+
+- Event-trace data generators for asocial and social tasks.
+- Block specs:
+  - `AsocialBlockSpec`
+  - `SocialBlockSpec`
+- Multi-subject study helper:
+  - `simulate_asocial_study_dataset`
+  - `simulate_asocial_study_dataset_with_sampled_subject_params`
+
 ## `comp_model.models`
 
 - Canonical model implementations across asocial and social families.

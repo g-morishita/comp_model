@@ -81,6 +81,22 @@ class SocialBlockSpec:
             raise ValueError("n_trials must be > 0")
 
 
+@dataclass(frozen=True, slots=True)
+class AsocialStudySimulationResult:
+    """Result bundle for asocial study simulation with sampled subject params.
+
+    Parameters
+    ----------
+    study : StudyData
+        Simulated study dataset.
+    true_params_by_subject : Mapping[str, dict[str, float]]
+        Ground-truth parameter values used to build each subject model.
+    """
+
+    study: StudyData
+    true_params_by_subject: Mapping[str, dict[str, float]]
+
+
 class EventTraceAsocialGenerator:
     """Generator for asocial decision tasks.
 
@@ -312,6 +328,145 @@ def _resolve_block_seed(seed: int | None, rng: np.random.Generator) -> int:
     if seed is not None:
         return int(seed)
     return int(rng.integers(0, 2**31 - 1))
+
+
+def simulate_asocial_study_dataset(
+    *,
+    subject_models: Mapping[str, AgentModel],
+    blocks: Sequence[AsocialBlockSpec],
+    seed: int | None = None,
+    problem_factory: Callable[..., DecisionProblem] = StationaryBanditProblem,
+    metadata: Mapping[str, Any] | None = None,
+) -> StudyData:
+    """Simulate one multi-subject, multi-block asocial study dataset.
+
+    Parameters
+    ----------
+    subject_models : Mapping[str, AgentModel]
+        Mapping from subject ID to one model instance per subject.
+    blocks : Sequence[AsocialBlockSpec]
+        Block specifications shared across all subjects.
+    seed : int | None, optional
+        Optional study-level RNG seed. Individual block seeds are sampled from
+        this RNG unless explicitly provided in each block spec.
+    problem_factory : Callable[..., DecisionProblem], optional
+        Factory for constructing block-specific problems.
+    metadata : Mapping[str, Any] | None, optional
+        Optional study-level metadata attached to the resulting ``StudyData``.
+
+    Returns
+    -------
+    StudyData
+        Simulated study-level dataset including per-block event traces.
+    """
+
+    generator = EventTraceAsocialGenerator(problem_factory=problem_factory)
+    rng = np.random.default_rng(seed)
+    return generator.simulate_study(
+        subject_models=subject_models,
+        blocks=blocks,
+        rng=rng,
+        metadata=metadata,
+    )
+
+
+def simulate_asocial_study_dataset_with_sampled_subject_params(
+    *,
+    blocks: Sequence[AsocialBlockSpec],
+    model_factory: Callable[[dict[str, float]], AgentModel],
+    true_parameter_sets: Sequence[Mapping[str, float]] | None = None,
+    true_parameter_distributions: Mapping[str, Mapping[str, Any]] | None = None,
+    true_parameter_sampling: Mapping[str, Any] | None = None,
+    n_subjects: int | None = None,
+    seed: int = 0,
+    subject_ids: Sequence[str] | None = None,
+    problem_factory: Callable[..., DecisionProblem] = StationaryBanditProblem,
+    metadata: Mapping[str, Any] | None = None,
+) -> AsocialStudySimulationResult:
+    """Sample subject params/models, then simulate one asocial study dataset.
+
+    Parameters
+    ----------
+    blocks : Sequence[AsocialBlockSpec]
+        Block specifications shared across subjects.
+    model_factory : Callable[[dict[str, float]], AgentModel]
+        Builds one subject model from sampled true params.
+    true_parameter_sets : Sequence[Mapping[str, float]] | None, optional
+        Explicit parameter mappings, one per subject.
+    true_parameter_distributions : Mapping[str, Mapping[str, Any]] | None, optional
+        Distribution specs for independent parameter sampling. Uses the same
+        schema as ``run_parameter_recovery``.
+    true_parameter_sampling : Mapping[str, Any] | None, optional
+        Advanced sampling spec (independent/hierarchical, param/z space) using
+        the same schema as ``run_parameter_recovery``.
+    n_subjects : int | None, optional
+        Number of subjects to sample when using distributions/sampling specs.
+        If ``true_parameter_sets`` is used, this must be ``None`` or match the
+        number of provided sets.
+    seed : int, optional
+        Master seed controlling both parameter sampling and simulation.
+    subject_ids : Sequence[str] | None, optional
+        Optional explicit subject IDs. Must match resolved subject count.
+    problem_factory : Callable[..., DecisionProblem], optional
+        Factory for constructing block-specific problems.
+    metadata : Mapping[str, Any] | None, optional
+        Optional study-level metadata attached to the resulting ``StudyData``.
+
+    Returns
+    -------
+    AsocialStudySimulationResult
+        Simulated study and generating true params per subject.
+    """
+
+    from comp_model.recovery.parameter import resolve_true_parameter_sets
+
+    if n_subjects is not None and n_subjects <= 0:
+        raise ValueError("n_subjects must be > 0 when provided")
+
+    resolved_parameter_sets = resolve_true_parameter_sets(
+        true_parameter_sets=true_parameter_sets,
+        true_parameter_distributions=true_parameter_distributions,
+        true_parameter_sampling=true_parameter_sampling,
+        n_parameter_sets=n_subjects,
+        seed=seed,
+    )
+    if n_subjects is not None and len(resolved_parameter_sets) != n_subjects:
+        raise ValueError("n_subjects must match the number of resolved parameter sets")
+
+    resolved_n_subjects = len(resolved_parameter_sets)
+
+    if subject_ids is None:
+        resolved_subject_ids = tuple(f"s{index + 1:02d}" for index in range(resolved_n_subjects))
+    else:
+        if len(subject_ids) != resolved_n_subjects:
+            raise ValueError("subject_ids length must match resolved subject count")
+        resolved_subject_ids = tuple(str(subject_id).strip() for subject_id in subject_ids)
+        if any(subject_id == "" for subject_id in resolved_subject_ids):
+            raise ValueError("subject_ids must not contain empty strings")
+        if len(set(resolved_subject_ids)) != len(resolved_subject_ids):
+            raise ValueError("subject_ids must be unique")
+
+    true_params_by_subject: dict[str, dict[str, float]] = {}
+    subject_models: dict[str, AgentModel] = {}
+
+    for subject_id, raw_params in zip(resolved_subject_ids, resolved_parameter_sets, strict=True):
+        params = {str(key): float(value) for key, value in raw_params.items()}
+        true_params_by_subject[subject_id] = params
+        subject_models[subject_id] = model_factory(dict(params))
+
+    rng = np.random.default_rng(seed)
+    simulation_seed = int(rng.integers(0, 2**31 - 1))
+    study = simulate_asocial_study_dataset(
+        subject_models=subject_models,
+        blocks=blocks,
+        seed=simulation_seed,
+        problem_factory=problem_factory,
+        metadata=metadata,
+    )
+    return AsocialStudySimulationResult(
+        study=study,
+        true_params_by_subject=true_params_by_subject,
+    )
 
 
 def create_event_trace_asocial_generator() -> EventTraceAsocialGenerator:

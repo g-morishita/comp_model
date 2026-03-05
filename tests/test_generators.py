@@ -12,8 +12,14 @@ from comp_model.generators import (
     EventTraceSocialPostOutcomeGenerator,
     EventTraceSocialPreChoiceGenerator,
     SocialBlockSpec,
+    simulate_asocial_study_dataset,
+    simulate_asocial_study_dataset_with_sampled_subject_params,
 )
-from comp_model.models import AsocialQValueSoftmaxModel, UniformRandomPolicyModel
+from comp_model.models import (
+    AsocialQValueSoftmaxModel,
+    AsocialStateQValueSoftmaxModel,
+    UniformRandomPolicyModel,
+)
 from comp_model.plugins import build_default_registry
 
 
@@ -50,6 +56,142 @@ def test_asocial_generator_simulates_study() -> None:
 
     assert study.n_subjects == 2
     assert all(subject.blocks[0].event_trace is not None for subject in study.subjects)
+
+
+def test_simulate_asocial_study_dataset_supports_multi_subject_multi_block() -> None:
+    """Helper should build multi-subject, multi-block study data."""
+
+    study = simulate_asocial_study_dataset(
+        subject_models={"s1": UniformRandomPolicyModel(), "s2": UniformRandomPolicyModel()},
+        blocks=(
+            AsocialBlockSpec(n_trials=3, block_id="b1", problem_kwargs={"reward_probabilities": [0.5, 0.5]}),
+            AsocialBlockSpec(n_trials=2, block_id="b2", problem_kwargs={"reward_probabilities": [0.7, 0.3]}),
+        ),
+        seed=11,
+    )
+
+    assert study.n_subjects == 2
+    assert all(len(subject.blocks) == 2 for subject in study.subjects)
+    assert all(subject.blocks[0].block_id == "b1" for subject in study.subjects)
+    assert all(subject.blocks[1].block_id == "b2" for subject in study.subjects)
+    assert all(subject.blocks[0].n_trials == 3 for subject in study.subjects)
+    assert all(subject.blocks[1].n_trials == 2 for subject in study.subjects)
+
+
+def test_simulate_asocial_study_dataset_is_seed_reproducible() -> None:
+    """Helper should be deterministic for a fixed seed."""
+
+    def _simulate() -> tuple[tuple[int, int, int | float | None], ...]:
+        study = simulate_asocial_study_dataset(
+            subject_models={"s1": UniformRandomPolicyModel(), "s2": UniformRandomPolicyModel()},
+            blocks=(
+                AsocialBlockSpec(n_trials=4, problem_kwargs={"reward_probabilities": [0.2, 0.8]}),
+                AsocialBlockSpec(n_trials=3, problem_kwargs={"reward_probabilities": [0.6, 0.4]}),
+            ),
+            seed=19,
+        )
+        return tuple(
+            (row.trial_index, int(row.action), row.reward)
+            for subject in study.subjects
+            for block in subject.blocks
+            for row in block.trials
+        )
+
+    assert _simulate() == _simulate()
+
+
+def test_simulate_asocial_study_dataset_with_sampled_subject_params() -> None:
+    """High-level helper should sample params and simulate one study."""
+
+    result = simulate_asocial_study_dataset_with_sampled_subject_params(
+        n_subjects=3,
+        blocks=(
+            AsocialBlockSpec(n_trials=4, problem_kwargs={"reward_probabilities": [0.2, 0.8]}),
+            AsocialBlockSpec(n_trials=3, problem_kwargs={"reward_probabilities": [0.6, 0.4]}),
+        ),
+        model_factory=lambda params: AsocialStateQValueSoftmaxModel(
+            alpha=params["alpha"],
+            beta=params["beta"],
+            initial_value=0.0,
+        ),
+        true_parameter_distributions={
+            "alpha": {"distribution": "beta", "alpha": 3.5, "beta": 10.5},
+            "beta": {"distribution": "log_normal", "mean_log": 1.0, "std_log": 0.25},
+        },
+        seed=21,
+    )
+
+    assert result.study.n_subjects == 3
+    assert all(len(subject.blocks) == 2 for subject in result.study.subjects)
+    assert set(result.true_params_by_subject) == {"s01", "s02", "s03"}
+    for params in result.true_params_by_subject.values():
+        assert 0.05 <= params["alpha"] <= 0.95
+        assert 0.2 <= params["beta"] <= 12.0
+
+
+def test_simulate_asocial_study_dataset_with_sampled_subject_params_is_reproducible() -> None:
+    """High-level helper should be deterministic for a fixed seed."""
+
+    def _simulate_once() -> tuple[dict[str, dict[str, float]], tuple[tuple[int, int, int | float | None], ...]]:
+        result = simulate_asocial_study_dataset_with_sampled_subject_params(
+            n_subjects=2,
+            subject_ids=("A", "B"),
+            blocks=(
+                AsocialBlockSpec(n_trials=3, problem_kwargs={"reward_probabilities": [0.5, 0.5]}),
+                AsocialBlockSpec(n_trials=2, problem_kwargs={"reward_probabilities": [0.7, 0.3]}),
+            ),
+            model_factory=lambda params: AsocialStateQValueSoftmaxModel(
+                alpha=params["alpha"],
+                beta=params["beta"],
+                initial_value=0.0,
+            ),
+            true_parameter_distributions={
+                "alpha": {"distribution": "uniform", "lower": 0.2, "upper": 0.4},
+                "beta": {"distribution": "uniform", "lower": 2.0, "upper": 3.0},
+            },
+            seed=9,
+        )
+        rows = tuple(
+            (row.trial_index, int(row.action), row.reward)
+            for subject in result.study.subjects
+            for block in subject.blocks
+            for row in block.trials
+        )
+        return (
+            {sid: dict(params) for sid, params in result.true_params_by_subject.items()},
+            rows,
+        )
+
+    assert _simulate_once() == _simulate_once()
+
+
+def test_simulate_asocial_study_dataset_with_sampled_subject_params_rejects_bad_subject_ids() -> None:
+    """High-level helper should validate explicit subject IDs."""
+
+    with pytest.raises(ValueError, match="subject_ids length must match resolved subject count"):
+        simulate_asocial_study_dataset_with_sampled_subject_params(
+            n_subjects=2,
+            subject_ids=("s1",),
+            blocks=(AsocialBlockSpec(n_trials=2, problem_kwargs={"reward_probabilities": [0.5, 0.5]}),),
+            model_factory=lambda _params: UniformRandomPolicyModel(),
+            true_parameter_distributions={
+                "alpha": {"distribution": "uniform", "lower": 0.2, "upper": 0.3},
+            },
+            seed=3,
+        )
+
+
+def test_simulate_asocial_study_dataset_with_sampled_subject_params_rejects_mismatched_true_sets_count() -> None:
+    """Explicit true sets must match n_subjects when both are provided."""
+
+    with pytest.raises(ValueError, match="n_subjects must match the number of resolved parameter sets"):
+        simulate_asocial_study_dataset_with_sampled_subject_params(
+            n_subjects=2,
+            blocks=(AsocialBlockSpec(n_trials=2, problem_kwargs={"reward_probabilities": [0.5, 0.5]}),),
+            model_factory=lambda _params: UniformRandomPolicyModel(),
+            true_parameter_sets=({"alpha": 0.2},),
+            seed=3,
+        )
 
 
 def test_social_pre_choice_generator_timing() -> None:
