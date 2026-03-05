@@ -1,83 +1,256 @@
-# Tutorial: Parameter Recovery
+# Tutorial: Parameter Recovery (Python Workflow)
 
-This tutorial runs an end-to-end parameter-recovery analysis from a config file
-and verifies the resulting artifacts.
+In this tutorial, we'll walk through a model recovery analysis.
+In [the first tutorial](first-end-to-end-fit.md), you verified that one simulation-and-fit cycle runs end to end. 
+That is necessary, but not sufficient.
 
-## Step 1: Create a Recovery Config
+Before fitting real participant data, you should also check whether your model can recover known parameter values across many synthetic datasets.
+This is parameter recovery.
 
-Create `parameter_recovery.json` (or `parameter_recovery.yaml` with the same fields):
+In short, parameter recovery asks:
 
-```json
-{
-  "problem": {
-    "component_id": "stationary_bandit",
-    "kwargs": {
-      "reward_probabilities": [0.2, 0.8]
-    }
-  },
-  "generating_model": {
-    "component_id": "asocial_state_q_value_softmax",
-    "kwargs": {}
-  },
-  "fitting_model": {
-    "component_id": "asocial_state_q_value_softmax",
-    "kwargs": {}
-  },
-  "estimator": {
-    "type": "mle", "solver": "grid_search",
-    "parameter_grid": {
-      "alpha": [0.3],
-      "beta": [2.0],
-      "initial_value": [0.0]
-    }
-  },
-  "true_parameter_sets": [
-    {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
-    {"alpha": 0.2, "beta": 1.0, "initial_value": 0.0}
-  ],
-  "n_trials": 40,
-  "seed": 11
-}
+"If the true parameter is X, does fitting return a value close to X?"
+
+In this tutorial, you will:
+
+1. build a reusable fitting function,
+2. run recovery with true parameters sampled from distributions,
+3. inspect recovery error summaries and case-level results,
+4. adjust distribution ranges and sample size when recovery is weak.
+
+## Prerequisites
+
+- Python 3.11+
+- Working installation of `comp_model`
+
+If you have not installed and verified your environment yet, complete
+[Install and Verify](install-and-verify.md) first.
+
+## Step 1: Build a reusable fitting function
+
+We will use the same model family for generation and fitting:
+`AsocialStateQValueSoftmaxModel` on `StationaryBanditProblem`.
+
+First, define small reusable functions:
+
+- `problem_factory()` creates one fresh task,
+- `model_factory(params)` creates one model from candidate/true params,
+- `fit_function(trace)` fits one synthetic dataset.
+
+```python
+from comp_model.inference import FitSpec, fit_model
+from comp_model.models import AsocialStateQValueSoftmaxModel
+from comp_model.problems import StationaryBanditProblem
+
+
+def problem_factory() -> StationaryBanditProblem:
+    return StationaryBanditProblem(reward_probabilities=[0.2, 0.8])
+
+
+def model_factory(params: dict[str, float]) -> AsocialStateQValueSoftmaxModel:
+    return AsocialStateQValueSoftmaxModel(
+        alpha=params["alpha"],
+        beta=params["beta"],
+        initial_value=0.0,  # fixed in this tutorial
+    )
+
+
+def fit_function(trace):
+    return fit_model(
+        trace,
+        model_factory=model_factory,
+        fit_spec=FitSpec(
+            inference="mle",
+            solver="scipy_minimize",
+            initial_params={"alpha": 0.3, "beta": 2.0},
+            bounds={
+                "alpha": (0.0, 1.0),
+                "beta": (0.01, 10.0),
+            },
+            method="L-BFGS-B",
+            n_starts=5,
+            random_seed=10,
+        ),
+    )
 ```
 
-## Step 2: Run Recovery
+### Quick quiz
 
-```bash
-comp-model-recovery \
-  --config parameter_recovery.json \
-  --mode parameter \
-  --output-dir recovery_out \
-  --prefix param
+??? question "If you want to estimate `initial_value` too, what should you change?"
+    In `model_factory`, replace `initial_value=0.0` with `initial_value=params["initial_value"]`, then add `initial_value` to `initial_params` and `bounds` inside `FitSpec`.
+
+## Step 2: Run parameter recovery from parameter distributions
+
+Now run recovery by sampling true parameters directly from distributions.
+This gives broad coverage of parameter space in one run.
+
+```python
+from comp_model.recovery import run_parameter_recovery
+
+result = run_parameter_recovery(
+    problem_factory=problem_factory,
+    model_factory=model_factory,
+    fit_function=fit_function,
+    true_parameter_distributions={
+        "alpha": {"distribution": "uniform", "lower": 0.05, "upper": 0.8},
+        "beta": {"distribution": "uniform", "lower": 0.5, "upper": 8.0},
+    },
+    n_parameter_sets=30,
+    n_trials=120,
+    seed=21,
+)
+
+print("n_cases:", len(result.cases))
+print("mean_absolute_error:", result.mean_absolute_error)
+print("mean_signed_error:", result.mean_signed_error)
+print("true_estimate_correlation:", result.true_estimate_correlation)
 ```
 
-## Step 3: Verify Artifacts
+What `run_parameter_recovery(...)` does for each case:
 
-You should get:
+1. sample one true parameter vector from your declared true-parameter source,
+2. simulate one synthetic dataset from that vector,
+3. fit the dataset with `fit_function`,
+4. store true vs estimated parameters and fit score.
 
-- `recovery_out/param_parameter_cases.csv`
-- `recovery_out/param_parameter_summary.json`
+### What each argument means
 
-Quick check:
+- `problem_factory=problem_factory`:
+  function that returns a fresh task environment for each synthetic dataset.
+- `model_factory=model_factory`:
+  function that receives one true-parameter dictionary and returns a generating
+  model instance.
+- `fit_function=fit_function`:
+  function that fits one simulated dataset and returns fit results.
+- `true_parameter_distributions={...}`:
+  where true parameter values are sampled from for each recovery case.
+- `n_parameter_sets=30`:
+  number of recovery cases (how many true parameter vectors to sample).
+- `n_trials=120`:
+  number of trials per simulated dataset.
+- `seed=21`:
+  random seed for reproducible true-parameter sampling and simulation seeds.
 
-```bash
-python - <<'PY'
-import json
-from pathlib import Path
-payload = json.loads(Path("recovery_out/param_parameter_summary.json").read_text(encoding="utf-8"))
-print(payload["mode"], payload["n_cases"])
-PY
+### How to specify `true_parameter_distributions`
+
+`true_parameter_distributions` is a dictionary:
+
+- key: parameter name (must match what `model_factory(params)` expects),
+- value: one distribution specification for that parameter.
+
+Supported specifications:
+
+- `{"distribution": "uniform", "lower": float, "upper": float}`
+- `{"distribution": "normal", "mean": float, "std": float}`
+- `{"distribution": "beta", "alpha": float, "beta": float}`
+- `{"distribution": "log_normal", "mean_log": float, "std_log": float}`
+
+Practical notes:
+
+- Parameters are sampled independently.
+- `n_parameter_sets` controls how many parameter vectors are drawn.
+- `seed` makes the draws reproducible.
+- To effectively fix a parameter at one value, use
+  `{"distribution": "uniform", "lower": x, "upper": x}`.
+
+??? note "hierarchical sampling in Python"
+
+    If you want hierarchical sampling (population draw + individual deviations),
+    use `true_parameter_sampling` instead of `true_parameter_distributions`.
+
+    ```python
+    result_hier = run_parameter_recovery(
+        problem_factory=problem_factory,
+        model_factory=model_factory,
+        fit_function=fit_function,
+        true_parameter_sampling={
+            "mode": "hierarchical",
+            "space": "z",
+            "n_parameter_sets": 30,
+            "population": {
+                "alpha": {"distribution": "normal", "mean": 0.0, "std": 0.3},
+                "beta": {"distribution": "normal", "mean": 1.0, "std": 0.4},
+            },
+            "individual_sd": {
+                "alpha": 0.2,
+                "beta": 0.2,
+            },
+            "transforms": {
+                "alpha": "unit_interval_logit",
+                "beta": "positive_log",
+            },
+        },
+        n_trials=120,
+        seed=21,
+    )
+    ```
+
+    Here, `population` is sampled once, then each case is sampled around that
+    population using `individual_sd`.
+
+
+### Quick quiz
+
+??? question "How do you sample more points in parameter space?"
+    Increase `n_parameter_sets`.
+
+??? question "How do you make sampling reproducible?"
+    Set `seed` in `run_parameter_recovery(...)`.
+
+## Step 3: Inspect case-level estimates and write outputs
+
+Look at each recovery case directly, then save outputs for later analysis.
+
+```python
+for case in result.cases:
+    print("case", case.case_index)
+    print("  true:", case.true_params)
+    print("  estimated:", case.estimated_params)
+    print("  log_likelihood:", case.best_log_likelihood)
 ```
 
-Expected:
+## Step 4: Adjust sampling design when recovery is weak
 
-- mode is `parameter`
-- `n_cases` matches the number of `true_parameter_sets`
+If recovery is weak, adjust sampling ranges and data volume, then rerun.
 
-## Step 4: Interpret
+```python
+result_wider = run_parameter_recovery(
+    problem_factory=problem_factory,
+    model_factory=model_factory,
+    fit_function=fit_function,
+    true_parameter_distributions={
+        "alpha": {"distribution": "uniform", "lower": 0.01, "upper": 0.95},
+        "beta": {"distribution": "uniform", "lower": 0.2, "upper": 12.0},
+    },
+    n_parameter_sets=60,   # more sampled cases
+    n_trials=200,          # more data per case
+    seed=22,
+)
 
-- Use case-level CSV to inspect per-parameter estimation error.
-- Use summary JSON for aggregate error metrics.
+print("wider n_cases:", len(result_wider.cases))
+print("wider MAE:", result_wider.mean_absolute_error)
+```
+
+Typical levers:
+
+1. increase `n_trials` (more information per synthetic dataset),
+2. increase `n_parameter_sets` (better coverage of parameter space),
+3. revise distribution ranges to focus on plausible regions.
+
+### Quick quiz
+
+??? question "If recovery fails mostly at high beta, what should you change first?"
+    Increase `n_trials`, then inspect errors by `true__beta` range.
+
+??? question "If you only care about a narrower alpha regime, where do you encode that?"
+    In `true_parameter_distributions[\"alpha\"]` by tightening `lower` and `upper`.
 
 ## Next Tutorial
 
 Continue with [Model Recovery](model-recovery.md).
+
+## Reference
+
+- Wilson RC, Collins AGE. (2019). Ten simple rules for the computational
+  modeling of behavioral data. *eLife*, 8:e49547.
+  <https://doi.org/10.7554/eLife.49547>
