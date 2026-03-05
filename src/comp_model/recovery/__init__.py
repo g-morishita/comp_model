@@ -16,7 +16,16 @@ from .model import (
     ModelRecoveryResult,
     run_model_recovery,
 )
-from .parameter import ParameterRecoveryCase, ParameterRecoveryResult, run_parameter_recovery
+from .parameter import (
+    DistributionSpec,
+    ParameterRecoveryCase,
+    ParameterRecoveryResult,
+    SamplingSpec,
+    resolve_true_parameter_sets,
+    run_parameter_recovery,
+    sample_true_parameter_sets_from_distributions,
+    sample_true_parameter_sets_from_sampling,
+)
 from .serialization import (
     model_recovery_case_records,
     model_recovery_confusion_records,
@@ -34,6 +43,8 @@ __all__ = [
     "GeneratingModelSpec",
     "ModelRecoveryCase",
     "ModelRecoveryResult",
+    "DistributionSpec",
+    "SamplingSpec",
     "ParameterRecoveryCase",
     "ParameterRecoveryResult",
     "load_config",
@@ -46,6 +57,9 @@ __all__ = [
     "run_parameter_recovery",
     "run_parameter_recovery_from_config",
     "run_recovery_cli",
+    "resolve_true_parameter_sets",
+    "sample_true_parameter_sets_from_sampling",
+    "sample_true_parameter_sets_from_distributions",
     "write_model_recovery_cases_csv",
     "write_model_recovery_confusion_csv",
     "write_parameter_recovery_csv",

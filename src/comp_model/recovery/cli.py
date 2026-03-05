@@ -68,6 +68,7 @@ def run_recovery_cli(argv: Sequence[str] | None = None) -> int:
                 "n_cases": len(parameter_result.cases),
                 "mean_absolute_error": parameter_result.mean_absolute_error,
                 "mean_signed_error": parameter_result.mean_signed_error,
+                "true_estimate_correlation": parameter_result.true_estimate_correlation,
             },
         )
         print(f"Parameter recovery complete: n_cases={len(parameter_result.cases)}")

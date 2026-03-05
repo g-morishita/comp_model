@@ -57,7 +57,10 @@ def test_recovery_cli_parameter_mode_writes_outputs(tmp_path, capsys) -> None:
     assert code == 0
     assert "Parameter recovery complete" in captured.out
     assert (tmp_path / "param_parameter_cases.csv").exists()
-    assert (tmp_path / "param_parameter_summary.json").exists()
+    summary_path = tmp_path / "param_parameter_summary.json"
+    assert summary_path.exists()
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert "true_estimate_correlation" in summary
 
 
 def test_recovery_cli_model_mode_writes_outputs(tmp_path, capsys) -> None:

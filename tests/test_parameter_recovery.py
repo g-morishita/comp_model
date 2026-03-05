@@ -18,6 +18,11 @@ from comp_model.inference import (
 )
 from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
 from comp_model.recovery import run_parameter_recovery
+from comp_model.recovery.parameter import (
+    resolve_true_parameter_sets,
+    sample_true_parameter_sets_from_distributions,
+    sample_true_parameter_sets_from_sampling,
+)
 from comp_model.runtime import SimulationConfig, run_trial_program
 
 
@@ -83,6 +88,9 @@ def test_run_parameter_recovery_with_grid_search_fit() -> None:
         assert abs(case.estimated_params["p_right"] - case.true_params["p_right"]) <= 0.1
 
     assert result.mean_absolute_error["p_right"] <= 0.1
+    assert "p_right" in result.true_estimate_correlation
+    correlation = result.true_estimate_correlation["p_right"]
+    assert correlation is None or -1.0 <= correlation <= 1.0
 
 
 def test_run_parameter_recovery_validates_inputs() -> None:
@@ -145,6 +153,7 @@ def test_run_parameter_recovery_accepts_map_fit_functions() -> None:
     assert 0.0 <= result.cases[0].estimated_params["p_right"] <= 1.0
     assert result.cases[0].best_log_posterior is not None
     assert "p_right" in result.mean_absolute_error
+    assert result.true_estimate_correlation["p_right"] is None
 
 
 def test_run_parameter_recovery_supports_custom_social_trace_factory() -> None:
@@ -205,3 +214,171 @@ def test_run_parameter_recovery_requires_problem_or_trace_factory() -> None:
             true_parameter_sets=({"p_right": 0.5},),
             n_trials=10,
         )
+
+
+def test_run_parameter_recovery_supports_distribution_sampling_in_code_workflow() -> None:
+    """Code workflow should support true-parameter sampling from distributions."""
+
+    def fit_function(trace: Any):
+        estimator = GridSearchMLEEstimator(
+            likelihood_program=ActionReplayLikelihood(),
+            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        )
+        return estimator.fit(
+            trace=trace,
+            parameter_grid={"p_right": [0.2, 0.5, 0.8]},
+        )
+
+    result = run_parameter_recovery(
+        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        fit_function=fit_function,
+        true_parameter_distributions={
+            "p_right": {"distribution": "uniform", "lower": 0.2, "upper": 0.8},
+        },
+        n_parameter_sets=3,
+        n_trials=80,
+        seed=31,
+    )
+
+    assert len(result.cases) == 3
+    for case in result.cases:
+        assert 0.2 <= case.true_params["p_right"] <= 0.8
+        assert case.estimated_params["p_right"] in {0.2, 0.5, 0.8}
+    assert "p_right" in result.true_estimate_correlation
+
+
+def test_resolve_true_parameter_sets_rejects_ambiguous_or_missing_sources() -> None:
+    """Source resolver should reject ambiguous or missing source declarations."""
+
+    with pytest.raises(ValueError, match="exactly one"):
+        resolve_true_parameter_sets(
+            true_parameter_sets=({"p_right": 0.5},),
+            true_parameter_distributions={
+                "p_right": {"distribution": "uniform", "lower": 0.2, "upper": 0.8},
+            },
+            n_parameter_sets=2,
+        )
+
+    with pytest.raises(ValueError, match="must be provided"):
+        resolve_true_parameter_sets()
+
+    with pytest.raises(ValueError, match="exactly one"):
+        resolve_true_parameter_sets(
+            true_parameter_sampling={
+                "mode": "independent",
+                "distributions": {
+                    "p_right": {
+                        "distribution": "uniform",
+                        "lower": 0.2,
+                        "upper": 0.8,
+                    },
+                },
+                "n_parameter_sets": 2,
+            },
+            true_parameter_distributions={
+                "p_right": {"distribution": "uniform", "lower": 0.2, "upper": 0.8},
+            },
+            n_parameter_sets=2,
+        )
+
+
+def test_sample_true_parameter_sets_from_distributions_is_reproducible() -> None:
+    """Distribution sampling helper should be deterministic under one seed."""
+
+    dists = {
+        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
+        "beta": {"distribution": "normal", "mean": 2.0, "std": 0.5},
+        "kappa": {"distribution": "log_normal", "mean_log": 0.0, "std_log": 0.1},
+    }
+    first = sample_true_parameter_sets_from_distributions(
+        true_parameter_distributions=dists,
+        n_parameter_sets=4,
+        seed=77,
+    )
+    second = sample_true_parameter_sets_from_distributions(
+        true_parameter_distributions=dists,
+        n_parameter_sets=4,
+        seed=77,
+    )
+
+    assert first == second
+    assert len(first) == 4
+
+
+def test_run_parameter_recovery_supports_hierarchical_sampling_in_code_workflow() -> None:
+    """Code API should support hierarchical true-parameter sampling."""
+
+    def fit_function(trace: Any):
+        estimator = GridSearchMLEEstimator(
+            likelihood_program=ActionReplayLikelihood(),
+            model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        )
+        return estimator.fit(
+            trace=trace,
+            parameter_grid={"p_right": [0.2, 0.5, 0.8]},
+        )
+
+    result = run_parameter_recovery(
+        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        fit_function=fit_function,
+        true_parameter_sampling={
+            "mode": "hierarchical",
+            "space": "z",
+            "n_parameter_sets": 3,
+            "population": {
+                "p_right": {"distribution": "uniform", "lower": 0.0, "upper": 0.0},
+            },
+            "individual_sd": {
+                "p_right": 0.0,
+            },
+            "transforms": {
+                "p_right": "unit_interval_logit",
+            },
+        },
+        n_trials=80,
+        seed=37,
+    )
+
+    assert len(result.cases) == 3
+    for case in result.cases:
+        assert case.true_params["p_right"] == pytest.approx(0.5)
+        assert case.estimated_params["p_right"] == pytest.approx(0.5)
+    assert result.true_estimate_correlation["p_right"] is None
+
+
+def test_sample_true_parameter_sets_from_sampling_is_reproducible() -> None:
+    """Advanced sampling helper should be deterministic under one seed."""
+
+    sampling = {
+        "mode": "hierarchical",
+        "space": "z",
+        "n_parameter_sets": 4,
+        "population": {
+            "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 0.0},
+            "beta": {"distribution": "uniform", "lower": 0.0, "upper": 0.0},
+        },
+        "individual_sd": {
+            "alpha": 0.0,
+            "beta": 0.0,
+        },
+        "transforms": {
+            "alpha": "unit_interval_logit",
+            "beta": "positive_log",
+        },
+    }
+    first = sample_true_parameter_sets_from_sampling(
+        true_parameter_sampling=sampling,
+        seed=99,
+    )
+    second = sample_true_parameter_sets_from_sampling(
+        true_parameter_sampling=sampling,
+        seed=99,
+    )
+
+    assert first == second
+    assert len(first) == 4
+    for case in first:
+        assert case["alpha"] == pytest.approx(0.5)
+        assert case["beta"] == pytest.approx(1.0)

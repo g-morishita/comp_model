@@ -36,6 +36,7 @@ def test_parameter_recovery_records_and_csv_roundtrip(tmp_path: Path) -> None:
         ),
         mean_absolute_error={"alpha": 0.1},
         mean_signed_error={"alpha": 0.1},
+        true_estimate_correlation={"alpha": None},
     )
 
     rows = parameter_recovery_records(result)
