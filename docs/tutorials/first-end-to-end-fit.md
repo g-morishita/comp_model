@@ -1,8 +1,17 @@
 # Tutorial: End-to-End Simulation and Fit
 
-Before fitting a computational model to real participant data, you should first verify that your workflow behaves as expected and is free of obvious implementation bugs. A standard initial check is to simulate synthetic behavior from known parameter values and then fit the same model back to those simulated data (Wilson & Collins, 2019). This end-to-end procedure validates your full pipeline, both statistically and programmatically.
+In this first tutorial, we’ll walk through a complete end-to-end simulation workflow: generating synthetic data and then fitting a computational model using our library.
 
-In this tutorial, you will walk through an end-to-end simulation workflow using a concrete example: simulate behavior with `AsocialStateQValueSoftmaxModel` (a Q-learning model with a softmax choice rule) on a `StationaryBanditProblem` (a two-armed task with fixed reward probabilities), then fit the model back to the synthetic data as a first validation step before parameter recovery.
+You might be wondering: why start with simulation? Why not jump straight into fitting a model to real data? Real data is more fun to analyze.
+
+The reason is simple: before working with real datasets, it’s important to confirm that your model-fitting workflow behaves the way you expect and doesn’t contain implementation bugs. 
+A standard first check is to simulate synthetic behavior from known parameter values, and then fit the same model back to those simulated data (Wilson & Collins, 2019). 
+This end-to-end procedure helps validate the full pipeline—both statistically and programmatically.
+
+We’ll start by choosing a set of parameters, simulate a dataset from those values, and then fit the same model back to that dataset. If everything is working, the fitted model should achieve a good fit and return sensible parameter estimates. Don’t worry if the estimates aren’t perfect yet—at this stage we’re mainly verifying that the full pipeline runs smoothly and produces reasonable results.
+
+To keep things simple, we’ll use a classic reinforcement-learning example: a two-armed stationary bandit task paired with a basic Q-learning model with a softmax choice rule. 
+This bandit + RL setup is widely used as a “first stop” in computational modeling because it’s intuitive, easy to simulate, and well studied (Sutton & Barto, 2018; Daw, 2011; Wilson & Collins, 2019).
 
 ## Prerequisites
 
@@ -14,16 +23,12 @@ If you have not installed and verified your environment yet, complete
 
 ## Step 1: Instantiate a task
 
-First decide which task (environment) you want your model to act in.
-Here, we want a simple stationary two-option
-bandit task where option 0 gives reward with probability 0.2 and option 1 gives
-reward with probability 0.8. In `comp_model`, task environments are
-implemented as Problem classes (`DecisionProblem` interface), and this specific
-task is implemented by `StationaryBanditProblem`.
+First, we are going to create a task (environment) you want your model to act in.
+Here, we want a simple stationary two-option bandit task where option 0 gives reward with probability 0.2 and option 1 gives reward with probability 0.8. 
+In `comp_model`, task environments are implemented as Problem classes (`DecisionProblem` interface), and this specific task is implemented by `StationaryBanditProblem`.
 
-To express this in code, use `StationaryBanditProblem` and pass
-`reward_probabilities=[0.2, 0.8]`. The list index is the option ID, and the
-value is that option's Bernoulli reward probability.
+To express this in code, use `StationaryBanditProblem` and pass `reward_probabilities=[0.2, 0.8]`.
+The list index is the option ID, and the value is that option's Bernoulli reward probability.
 
 ```python
 from comp_model.problems import StationaryBanditProblem
@@ -33,52 +38,19 @@ problem = StationaryBanditProblem(reward_probabilities=[0.2, 0.8])
 
 ### Quick Quiz
 
-Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
+Click to reveal the answer.
 
-- <span class="cm-quiz" data-answer="Use reward_probabilities=[0.5, 0.8].">If you want to change option 0 reward probability from 0.2 to 0.5, what should you change in code?</span>
-- <span class="cm-quiz" data-answer="Add one more entry: reward_probabilities=[0.2, 0.8, 0.5].">If you add a third option with reward probability 0.5, how should reward_probabilities look?</span>
+??? question "You want to increase option 0’s reward probability from 0.2 to 0.5. What should you change in the code?"
+    Change it to: `reward_probabilities = [0.5, 0.8]`.
 
-<details>
-<summary><strong>Optional: Interact with the Problem Directly</strong> (click to show/hide)</summary>
-
-This subsection is optional and covers low-level implementation details. You can skip to
-[Step 2: Instantiate a Model](#step-2-instantiate-a-model).
-
-Before adding a model, you can directly inspect how the problem behaves. This
-helps you confirm what observation and outcome objects look like.
-
-This low-level interaction requires a `DecisionContext`. The context carries
-trial metadata (for example, trial index and available actions) so problem and
-model methods share the same explicit trial information. If you use
-`run_episode`, you usually do not need to build this manually.
-
-```python
-import numpy as np
-from comp_model.core.contracts import DecisionContext
-
-rng = np.random.default_rng(10)
-problem.reset(rng=rng)
-
-trial_index = 0
-available_actions = tuple(problem.available_actions(trial_index=trial_index))
-context = DecisionContext(trial_index=trial_index, available_actions=available_actions)
-
-observation = problem.observe(context=context)
-outcome = problem.transition(action=1, context=context, rng=rng)  # force option 1
-
-print("available_actions:", available_actions)
-print("observation:", observation)
-print("outcome:", outcome)
-```
-
-</details>
+??? question "You want to add a third option with reward probability 0.5. What should `reward_probabilities` look like?"
+    Add a third value: `reward_probabilities = [0.2, 0.8, 0.5]`.
 
 ## Step 2: Instantiate a model
 
-Next decide what kind of computational model you want to simulate. Here, we want a
-standard asocial RL learner that updates action values from rewards and chooses
-probabilistically based on those values. In `comp_model`, this is
-`AsocialStateQValueSoftmaxModel`.
+Next, we'll choose a computational model you want to simulate.
+Here, we want a standard reinforcement learning (RL) model that updates action values from rewards and chooses probabilistically based on those values. 
+In `comp_model`, this is `AsocialStateQValueSoftmaxModel`.
 
 To express this in code, set model parameters explicitly:
 
@@ -92,11 +64,12 @@ from comp_model.models import AsocialStateQValueSoftmaxModel
 generating_model = AsocialStateQValueSoftmaxModel(alpha=0.2, beta=3.0, initial_value=0.0)
 ```
 
-### Quick Quiz
+### Quick quiz
 
 Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
 
-- <span class="cm-quiz" data-answer="AsocialStateQValueSoftmaxModel(alpha=-0.2, beta=3.0, initial_value=0.0) raises ValueError: alpha must be in [0, 1].">What exact error behavior should you expect if alpha is negative?</span>
+??? question "What happens if a given alpha is negative?"
+    `AsocialStateQValueSoftmaxModel(alpha=-0.2, beta=3.0, initial_value=0.0)` raises `ValueError`: alpha must be in [0, 1].
 
 ### Guardrails
 
@@ -116,59 +89,26 @@ except ValueError as exc:
     print(exc)  # alpha must be in [0, 1]
 ```
 
-<details>
-<summary><strong>Optional: Run One Trial Loop Manually</strong> (click to show/hide)</summary>
+## Step 3: Run a pilot episode
 
-This subsection is optional and covers low-level implementation details. You can
-skip to [Step 3: Run a Pilot Episode](#step-3-run-a-pilot-episode).
+Now that we have both the task and the computational model, we’re ready to generate some synthetic choice data. 
+For this first pilot check, it helps to keep the simulation small (for example, 20 trials).
+you can simulate behavior with:
 
-```python
-import numpy as np
-from comp_model.core.contracts import DecisionContext
-from comp_model.runtime.probabilities import normalize_distribution, sample_action
+`run_episode(problem, model, config)`
 
-rng = np.random.default_rng(10)
-problem.reset(rng=rng)
-generating_model.start_episode()
-
-trial_index = 0
-available_actions = tuple(problem.available_actions(trial_index=trial_index))
-context = DecisionContext(trial_index=trial_index, available_actions=available_actions)
-
-observation = problem.observe(context=context)
-raw_distribution = generating_model.action_distribution(observation, context=context)
-distribution = normalize_distribution(raw_distribution, available_actions)
-action = sample_action(distribution, rng)
-outcome = problem.transition(action, context=context, rng=rng)
-generating_model.update(observation, action, outcome, context=context)
-
-print("observation:", observation)
-print("distribution:", distribution)
-print("action:", action)
-print("outcome:", outcome)
-print("updated_q:", generating_model.q_values_snapshot())
-```
-
-This single loop is the core interaction contract:
-`observe -> action_distribution -> transition -> update`.
-
-</details>
-
-## Step 3: Run a Pilot Episode
-
-Now decide how much data to generate for a quick sanity check. In `comp_model`,
-an episode means one full simulation run across consecutive trials: the model
-is initialized at the start of the run, then repeatedly interacts with the
-problem trial by trial.
-
-For a pilot check, keep it small (for example, 3 trials) so you can quickly
-inspect the event trace. In code, use `run_episode(problem, model, config)`,
 where:
 
 - `problem` is the task environment,
 - `model` is the computational model you want to simulate,
-- `config` sets trial count and RNG seed for
-  reproducibility.
+- `config` sets trial count and RNG seed for reproducibility.
+
+To create the configuration object, instantiate SimulationConfig and specify the seed and number of trials.
+
+???+ note "What does episode mean?"
+    An episode is one full simulation run across consecutive trials.
+    You can think of one episode as a single block of trials.
+    We borrow the term episode from the reinforcement-learning literature.
 
 ```python
 from comp_model.runtime import SimulationConfig, run_episode
@@ -176,41 +116,51 @@ from comp_model.runtime import SimulationConfig, run_episode
 pilot_trace = run_episode(
     problem=problem,
     model=AsocialStateQValueSoftmaxModel(alpha=0.2, beta=3.0, initial_value=0.0),
-    config=SimulationConfig(n_trials=3, seed=10),
+    config=SimulationConfig(n_trials=20, seed=10),
 )
-
-print("pilot event count:", len(pilot_trace.events))
-for event in pilot_trace.by_trial(0):
-    print(event.phase.value, event.payload)
 ```
+`pilot_trace` contains 20 trials. Each trial consists of four phases:
 
-In each printed line:
+`observation` (environment info) → `decision` (choice) → `outcome` (feedback) → `update` (model learning step).
 
-- `event.phase.value` is the event label (`observation`, `decision`,
-  `outcome`, or `update`), which tells you which part of the trial this row
-  represents.
-- `event.payload` is a dictionary with the details for that event.
-  For example, in a `decision` event it includes the chosen action and action
-  probabilities; in an `outcome` event it includes the feedback/reward info.
 
-You should see four ordered `comp_model` event labels for each trial:
-`observation` (env info) -> `decision` (choice) -> `outcome` (feedback) ->
-`update` (model learning step).
+This is because `run_episode` generates each trial in the following order:
 
-`run_episode` automates the trial loop and records an event trace. That trace is
-then used for replay (scoring model-predicted choice probabilities on observed
-choices) and inference/estimation (fitting parameters or comparing models).
+1. `observation`: The model receives information from the environment (e.g., a state).
+2. `decision`: The model uses that information and makes a choice based on its internal variables.
+3. `outcome`: The environment receives the model’s choice and returns an outcome.
+4. `update`: The model receives the outcome and updates its internal variables.
 
-### Quick Quiz
+In this tutorial we use a stationary bandit task, so the `observation` phase does not contain any additional information.
 
-Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
+??? note "How to closely look at trial information"
+    To inspect the simulation trial by trial, use the trial_by method.
+    For example, let’s look at the first trial:
+    ```python
+    first_trial = pilot_trace.trial_by(0)  # Indexing starts at 0.
+    print(first_trial)
+    ```
 
-- <span class="cm-quiz" data-answer="SimulationConfig(n_trials=10, seed=10)">If you want the pilot run to simulate 10 trials (keeping the same seed), what should `SimulationConfig` be?</span>
-- <span class="cm-quiz" data-answer="Change only the seed, for example SimulationConfig(n_trials=3, seed=42).">If you want a different random sequence but keep trial count fixed, what should you change?</span>
-- <span class="cm-quiz" data-answer="Use pilot_trace.by_trial(0).">If you want only the events from trial 0, what method call should you use?</span>
-- <span class="cm-quiz" data-answer="The trace stores comp_model event labels in this order: observation, decision, outcome, update.">What event-label order should you expect inside one trial?</span>
+    You’ll see a list of `SimulationEvent` objects.
+    Each event has a `phase` field that tells you which phase it belongs to,
+    and a `payload` field whose contents depend on the phase.
+    For example, the `outcome` phase includes outcome information in its payload,
+    and the `decision` phase includes the model’s choice probabilities.
 
-## Step 4: Fit the Tiny Pilot Dataset
+### Quick quiz
+
+Click to reveal the answer.
+
+??? question "If you want the pilot run to simulate 10 trials (keeping the same seed), what should `SimulationConfig` be?"
+    `SimulationConfig(n_trials=10, seed=10)`
+
+??? question "If you want a different random sequence but keep trial count fixed, what should you change?"
+    Change only the seed, for example `SimulationConfig(n_trials=3, seed=42)`.
+
+??? question "If you want only the events from the second trial, what method call should you use?"
+    Use `pilot_trace.by_trial(1)`.
+
+## Step 4: Fit the tiny pilot dataset
 
 Now fit the model to the pilot dataset (`pilot_trace`) and inspect the
 estimated parameters.
@@ -254,37 +204,26 @@ print("true params:", {"alpha": 0.2, "beta": 3.0})
 print("pilot best params:", pilot_fit_result.best.params)
 ```
 
-### How `model_factory` Works
+### How `model_factory` works
 
-Short version: `model_factory` is a Python function that takes candidate
-parameter values and returns a model built with those values.
+`model_factory` is a Python function that takes candidate parameter values and returns a model built with those values.
 
-`fit_model` uses that returned model to compute likelihood on the observed
-trace.
+`fit_model` uses that returned model to compute likelihood on the observed trace.
 
 You can think of `model_factory` as a translator:
 candidate parameters -> model instance -> likelihood score.
 
-During fitting, the loop is:
-
-1. propose candidate values (for example `alpha=0.27`, `beta=1.9`),
-2. call `model_factory(params)` to build a model with those values,
-3. replay that model on `pilot_trace` and compute fit quality,
-4. repeat many times and keep the best-scoring parameters.
-
-`model_factory` must return a fresh model instance each time. This prevents
-state leakage from previous candidates.
+`model_factory` must return a fresh model instance each time.
+This prevents state leakage from previous candidates.
 
 Free versus fixed parameters follow one rule:
 
 - if a value comes from `params[...]`, that parameter is estimated,
-- if a value is written as a constant (for example `initial_value=0.0`), that
-  parameter is fixed.
+- if a value is written as a constant (for example `initial_value=0.0`), that parameter is fixed.
 
-In this example, `alpha` and `beta` are estimated (`params["alpha"]`,
-`params["beta"]`), while `initial_value` is fixed (`0.0`).
+In this example, `alpha` and `beta` are estimated (`params["alpha"]`, `params["beta"]`), while `initial_value` is fixed (`0.0`).
 
-### What `fit_spec` Specifies Here
+### What `fit_spec` specifies here
 
 `fit_spec` defines the estimation setup:
 
@@ -302,30 +241,23 @@ In this example, `alpha` and `beta` are estimated (`params["alpha"]`,
 - `method="L-BFGS-B"`:
   numerical optimization algorithm.
 
-After running this, compare `pilot best params` with the generating values
-`{"alpha": 0.2, "beta": 3.0}`.
-With only a few trials, estimates are often far from true parameters. This is
-expected, so the next step is to increase `n_trials` and fit again.
+After running this, compare `pilot best params` with the generating values `{"alpha": 0.2, "beta": 3.0}`.
+With only a few trials, estimates are often far from true parameters. This is expected, so the next step is to increase `n_trials` and fit again.
 
-### Quick Quiz
+### Quick quiz
 
-Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
+Click to reveal the answer.
 
-- <span class="cm-quiz" data-answer='Set `solver=\"grid_search\"` and provide `parameter_grid`, for example: FitSpec(inference=\"mle\", solver=\"grid_search\", parameter_grid={\"alpha\": [0.1, 0.2, 0.3], \"beta\": [1.0, 2.0, 3.0]})'>If you want to switch this fit from SciPy optimization to grid search, what should you change in `FitSpec`?</span>
-- <span class="cm-quiz" data-answer='Change `initial_value=0.0` to `initial_value=params[\"initial_value\"]` in `model_factory`, then include `initial_value` in your search-space settings (for example, add a bound such as `\"initial_value\": (-2.0, 2.0)` or a grid entry).'>If you want to estimate `initial_value` instead of fixing it, what two places must be edited?</span>
-- <span class="cm-quiz" data-answer='Set a constant in `model_factory` (for example `beta=3.0` instead of `beta=params[\"beta\"]`), then remove `beta` from your search-space settings (bounds/grid).'>If you want to fix `beta` at `3.0` and estimate only `alpha`, what should you change?</span>
-- <span class="cm-quiz" data-answer='Keep `n_starts` the same and change `random_seed`, for example from `10` to `42`.'>If you want different randomized starts but still reproducible results, what is the minimal edit?</span>
+??? question "If you want to estimate `initial_value` instead of fixing it, what two places must be edited?"
+    Change `initial_value=0.0` to `initial_value=params[\"initial_value\"]` in `model_factory`, then include `initial_value` in your search-space settings (for example, add a bound such as `\"initial_value\": (0, 1.0)`).
 
-## Step 5: Increase Trials and Simulate a Fitting Dataset
+??? question "If you want to fix `beta` at `3.0` and estimate only `alpha`, what should you change?"
+    Set a constant in `model_factory` (for example `beta=3.0` instead of `beta=params[\"beta\"]`), then remove `beta` from your search-space settings (bounds/grid).
 
-Now increase the trial count so estimation has enough signal. Here we simulate
-120 trials with a fresh model instance.
+## Step 5: Increase trials and simulate a fitting dataset
 
-In this call:
-
-- `n_trials=120` controls dataset size for fitting,
-- `seed=11` makes the simulation reproducible,
-- a new model instance starts from a clean state before trial 0.
+Now increase the trial count so estimation has enough signal. 
+Here we simulate 120 trials with a fresh model instance.
 
 ```python
 trace = run_episode(
@@ -337,14 +269,6 @@ trace = run_episode(
 
 Use a fresh model instance for the full dataset so learned values from the
 pilot run do not leak into the fitting dataset.
-
-### Quick Quiz
-
-Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
-
-- <span class="cm-quiz" data-answer="trace.by_trial(0)">What call returns only trial 0 events from the full dataset trace?</span>
-- <span class="cm-quiz" data-answer="len(trace.by_trial(10))">What expression gives the number of logged events in trial 10?</span>
-- <span class="cm-quiz" data-answer="for event in trace.by_trial(5): print(event.phase.value, event.payload)">How can you print phase labels and payloads for trial 5?</span>
 
 Now estimate model parameters from the larger synthetic dataset in `trace`.
 
@@ -381,21 +305,24 @@ print("pilot best params:", pilot_fit_result.best.params)
 print("full-data best params:", fit_result.best.params)
 ```
 
-### Quick Quiz
+### Quick quiz
 
-Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
+Click to reveal the answer.
 
-- <span class="cm-quiz" data-answer="Use bounds['beta'] = (0.01, 20.0).">If you want to allow larger fitted beta values, what bound should you edit?</span>
-- <span class="cm-quiz" data-answer="Use code edits: `initial_value=params['initial_value']` in `model_factory`, then include `initial_value` in your search-space settings (for example, add `'initial_value': (-2.0, 2.0)` to bounds or add grid values).">If you later decide to estimate initial_value too, what two places must you update?</span>
+??? question "If you want to allow larger fitted beta values, what bound should you edit?"
+    ```python
+    bounds={
+        "alpha": (0.0, 1.0),
+        "beta": (0.01, 20.0),
+    },
+    ```
 
-## Step 7: Check That the Fit Worked
+## Step 7: Check that the fit Worked
 
-After fitting, do a quick quality check before trusting the estimates. The goal
-is to confirm that optimization finished properly and parameter values look
-plausible.
+After fitting, do a quick quality check before trusting the estimates.
+The goal is to confirm that optimization finished properly and parameter values look plausible.
 
-- `best log-likelihood`: model score on observed choices (higher is better when
-  comparing fits on the same dataset),
+- `best log-likelihood`: model score on observed choices (higher is better when comparing fits on the same dataset),
 - `best params`: fitted parameter values,
 - `optimizer success/message`: whether SciPy reports successful convergence.
 
@@ -411,19 +338,20 @@ Minimum checks before moving on:
 
 1. best log-likelihood is finite,
 2. optimizer reports successful termination in most runs,
-3. recovered parameters are in plausible ranges (`alpha` in `[0, 1]`,
-   `beta > 0`),
-4. recovered values are at least directionally close to generating values when
+3. recovered values are at least directionally close to generating values when
    trial counts are moderate.
 
 ## Next Steps
 
 - Continue with next tutorial: [Parameter Recovery](parameter-recovery.md).
 
-or move on to [How to fit Bayesian hierarchical model](../how-to/how-to-fit-bayesian-hierarchical-model.md).
+- If you are interested in Bayesian hierarchical model, move on to [How to fit Bayesian hierarchical model](../how-to/how-to-fit-bayesian-hierarchical-model.md).
 
 ## References
 
 - Wilson RC, Collins AGE. (2019). Ten simple rules for the computational
   modeling of behavioral data. *eLife*, 8:e49547.
   <https://doi.org/10.7554/eLife.49547>
+- Sutton RS, Barto AG. (2018). Reinforcement Learning: An Introduction
+(2nd ed.). MIT Press.
+- Daw ND. (2011). Trial-by-trial data analysis using computational models.
