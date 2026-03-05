@@ -3,7 +3,17 @@
 This tutorial gets you from a clean environment to a verified `comp_model`
 installation.
 
-By the end, you will:
+## Why this matters
+
+- Installation problems are cheaper to fix before you start debugging modeling
+  code. The checks here confirm import, simulation runtime, CLI tools,
+  documentation builds, and tests all run in your environment.
+- A minimal simulation smoke-check verifies that your runtime stack works
+  end-to-end.
+- Building docs and running tests confirms you installed the development extras
+  (`.[dev,docs]`) and have a working toolchain.
+
+In this tutorial, you will:
 
 1. install the package,
 2. run a smoke-check simulation,
@@ -74,6 +84,6 @@ mkdocs build --strict
 python -m pytest -q
 ```
 
-## Next Tutorial
+## Next steps
 
 Continue with [First End-to-End Fit](first-end-to-end-fit.md).

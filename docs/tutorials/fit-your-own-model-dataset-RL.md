@@ -2,6 +2,16 @@
 
 This tutorial shows a workflow to fit a model to your own dataset.
 
+## Why this matters
+
+- Many fitting issues come from data-shape assumptions (trial ordering,
+  subject/block identifiers, and action coding). Converting once into the
+  canonical `StudyData` format makes those assumptions explicit.
+- `StudyData` validation catches common problems early (non-unique subject IDs,
+  non-contiguous trial indices, unsorted trials) before you run expensive fits.
+- Once your dataset is represented as `StudyData`, you can use study-level
+  utilities like `fit_study_data(...)` and `fit_study_csv_from_config(...)`.
+
 In this tutorial, you will:
 
 1. convert your data,

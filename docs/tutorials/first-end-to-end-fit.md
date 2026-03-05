@@ -1,17 +1,45 @@
 # Tutorial: End-to-End Simulation and Fit
 
-In this first tutorial, we’ll walk through a complete end-to-end simulation workflow: generating synthetic data and then fitting a computational model using our library.
+This tutorial walks through a complete end-to-end simulation workflow:
+generate synthetic data and then fit a computational model back to that data.
 
-You might be wondering: why start with simulation? Why not jump straight into fitting a model to real data? Real data is more fun to analyze.
+## Why this matters
 
-The reason is simple: before working with real datasets, it’s important to confirm that your model-fitting workflow behaves the way you expect and doesn’t contain implementation bugs. 
-A standard first check is to simulate synthetic behavior from known parameter values, and then fit the same model back to those simulated data (Wilson & Collins, 2019). 
-This end-to-end procedure helps validate the full pipeline—both statistically and programmatically.
+- Before working with real datasets, confirm that your model-fitting workflow
+  behaves the way you expect and does not contain implementation bugs.
+- A standard first check is to simulate synthetic behavior from known parameter
+  values and then fit the same model back to those simulated data (Wilson &
+  Collins, 2019).
+- This end-to-end procedure helps validate the full pipeline, both
+  statistically and programmatically.
 
-We’ll start by choosing a set of parameters, simulate a dataset from those values, and then fit the same model back to that dataset. If everything is working, the fitted model should achieve a good fit and return sensible parameter estimates. Don’t worry if the estimates aren’t perfect yet—at this stage we’re mainly verifying that the full pipeline runs smoothly and produces reasonable results.
+This tutorial uses:
 
-To keep things simple, we’ll use a classic reinforcement-learning example: a two-armed stationary bandit task paired with a basic Q-learning model with a softmax choice rule. 
-This bandit + RL setup is widely used as a “first stop” in computational modeling because it’s intuitive, easy to simulate, and well studied (Sutton & Barto, 2018; Daw, 2011; Wilson & Collins, 2019).
+- task: `StationaryBanditProblem`
+- model: `AsocialStateQValueSoftmaxModel`
+- fitter: `fit_model(...)`
+
+You will choose a set of parameters, simulate a dataset from those values, and
+then fit the same model back to that dataset. If everything is working, the
+fitted model should achieve a good fit and return sensible parameter estimates.
+Do not worry if the estimates are not perfect yet: at this stage, the goal is
+to verify that the full pipeline runs and produces reasonable results.
+
+To keep things simple, this tutorial uses a classic reinforcement-learning
+example: a two-armed stationary bandit task paired with a basic Q-learning
+model with a softmax choice rule. This bandit + RL setup is widely used as a
+"first stop" in computational modeling because it is intuitive, easy to
+simulate, and well studied (Sutton & Barto, 2018; Daw, 2011; Wilson & Collins,
+2019).
+
+In this tutorial, you will:
+
+1. instantiate a task,
+2. instantiate a model,
+3. run a short pilot episode,
+4. fit the pilot dataset,
+5. simulate a larger dataset and refit,
+6. sanity-check that the fit worked.
 
 ## Prerequisites
 
@@ -23,9 +51,11 @@ If you have not installed and verified your environment yet, complete
 
 ## Step 1: Instantiate a task
 
-First, we are going to create a task (environment) you want your model to act in.
-Here, we want a simple stationary two-option bandit task where option 0 gives reward with probability 0.2 and option 1 gives reward with probability 0.8. 
-In `comp_model`, task environments are implemented as Problem classes (`DecisionProblem` interface), and this specific task is implemented by `StationaryBanditProblem`.
+First, create a task (environment) that your model will act in. Here, use a
+simple stationary two-option bandit task where option 0 gives reward with
+probability 0.2 and option 1 gives reward with probability 0.8. In `comp_model`,
+task environments are implemented as Problem classes (the `DecisionProblem`
+interface), and this specific task is implemented by `StationaryBanditProblem`.
 
 To express this in code, use `StationaryBanditProblem` and pass `reward_probabilities=[0.2, 0.8]`.
 The list index is the option ID, and the value is that option's Bernoulli reward probability.
@@ -36,11 +66,11 @@ from comp_model.problems import StationaryBanditProblem
 problem = StationaryBanditProblem(reward_probabilities=[0.2, 0.8])
 ```
 
-### Quick Quiz
+### Quick quiz
 
 Click to reveal the answer.
 
-??? question "You want to increase option 0’s reward probability from 0.2 to 0.5. What should you change in the code?"
+??? question "You want to increase option 0's reward probability from 0.2 to 0.5. What should you change in the code?"
     Change it to: `reward_probabilities = [0.5, 0.8]`.
 
 ??? question "You want to add a third option with reward probability 0.5. What should `reward_probabilities` look like?"
@@ -48,8 +78,9 @@ Click to reveal the answer.
 
 ## Step 2: Instantiate a model
 
-Next, we'll choose a computational model you want to simulate.
-Here, we want a standard reinforcement learning (RL) model that updates action values from rewards and chooses probabilistically based on those values. 
+Next, choose a computational model you want to simulate. Here, use a standard
+reinforcement learning (RL) model that updates action values from rewards and
+chooses probabilistically based on those values.
 In `comp_model`, this is `AsocialStateQValueSoftmaxModel`.
 
 To express this in code, set model parameters explicitly:
@@ -66,7 +97,7 @@ generating_model = AsocialStateQValueSoftmaxModel(alpha=0.2, beta=3.0, initial_v
 
 ### Quick quiz
 
-Click `Show answer` to reveal the answer, then click `Hide answer` to collapse it.
+Click to reveal the answer.
 
 ??? question "What happens if a given alpha is negative?"
     `AsocialStateQValueSoftmaxModel(alpha=-0.2, beta=3.0, initial_value=0.0)` raises `ValueError`: alpha must be in [0, 1].
@@ -91,9 +122,11 @@ except ValueError as exc:
 
 ## Step 3: Run a pilot episode
 
-Now that we have both the task and the computational model, we’re ready to generate some synthetic choice data. 
-For this first pilot check, it helps to keep the simulation small (for example, 20 trials).
-you can simulate behavior with:
+Now that you have both the task and the computational model, you are ready to
+generate some synthetic choice data. For this first pilot check, keep the
+simulation small (for example, 20 trials).
+
+You can simulate behavior with:
 
 `run_episode(problem, model, config)`
 
@@ -103,7 +136,8 @@ where:
 - `model` is the computational model you want to simulate,
 - `config` sets trial count and RNG seed for reproducibility.
 
-To create the configuration object, instantiate SimulationConfig and specify the seed and number of trials.
+To create the configuration object, instantiate `SimulationConfig` and specify
+the seed and number of trials.
 
 ???+ note "What does episode mean?"
     An episode is one full simulation run across consecutive trials.
@@ -121,31 +155,31 @@ pilot_trace = run_episode(
 ```
 `pilot_trace` contains 20 trials. Each trial consists of four phases:
 
-`observation` (environment info) → `decision` (choice) → `outcome` (feedback) → `update` (model learning step).
-
+`observation` (environment info) -> `decision` (choice) -> `outcome` (feedback)
+-> `update` (model learning step).
 
 This is because `run_episode` generates each trial in the following order:
 
 1. `observation`: The model receives information from the environment (e.g., a state).
 2. `decision`: The model uses that information and makes a choice based on its internal variables.
-3. `outcome`: The environment receives the model’s choice and returns an outcome.
+3. `outcome`: The environment receives the model's choice and returns an outcome.
 4. `update`: The model receives the outcome and updates its internal variables.
 
 In this tutorial we use a stationary bandit task, so the `observation` phase does not contain any additional information.
 
 ??? note "How to closely look at trial information"
-    To inspect the simulation trial by trial, use the trial_by method.
-    For example, let’s look at the first trial:
+    To inspect the simulation trial by trial, use the `trial_by` method.
+    For example, look at the first trial:
     ```python
     first_trial = pilot_trace.trial_by(0)  # Indexing starts at 0.
     print(first_trial)
     ```
 
-    You’ll see a list of `SimulationEvent` objects.
+    You will see a list of `SimulationEvent` objects.
     Each event has a `phase` field that tells you which phase it belongs to,
     and a `payload` field whose contents depend on the phase.
     For example, the `outcome` phase includes outcome information in its payload,
-    and the `decision` phase includes the model’s choice probabilities.
+    and the `decision` phase includes the model's choice probabilities.
 
 ### Quick quiz
 
@@ -256,8 +290,8 @@ Click to reveal the answer.
 
 ## Step 5: Increase trials and simulate a fitting dataset
 
-Now increase the trial count so estimation has enough signal. 
-Here we simulate 120 trials with a fresh model instance.
+Now increase the trial count so estimation has enough signal. Here, simulate
+120 trials with a fresh model instance.
 
 ```python
 trace = run_episode(
@@ -317,7 +351,7 @@ Click to reveal the answer.
     },
     ```
 
-## Step 7: Check that the fit Worked
+## Step 6: Check that the fit worked
 
 After fitting, do a quick quality check before trusting the estimates.
 The goal is to confirm that optimization finished properly and parameter values look plausible.
@@ -341,11 +375,11 @@ Minimum checks before moving on:
 3. recovered values are at least directionally close to generating values when
    trial counts are moderate.
 
-## Next Steps
+## Next steps
 
 - Continue with next tutorial: [Parameter Recovery](parameter-recovery.md).
-
-- If you are interested in Bayesian hierarchical model, move on to [How to fit Bayesian hierarchical model](../how-to/how-to-fit-bayesian-hierarchical-model.md).
+- If you are interested in Bayesian hierarchical model, move on to
+  [How to fit Bayesian hierarchical model](../how-to/how-to-fit-bayesian-hierarchical-model.md).
 
 ## References
 

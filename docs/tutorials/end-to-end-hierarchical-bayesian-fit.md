@@ -1,9 +1,10 @@
 # Tutorial: End-to-End Simulation and Hierarchical Bayesian Fit
 
-In this tutorial, you will run a full simulation-to-inference workflow using
-within-subject hierarchical Bayesian estimation (Stan-backed).
+This tutorial runs a full simulation-to-inference workflow using within-subject
+hierarchical Bayesian estimation (Stan-backed). This is an advanced workflow;
+if you want a lighter starting point, skip to [Parameter Recovery](parameter-recovery.md).
 
-Why this version matters:
+## Why this matters
 
 - You still validate the full pipeline with synthetic data.
 - You move from point-estimate fitting to posterior-based fitting.
@@ -14,6 +15,14 @@ This tutorial uses:
 - task: `StationaryBanditProblem`
 - model family: `AsocialStateQValueSoftmaxModel`
 - estimator: `within_subject_hierarchical_stan_nuts`
+
+In this tutorial, you will:
+
+1. define a task and model family,
+2. simulate a multi-subject, multi-block study dataset,
+3. define a hierarchical Stan configuration (NUTS),
+4. fit the hierarchical posterior for the whole study,
+5. inspect posterior output and compare to generating values.
 
 ## Prerequisites
 
@@ -44,8 +53,7 @@ If you have not installed and verified your environment yet, complete
 
 ## Step 1: Define task and model family
 
-We will use a simple two-armed stationary bandit and an asocial state-indexed
-Q-learning model with softmax choice.
+We will use a simple two-armed stationary bandit and an asocial state-indexed Q-learning model with softmax choice.
 
 ```python
 from comp_model.models import AsocialStateQValueSoftmaxModel
@@ -67,8 +75,6 @@ Now simulate synthetic data for multiple subjects and blocks.
 This gives us a realistic `StudyData` object for hierarchical fitting.
 
 ```python
-from __future__ import annotations
-
 from comp_model.generators import (
     AsocialBlockSpec,
     simulate_asocial_study_dataset_with_sampled_subject_params,
@@ -201,64 +207,7 @@ What to check:
 2. diagnostics look reasonable (for example, acceptance rate not degenerate),
 3. estimated values are directionally close to generating values.
 
-## Step 6: Export result artifacts
-
-Write summary and draw-level CSVs for downstream analysis.
-
-```python
-from pathlib import Path
-
-from comp_model.inference import (
-    write_hierarchical_mcmc_study_draw_records_csv,
-    write_hierarchical_mcmc_study_summary_csv,
-)
-
-out_dir = Path("fit_out/hierarchical_end_to_end")
-out_dir.mkdir(parents=True, exist_ok=True)
-
-summary_path = write_hierarchical_mcmc_study_summary_csv(
-    study_result,
-    out_dir / "study_summary.csv",
-)
-draws_path = write_hierarchical_mcmc_study_draw_records_csv(
-    study_result,
-    out_dir / "study_draws.csv",
-)
-
-print("summary:", summary_path)
-print("draws:", draws_path)
-```
-
-## Step 7: Optional MAP variant (faster, no posterior sample)
-
-If you want a fast optimization-based variant, switch estimator type:
-
-```python
-map_config = {
-    "model": hierarchical_config["model"],
-    "estimator": {
-        "type": "within_subject_hierarchical_stan_map",
-        "parameter_names": ["alpha", "beta"],
-        "transforms": {
-            "alpha": "unit_interval_logit",
-            "beta": "positive_log",
-        },
-        "mu_prior_mean": {"alpha": 0.0, "beta": 1.0},
-        "mu_prior_std": {"alpha": 1.5, "beta": 1.5},
-        "log_sigma_prior_mean": -1.0,
-        "log_sigma_prior_std": 1.0,
-        "method": "lbfgs",
-        "max_iterations": 2000,
-        "random_seed": 42,
-        "refresh": 50,
-    },
-}
-
-map_result = sample_study_hierarchical_posterior_from_config(study, config=map_config)
-print("MAP-style total log posterior:", map_result.total_map_log_posterior)
-```
-
-## Next Steps
+## Next steps
 
 - Continue with [Parameter Recovery](parameter-recovery.md).
 - For a focused API guide, see

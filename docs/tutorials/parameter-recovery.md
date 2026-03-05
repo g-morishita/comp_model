@@ -1,12 +1,15 @@
 # Tutorial: Parameter Recovery (Python Workflow)
 
-In this tutorial, we’ll walk through a parameter recovery analysis: a practical check of whether your model-fitting procedure can recover known parameter values across many simulated datasets.
+This tutorial walks through a parameter recovery analysis: a practical check
+of whether your model-fitting procedure can recover known parameter values
+across many simulated datasets.
 
-Why do this? Because parameter recovery helps you understand identifiability—which parameters (and which ranges) can be reliably estimated from the kind of data your task produces, and where the model starts to struggle (Wilson & Collins 2019).
+## Why this matters
 
-Parameter recovery asks a simple question:
-
-"If the true parameter value is X, and we fit the model to data generated with X, do we get back something close to X—and over what range does this hold?"
+- Parameter recovery helps you understand identifiability: which parameters
+  (and which ranges) can be reliably estimated from the kind of data your task
+  produces, and where the model starts to struggle (Wilson & Collins 2019).
+- It asks: "If the true parameter value is X, and we fit the model to data generated with X, do we get back something close to X, and over what range does this hold?"
 
 In this tutorial, you will:
 
@@ -242,11 +245,11 @@ Typical levers:
 ??? question "If you only care about a narrower alpha regime, where do you encode that?"
     In `true_parameter_distributions[\"alpha\"]` by tightening `lower` and `upper`.
 
-## Next Tutorial
+## Next steps
 
 Continue with [Model Recovery](model-recovery.md).
 
-## Reference
+## References
 
 - Wilson RC, Collins AGE. (2019). Ten simple rules for the computational
   modeling of behavioral data. *eLife*, 8:e49547.
