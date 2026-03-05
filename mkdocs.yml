@@ -23,6 +23,7 @@ nav:
       - Overview: tutorials/index.md
       - Install and Verify: tutorials/install-and-verify.md
       - First End-to-End Fit: tutorials/first-end-to-end-fit.md
+      - End-to-End Hierarchical Bayesian Fit: tutorials/end-to-end-hierarchical-bayesian-fit.md
       - Parameter Recovery: tutorials/parameter-recovery.md
       - Model Recovery: tutorials/model-recovery.md
       - Fit Your Own Dataset: tutorials/fit-your-own-model-dataset-RL.md
