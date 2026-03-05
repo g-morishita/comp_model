@@ -67,7 +67,7 @@ StanPosteriorConfig = {
 }
 
 HierarchicalStanNUTSEstimator = {
-    "type": "within_subject_hierarchical_stan_nuts",
+    "type": "within_subject_hierarchical_stan_nuts" | "within_subject_pooled_stan_nuts",
     "parameter_names": list[str],
     "transforms": dict[str, str | {"kind": str}],  # optional
     "initial_group_location": dict[str, float],     # optional
@@ -91,7 +91,7 @@ HierarchicalStanNUTSEstimator = {
 }
 
 HierarchicalStanMapEstimator = {
-    "type": "within_subject_hierarchical_stan_map",
+    "type": "within_subject_hierarchical_stan_map" | "within_subject_pooled_stan_map",
     "parameter_names": list[str],
     "transforms": dict[str, str | {"kind": str}],  # optional
     "initial_group_location": dict[str, float],     # optional
@@ -169,8 +169,9 @@ PriorDistribution = (
 ```
 
 Note: `PriorConfig` is retained for legacy parser compatibility. Current
-Stan-based Bayesian estimators (`within_subject_hierarchical_stan_map` and
-`within_subject_hierarchical_stan_nuts`) encode priors through estimator fields
+Stan-based Bayesian estimators (`within_subject_hierarchical_stan_map`,
+`within_subject_hierarchical_stan_nuts`, `within_subject_pooled_stan_map`, and
+`within_subject_pooled_stan_nuts`) encode priors through estimator fields
 (`mu_prior_*`, `log_sigma_prior_*`) instead of `prior`.
 
 ## Recovery Configs
@@ -186,13 +187,42 @@ ParameterRecoveryConfig = {
     "estimator": dict[str, Any],
     "prior": PriorConfig,        # optional
     "likelihood": LikelihoodConfig,  # optional
+    # exactly one of:
     "true_parameter_sets": list[dict[str, float]],
+    "true_parameter_distributions": dict[str, PriorDistribution],
+    "sampling": ParameterSamplingConfig,
+    "n_parameter_sets": int,  # required when true_parameter_distributions is used
     "n_trials": int,
     "seed": int,                 # optional
 }
+
+ParameterSamplingConfig = {
+    "mode": "independent" | "hierarchical",  # "fixed" is not supported
+    "space": "param" | "z",  # optional, default "param"
+    "n_parameter_sets": int,  # optional fallback to top-level n_parameter_sets
+    # independent mode:
+    "distributions": dict[str, PriorDistribution],
+    # hierarchical mode:
+    "population": dict[str, PriorDistribution],
+    "individual_sd": dict[str, float],
+    # optional z-space and clipping controls:
+    "transforms": dict[str, "identity" | "unit_interval_logit" | "positive_log"],
+    "bounds": dict[str, [float | None, float | None]],
+    "clip_to_bounds": bool,
+    # optional shared+delta condition-wise overrides:
+    "by_condition": dict[str, {
+        "distributions": dict[str, PriorDistribution],  # mode="independent"
+        "population": dict[str, PriorDistribution],     # mode="hierarchical"
+        "individual_sd": dict[str, float],              # mode="hierarchical"
+    }],
+    "conditions": list[str],      # required when by_condition is used
+    "baseline_condition": str,    # required when by_condition is used
+}
 ```
 
-Note: parameter recovery currently requires `simulation.level == "block"`.
+Note: parameter recovery supports `simulation.level == "block"` and
+`simulation.level == "subject"`. For subject-level MLE with one shared
+parameter set across blocks, set `block_fit_strategy: "joint"`.
 
 ### Model Recovery
 
