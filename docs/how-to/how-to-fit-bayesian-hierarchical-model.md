@@ -1,7 +1,6 @@
 # How-to: Fit a Bayesian Hierarchical Model (Script API)
 
-Use this guide to fit Stan-backed Bayesian hierarchical models from a Python
-script (no `comp-model-*` CLI usage).
+Use this guide to fit Stan-backed Bayesian hierarchical models from a Python script.
 
 This workflow uses the within-subject hierarchical estimators:
 
