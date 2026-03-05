@@ -84,6 +84,24 @@ def _hierarchical_stan_map_config() -> dict:
     }
 
 
+def _pooled_stan_nuts_config() -> dict:
+    """Build one minimal pooled Stan NUTS config."""
+
+    cfg = _hierarchical_stan_config()
+    cfg["estimator"] = dict(cfg["estimator"])
+    cfg["estimator"]["type"] = "within_subject_pooled_stan_nuts"
+    return cfg
+
+
+def _pooled_stan_map_config() -> dict:
+    """Build one minimal pooled Stan MAP config."""
+
+    cfg = _hierarchical_stan_map_config()
+    cfg["estimator"] = dict(cfg["estimator"])
+    cfg["estimator"]["type"] = "within_subject_pooled_stan_map"
+    return cfg
+
+
 def test_hierarchical_stan_estimator_spec_from_config_parses_fields() -> None:
     """Hierarchical Stan parser should construct a full spec."""
 
@@ -101,6 +119,18 @@ def test_hierarchical_stan_estimator_spec_from_config_parses_fields() -> None:
     assert spec.adapt_delta == pytest.approx(0.9)
     assert spec.max_treedepth == 10
     assert spec.random_seed == 7
+
+
+def test_pooled_stan_estimator_spec_from_config_parses_fields() -> None:
+    """Pooled Stan parser should construct a full spec."""
+
+    nuts_spec = hierarchical_stan_estimator_spec_from_config(_pooled_stan_nuts_config()["estimator"])
+    assert nuts_spec.estimator_type == "within_subject_pooled_stan_nuts"
+    assert nuts_spec.parameter_names == ("alpha",)
+
+    map_spec = hierarchical_stan_estimator_spec_from_config(_pooled_stan_map_config()["estimator"])
+    assert map_spec.estimator_type == "within_subject_pooled_stan_map"
+    assert map_spec.parameter_names == ("alpha", "beta")
 
 
 def test_hierarchical_stan_map_estimator_spec_from_config_parses_fields() -> None:
@@ -223,6 +253,84 @@ def test_stan_map_subject_study_from_config_dispatches_to_optimize() -> None:
         monkeypatch.undo()
 
 
+def test_sample_pooled_stan_subject_study_from_config_dispatches() -> None:
+    """Pooled Stan config runner should route pooled estimator type."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    sentinel_subject = object()
+    sentinel_study = object()
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "sample_subject_pooled_posterior_stan",
+        lambda *args, **kwargs: sentinel_subject,
+    )
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "sample_study_pooled_posterior_stan",
+        lambda *args, **kwargs: sentinel_study,
+    )
+    try:
+        subject_result = sample_subject_hierarchical_posterior_from_config(
+            subject,
+            config=_pooled_stan_nuts_config(),
+        )
+        assert subject_result is sentinel_subject
+
+        study_result = sample_study_hierarchical_posterior_from_config(
+            study,
+            config=_pooled_stan_nuts_config(),
+        )
+        assert study_result is sentinel_study
+    finally:
+        monkeypatch.undo()
+
+
+def test_optimize_pooled_stan_subject_study_from_config_dispatches() -> None:
+    """Pooled Stan MAP config runner should route pooled optimizer type."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    sentinel_subject = object()
+    sentinel_study = object()
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "optimize_subject_pooled_posterior_stan",
+        lambda *args, **kwargs: sentinel_subject,
+    )
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "optimize_study_pooled_posterior_stan",
+        lambda *args, **kwargs: sentinel_study,
+    )
+    try:
+        subject_result = sample_subject_hierarchical_posterior_from_config(
+            subject,
+            config=_pooled_stan_map_config(),
+        )
+        assert subject_result is sentinel_subject
+
+        study_result = sample_study_hierarchical_posterior_from_config(
+            study,
+            config=_pooled_stan_map_config(),
+        )
+        assert study_result is sentinel_study
+    finally:
+        monkeypatch.undo()
+
+
 def test_fit_auto_dispatches_hierarchical_stan_for_subject_and_study() -> None:
     """Auto-dispatch should route hierarchical Stan estimator type."""
 
@@ -260,6 +368,45 @@ def test_fit_auto_dispatches_hierarchical_stan_for_subject_and_study() -> None:
         study_result = fit_study_auto_from_config(
             study,
             config=_hierarchical_stan_config(),
+        )
+        assert study_result is sentinel_study
+    finally:
+        monkeypatch.undo()
+
+
+def test_fit_auto_dispatches_pooled_stan_for_subject_and_study() -> None:
+    """Auto-dispatch should route pooled Stan estimator types."""
+
+    block = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    sentinel_subject = object()
+    sentinel_study = object()
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "sample_subject_pooled_posterior_stan",
+        lambda *args, **kwargs: sentinel_subject,
+    )
+    monkeypatch.setattr(
+        mcmc_config_module,
+        "sample_study_pooled_posterior_stan",
+        lambda *args, **kwargs: sentinel_study,
+    )
+    try:
+        subject_result = fit_subject_auto_from_config(
+            subject,
+            config=_pooled_stan_nuts_config(),
+        )
+        assert subject_result is sentinel_subject
+
+        study_result = fit_study_auto_from_config(
+            study,
+            config=_pooled_stan_nuts_config(),
         )
         assert study_result is sentinel_study
     finally:

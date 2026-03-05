@@ -361,6 +361,23 @@ def load_social_stan_code(component_id: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def load_social_pooled_stan_code(component_id: str) -> str:
+    """Load one pooled-across-blocks social-model Stan source by component ID."""
+
+    if component_id not in _SOCIAL_STAN_SPECS:
+        raise ValueError(
+            f"unsupported social component_id {component_id!r}; "
+            f"supported {sorted(_SOCIAL_STAN_SPECS)}"
+        )
+
+    path = _STAN_WITHIN_SUBJECT_DIR / f"{component_id}_pooled.stan"
+    if not path.exists():
+        raise RuntimeError(
+            f"pooled Stan program file is missing for component {component_id!r}: {path}"
+        )
+    return path.read_text(encoding="utf-8")
+
+
 
 def social_supported_component_ids() -> tuple[str, ...]:
     """Return social model component IDs supported by Stan hierarchical NUTS."""
@@ -377,6 +394,17 @@ def social_cache_tag(component_id: str) -> str:
             f"supported {sorted(_SOCIAL_STAN_SPECS)}"
         )
     return f"hierarchical_{component_id}"
+
+
+def social_pooled_cache_tag(component_id: str) -> str:
+    """Return compile-cache tag for one pooled social model component."""
+
+    if component_id not in _SOCIAL_STAN_SPECS:
+        raise ValueError(
+            f"unsupported social component_id {component_id!r}; "
+            f"supported {sorted(_SOCIAL_STAN_SPECS)}"
+        )
+    return f"pooled_{component_id}"
 
 
 def build_social_subject_inputs(
@@ -804,7 +832,9 @@ def _inverse_transform(value: float, kind: str) -> float:
 
 __all__ = [
     "build_social_subject_inputs",
+    "load_social_pooled_stan_code",
     "load_social_stan_code",
     "social_cache_tag",
+    "social_pooled_cache_tag",
     "social_supported_component_ids",
 ]

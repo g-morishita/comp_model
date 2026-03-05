@@ -9,7 +9,9 @@ import comp_model.inference.hierarchical_stan as hierarchical_stan_module
 from comp_model.core.data import BlockData, SubjectData, TrialDecision
 from comp_model.inference.hierarchical_stan import (
     optimize_subject_hierarchical_posterior_stan,
+    optimize_subject_pooled_posterior_stan,
     sample_subject_hierarchical_posterior_stan,
+    sample_subject_pooled_posterior_stan,
 )
 from comp_model.inference.hierarchical_stan_social import (
     load_social_stan_code,
@@ -184,6 +186,82 @@ def test_optimize_subject_hierarchical_posterior_stan_decodes_single_mode(
     assert len(result.draws) == 1
     assert result.draws[0].candidate.block_params[0]["alpha"] == pytest.approx(0.33)
     assert result.diagnostics.method == "within_subject_hierarchical_stan_map"
+
+
+def test_sample_subject_pooled_posterior_stan_uses_pooled_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pooled Stan helper should use pooled cache tag and diagnostics label."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0)),
+    )
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
+    fake_fit = _fake_fit(n_draws=6, n_blocks=2, n_params=1, block_param_value=0.44)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
+
+    result = sample_subject_pooled_posterior_stan(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        n_samples=3,
+        n_warmup=2,
+        thin=1,
+        n_chains=2,
+        random_seed=12,
+    )
+
+    assert result.subject_id == "s1"
+    assert result.diagnostics.method == "within_subject_pooled_stan_nuts"
+    assert captured["cache_tag"] == "pooled_asocial_state_q_value_softmax"
+    assert captured["init_parameter_names"] == ("group_loc_z",)
+    assert len(result.draws[0].candidate.block_params) == 2
+
+
+def test_optimize_subject_pooled_posterior_stan_uses_pooled_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pooled Stan MAP helper should use pooled cache tag and diagnostics label."""
+
+    block_1 = BlockData(block_id="b1", trials=(_trial(0, 1, 1.0),))
+    block_2 = BlockData(block_id="b2", trials=(_trial(0, 0, 0.0),))
+    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
+    fake_fit = _fake_fit(n_draws=1, n_blocks=2, n_params=1, block_param_value=0.31)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_optimize", _fake_run)
+
+    result = optimize_subject_pooled_posterior_stan(
+        subject,
+        model_component_id="asocial_state_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        method="lbfgs",
+        max_iterations=50,
+        random_seed=13,
+    )
+
+    assert result.subject_id == "s1"
+    assert result.diagnostics.method == "within_subject_pooled_stan_map"
+    assert captured["cache_tag"] == "pooled_asocial_state_q_value_softmax"
+    assert captured["init_parameter_names"] == ("group_loc_z",)
+    assert len(result.draws[0].candidate.block_params) == 2
 
 
 @pytest.mark.parametrize(

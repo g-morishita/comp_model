@@ -61,8 +61,12 @@ from .hierarchical_mcmc import (
     HierarchicalSubjectPosteriorResult,
 )
 from .hierarchical_stan import (
+    optimize_study_pooled_posterior_stan,
+    optimize_subject_pooled_posterior_stan,
     sample_study_hierarchical_posterior_stan,
+    sample_study_pooled_posterior_stan,
     sample_subject_hierarchical_posterior_stan,
+    sample_subject_pooled_posterior_stan,
 )
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
@@ -266,9 +270,13 @@ __all__ = [
     "sample_study_hierarchical_posterior_from_config",
     "fit_study_data",
     "fit_study_auto_from_config",
+    "optimize_study_pooled_posterior_stan",
     "sample_study_hierarchical_posterior_stan",
+    "sample_study_pooled_posterior_stan",
     "fit_study_from_config",
+    "optimize_subject_pooled_posterior_stan",
     "sample_subject_hierarchical_posterior_stan",
+    "sample_subject_pooled_posterior_stan",
     "sample_subject_hierarchical_posterior_from_config",
     "fit_subject_auto_from_config",
     "fit_subject_data",

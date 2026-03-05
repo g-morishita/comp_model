@@ -5,6 +5,8 @@ is Stan-backed via:
 
 - ``within_subject_hierarchical_stan_nuts`` (posterior sampling)
 - ``within_subject_hierarchical_stan_map`` (posterior-mode optimization)
+- ``within_subject_pooled_stan_nuts`` (shared-parameter posterior sampling)
+- ``within_subject_pooled_stan_map`` (shared-parameter posterior-mode optimization)
 """
 
 from __future__ import annotations
@@ -24,9 +26,13 @@ from .hierarchical_mcmc import (
 )
 from .hierarchical_stan import (
     optimize_study_hierarchical_posterior_stan,
+    optimize_study_pooled_posterior_stan,
     optimize_subject_hierarchical_posterior_stan,
+    optimize_subject_pooled_posterior_stan,
     sample_study_hierarchical_posterior_stan,
+    sample_study_pooled_posterior_stan,
     sample_subject_hierarchical_posterior_stan,
+    sample_subject_pooled_posterior_stan,
 )
 
 
@@ -74,7 +80,7 @@ def hierarchical_stan_estimator_spec_from_config(
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
     estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
-    if estimator_type == "within_subject_hierarchical_stan_nuts":
+    if estimator_type in {"within_subject_hierarchical_stan_nuts", "within_subject_pooled_stan_nuts"}:
         validate_allowed_keys(
             estimator,
             field_name="estimator",
@@ -102,7 +108,7 @@ def hierarchical_stan_estimator_spec_from_config(
                 "random_seed",
             ),
         )
-    elif estimator_type == "within_subject_hierarchical_stan_map":
+    elif estimator_type in {"within_subject_hierarchical_stan_map", "within_subject_pooled_stan_map"}:
         validate_allowed_keys(
             estimator,
             field_name="estimator",
@@ -135,7 +141,8 @@ def hierarchical_stan_estimator_spec_from_config(
     else:
         raise ValueError(
             "estimator.type must be one of "
-            "{'within_subject_hierarchical_stan_nuts', 'within_subject_hierarchical_stan_map'}"
+            "{'within_subject_hierarchical_stan_nuts', 'within_subject_hierarchical_stan_map', "
+            "'within_subject_pooled_stan_nuts', 'within_subject_pooled_stan_map'}"
         )
 
     raw_names = _require_sequence(estimator.get("parameter_names"), field_name="estimator.parameter_names")
@@ -158,7 +165,7 @@ def hierarchical_stan_estimator_spec_from_config(
     adapt_delta = float(estimator.get("adapt_delta", 0.9))
     max_treedepth = int(estimator.get("max_treedepth", 12))
 
-    if estimator_type == "within_subject_hierarchical_stan_nuts":
+    if estimator_type in {"within_subject_hierarchical_stan_nuts", "within_subject_pooled_stan_nuts"}:
         if n_samples <= 0:
             raise ValueError("estimator.n_samples must be > 0")
         if n_warmup < 0:
@@ -365,6 +372,34 @@ def sample_subject_hierarchical_posterior_from_config(
             tol_param=stan_spec.tol_param,
             history_size=stan_spec.history_size,
         )
+    if stan_spec.estimator_type == "within_subject_pooled_stan_map":
+        return optimize_subject_pooled_posterior_stan(
+            subject,
+            **common_kwargs,
+            method=stan_spec.method,
+            max_iterations=stan_spec.max_iterations,
+            jacobian=stan_spec.jacobian,
+            init_alpha=stan_spec.init_alpha,
+            tol_obj=stan_spec.tol_obj,
+            tol_rel_obj=stan_spec.tol_rel_obj,
+            tol_grad=stan_spec.tol_grad,
+            tol_rel_grad=stan_spec.tol_rel_grad,
+            tol_param=stan_spec.tol_param,
+            history_size=stan_spec.history_size,
+        )
+    if stan_spec.estimator_type == "within_subject_pooled_stan_nuts":
+        return sample_subject_pooled_posterior_stan(
+            subject,
+            **common_kwargs,
+            n_samples=stan_spec.n_samples,
+            n_warmup=stan_spec.n_warmup,
+            thin=stan_spec.thin,
+            n_chains=stan_spec.n_chains,
+            parallel_chains=stan_spec.parallel_chains,
+            adapt_delta=stan_spec.adapt_delta,
+            max_treedepth=stan_spec.max_treedepth,
+            step_size=stan_spec.step_size,
+        )
 
     return sample_subject_hierarchical_posterior_stan(
         subject,
@@ -433,6 +468,34 @@ def sample_study_hierarchical_posterior_from_config(
             tol_rel_grad=stan_spec.tol_rel_grad,
             tol_param=stan_spec.tol_param,
             history_size=stan_spec.history_size,
+        )
+    if stan_spec.estimator_type == "within_subject_pooled_stan_map":
+        return optimize_study_pooled_posterior_stan(
+            study,
+            **common_kwargs,
+            method=stan_spec.method,
+            max_iterations=stan_spec.max_iterations,
+            jacobian=stan_spec.jacobian,
+            init_alpha=stan_spec.init_alpha,
+            tol_obj=stan_spec.tol_obj,
+            tol_rel_obj=stan_spec.tol_rel_obj,
+            tol_grad=stan_spec.tol_grad,
+            tol_rel_grad=stan_spec.tol_rel_grad,
+            tol_param=stan_spec.tol_param,
+            history_size=stan_spec.history_size,
+        )
+    if stan_spec.estimator_type == "within_subject_pooled_stan_nuts":
+        return sample_study_pooled_posterior_stan(
+            study,
+            **common_kwargs,
+            n_samples=stan_spec.n_samples,
+            n_warmup=stan_spec.n_warmup,
+            thin=stan_spec.thin,
+            n_chains=stan_spec.n_chains,
+            parallel_chains=stan_spec.parallel_chains,
+            adapt_delta=stan_spec.adapt_delta,
+            max_treedepth=stan_spec.max_treedepth,
+            step_size=stan_spec.step_size,
         )
 
     return sample_study_hierarchical_posterior_stan(

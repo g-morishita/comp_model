@@ -49,8 +49,10 @@ from .hierarchical_mcmc import (
 )
 from .hierarchical_stan_social import (
     build_social_subject_inputs,
+    load_social_pooled_stan_code,
     load_social_stan_code,
     social_cache_tag,
+    social_pooled_cache_tag,
     social_supported_component_ids,
 )
 from .mcmc import MCMCDiagnostics
@@ -99,6 +101,7 @@ def _load_stan_source(filename: str) -> str:
 
 
 _ASOCIAL_STAN_CODE = _load_stan_source("asocial_state_q_value_softmax.stan")
+_ASOCIAL_POOLED_STAN_CODE = _load_stan_source("asocial_state_q_value_softmax_pooled.stan")
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +205,7 @@ def sample_subject_hierarchical_posterior_stan(
     step_size: float | None = None,
     random_seed: int | None = None,
     refresh: int = 0,
+    pooled_across_blocks: bool = False,
 ) -> HierarchicalSubjectPosteriorResult:
     """Sample within-subject hierarchical posterior using Stan NUTS.
 
@@ -260,6 +264,9 @@ def sample_subject_hierarchical_posterior_stan(
         Optional RNG seed.
     refresh : int, optional
         CmdStan progress refresh interval.
+    pooled_across_blocks : bool, optional
+        When ``True``, fit one shared parameter set across all blocks of the
+        subject while preserving per-block reset dynamics.
 
     Returns
     -------
@@ -295,12 +302,19 @@ def sample_subject_hierarchical_posterior_stan(
         mu_prior_std=mu_prior_std,
         log_sigma_prior_mean=log_sigma_prior_mean,
         log_sigma_prior_std=log_sigma_prior_std,
+        pooled_across_blocks=bool(pooled_across_blocks),
     )
 
+    init_parameter_names = ("group_loc_z",) if pooled_across_blocks else (
+        "group_loc_z",
+        "group_log_scale",
+        "block_z",
+    )
     fit = _run_stan_hierarchical_nuts(
         stan_code=stan_code,
         cache_tag=cache_tag,
         stan_data=built.stan_data,
+        init_parameter_names=init_parameter_names,
         n_samples=int(n_samples),
         n_warmup=int(n_warmup),
         thin=int(thin),
@@ -322,6 +336,11 @@ def sample_subject_hierarchical_posterior_stan(
         thin=int(thin),
         n_chains=int(n_chains),
         random_seed=random_seed,
+        method_name=(
+            "within_subject_pooled_stan_nuts"
+            if pooled_across_blocks
+            else "within_subject_hierarchical_stan_nuts"
+        ),
     )
     return HierarchicalSubjectPosteriorResult(
         subject_id=result.subject_id,
@@ -357,6 +376,7 @@ def sample_study_hierarchical_posterior_stan(
     step_size: float | None = None,
     random_seed: int | None = None,
     refresh: int = 0,
+    pooled_across_blocks: bool = False,
 ) -> HierarchicalStudyPosteriorResult:
     """Sample within-subject hierarchical posterior for all subjects with Stan."""
 
@@ -391,6 +411,7 @@ def sample_study_hierarchical_posterior_stan(
                 step_size=step_size,
                 random_seed=None if random_seed is None else int(random_seed) + (index * 1000),
                 refresh=refresh,
+                pooled_across_blocks=pooled_across_blocks,
             )
         )
 
@@ -424,6 +445,7 @@ def optimize_subject_hierarchical_posterior_stan(
     history_size: int | None = None,
     random_seed: int | None = None,
     refresh: int = 0,
+    pooled_across_blocks: bool = False,
 ) -> HierarchicalSubjectPosteriorResult:
     """Compute one within-subject hierarchical posterior mode with Stan.
 
@@ -458,12 +480,19 @@ def optimize_subject_hierarchical_posterior_stan(
         mu_prior_std=mu_prior_std,
         log_sigma_prior_mean=log_sigma_prior_mean,
         log_sigma_prior_std=log_sigma_prior_std,
+        pooled_across_blocks=bool(pooled_across_blocks),
     )
 
+    init_parameter_names = ("group_loc_z",) if pooled_across_blocks else (
+        "group_loc_z",
+        "group_log_scale",
+        "block_z",
+    )
     fit = _run_stan_hierarchical_optimize(
         stan_code=stan_code,
         cache_tag=cache_tag,
         stan_data=built.stan_data,
+        init_parameter_names=init_parameter_names,
         method=method_name,
         max_iterations=int(max_iterations),
         jacobian=bool(jacobian),
@@ -483,6 +512,11 @@ def optimize_subject_hierarchical_posterior_stan(
         parameter_names=built.parameter_names,
         n_blocks=built.n_blocks,
         random_seed=random_seed,
+        method_name=(
+            "within_subject_pooled_stan_map"
+            if pooled_across_blocks
+            else "within_subject_hierarchical_stan_map"
+        ),
     )
     return HierarchicalSubjectPosteriorResult(
         subject_id=result.subject_id,
@@ -520,6 +554,7 @@ def optimize_study_hierarchical_posterior_stan(
     history_size: int | None = None,
     random_seed: int | None = None,
     refresh: int = 0,
+    pooled_across_blocks: bool = False,
 ) -> HierarchicalStudyPosteriorResult:
     """Compute within-subject hierarchical posterior modes for all subjects."""
 
@@ -556,10 +591,63 @@ def optimize_study_hierarchical_posterior_stan(
                 history_size=history_size,
                 random_seed=None if random_seed is None else int(random_seed) + (index * 1000),
                 refresh=refresh,
+                pooled_across_blocks=pooled_across_blocks,
             )
         )
 
     return HierarchicalStudyPosteriorResult(subject_results=tuple(subject_results))
+
+
+def sample_subject_pooled_posterior_stan(
+    subject: SubjectData,
+    **kwargs: Any,
+) -> HierarchicalSubjectPosteriorResult:
+    """Sample one shared parameter set across subject blocks with Stan NUTS."""
+
+    return sample_subject_hierarchical_posterior_stan(
+        subject,
+        pooled_across_blocks=True,
+        **kwargs,
+    )
+
+
+def sample_study_pooled_posterior_stan(
+    study: StudyData,
+    **kwargs: Any,
+) -> HierarchicalStudyPosteriorResult:
+    """Sample shared-within-subject pooled parameters for all study subjects."""
+
+    return sample_study_hierarchical_posterior_stan(
+        study,
+        pooled_across_blocks=True,
+        **kwargs,
+    )
+
+
+def optimize_subject_pooled_posterior_stan(
+    subject: SubjectData,
+    **kwargs: Any,
+) -> HierarchicalSubjectPosteriorResult:
+    """Optimize one shared parameter set across subject blocks with Stan."""
+
+    return optimize_subject_hierarchical_posterior_stan(
+        subject,
+        pooled_across_blocks=True,
+        **kwargs,
+    )
+
+
+def optimize_study_pooled_posterior_stan(
+    study: StudyData,
+    **kwargs: Any,
+) -> HierarchicalStudyPosteriorResult:
+    """Optimize shared-within-subject pooled parameters for study subjects."""
+
+    return optimize_study_hierarchical_posterior_stan(
+        study,
+        pooled_across_blocks=True,
+        **kwargs,
+    )
 
 
 def _build_subject_stan_job(
@@ -577,6 +665,7 @@ def _build_subject_stan_job(
     mu_prior_std: float | Mapping[str, float],
     log_sigma_prior_mean: float | Mapping[str, float],
     log_sigma_prior_std: float | Mapping[str, float],
+    pooled_across_blocks: bool,
 ) -> tuple[_SubjectBuild, str, str, CompatibilityReport | None]:
     """Assemble validated Stan inputs and source code for one subject."""
 
@@ -609,6 +698,8 @@ def _build_subject_stan_job(
             log_sigma_prior_mean=log_sigma_prior_mean,
             log_sigma_prior_std=log_sigma_prior_std,
         )
+        if pooled_across_blocks:
+            return built, _ASOCIAL_POOLED_STAN_CODE, f"pooled_{model_component_id}", compatibility
         return built, _ASOCIAL_STAN_CODE, f"hierarchical_{model_component_id}", compatibility
 
     social_stan_data, social_param_names, social_n_blocks = build_social_subject_inputs(
@@ -630,6 +721,13 @@ def _build_subject_stan_job(
         parameter_names=social_param_names,
         n_blocks=social_n_blocks,
     )
+    if pooled_across_blocks:
+        return (
+            built,
+            load_social_pooled_stan_code(model_component_id),
+            social_pooled_cache_tag(model_component_id),
+            compatibility,
+        )
     return built, load_social_stan_code(model_component_id), social_cache_tag(model_component_id), compatibility
 
 
@@ -981,6 +1079,7 @@ def _run_stan_hierarchical_nuts(
     stan_code: str,
     cache_tag: str,
     stan_data: Mapping[str, Any],
+    init_parameter_names: Sequence[str],
     n_samples: int,
     n_warmup: int,
     thin: int,
@@ -995,11 +1094,13 @@ def _run_stan_hierarchical_nuts(
     """Compile and sample one Stan hierarchical model."""
 
     model = compile_cmdstan_model(stan_code, cache_tag=cache_tag)
-    init_data = {
-        "group_loc_z": list(stan_data["group_loc_init"]),
-        "group_log_scale": list(stan_data["group_log_scale_init"]),
-        "block_z": list(stan_data["block_z_init"]),
-    }
+    init_data: dict[str, Any] = {}
+    if "group_loc_z" in init_parameter_names:
+        init_data["group_loc_z"] = list(stan_data["group_loc_init"])
+    if "group_log_scale" in init_parameter_names:
+        init_data["group_log_scale"] = list(stan_data["group_log_scale_init"])
+    if "block_z" in init_parameter_names:
+        init_data["block_z"] = list(stan_data["block_z_init"])
 
     sample_kwargs: dict[str, Any] = {
         "data": {key: value for key, value in stan_data.items() if not key.endswith("_init")},
@@ -1027,6 +1128,7 @@ def _run_stan_hierarchical_optimize(
     stan_code: str,
     cache_tag: str,
     stan_data: Mapping[str, Any],
+    init_parameter_names: Sequence[str],
     method: str,
     max_iterations: int,
     jacobian: bool,
@@ -1043,11 +1145,13 @@ def _run_stan_hierarchical_optimize(
     """Compile and optimize one Stan hierarchical model."""
 
     model = compile_cmdstan_model(stan_code, cache_tag=cache_tag)
-    init_data = {
-        "group_loc_z": list(stan_data["group_loc_init"]),
-        "group_log_scale": list(stan_data["group_log_scale_init"]),
-        "block_z": list(stan_data["block_z_init"]),
-    }
+    init_data: dict[str, Any] = {}
+    if "group_loc_z" in init_parameter_names:
+        init_data["group_loc_z"] = list(stan_data["group_loc_init"])
+    if "group_log_scale" in init_parameter_names:
+        init_data["group_log_scale"] = list(stan_data["group_log_scale_init"])
+    if "block_z" in init_parameter_names:
+        init_data["block_z"] = list(stan_data["block_z_init"])
 
     optimize_kwargs: dict[str, Any] = {
         "data": {key: value for key, value in stan_data.items() if not key.endswith("_init")},
@@ -1088,6 +1192,7 @@ def _decode_subject_fit(
     thin: int,
     n_chains: int,
     random_seed: int | None,
+    method_name: str,
 ) -> HierarchicalSubjectPosteriorResult:
     """Decode CmdStan fit object into public hierarchical posterior result."""
 
@@ -1156,7 +1261,7 @@ def _decode_subject_fit(
 
     n_iterations = int((n_warmup + (n_samples * thin)) * n_chains)
     diagnostics = MCMCDiagnostics(
-        method="within_subject_hierarchical_stan_nuts",
+        method=method_name,
         n_iterations=n_iterations,
         n_warmup=int(n_warmup * n_chains),
         n_kept_draws=n_draws,
@@ -1181,6 +1286,7 @@ def _decode_subject_optimize_fit(
     parameter_names: tuple[str, ...],
     n_blocks: int,
     random_seed: int | None,
+    method_name: str,
 ) -> HierarchicalSubjectPosteriorResult:
     """Decode one CmdStan optimize result as a single retained posterior draw."""
 
@@ -1194,9 +1300,10 @@ def _decode_subject_optimize_fit(
         thin=1,
         n_chains=1,
         random_seed=random_seed,
+        method_name=method_name,
     )
     diagnostics = MCMCDiagnostics(
-        method="within_subject_hierarchical_stan_map",
+        method=method_name,
         n_iterations=1,
         n_warmup=0,
         n_kept_draws=len(decoded.draws),
@@ -1216,7 +1323,11 @@ def _decode_subject_optimize_fit(
 
 __all__ = [
     "optimize_study_hierarchical_posterior_stan",
+    "optimize_study_pooled_posterior_stan",
     "optimize_subject_hierarchical_posterior_stan",
+    "optimize_subject_pooled_posterior_stan",
     "sample_study_hierarchical_posterior_stan",
+    "sample_study_pooled_posterior_stan",
     "sample_subject_hierarchical_posterior_stan",
+    "sample_subject_pooled_posterior_stan",
 ]

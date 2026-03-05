@@ -28,8 +28,14 @@ from .mcmc_config import (
 MLE_ESTIMATORS = {"mle"}
 MAP_ESTIMATORS: set[str] = set()
 MCMC_ESTIMATORS: set[str] = set()
-HIERARCHICAL_MCMC_ESTIMATORS = {"within_subject_hierarchical_stan_nuts"}
-HIERARCHICAL_ESTIMATORS = {"within_subject_hierarchical_stan_map"}
+HIERARCHICAL_MCMC_ESTIMATORS = {
+    "within_subject_hierarchical_stan_nuts",
+    "within_subject_pooled_stan_nuts",
+}
+HIERARCHICAL_ESTIMATORS = {
+    "within_subject_hierarchical_stan_map",
+    "within_subject_pooled_stan_map",
+}
 
 
 def fit_dataset_auto_from_config(
