@@ -10,7 +10,7 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +41,14 @@ _STUDY_COLUMNS = (
     "subject_id",
     "block_id_json",
     *_TRIAL_COLUMNS,
+)
+
+_MAPPED_STUDY_FIELDS = (
+    "subject_id",
+    "block_id",
+    "trial_index",
+    "action",
+    "reward",
 )
 
 
@@ -191,6 +199,208 @@ def read_study_decisions_csv(path: str | Path) -> StudyData:
     return StudyData(subjects=tuple(subjects))
 
 
+def read_mapped_study_csv(
+    path: str | Path,
+    *,
+    column_mapping: Mapping[str, str],
+    available_actions: Sequence[Any],
+    actor_id: str = "subject",
+    learner_id: str | None = None,
+) -> StudyData:
+    """Read a raw study CSV with custom column names into :class:`StudyData`.
+
+    Parameters
+    ----------
+    path : str | pathlib.Path
+        Raw input CSV path.
+    column_mapping : Mapping[str, str]
+        Mapping from canonical field names to raw source columns. Required keys
+        are ``subject_id``, ``block_id``, ``trial_index``, ``action``, and
+        ``reward``.
+    available_actions : Sequence[Any]
+        Legal action set for each trial decision.
+    actor_id : str, optional
+        Actor ID assigned to converted decisions.
+    learner_id : str | None, optional
+        Learner ID assigned to converted decisions. Defaults to ``actor_id``.
+
+    Returns
+    -------
+    StudyData
+        Parsed study dataset.
+    """
+
+    mapping = _validated_mapped_study_column_mapping(column_mapping)
+
+    input_path = Path(path)
+    with input_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        _require_columns(reader.fieldnames, required=tuple(mapping.values()))
+        rows = tuple(dict(raw) for raw in reader)
+
+    return _study_from_mapped_rows(
+        rows,
+        column_mapping=mapping,
+        available_actions=available_actions,
+        actor_id=actor_id,
+        learner_id=learner_id,
+        row_index_offset=2,
+    )
+
+
+def study_from_mapped_rows(
+    rows: Sequence[Mapping[str, Any]] | Iterable[Mapping[str, Any]],
+    *,
+    column_mapping: Mapping[str, str],
+    available_actions: Sequence[Any],
+    actor_id: str = "subject",
+    learner_id: str | None = None,
+) -> StudyData:
+    """Convert row mappings with custom source columns into :class:`StudyData`.
+
+    Parameters
+    ----------
+    rows : Sequence[Mapping[str, Any]] | Iterable[Mapping[str, Any]]
+        Raw row mappings.
+    column_mapping : Mapping[str, str]
+        Mapping from canonical field names to row keys. Required keys are
+        ``subject_id``, ``block_id``, ``trial_index``, ``action``, and
+        ``reward``.
+    available_actions : Sequence[Any]
+        Legal action set for each converted trial decision.
+    actor_id : str, optional
+        Actor ID assigned to converted decisions.
+    learner_id : str | None, optional
+        Learner ID assigned to converted decisions. Defaults to ``actor_id``.
+
+    Returns
+    -------
+    StudyData
+        Converted study dataset.
+    """
+
+    mapping = _validated_mapped_study_column_mapping(column_mapping)
+    return _study_from_mapped_rows(
+        rows,
+        column_mapping=mapping,
+        available_actions=available_actions,
+        actor_id=actor_id,
+        learner_id=learner_id,
+        row_index_offset=1,
+    )
+
+
+def _study_from_mapped_rows(
+    rows: Sequence[Mapping[str, Any]] | Iterable[Mapping[str, Any]],
+    *,
+    column_mapping: Mapping[str, str],
+    available_actions: Sequence[Any],
+    actor_id: str = "subject",
+    learner_id: str | None = None,
+    row_index_offset: int = 1,
+) -> StudyData:
+    """Internal mapped-row converter with configurable row-index offset."""
+
+    mapping = dict(column_mapping)
+    allowed_actions = tuple(available_actions)
+    if not allowed_actions:
+        raise ValueError("available_actions must not be empty")
+
+    actor = str(actor_id).strip()
+    if not actor:
+        raise ValueError("actor_id must be a non-empty string")
+    learner = learner_id if learner_id is not None else actor
+
+    grouped: dict[str, dict[str, list[tuple[int, Any, float]]]] = defaultdict(lambda: defaultdict(list))
+    ordered_subject_ids: list[str] = []
+    ordered_block_ids: dict[str, list[str]] = defaultdict(list)
+
+    raw_rows = list(rows)
+    if not raw_rows:
+        raise ValueError("rows must not be empty")
+
+    for index, raw_row in enumerate(raw_rows):
+        if not isinstance(raw_row, Mapping):
+            raise ValueError(
+                f"row {index + row_index_offset}: each row must be a mapping/object"
+            )
+        row = dict(raw_row)
+        row_index = index + row_index_offset
+
+        subject_id = _coerce_non_empty_str(
+            row.get(mapping["subject_id"]),
+            field_name=mapping["subject_id"],
+            row_index=row_index,
+        )
+        block_id = _coerce_non_empty_str(
+            row.get(mapping["block_id"]),
+            field_name=mapping["block_id"],
+            row_index=row_index,
+        )
+        trial_number = _coerce_int(
+            row.get(mapping["trial_index"]),
+            field_name=mapping["trial_index"],
+            row_index=row_index,
+        )
+        action = _coerce_mapped_action(
+            row.get(mapping["action"]),
+            field_name=mapping["action"],
+            row_index=row_index,
+        )
+        reward = _coerce_float(
+            row.get(mapping["reward"]),
+            field_name=mapping["reward"],
+            row_index=row_index,
+        )
+
+        if action not in allowed_actions:
+            raise ValueError(
+                f"row {row_index}: action={action!r} is outside available_actions={allowed_actions!r}"
+            )
+
+        if subject_id not in grouped:
+            ordered_subject_ids.append(subject_id)
+        if block_id not in grouped[subject_id]:
+            ordered_block_ids[subject_id].append(block_id)
+        grouped[subject_id][block_id].append((trial_number, action, reward))
+
+    subjects: list[SubjectData] = []
+    for subject_id in ordered_subject_ids:
+        blocks: list[BlockData] = []
+        for block_id in ordered_block_ids[subject_id]:
+            triples = sorted(grouped[subject_id][block_id], key=lambda item: item[0])
+
+            seen_trial_numbers: set[int] = set()
+            trials: list[TrialDecision] = []
+            for normalized_index, (raw_trial_index, action, reward) in enumerate(triples):
+                if raw_trial_index in seen_trial_numbers:
+                    raise ValueError(
+                        "raw trial indices must be unique within each subject/block; "
+                        f"found duplicate {raw_trial_index} for subject_id={subject_id!r}, block_id={block_id!r}"
+                    )
+                seen_trial_numbers.add(raw_trial_index)
+
+                trials.append(
+                    TrialDecision(
+                        trial_index=normalized_index,
+                        decision_index=0,
+                        actor_id=actor,
+                        learner_id=learner,
+                        available_actions=allowed_actions,
+                        action=action,
+                        observation={"raw_trial_index": raw_trial_index},
+                        outcome={"reward": reward},
+                        reward=reward,
+                    )
+                )
+
+            blocks.append(BlockData(block_id=block_id, trials=tuple(trials)))
+
+        subjects.append(SubjectData(subject_id=subject_id, blocks=tuple(blocks)))
+
+    return StudyData(subjects=tuple(subjects))
+
+
 def study_decision_rows(study: StudyData) -> list[dict[str, Any]]:
     """Flatten :class:`StudyData` into CSV-ready row mappings.
 
@@ -322,6 +532,71 @@ def _coerce_non_empty_str(raw: Any, *, field_name: str, row_index: int) -> str:
     return text
 
 
+def _coerce_float(raw: Any, *, field_name: str, row_index: int) -> float:
+    """Coerce one float field with row-index context."""
+
+    text = str(raw).strip() if raw is not None else ""
+    if not text:
+        raise ValueError(f"row {row_index}: {field_name} must be a float")
+    return float(text)
+
+
+def _coerce_mapped_action(raw: Any, *, field_name: str, row_index: int) -> Any:
+    """Coerce one mapped action value from raw rows."""
+
+    text = str(raw).strip() if raw is not None else ""
+    if not text:
+        raise ValueError(f"row {row_index}: {field_name} must be non-empty")
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        return int(text)
+    except ValueError:
+        pass
+
+    try:
+        return float(text)
+    except ValueError:
+        pass
+
+    return text
+
+
+def _validated_mapped_study_column_mapping(
+    raw: Mapping[str, str],
+) -> dict[str, str]:
+    """Validate and normalize mapped-study column mapping."""
+
+    if not isinstance(raw, Mapping):
+        raise ValueError("column_mapping must be an object/mapping")
+
+    mapping = dict(raw)
+    missing = sorted(name for name in _MAPPED_STUDY_FIELDS if name not in mapping)
+    if missing:
+        raise ValueError(
+            "column_mapping is missing required keys: "
+            f"{missing}; expected {_MAPPED_STUDY_FIELDS}"
+        )
+
+    unknown = sorted(key for key in mapping if key not in _MAPPED_STUDY_FIELDS)
+    if unknown:
+        raise ValueError(
+            f"column_mapping has unknown keys: {unknown}; expected {_MAPPED_STUDY_FIELDS}"
+        )
+
+    out: dict[str, str] = {}
+    for key in _MAPPED_STUDY_FIELDS:
+        column_name = str(mapping[key]).strip()
+        if not column_name:
+            raise ValueError(f"column_mapping[{key!r}] must be a non-empty string")
+        out[key] = column_name
+    return out
+
+
 def _require_columns(fieldnames: Sequence[str] | None, *, required: tuple[str, ...]) -> None:
     """Require all expected columns to exist in CSV header."""
 
@@ -333,8 +608,10 @@ def _require_columns(fieldnames: Sequence[str] | None, *, required: tuple[str, .
 
 
 __all__ = [
+    "read_mapped_study_csv",
     "read_study_decisions_csv",
     "read_trial_decisions_csv",
+    "study_from_mapped_rows",
     "study_decision_rows",
     "write_study_decisions_csv",
     "write_trial_decisions_csv",

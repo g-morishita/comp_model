@@ -1,11 +1,13 @@
-# Tutorial: Fit Your Own Dataset (simple reinforcement learning task)
+# Tutorial: Fit Your Own Dataset (Simple Reinforcement Learning Task)
 
 This tutorial shows a workflow to fit a model to your own dataset.
 
-1. Convert your data
-2. Check converted data
-3. Fit data
-4. See the result
+In this tutorial, you will:
+
+1. convert your data,
+2. check converted data,
+3. fit data,
+4. see the result.
 
 ## Prerequisites
 
@@ -15,7 +17,7 @@ This tutorial shows a workflow to fit a model to your own dataset.
 If you have not installed and verified your environment yet, complete
 [Install and Verify](install-and-verify.md) first.
 
-## Raw CSV Assumption
+## Raw CSV assumptions
 
 This tutorial assumes your raw CSV has one decision row per trial with these
 columns:
@@ -31,7 +33,7 @@ columns:
 If you have only one subject or one block, keep one fixed value in
 `subject_id`/`block_id`.
 
-## What You Must Build (canonical data model)
+## Canonical data model (what you must build)
 
 For this tutorial, the fitter expects a `StudyData` object. Its shape is:
 
@@ -73,11 +75,11 @@ Raw CSV -> canonical field mapping used in this tutorial:
 - `actor_id`: `"subject"`
 - `available_actions`: `(0, 1)` (edit this for your task)
 - `action`: value from `choice`
-- `observation`: `{"trial_number": original_trial_number}`
+- `observation`: `{"raw_trial_index": original_trial_number}`
 - `outcome`: `{"reward": reward}`
 - `reward`: numeric reward
 
-## Why This Differs From `run_episode` Output
+## How this differs from `run_episode` output
 
 - `run_episode(...)` returns an `EpisodeTrace` for one simulated episode
   (event stream: observation/decision/outcome/update).
@@ -102,27 +104,31 @@ Which API to use:
 
 ## Step 1: Convert your data
 
-`comp_model` does not provide one universal `convert_raw_csv(...)` API for
-arbitrary source schemas. Raw datasets differ by project, so this step is a
-small user-defined mapping into canonical `TrialDecision`/`StudyData`.
+`comp_model` provides a mapped conversion helper for this step:
+`read_mapped_study_csv(...)`.
+
+You pass a `column_mapping` dictionary from canonical fields to your raw CSV
+columns.
 
 Create `scripts/fit_your_own_dataset.py`:
 
 ```python
 from __future__ import annotations
 
-import csv
 import json
-from collections import defaultdict
 from pathlib import Path
 
-from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     fit_study_csv_from_config,
     write_study_fit_records_csv,
     write_study_fit_summary_csv,
 )
-from comp_model.io import read_study_decisions_csv, study_decision_rows, write_study_decisions_csv
+from comp_model.io import (
+    read_mapped_study_csv,
+    read_study_decisions_csv,
+    study_decision_rows,
+    write_study_decisions_csv,
+)
 
 RAW_INPUT_CSV = Path("data/raw/my_choices.csv")  # Change to your raw dataset path
 CANONICAL_STUDY_CSV = Path("data/processed/study_decisions.csv")  # Change to processed-data path
@@ -130,6 +136,15 @@ OUTPUT_DIR = Path("fit_out")
 
 # Update when your action set differs.
 AVAILABLE_ACTIONS = (0, 1)
+
+# Map canonical fields -> your raw CSV column names.
+COLUMN_MAPPING = {
+    "subject_id": "subject_id",
+    "block_id": "block_id",
+    "trial_index": "trial_number",
+    "action": "choice",
+    "reward": "reward",
+}
 
 FIT_CONFIG = {
     "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
@@ -146,64 +161,11 @@ FIT_CONFIG = {
 
 
 def convert_your_data() -> Path:
-    grouped: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
-
-    with RAW_INPUT_CSV.open("r", encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        required = {"subject_id", "block_id", "trial_number", "choice", "reward"}
-        missing = sorted(required.difference(reader.fieldnames or []))
-        if missing:
-            raise ValueError(f"raw CSV missing required columns: {missing}")
-
-        for row_index, row in enumerate(reader, start=2):
-            subject_id = str(row["subject_id"]).strip()
-            block_id = str(row["block_id"]).strip()
-            if not subject_id:
-                raise ValueError(f"row {row_index}: subject_id is empty")
-            if not block_id:
-                raise ValueError(f"row {row_index}: block_id is empty")
-            grouped[(subject_id, block_id)].append(row)
-
-    if not grouped:
-        raise ValueError("raw CSV has no rows")
-
-    blocks_by_subject: dict[str, list[BlockData]] = defaultdict(list)
-    for (subject_id, block_id), rows in grouped.items():
-        ordered_rows = sorted(rows, key=lambda item: int(item["trial_number"]))
-
-        trials: list[TrialDecision] = []
-        for index, raw in enumerate(ordered_rows):
-            choice = int(raw["choice"])
-            reward = float(raw["reward"])
-            if choice not in AVAILABLE_ACTIONS:
-                raise ValueError(
-                    f"choice={choice} is outside AVAILABLE_ACTIONS={AVAILABLE_ACTIONS}"
-                )
-            trials.append(
-                TrialDecision(
-                    trial_index=index,  # force contiguous 0..N-1 per block
-                    decision_index=0,
-                    actor_id="subject",
-                    available_actions=AVAILABLE_ACTIONS,
-                    action=choice,
-                    observation={"trial_number": int(raw["trial_number"])},
-                    outcome={"reward": reward},
-                    reward=reward,
-                )
-            )
-
-        blocks_by_subject[subject_id].append(
-            BlockData(block_id=block_id, trials=tuple(trials))
-        )
-
-    subjects = tuple(
-        SubjectData(
-            subject_id=subject_id,
-            blocks=tuple(sorted(blocks, key=lambda block: str(block.block_id))),
-        )
-        for subject_id, blocks in sorted(blocks_by_subject.items())
+    study = read_mapped_study_csv(
+        RAW_INPUT_CSV,
+        column_mapping=COLUMN_MAPPING,
+        available_actions=AVAILABLE_ACTIONS,
     )
-    study = StudyData(subjects=subjects)
     output_path = write_study_decisions_csv(study, CANONICAL_STUDY_CSV)
     print(f"Converted CSV written to: {output_path}")
     return output_path

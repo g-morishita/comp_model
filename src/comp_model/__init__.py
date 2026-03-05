@@ -69,8 +69,10 @@ from .inference import (
     write_subject_model_comparison_csv,
 )
 from .io import (
+    read_mapped_study_csv,
     read_study_decisions_csv,
     read_trial_decisions_csv,
+    study_from_mapped_rows,
     study_decision_rows,
     write_study_decisions_csv,
     write_trial_decisions_csv,
@@ -139,8 +141,10 @@ __all__ = [
     "run_episode",
     "run_social_episode",
     "run_trial_program",
+    "read_mapped_study_csv",
     "read_study_decisions_csv",
     "read_trial_decisions_csv",
+    "study_from_mapped_rows",
     "study_decision_rows",
     "write_study_decisions_csv",
     "write_trial_decisions_csv",

@@ -10,8 +10,10 @@ from comp_model.core.data import (
     trace_from_trial_decisions,
 )
 from comp_model.io import (
+    read_mapped_study_csv,
     read_study_decisions_csv,
     read_trial_decisions_csv,
+    study_from_mapped_rows,
     write_study_decisions_csv,
     write_trial_decisions_csv,
 )
@@ -127,3 +129,106 @@ def test_read_trial_decisions_csv_rejects_missing_required_columns(tmp_path) -> 
         assert "missing required columns" in str(exc)
     else:  # pragma: no cover - explicit failure path
         raise AssertionError("expected ValueError for missing required columns")
+
+
+def test_read_mapped_study_csv_converts_custom_columns(tmp_path) -> None:
+    """Mapped-study CSV reader should build StudyData from custom headers."""
+
+    raw_path = tmp_path / "raw.csv"
+    raw_path.write_text(
+        (
+            "pid,session,trial_no,choice_made,points\n"
+            "s1,blkA,10,1,1.0\n"
+            "s1,blkA,20,0,0.0\n"
+            "s2,blkB,5,1,1.0\n"
+        ),
+        encoding="utf-8",
+    )
+
+    study = read_mapped_study_csv(
+        raw_path,
+        column_mapping={
+            "subject_id": "pid",
+            "block_id": "session",
+            "trial_index": "trial_no",
+            "action": "choice_made",
+            "reward": "points",
+        },
+        available_actions=(0, 1),
+    )
+
+    assert study.n_subjects == 2
+    assert study.subjects[0].subject_id == "s1"
+    assert study.subjects[0].blocks[0].block_id == "blkA"
+    assert len(study.subjects[0].blocks[0].trials) == 2
+    assert study.subjects[0].blocks[0].trials[0].trial_index == 0
+    assert study.subjects[0].blocks[0].trials[0].action == 1
+    assert study.subjects[0].blocks[0].trials[0].observation == {"raw_trial_index": 10}
+
+
+def test_read_mapped_study_csv_rejects_missing_mapped_columns(tmp_path) -> None:
+    """Mapped-study reader should fail when mapped source columns are absent."""
+
+    raw_path = tmp_path / "raw_missing_column.csv"
+    raw_path.write_text(
+        (
+            "pid,session,trial_no,points\n"
+            "s1,blkA,1,1.0\n"
+        ),
+        encoding="utf-8",
+    )
+
+    try:
+        read_mapped_study_csv(
+            raw_path,
+            column_mapping={
+                "subject_id": "pid",
+                "block_id": "session",
+                "trial_index": "trial_no",
+                "action": "choice_made",
+                "reward": "points",
+            },
+            available_actions=(0, 1),
+        )
+    except ValueError as exc:
+        assert "missing required columns" in str(exc)
+    else:  # pragma: no cover - explicit failure path
+        raise AssertionError("expected ValueError for missing mapped source column")
+
+
+def test_study_from_mapped_rows_rejects_duplicate_trial_numbers() -> None:
+    """Mapped-row converter should reject duplicate trial numbers per block."""
+
+    rows = (
+        {
+            "pid": "s1",
+            "session": "blkA",
+            "trial_no": "1",
+            "choice_made": "1",
+            "points": "1.0",
+        },
+        {
+            "pid": "s1",
+            "session": "blkA",
+            "trial_no": "1",
+            "choice_made": "0",
+            "points": "0.0",
+        },
+    )
+
+    try:
+        study_from_mapped_rows(
+            rows,
+            column_mapping={
+                "subject_id": "pid",
+                "block_id": "session",
+                "trial_index": "trial_no",
+                "action": "choice_made",
+                "reward": "points",
+            },
+            available_actions=(0, 1),
+        )
+    except ValueError as exc:
+        assert "raw trial indices must be unique" in str(exc)
+    else:  # pragma: no cover - explicit failure path
+        raise AssertionError("expected ValueError for duplicate mapped trial numbers")
