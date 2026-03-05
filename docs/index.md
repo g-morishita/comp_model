@@ -20,7 +20,7 @@ Documentation is organized into:
   [Parameter Recovery](tutorials/parameter-recovery.md) and
   [Model Recovery](tutorials/model-recovery.md)
 - Use your own data last:
-  [Fit Your Own Dataset](tutorials/fit-your-own-dataset.md)
+  [Fit Your Own Dataset](tutorials/fit-your-own-model-dataset-RL.md)
 - Advanced problem guides:
   [Create a New Problem](how-to/create-a-new-problem.md)
 - API lookup: use [API Overview](reference/api-overview.md)

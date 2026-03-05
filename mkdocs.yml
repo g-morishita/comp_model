@@ -25,7 +25,7 @@ nav:
       - First End-to-End Fit: tutorials/first-end-to-end-fit.md
       - Parameter Recovery: tutorials/parameter-recovery.md
       - Model Recovery: tutorials/model-recovery.md
-      - Fit Your Own Dataset: tutorials/fit-your-own-dataset.md
+      - Fit Your Own Dataset: tutorials/fit-your-own-model-dataset-RL.md
   - How-to guides:
       - Create a New Problem: how-to/create-a-new-problem.md
       - Build a Multi-Phase Social Problem: how-to/build-a-multi-phase-social-problem.md
@@ -34,6 +34,7 @@ nav:
       - Compare Candidate Models: how-to/compare-candidate-models.md
       - Choose a Block Fit Strategy: how-to/choose-block-fit-strategy.md
       - Fit Existing CSV Data: how-to/fit-existing-csv-data.md
+      - Fit Bayesian Hierarchical Models: how-to/how-to-fit-bayesian-hierarchical-model.md
       - Deploy Docs and Enable Hooks: how-to/deploy-docs-and-enable-hooks.md
       - Contribute New Models and Tasks: how-to/contribute-new-models-and-tasks.md
   - Reference:

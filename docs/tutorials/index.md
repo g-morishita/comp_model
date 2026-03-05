@@ -18,5 +18,5 @@ If you are new to the library, follow the tutorials in this order.
   Check whether true parameters can be recovered across multiple simulated cases.
 - [Model Recovery](model-recovery.md)
   Evaluate whether model selection correctly identifies generating models.
-- [Fit Your Own Dataset](fit-your-own-dataset.md)
+- [Fit Your Own Dataset](fit-your-own-model-dataset-RL.md)
   Fit a model to your trial/study CSV data and inspect outputs.
