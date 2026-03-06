@@ -16,9 +16,9 @@ from comp_model.core.contracts import AgentModel, DecisionProblem
 from comp_model.core.data import BlockData, StudyData, SubjectData, trial_decisions_from_trace
 from comp_model.plugins import ComponentManifest
 from comp_model.problems import (
+    DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
     StationaryBanditProblem,
-    TwoStageSocialBanditProgram,
-    TwoStageSocialPostOutcomeBanditProgram,
+    SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram,
 )
 from comp_model.runtime import SimulationConfig, TrialProgram, run_episode, run_trial_program
 
@@ -263,7 +263,7 @@ class EventTraceSocialPreChoiceGenerator(_SocialGeneratorBase):
 
     def __init__(
         self,
-        program_factory: Callable[..., TrialProgram] = TwoStageSocialBanditProgram,
+        program_factory: Callable[..., TrialProgram] = DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
     ) -> None:
         super().__init__(program_factory=program_factory, timing="social_pre_choice")
 
@@ -278,7 +278,7 @@ class EventTraceSocialPostOutcomeGenerator(_SocialGeneratorBase):
 
     def __init__(
         self,
-        program_factory: Callable[..., TrialProgram] = TwoStageSocialPostOutcomeBanditProgram,
+        program_factory: Callable[..., TrialProgram] = SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram,
     ) -> None:
         super().__init__(program_factory=program_factory, timing="social_post_outcome")
 

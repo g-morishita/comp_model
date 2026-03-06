@@ -1,18 +1,27 @@
 """Problem implementations.
 
 This package contains concrete decision problems under the generic
-``DecisionProblem`` protocol.
+``DecisionProblem`` protocol and ordered multi-phase social trial programs.
 """
 
-from .social_two_stage_bandit import (
-    SocialBanditOutcome,
-    TwoStageSocialBanditProgram,
-    create_two_stage_social_bandit_program,
-)
-from .social_two_stage_post_outcome_bandit import (
-    SocialBanditPostOutcome,
-    TwoStageSocialPostOutcomeBanditProgram,
-    create_two_stage_social_post_outcome_bandit_program,
+from .social_learning_bandits import (
+    DemonstratorThenSubjectActionOnlyProgram,
+    DemonstratorThenSubjectActionOnlySelfOutcomeProgram,
+    DemonstratorThenSubjectObservedOutcomeProgram,
+    DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
+    SubjectThenDemonstratorActionOnlyProgram,
+    SubjectThenDemonstratorActionOnlySelfOutcomeProgram,
+    SubjectThenDemonstratorObservedOutcomeProgram,
+    SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram,
+    TwoActorSocialBanditOutcome,
+    create_demonstrator_then_subject_action_only_program,
+    create_demonstrator_then_subject_action_only_self_outcome_program,
+    create_demonstrator_then_subject_observed_outcome_program,
+    create_demonstrator_then_subject_observed_outcome_self_outcome_program,
+    create_subject_then_demonstrator_action_only_program,
+    create_subject_then_demonstrator_action_only_self_outcome_program,
+    create_subject_then_demonstrator_observed_outcome_program,
+    create_subject_then_demonstrator_observed_outcome_self_outcome_program,
 )
 from .stationary_bandit import (
     BanditOutcome,
@@ -22,12 +31,23 @@ from .stationary_bandit import (
 
 __all__ = [
     "BanditOutcome",
-    "SocialBanditOutcome",
-    "SocialBanditPostOutcome",
+    "DemonstratorThenSubjectActionOnlyProgram",
+    "DemonstratorThenSubjectActionOnlySelfOutcomeProgram",
+    "DemonstratorThenSubjectObservedOutcomeProgram",
+    "DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram",
     "StationaryBanditProblem",
-    "TwoStageSocialBanditProgram",
-    "TwoStageSocialPostOutcomeBanditProgram",
+    "SubjectThenDemonstratorActionOnlyProgram",
+    "SubjectThenDemonstratorActionOnlySelfOutcomeProgram",
+    "SubjectThenDemonstratorObservedOutcomeProgram",
+    "SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram",
+    "TwoActorSocialBanditOutcome",
+    "create_demonstrator_then_subject_action_only_program",
+    "create_demonstrator_then_subject_action_only_self_outcome_program",
+    "create_demonstrator_then_subject_observed_outcome_program",
+    "create_demonstrator_then_subject_observed_outcome_self_outcome_program",
     "create_stationary_bandit_problem",
-    "create_two_stage_social_bandit_program",
-    "create_two_stage_social_post_outcome_bandit_program",
+    "create_subject_then_demonstrator_action_only_program",
+    "create_subject_then_demonstrator_action_only_self_outcome_program",
+    "create_subject_then_demonstrator_observed_outcome_program",
+    "create_subject_then_demonstrator_observed_outcome_self_outcome_program",
 ]

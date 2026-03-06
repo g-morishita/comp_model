@@ -75,22 +75,46 @@ def test_trace_compatibility_reports_missing_reward_field() -> None:
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.OBSERVATION,
-                payload={"observation": {"trial_index": 0}, "available_actions": (0,)},
+                payload={
+                    "observation": {"trial_index": 0},
+                    "available_actions": (0,),
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.DECISION,
-                payload={"distribution": {0: 1.0}, "action": 0},
+                payload={
+                    "distribution": {0: 1.0},
+                    "action": 0,
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.OUTCOME,
-                payload={"outcome": {"value": 1.0}},
+                payload={
+                    "outcome": {"value": 1.0},
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.UPDATE,
-                payload={"update_called": True},
+                payload={
+                    "update_called": True,
+                    "action": 0,
+                    "actor_id": "subject",
+                    "learner_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
         ]
     )
@@ -127,22 +151,46 @@ def test_grid_search_mle_fails_when_compatibility_fails() -> None:
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.OBSERVATION,
-                payload={"observation": {"trial_index": 0}, "available_actions": (0, 1)},
+                payload={
+                    "observation": {"trial_index": 0},
+                    "available_actions": (0, 1),
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.DECISION,
-                payload={"distribution": {0: 0.5, 1: 0.5}, "action": 1},
+                payload={
+                    "distribution": {0: 0.5, 1: 0.5},
+                    "action": 1,
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.OUTCOME,
-                payload={"outcome": {"value": 1.0}},
+                payload={
+                    "outcome": {"value": 1.0},
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.UPDATE,
-                payload={"update_called": True},
+                payload={
+                    "update_called": True,
+                    "action": 1,
+                    "actor_id": "subject",
+                    "learner_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
         ]
     )

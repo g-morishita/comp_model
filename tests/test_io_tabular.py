@@ -33,7 +33,7 @@ def _trial(
         trial_index=trial_index,
         decision_index=decision_index,
         actor_id=actor_id,
-        learner_id="subject",
+        learner_ids=("subject",),
         node_id=f"node_{decision_index}",
         available_actions=(0, 1),
         action=action,

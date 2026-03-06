@@ -35,22 +35,46 @@ def test_replay_rejects_trace_with_illegal_logged_action() -> None:
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.OBSERVATION,
-                payload={"observation": {"trial_index": 0}, "available_actions": (0, 1)},
+                payload={
+                    "observation": {"trial_index": 0},
+                    "available_actions": (0, 1),
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.DECISION,
-                payload={"distribution": {0: 0.5, 1: 0.5}, "action": 2},
+                payload={
+                    "distribution": {0: 0.5, 1: 0.5},
+                    "action": 2,
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.OUTCOME,
-                payload={"outcome": {"reward": 1.0}},
+                payload={
+                    "outcome": {"reward": 1.0},
+                    "actor_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
             SimulationEvent(
                 trial_index=0,
                 phase=EventPhase.UPDATE,
-                payload={"update_called": True},
+                payload={
+                    "update_called": True,
+                    "action": 2,
+                    "actor_id": "subject",
+                    "learner_id": "subject",
+                    "decision_index": 0,
+                    "node_id": "decision_0",
+                },
             ),
         ]
     )

@@ -13,12 +13,13 @@ from .data import (
     trial_decisions_from_trace,
 )
 from .events import (
-    DEFAULT_TRIAL_PHASE_SEQUENCE,
+    DecisionEventRecord,
     EpisodeTrace,
     EventPhase,
     SimulationEvent,
+    decision_records_from_trace,
+    decision_records_from_trial_events,
     group_events_by_trial,
-    split_trial_events_into_phase_blocks,
     validate_trace,
 )
 from .requirements import ComponentRequirements
@@ -30,7 +31,7 @@ __all__ = [
     "DecisionProblem",
     "ComponentRequirements",
     "SUPPORTED_CONFIG_SUFFIXES",
-    "DEFAULT_TRIAL_PHASE_SEQUENCE",
+    "DecisionEventRecord",
     "EpisodeTrace",
     "EventPhase",
     "SimulationEvent",
@@ -39,8 +40,9 @@ __all__ = [
     "TrialDecision",
     "attach_missing_event_traces",
     "get_block_trace",
+    "decision_records_from_trace",
+    "decision_records_from_trial_events",
     "group_events_by_trial",
-    "split_trial_events_into_phase_blocks",
     "trace_from_trial_decisions",
     "trial_decisions_from_trace",
     "validate_trace",

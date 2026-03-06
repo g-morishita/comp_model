@@ -78,8 +78,14 @@ def test_default_registry_discovers_builtin_components() -> None:
     }.issubset(model_ids)
     assert {
         "stationary_bandit",
-        "two_stage_social_bandit",
-        "two_stage_social_post_outcome_bandit",
+        "demonstrator_then_subject_action_only",
+        "demonstrator_then_subject_action_only_self_outcome",
+        "demonstrator_then_subject_observed_outcome",
+        "demonstrator_then_subject_observed_outcome_self_outcome",
+        "subject_then_demonstrator_action_only",
+        "subject_then_demonstrator_action_only_self_outcome",
+        "subject_then_demonstrator_observed_outcome",
+        "subject_then_demonstrator_observed_outcome_self_outcome",
     }.issubset(problem_ids)
     assert {
         "fixed_sequence_demonstrator",
@@ -258,8 +264,14 @@ def _manifest_smoke_kwargs() -> dict[tuple[str, str], dict[str, Any]]:
 
     return {
         ("problem", "stationary_bandit"): {"reward_probabilities": [0.2, 0.8]},
-        ("problem", "two_stage_social_bandit"): {"reward_probabilities": [0.2, 0.8]},
-        ("problem", "two_stage_social_post_outcome_bandit"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "demonstrator_then_subject_action_only"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "demonstrator_then_subject_action_only_self_outcome"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "demonstrator_then_subject_observed_outcome"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "demonstrator_then_subject_observed_outcome_self_outcome"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "subject_then_demonstrator_action_only"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "subject_then_demonstrator_action_only_self_outcome"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "subject_then_demonstrator_observed_outcome"): {"reward_probabilities": [0.2, 0.8]},
+        ("problem", "subject_then_demonstrator_observed_outcome_self_outcome"): {"reward_probabilities": [0.2, 0.8]},
         ("demonstrator", "fixed_sequence_demonstrator"): {"sequence": [0, 1]},
         ("demonstrator", "noisy_best_arm_demonstrator"): {"reward_probabilities": [0.2, 0.8]},
     }

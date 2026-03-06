@@ -22,7 +22,10 @@ from comp_model.inference import (
     fit_model,
 )
 from comp_model.models import UniformRandomPolicyModel
-from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
+from comp_model.problems import (
+    DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
+    StationaryBanditProblem,
+)
 from comp_model.recovery import CandidateModelSpec, GeneratingModelSpec, run_model_recovery
 from comp_model.runtime import SimulationConfig, run_episode, run_trial_program
 
@@ -234,7 +237,7 @@ def test_run_model_recovery_supports_custom_social_trace_factory() -> None:
 
     def social_trace_factory(model: Any, simulation_seed: int):
         return run_trial_program(
-            program=TwoStageSocialBanditProgram([0.5, 0.5]),
+            program=DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram([0.5, 0.5]),
             models={
                 "subject": model,
                 "demonstrator": FixedSequenceDemonstrator(sequence=[1] * 90),

@@ -16,7 +16,10 @@ from comp_model.inference import (
     GridSearchMLEEstimator,
     fit_model,
 )
-from comp_model.problems import StationaryBanditProblem, TwoStageSocialBanditProgram
+from comp_model.problems import (
+    DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
+    StationaryBanditProblem,
+)
 from comp_model.recovery import run_parameter_recovery
 from comp_model.recovery.parameter import (
     resolve_true_parameter_sets,
@@ -176,7 +179,7 @@ def test_run_parameter_recovery_supports_custom_social_trace_factory() -> None:
 
     def social_trace_factory(model: Any, simulation_seed: int):
         return run_trial_program(
-            program=TwoStageSocialBanditProgram([0.5, 0.5]),
+            program=DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram([0.5, 0.5]),
             models={
                 "subject": model,
                 "demonstrator": FixedSequenceDemonstrator(sequence=[1] * 80),
