@@ -4,6 +4,7 @@ This package contains concrete decision problems under the generic
 ``DecisionProblem`` protocol.
 """
 
+from .perceptual_discrimination_binary import PerceptualDiscriminationBinary
 from .social_two_stage_bandit import (
     SocialBanditOutcome,
     TwoStageSocialBanditProgram,
@@ -30,4 +31,5 @@ __all__ = [
     "create_stationary_bandit_problem",
     "create_two_stage_social_bandit_program",
     "create_two_stage_social_post_outcome_bandit_program",
+	"PerceptualDiscriminationBinary",
 ]
