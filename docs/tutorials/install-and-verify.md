@@ -10,8 +10,6 @@ installation.
   documentation builds, and tests all run in your environment.
 - A minimal simulation smoke-check verifies that your runtime stack works
   end-to-end.
-- Building docs and running tests confirms you installed the development extras
-  (`.[dev,docs]`) and have a working toolchain.
 
 In this tutorial, you will:
 
@@ -29,10 +27,17 @@ python -m pip install --upgrade pip
 
 ## Step 2: Install `comp_model`
 
+First, you clone a repository:
+
+```bash
+git clone https://github.com/g-morishita/comp_model.git
+```
+
 Install from the repository root:
 
 ```bash
-pip install -e ".[dev,docs]"
+cd comp_model
+pip install -e .
 ```
 
 ## Step 3: Verify Python Import
@@ -70,18 +75,6 @@ You should see a positive event count.
 comp-model-fit --help
 comp-model-compare --help
 comp-model-recovery --help
-```
-
-## Step 6: Verify Documentation Build
-
-```bash
-mkdocs build --strict
-```
-
-## Step 7: Verify Test Suite
-
-```bash
-python -m pytest -q
 ```
 
 ## Next steps
