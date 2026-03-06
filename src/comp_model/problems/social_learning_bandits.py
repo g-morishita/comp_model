@@ -28,24 +28,41 @@ class TwoActorSocialBanditOutcome:
 
 
 class _TwoActorOrderedSocialBanditProgram(TrialProgram):
-    """Internal configurable two-actor social-learning program."""
+    """Internal base for ordered two-actor social bandit variants.
+
+    This class parameterizes the eight public social-learning timing presets in
+    this module. The actor order can flip, but the role semantics do not:
+
+    - ``subject`` is always the learner of interest,
+    - ``demonstrator`` is always the source of social information,
+    - the subject may act either before or after the demonstrator.
+
+    Each trial contains one subject decision node and one demonstrator decision
+    node. The subject always receives the social update from the demonstrator
+    node, regardless of whether the subject acts first or second in the trial.
+    When the demonstrator acts first, that social update can influence the same
+    trial's subject choice. When the subject acts first, the social update
+    occurs after the subject's own choice and therefore affects later behavior.
+
+    ``reward_probabilities`` gives one Bernoulli reward rate per action. These
+    are reward rates for the environment, not a probability distribution over
+    actions, so repeated values such as ``[0.5, 0.5]`` are valid.
+
+    This is an internal configurable base. External code should use one of the
+    named public program classes instead of instantiating this class directly.
+    """
 
     def __init__(
         self,
         reward_probabilities: Sequence[float],
         *,
-        first_actor_id: str,
-        second_actor_id: str,
-        first_outcome_observed: bool,
-        second_self_outcome: bool,
+        subject_first: bool,
+        demonstrator_outcome_observed: bool,
+        subject_self_outcome: bool,
         action_schedule: Sequence[Sequence[int]] | None = None,
     ) -> None:
         if len(reward_probabilities) == 0:
             raise ValueError("reward_probabilities must contain at least one action")
-        if first_actor_id.strip() == "" or second_actor_id.strip() == "":
-            raise ValueError("actor IDs must be non-empty strings")
-        if first_actor_id == second_actor_id:
-            raise ValueError("first_actor_id and second_actor_id must differ")
 
         self._reward_probabilities = tuple(float(value) for value in reward_probabilities)
         for value in self._reward_probabilities:
@@ -54,12 +71,13 @@ class _TwoActorOrderedSocialBanditProgram(TrialProgram):
 
         self._all_actions = tuple(range(len(self._reward_probabilities)))
         self._action_schedule = _normalize_action_schedule(action_schedule, all_actions=self._all_actions)
-        self._first_actor_id = first_actor_id
-        self._second_actor_id = second_actor_id
-        self._first_outcome_observed = bool(first_outcome_observed)
-        self._second_self_outcome = bool(second_self_outcome)
-        self._first_node_id = f"{self._first_actor_id}_decision"
-        self._second_node_id = f"{self._second_actor_id}_decision"
+        self._subject_first = bool(subject_first)
+        self._demonstrator_outcome_observed = bool(demonstrator_outcome_observed)
+        self._subject_self_outcome = bool(subject_self_outcome)
+        self._subject_actor_id = "subject"
+        self._demonstrator_actor_id = "demonstrator"
+        self._subject_decision_node_id = "subject_decision"
+        self._demonstrator_decision_node_id = "demonstrator_decision"
 
     def reset(self, *, rng: np.random.Generator) -> None:
         """Reset program state.
@@ -79,48 +97,12 @@ class _TwoActorOrderedSocialBanditProgram(TrialProgram):
         """Return ordered steps for the configured timing variant."""
 
         del trial_index, trial_events
-        steps = [
-            ProgramStep(EventPhase.OBSERVATION, node_id=self._first_node_id, actor_id=self._first_actor_id),
-            ProgramStep(EventPhase.DECISION, node_id=self._first_node_id, actor_id=self._first_actor_id),
-        ]
-        if self._first_outcome_observed:
-            steps.append(
-                ProgramStep(EventPhase.OUTCOME, node_id=self._first_node_id, actor_id=self._first_actor_id)
-            )
-            steps.append(
-                ProgramStep(
-                    EventPhase.UPDATE,
-                    node_id=self._first_node_id,
-                    actor_id=self._first_actor_id,
-                    learner_id=self._first_actor_id,
-                )
-            )
-        steps.append(
-            ProgramStep(
-                EventPhase.UPDATE,
-                node_id=self._first_node_id,
-                actor_id=self._first_actor_id,
-                learner_id=self._second_actor_id,
-            )
-        )
-        steps.extend(
-            (
-                ProgramStep(EventPhase.OBSERVATION, node_id=self._second_node_id, actor_id=self._second_actor_id),
-                ProgramStep(EventPhase.DECISION, node_id=self._second_node_id, actor_id=self._second_actor_id),
-            )
-        )
-        if self._second_self_outcome:
-            steps.extend(
-                (
-                    ProgramStep(EventPhase.OUTCOME, node_id=self._second_node_id, actor_id=self._second_actor_id),
-                    ProgramStep(
-                        EventPhase.UPDATE,
-                        node_id=self._second_node_id,
-                        actor_id=self._second_actor_id,
-                        learner_id=self._second_actor_id,
-                    ),
-                )
-            )
+        if self._subject_first:
+            steps = list(self._subject_node_steps(include_self_outcome=self._subject_self_outcome))
+            steps.extend(self._demonstrator_node_steps(include_outcome=self._demonstrator_outcome_observed))
+        else:
+            steps = list(self._demonstrator_node_steps(include_outcome=self._demonstrator_outcome_observed))
+            steps.extend(self._subject_node_steps(include_self_outcome=self._subject_self_outcome))
         return tuple(steps)
 
     def available_actions(
@@ -148,28 +130,20 @@ class _TwoActorOrderedSocialBanditProgram(TrialProgram):
         """Return step-specific observation payload."""
 
         del context
-        if step.actor_id == self._first_actor_id:
-            return {"trial_index": trial_index, "stage": self._first_actor_id}
-
-        first_action = _find_payload_value(
-            trial_events=trial_events,
-            phase_name="decision",
-            key="action",
-            node_id=self._first_node_id,
-        )
-        observation = {
-            "trial_index": trial_index,
-            "stage": self._second_actor_id,
-            f"{self._first_actor_id}_action": first_action,
-        }
-        if self._first_outcome_observed:
-            observation[f"{self._first_actor_id}_outcome"] = _find_payload_value(
+        if step.actor_id == self._subject_actor_id:
+            if self._subject_first:
+                return {"trial_index": trial_index, "stage": self._subject_actor_id}
+            return self._subject_observation_after_demonstrator(
+                trial_index=trial_index,
                 trial_events=trial_events,
-                phase_name="outcome",
-                key="outcome",
-                node_id=self._first_node_id,
             )
-        return observation
+
+        if self._subject_first:
+            return self._demonstrator_observation_after_subject(
+                trial_index=trial_index,
+                trial_events=trial_events,
+            )
+        return {"trial_index": trial_index, "stage": self._demonstrator_actor_id}
 
     def transition(
         self,
@@ -185,7 +159,10 @@ class _TwoActorOrderedSocialBanditProgram(TrialProgram):
 
         del trial_index, trial_events
         if action not in context.available_actions:
-            raise ValueError(f"action {action!r} is not available for node {step.node_id!r}")
+            raise ValueError(
+                f"action {action!r} is not available for decision node "
+                f"{step.decision_node_id!r}"
+            )
 
         p_reward = self._reward_probabilities[int(action)]
         reward = float(rng.random() < p_reward)
@@ -194,6 +171,139 @@ class _TwoActorOrderedSocialBanditProgram(TrialProgram):
             reward_probability=p_reward,
             source_actor_id=step.actor_id,
         )
+
+    def _subject_node_steps(self, *, include_self_outcome: bool) -> tuple[ProgramStep, ...]:
+        """Return subject-node steps in fixed role semantics."""
+
+        steps: list[ProgramStep] = [
+            ProgramStep(
+                EventPhase.OBSERVATION,
+                decision_node_id=self._subject_decision_node_id,
+                actor_id=self._subject_actor_id,
+            ),
+            ProgramStep(
+                EventPhase.DECISION,
+                decision_node_id=self._subject_decision_node_id,
+                actor_id=self._subject_actor_id,
+            ),
+        ]
+        if include_self_outcome:
+            steps.extend(
+                (
+                    ProgramStep(
+                        EventPhase.OUTCOME,
+                        decision_node_id=self._subject_decision_node_id,
+                        actor_id=self._subject_actor_id,
+                    ),
+                    ProgramStep(
+                        EventPhase.UPDATE,
+                        decision_node_id=self._subject_decision_node_id,
+                        actor_id=self._subject_actor_id,
+                        learner_id=self._subject_actor_id,
+                    ),
+                )
+            )
+        return tuple(steps)
+
+    def _demonstrator_node_steps(self, *, include_outcome: bool) -> tuple[ProgramStep, ...]:
+        """Return demonstrator-node steps plus the subject's social update."""
+
+        steps: list[ProgramStep] = [
+            ProgramStep(
+                EventPhase.OBSERVATION,
+                decision_node_id=self._demonstrator_decision_node_id,
+                actor_id=self._demonstrator_actor_id,
+            ),
+            ProgramStep(
+                EventPhase.DECISION,
+                decision_node_id=self._demonstrator_decision_node_id,
+                actor_id=self._demonstrator_actor_id,
+            ),
+        ]
+        if include_outcome:
+            steps.extend(
+                (
+                    ProgramStep(
+                        EventPhase.OUTCOME,
+                        decision_node_id=self._demonstrator_decision_node_id,
+                        actor_id=self._demonstrator_actor_id,
+                    ),
+                    ProgramStep(
+                        EventPhase.UPDATE,
+                        decision_node_id=self._demonstrator_decision_node_id,
+                        actor_id=self._demonstrator_actor_id,
+                        learner_id=self._demonstrator_actor_id,
+                    ),
+                )
+            )
+        # Subject is always the downstream learner for demonstrator behavior in
+        # this social-task family, independent of whether the subject acted
+        # earlier or later in the same trial.
+        steps.append(
+            ProgramStep(
+                EventPhase.UPDATE,
+                decision_node_id=self._demonstrator_decision_node_id,
+                actor_id=self._demonstrator_actor_id,
+                learner_id=self._subject_actor_id,
+            )
+        )
+        return tuple(steps)
+
+    def _subject_observation_after_demonstrator(
+        self,
+        *,
+        trial_index: int,
+        trial_events: Sequence[Any],
+    ) -> dict[str, Any]:
+        """Build subject observation when demonstrator acts first."""
+
+        demonstrator_action = _find_payload_value(
+            trial_events=trial_events,
+            phase_name="decision",
+            key="action",
+            decision_node_id=self._demonstrator_decision_node_id,
+        )
+        observation = {
+            "trial_index": trial_index,
+            "stage": self._subject_actor_id,
+            "demonstrator_action": demonstrator_action,
+        }
+        if self._demonstrator_outcome_observed:
+            observation["demonstrator_outcome"] = _find_payload_value(
+                trial_events=trial_events,
+                phase_name="outcome",
+                key="outcome",
+                decision_node_id=self._demonstrator_decision_node_id,
+            )
+        return observation
+
+    def _demonstrator_observation_after_subject(
+        self,
+        *,
+        trial_index: int,
+        trial_events: Sequence[Any],
+    ) -> dict[str, Any]:
+        """Build demonstrator observation when subject acts first."""
+
+        subject_action = _find_payload_value(
+            trial_events=trial_events,
+            phase_name="decision",
+            key="action",
+            decision_node_id=self._subject_decision_node_id,
+        )
+        observation = {
+            "trial_index": trial_index,
+            "stage": self._demonstrator_actor_id,
+            "subject_action": subject_action,
+        }
+        if self._subject_self_outcome:
+            observation["subject_outcome"] = _find_payload_value(
+                trial_events=trial_events,
+                phase_name="outcome",
+                key="outcome",
+                decision_node_id=self._subject_decision_node_id,
+            )
+        return observation
 
 
 class DemonstratorThenSubjectActionOnlyProgram(_TwoActorOrderedSocialBanditProgram):
@@ -206,10 +316,9 @@ class DemonstratorThenSubjectActionOnlyProgram(_TwoActorOrderedSocialBanditProgr
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="demonstrator",
-            second_actor_id="subject",
-            first_outcome_observed=False,
-            second_self_outcome=False,
+            subject_first=False,
+            demonstrator_outcome_observed=False,
+            subject_self_outcome=False,
             action_schedule=action_schedule,
         )
 
@@ -224,10 +333,9 @@ class DemonstratorThenSubjectActionOnlySelfOutcomeProgram(_TwoActorOrderedSocial
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="demonstrator",
-            second_actor_id="subject",
-            first_outcome_observed=False,
-            second_self_outcome=True,
+            subject_first=False,
+            demonstrator_outcome_observed=False,
+            subject_self_outcome=True,
             action_schedule=action_schedule,
         )
 
@@ -242,10 +350,9 @@ class DemonstratorThenSubjectObservedOutcomeProgram(_TwoActorOrderedSocialBandit
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="demonstrator",
-            second_actor_id="subject",
-            first_outcome_observed=True,
-            second_self_outcome=False,
+            subject_first=False,
+            demonstrator_outcome_observed=True,
+            subject_self_outcome=False,
             action_schedule=action_schedule,
         )
 
@@ -260,16 +367,15 @@ class DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram(_TwoActorOrderedS
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="demonstrator",
-            second_actor_id="subject",
-            first_outcome_observed=True,
-            second_self_outcome=True,
+            subject_first=False,
+            demonstrator_outcome_observed=True,
+            subject_self_outcome=True,
             action_schedule=action_schedule,
         )
 
 
 class SubjectThenDemonstratorActionOnlyProgram(_TwoActorOrderedSocialBanditProgram):
-    """Subject action observed by demonstrator before demonstrator choice."""
+    """Subject acts first; later demonstrator action updates the subject only."""
 
     def __init__(
         self,
@@ -278,16 +384,15 @@ class SubjectThenDemonstratorActionOnlyProgram(_TwoActorOrderedSocialBanditProgr
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="subject",
-            second_actor_id="demonstrator",
-            first_outcome_observed=False,
-            second_self_outcome=False,
+            subject_first=True,
+            demonstrator_outcome_observed=False,
+            subject_self_outcome=False,
             action_schedule=action_schedule,
         )
 
 
 class SubjectThenDemonstratorActionOnlySelfOutcomeProgram(_TwoActorOrderedSocialBanditProgram):
-    """Subject action observed by demonstrator plus demonstrator private outcome."""
+    """Subject acts first with private outcome, then learns from demonstrator action."""
 
     def __init__(
         self,
@@ -296,16 +401,15 @@ class SubjectThenDemonstratorActionOnlySelfOutcomeProgram(_TwoActorOrderedSocial
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="subject",
-            second_actor_id="demonstrator",
-            first_outcome_observed=False,
-            second_self_outcome=True,
+            subject_first=True,
+            demonstrator_outcome_observed=False,
+            subject_self_outcome=True,
             action_schedule=action_schedule,
         )
 
 
 class SubjectThenDemonstratorObservedOutcomeProgram(_TwoActorOrderedSocialBanditProgram):
-    """Subject action and outcome observed by demonstrator before demonstration."""
+    """Subject acts first, then later learns from demonstrator action and outcome."""
 
     def __init__(
         self,
@@ -314,16 +418,15 @@ class SubjectThenDemonstratorObservedOutcomeProgram(_TwoActorOrderedSocialBandit
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="subject",
-            second_actor_id="demonstrator",
-            first_outcome_observed=True,
-            second_self_outcome=False,
+            subject_first=True,
+            demonstrator_outcome_observed=True,
+            subject_self_outcome=False,
             action_schedule=action_schedule,
         )
 
 
 class SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram(_TwoActorOrderedSocialBanditProgram):
-    """Subject social information plus demonstrator private-outcome learning."""
+    """Subject gets private outcome, then later learns from demonstrator outcome."""
 
     def __init__(
         self,
@@ -332,10 +435,9 @@ class SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram(_TwoActorOrderedS
     ) -> None:
         super().__init__(
             reward_probabilities,
-            first_actor_id="subject",
-            second_actor_id="demonstrator",
-            first_outcome_observed=True,
-            second_self_outcome=True,
+            subject_first=True,
+            demonstrator_outcome_observed=True,
+            subject_self_outcome=True,
             action_schedule=action_schedule,
         )
 
@@ -367,7 +469,7 @@ def _find_payload_value(
     trial_events: Sequence[Any],
     phase_name: str,
     key: str,
-    node_id: str,
+    decision_node_id: str,
 ) -> Any:
     """Find payload value for a specific phase/node in trial events."""
 
@@ -377,13 +479,14 @@ def _find_payload_value(
         payload = getattr(event, "payload", None)
         if not isinstance(payload, dict):
             continue
-        if payload.get("node_id") != node_id:
+        if payload.get("decision_node_id") != decision_node_id:
             continue
         if key in payload:
             return payload[key]
 
     raise ValueError(
-        f"trial_events missing payload key {key!r} for phase {phase_name!r} and node {node_id!r}"
+        "trial_events missing payload key "
+        f"{key!r} for phase {phase_name!r} and decision node {decision_node_id!r}"
     )
 
 

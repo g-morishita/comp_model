@@ -40,7 +40,7 @@ def test_replay_rejects_trace_with_illegal_logged_action() -> None:
                     "available_actions": (0, 1),
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -51,7 +51,7 @@ def test_replay_rejects_trace_with_illegal_logged_action() -> None:
                     "action": 2,
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -61,7 +61,7 @@ def test_replay_rejects_trace_with_illegal_logged_action() -> None:
                     "outcome": {"reward": 1.0},
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -73,7 +73,7 @@ def test_replay_rejects_trace_with_illegal_logged_action() -> None:
                     "actor_id": "subject",
                     "learner_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
         ]

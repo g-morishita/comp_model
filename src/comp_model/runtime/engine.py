@@ -110,14 +110,18 @@ def run_trial_program(
         if len(steps) == 0:
             raise ValueError(f"program returned no steps for trial {trial_index}")
 
+        # decision_node_id names one decision instance inside the current trial.
+        # All later phases for that decision look up the same state entry.
         node_states: dict[str, _NodeExecutionState] = {}
         next_decision_index = 0
 
         for step in steps:
             if step.phase is EventPhase.OBSERVATION:
-                if step.node_id in node_states:
+                if step.decision_node_id in node_states:
                     raise ValueError(
-                        f"trial {trial_index}: duplicate observation step for node {step.node_id!r}"
+                        "trial "
+                        f"{trial_index}: duplicate observation step for decision node "
+                        f"{step.decision_node_id!r}"
                     )
 
                 available_actions = tuple(
@@ -132,7 +136,7 @@ def run_trial_program(
                     available_actions=available_actions,
                     actor_id=step.actor_id,
                     decision_index=next_decision_index,
-                    decision_label=step.node_id,
+                    decision_label=step.decision_node_id,
                 )
                 next_decision_index += 1
 
@@ -142,7 +146,7 @@ def run_trial_program(
                     context=context,
                     trial_events=tuple(trial_events),
                 )
-                node_states[step.node_id] = _NodeExecutionState(
+                node_states[step.decision_node_id] = _NodeExecutionState(
                     context=context,
                     observation=observation,
                 )
@@ -156,7 +160,7 @@ def run_trial_program(
                             "observation": observation,
                             "available_actions": available_actions,
                             "actor_id": step.actor_id,
-                            "node_id": step.node_id,
+                            "decision_node_id": step.decision_node_id,
                         },
                     ),
                 )
@@ -167,12 +171,15 @@ def run_trial_program(
             if step.phase is EventPhase.DECISION:
                 if state.decision_done:
                     raise ValueError(
-                        f"trial {trial_index}: duplicate decision step for node {step.node_id!r}"
+                        "trial "
+                        f"{trial_index}: duplicate decision step for decision node "
+                        f"{step.decision_node_id!r}"
                     )
                 if step.actor_id != state.context.actor_id:
                     raise ValueError(
                         f"trial {trial_index}: decision actor {step.actor_id!r} does not match "
-                        f"observation actor {state.context.actor_id!r} for node {step.node_id!r}"
+                        f"observation actor {state.context.actor_id!r} for decision node "
+                        f"{step.decision_node_id!r}"
                     )
 
                 actor_model = _get_actor_model(models=models, actor_id=step.actor_id)
@@ -195,7 +202,7 @@ def run_trial_program(
                             "action": action,
                             "actor_id": step.actor_id,
                             "decision_index": state.context.decision_index,
-                            "node_id": step.node_id,
+                            "decision_node_id": step.decision_node_id,
                         },
                     ),
                 )
@@ -204,17 +211,20 @@ def run_trial_program(
             if step.phase is EventPhase.OUTCOME:
                 if not state.decision_done:
                     raise ValueError(
-                        f"trial {trial_index}: outcome step for node {step.node_id!r} "
+                        f"trial {trial_index}: outcome step for decision node "
+                        f"{step.decision_node_id!r} "
                         "requires a prior decision"
                     )
                 if state.outcome_done:
                     raise ValueError(
-                        f"trial {trial_index}: duplicate outcome step for node {step.node_id!r}"
+                        f"trial {trial_index}: duplicate outcome step for decision node "
+                        f"{step.decision_node_id!r}"
                     )
                 if step.actor_id != state.context.actor_id:
                     raise ValueError(
                         f"trial {trial_index}: outcome actor {step.actor_id!r} does not match "
-                        f"decision actor {state.context.actor_id!r} for node {step.node_id!r}"
+                        f"decision actor {state.context.actor_id!r} for decision node "
+                        f"{step.decision_node_id!r}"
                     )
                 assert state.action is not None
                 outcome = program.transition(
@@ -237,7 +247,7 @@ def run_trial_program(
                             "outcome": outcome,
                             "actor_id": step.actor_id,
                             "decision_index": state.context.decision_index,
-                            "node_id": step.node_id,
+                            "decision_node_id": step.decision_node_id,
                         },
                     ),
                 )
@@ -246,7 +256,8 @@ def run_trial_program(
             if step.phase is EventPhase.UPDATE:
                 if not state.decision_done:
                     raise ValueError(
-                        f"trial {trial_index}: update step for node {step.node_id!r} "
+                        f"trial {trial_index}: update step for decision node "
+                        f"{step.decision_node_id!r} "
                         "requires a prior decision"
                     )
 
@@ -276,7 +287,7 @@ def run_trial_program(
                             "actor_id": state.context.actor_id,
                             "learner_id": learner_id,
                             "decision_index": state.context.decision_index,
-                            "node_id": step.node_id,
+                            "decision_node_id": step.decision_node_id,
                         },
                     ),
                 )
@@ -373,10 +384,12 @@ def _get_node_state(
 ) -> _NodeExecutionState:
     """Resolve node execution state or raise a clear dependency error."""
 
-    state = node_states.get(step.node_id)
+    state = node_states.get(step.decision_node_id)
     if state is None:
         raise ValueError(
-            f"trial {trial_index}: step {step.phase.value!r} for node {step.node_id!r} "
+            "trial "
+            f"{trial_index}: step {step.phase.value!r} for decision node "
+            f"{step.decision_node_id!r} "
             "requires a prior observation step"
         )
     return state

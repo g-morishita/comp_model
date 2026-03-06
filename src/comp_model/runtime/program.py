@@ -25,9 +25,10 @@ class ProgramStep:
     ----------
     phase : EventPhase
         Runtime phase executed for this step.
-    node_id : str
+    decision_node_id : str
         Stable identifier tying related observation/decision/outcome/update
-        steps to the same decision node.
+        steps to the same decision node. This names one decision instance
+        within a trial, not a whole environment or task family.
     actor_id : str, optional
         Actor responsible for the node associated with this step.
     learner_id : str | None, optional
@@ -36,13 +37,13 @@ class ProgramStep:
     """
 
     phase: EventPhase
-    node_id: str
+    decision_node_id: str
     actor_id: str = "subject"
     learner_id: str | None = None
 
     def __post_init__(self) -> None:
-        if self.node_id.strip() == "":
-            raise ValueError("node_id must be a non-empty string")
+        if self.decision_node_id.strip() == "":
+            raise ValueError("decision_node_id must be a non-empty string")
         if self.actor_id.strip() == "":
             raise ValueError("actor_id must be a non-empty string")
         if self.learner_id is not None and self.learner_id.strip() == "":
@@ -146,10 +147,10 @@ class SingleStepProgramAdapter:
         # `del` only removes these local names and does not affect caller state.
         del trial_index, trial_events
         return (
-            ProgramStep(phase=EventPhase.OBSERVATION, node_id="decision_0", actor_id="subject"),
-            ProgramStep(phase=EventPhase.DECISION, node_id="decision_0", actor_id="subject"),
-            ProgramStep(phase=EventPhase.OUTCOME, node_id="decision_0", actor_id="subject"),
-            ProgramStep(phase=EventPhase.UPDATE, node_id="decision_0", actor_id="subject"),
+            ProgramStep(phase=EventPhase.OBSERVATION, decision_node_id="decision_0", actor_id="subject"),
+            ProgramStep(phase=EventPhase.DECISION, decision_node_id="decision_0", actor_id="subject"),
+            ProgramStep(phase=EventPhase.OUTCOME, decision_node_id="decision_0", actor_id="subject"),
+            ProgramStep(phase=EventPhase.UPDATE, decision_node_id="decision_0", actor_id="subject"),
         )
 
     def available_actions(

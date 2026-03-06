@@ -79,7 +79,7 @@ class DecisionEventRecord:
     ----------
     trial_index : int
         Zero-based trial index.
-    node_id : str
+    decision_node_id : str
         Stable decision-node identifier.
     actor_id : str
         Actor that produced the decision.
@@ -96,7 +96,7 @@ class DecisionEventRecord:
     """
 
     trial_index: int
-    node_id: str
+    decision_node_id: str
     actor_id: str
     decision_index: int
     observation_event: SimulationEvent
@@ -109,7 +109,7 @@ class DecisionEventRecord:
 class _DecisionRecordBuilder:
     """Mutable builder used while parsing one trial's event stream."""
 
-    node_id: str
+    decision_node_id: str
     observation_event: SimulationEvent | None = None
     decision_event: SimulationEvent | None = None
     outcome_event: SimulationEvent | None = None
@@ -208,12 +208,22 @@ def decision_records_from_trial_events(
 
     for event in trial_events:
         payload = _payload_mapping(event.payload, trial_index=trial_index)
-        node_id = _coerce_non_empty_str(payload.get("node_id"), field_name="payload.node_id", trial_index=trial_index)
-        builder = builders.setdefault(node_id, _DecisionRecordBuilder(node_id=node_id))
+        decision_node_id = _coerce_non_empty_str(
+            payload.get("decision_node_id"),
+            field_name="payload.decision_node_id",
+            trial_index=trial_index,
+        )
+        builder = builders.setdefault(
+            decision_node_id,
+            _DecisionRecordBuilder(decision_node_id=decision_node_id),
+        )
 
         if event.phase is EventPhase.OBSERVATION:
             if builder.observation_event is not None:
-                raise ValueError(_trial_prefix(trial_index) + f"duplicate observation for node {node_id!r}")
+                raise ValueError(
+                    _trial_prefix(trial_index)
+                    + f"duplicate observation for decision node {decision_node_id!r}"
+                )
 
             actor_id = _coerce_non_empty_str(payload.get("actor_id"), field_name="payload.actor_id", trial_index=trial_index)
             _coerce_available_actions(payload, trial_index=trial_index)
@@ -230,7 +240,8 @@ def decision_records_from_trial_events(
         if builder.observation_event is None:
             raise ValueError(
                 _trial_prefix(trial_index)
-                + f"{event.phase.value!r} event for node {node_id!r} requires a prior observation"
+                + f"{event.phase.value!r} event for decision node {decision_node_id!r} "
+                "requires a prior observation"
             )
 
         actor_id = _coerce_non_empty_str(
@@ -241,7 +252,7 @@ def decision_records_from_trial_events(
         if builder.actor_id is not None and actor_id != builder.actor_id:
             raise ValueError(
                 _trial_prefix(trial_index)
-                + f"actor_id mismatch for node {node_id!r}: "
+                + f"actor_id mismatch for decision node {decision_node_id!r}: "
                 f"{actor_id!r} != {builder.actor_id!r}"
             )
 
@@ -254,19 +265,25 @@ def decision_records_from_trial_events(
             if builder.decision_index is not None and decision_index != builder.decision_index:
                 raise ValueError(
                     _trial_prefix(trial_index)
-                    + f"decision_index mismatch for node {node_id!r}: "
+                    + f"decision_index mismatch for decision node {decision_node_id!r}: "
                     f"{decision_index} != {builder.decision_index}"
                 )
             builder.decision_index = decision_index
 
         if event.phase is EventPhase.DECISION:
             if builder.decision_event is not None:
-                raise ValueError(_trial_prefix(trial_index) + f"duplicate decision for node {node_id!r}")
+                raise ValueError(
+                    _trial_prefix(trial_index)
+                    + f"duplicate decision for decision node {decision_node_id!r}"
+                )
             if "action" not in payload:
-                raise ValueError(_trial_prefix(trial_index) + f"decision payload for node {node_id!r} is missing 'action'")
+                raise ValueError(
+                    _trial_prefix(trial_index)
+                    + f"decision payload for decision node {decision_node_id!r} is missing 'action'"
+                )
             builder.decision_event = event
             builder.actor_id = actor_id
-            decision_order.append(node_id)
+            decision_order.append(decision_node_id)
             if builder.decision_index is None:
                 builder.decision_index = len(decision_order) - 1
             continue
@@ -274,12 +291,16 @@ def decision_records_from_trial_events(
         if builder.decision_event is None:
             raise ValueError(
                 _trial_prefix(trial_index)
-                + f"{event.phase.value!r} event for node {node_id!r} requires a prior decision"
+                + f"{event.phase.value!r} event for decision node {decision_node_id!r} "
+                "requires a prior decision"
             )
 
         if event.phase is EventPhase.OUTCOME:
             if builder.outcome_event is not None:
-                raise ValueError(_trial_prefix(trial_index) + f"duplicate outcome for node {node_id!r}")
+                raise ValueError(
+                    _trial_prefix(trial_index)
+                    + f"duplicate outcome for decision node {decision_node_id!r}"
+                )
             builder.outcome_event = event
             continue
 
@@ -289,15 +310,21 @@ def decision_records_from_trial_events(
 
         raise ValueError(_trial_prefix(trial_index) + f"unsupported event phase {event.phase!r}")
 
-    for node_id, builder in builders.items():
+    for decision_node_id, builder in builders.items():
         if builder.observation_event is None:
-            raise ValueError(_trial_prefix(trial_index) + f"node {node_id!r} is missing an observation event")
+            raise ValueError(
+                _trial_prefix(trial_index)
+                + f"decision node {decision_node_id!r} is missing an observation event"
+            )
         if builder.decision_event is None:
-            raise ValueError(_trial_prefix(trial_index) + f"node {node_id!r} is missing a decision event")
+            raise ValueError(
+                _trial_prefix(trial_index)
+                + f"decision node {decision_node_id!r} is missing a decision event"
+            )
 
     records: list[DecisionEventRecord] = []
-    for expected_index, node_id in enumerate(decision_order):
-        builder = builders[node_id]
+    for expected_index, decision_node_id in enumerate(decision_order):
+        builder = builders[decision_node_id]
         assert builder.observation_event is not None
         assert builder.decision_event is not None
         decision_index = builder.decision_index if builder.decision_index is not None else expected_index
@@ -305,12 +332,12 @@ def decision_records_from_trial_events(
             raise ValueError(
                 _trial_prefix(trial_index)
                 + f"decision_index sequence must be contiguous starting at 0; "
-                f"node {node_id!r} has {decision_index}, expected {expected_index}"
+                f"decision node {decision_node_id!r} has {decision_index}, expected {expected_index}"
             )
         records.append(
             DecisionEventRecord(
                 trial_index=trial_index if trial_index is not None else builder.observation_event.trial_index,
-                node_id=node_id,
+                decision_node_id=decision_node_id,
                 actor_id=builder.actor_id if builder.actor_id is not None else "subject",
                 decision_index=decision_index,
                 observation_event=builder.observation_event,

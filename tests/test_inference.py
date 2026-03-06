@@ -80,7 +80,7 @@ def test_trace_compatibility_reports_missing_reward_field() -> None:
                     "available_actions": (0,),
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -91,7 +91,7 @@ def test_trace_compatibility_reports_missing_reward_field() -> None:
                     "action": 0,
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -101,7 +101,7 @@ def test_trace_compatibility_reports_missing_reward_field() -> None:
                     "outcome": {"value": 1.0},
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -113,7 +113,7 @@ def test_trace_compatibility_reports_missing_reward_field() -> None:
                     "actor_id": "subject",
                     "learner_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
         ]
@@ -156,7 +156,7 @@ def test_grid_search_mle_fails_when_compatibility_fails() -> None:
                     "available_actions": (0, 1),
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -167,7 +167,7 @@ def test_grid_search_mle_fails_when_compatibility_fails() -> None:
                     "action": 1,
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -177,7 +177,7 @@ def test_grid_search_mle_fails_when_compatibility_fails() -> None:
                     "outcome": {"value": 1.0},
                     "actor_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
             SimulationEvent(
@@ -189,7 +189,7 @@ def test_grid_search_mle_fails_when_compatibility_fails() -> None:
                     "actor_id": "subject",
                     "learner_id": "subject",
                     "decision_index": 0,
-                    "node_id": "decision_0",
+                    "decision_node_id": "decision_0",
                 },
             ),
         ]

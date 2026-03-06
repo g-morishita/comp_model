@@ -28,7 +28,7 @@ _TRIAL_COLUMNS = (
     "decision_index",
     "actor_id",
     "learner_ids_json",
-    "node_id",
+    "decision_node_id",
     "available_actions_json",
     "action_json",
     "observation_json",
@@ -442,7 +442,9 @@ def _trial_row_to_csv_mapping(row: TrialDecision) -> dict[str, Any]:
         "decision_index": int(row.decision_index),
         "actor_id": str(row.actor_id),
         "learner_ids_json": _json_or_empty(row.learner_ids),
-        "node_id": "" if row.node_id is None else str(row.node_id),
+        "decision_node_id": (
+            "" if row.decision_node_id is None else str(row.decision_node_id)
+        ),
         "available_actions_json": _json_or_empty(row.available_actions),
         "action_json": _json_or_empty(row.action),
         "observation_json": _json_or_empty(row.observation),
@@ -468,8 +470,10 @@ def _trial_row_from_csv_mapping(raw: dict[str, Any], *, row_index: int) -> Trial
         if learner_ids_value is not None
         else None
     )
-    node_id_raw = raw.get("node_id", "")
-    node_id = str(node_id_raw) if str(node_id_raw).strip() else None
+    decision_node_id_raw = raw.get("decision_node_id", "")
+    decision_node_id = (
+        str(decision_node_id_raw) if str(decision_node_id_raw).strip() else None
+    )
 
     available_actions_value = _json_or_none(raw.get("available_actions_json", ""))
     available_actions = (
@@ -491,7 +495,7 @@ def _trial_row_from_csv_mapping(raw: dict[str, Any], *, row_index: int) -> Trial
         decision_index=decision_index,
         actor_id=actor_id,
         learner_ids=learner_ids,
-        node_id=node_id,
+        decision_node_id=decision_node_id,
         available_actions=available_actions,
         action=action,
         observation=observation,

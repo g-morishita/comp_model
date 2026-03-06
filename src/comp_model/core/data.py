@@ -36,7 +36,7 @@ class TrialDecision:
         Actors that receive update callbacks for this decision in chronological
         order. ``None`` implies one update for ``actor_id``. ``()`` means this
         decision emits no update events.
-    node_id : str | None, optional
+    decision_node_id : str | None, optional
         Optional decision-node identifier.
     available_actions : tuple[Any, ...] | None, optional
         Legal actions at decision time. If ``None``, conversion requires
@@ -63,7 +63,7 @@ class TrialDecision:
     decision_index: int = 0
     actor_id: str = "subject"
     learner_ids: tuple[str, ...] | None = None
-    node_id: str | None = None
+    decision_node_id: str | None = None
     available_actions: tuple[Any, ...] | None = None
     action: Any | None = None
     observation: Any = None
@@ -240,7 +240,9 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                 f"decision row trial={row.trial_index} index={row.decision_index} is missing action"
             )
 
-        node_id = row.node_id if row.node_id is not None else f"decision_{row.decision_index}"
+        decision_node_id = (
+            row.decision_node_id if row.decision_node_id is not None else f"decision_{row.decision_index}"
+        )
 
         observation = row.observation if row.observation is not None else {"trial_index": row.trial_index}
         outcome = _coerce_outcome(row)
@@ -257,7 +259,7 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "available_actions": available_actions,
                         "actor_id": row.actor_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
                 ),
                 SimulationEvent(
@@ -268,7 +270,7 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "action": action,
                         "actor_id": row.actor_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
                 ),
             )
@@ -282,7 +284,7 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "outcome": outcome,
                         "actor_id": row.actor_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
                 )
             )
@@ -297,7 +299,7 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "actor_id": row.actor_id,
                         "learner_id": learner_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
                 )
             )
@@ -345,7 +347,7 @@ def trial_decisions_from_trace(trace: EpisodeTrace) -> tuple[TrialDecision, ...]
                 decision_index=record.decision_index,
                 actor_id=record.actor_id,
                 learner_ids=learner_ids,
-                node_id=record.node_id,
+                decision_node_id=record.decision_node_id,
                 available_actions=tuple(observation_payload["available_actions"]),
                 action=decision_payload.get("action"),
                 observation=observation_payload.get("observation"),

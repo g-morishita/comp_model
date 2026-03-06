@@ -33,7 +33,7 @@ class ReplayStep:
         Learners updated for this decision in chronological order.
     decision_index : int, optional
         Decision-step index within trial.
-    node_id : str | None, optional
+    decision_node_id : str | None, optional
         Optional semantic decision-node identifier.
     """
 
@@ -44,7 +44,7 @@ class ReplayStep:
     actor_id: str = "subject"
     learner_ids: tuple[str, ...] = ("subject",)
     decision_index: int = 0
-    node_id: str | None = None
+    decision_node_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +62,7 @@ class _ReplayNodeState:
     observation: Any
     available_actions: tuple[Any, ...]
     actor_id: str
-    node_id: str
+    decision_node_id: str
     decision_index: int | None = None
     action: Any | None = None
     outcome: Any = None
@@ -91,29 +91,33 @@ def replay_trial_program(
     steps: list[ReplayStep] = []
 
     for trial_index in sorted(grouped):
+        # decision_node_id ties together the logged observation/decision/outcome
+        # and any update callbacks for one decision instance within the trial.
         node_states: dict[str, _ReplayNodeState] = {}
         decision_order: list[str] = []
 
         for event in grouped[trial_index]:
             payload = _payload_mapping(event.payload, trial_index)
-            node_id = str(payload.get("node_id"))
+            decision_node_id = str(payload.get("decision_node_id"))
 
             if event.phase is EventPhase.OBSERVATION:
                 observation = _payload_get(payload, "observation", trial_index)
                 available_actions = tuple(_payload_get(payload, "available_actions", trial_index))
                 actor_id = str(payload.get("actor_id", "subject"))
-                node_states[node_id] = _ReplayNodeState(
+                node_states[decision_node_id] = _ReplayNodeState(
                     observation=observation,
                     available_actions=available_actions,
                     actor_id=actor_id,
-                    node_id=node_id,
+                    decision_node_id=decision_node_id,
                 )
                 continue
 
-            state = node_states.get(node_id)
+            state = node_states.get(decision_node_id)
             if state is None:
                 raise ValueError(
-                    f"trial {trial_index}: event {event.phase.value!r} for node {node_id!r} "
+                    "trial "
+                    f"{trial_index}: event {event.phase.value!r} for decision node "
+                    f"{decision_node_id!r} "
                     "requires a prior observation"
                 )
 
@@ -126,7 +130,7 @@ def replay_trial_program(
                     available_actions=state.available_actions,
                     actor_id=actor_id,
                     decision_index=decision_index,
-                    decision_label=node_id,
+                    decision_label=decision_node_id,
                 )
                 if action not in state.available_actions:
                     raise ValueError(
@@ -147,7 +151,7 @@ def replay_trial_program(
                 state.probability = probability
                 state.log_probability = log_probability
                 state.learner_ids = []
-                decision_order.append(node_id)
+                decision_order.append(decision_node_id)
                 continue
 
             if event.phase is EventPhase.OUTCOME:
@@ -157,7 +161,8 @@ def replay_trial_program(
             if event.phase is EventPhase.UPDATE:
                 if state.action is None or state.decision_index is None:
                     raise ValueError(
-                        f"trial {trial_index}: update for node {node_id!r} requires a prior decision"
+                        f"trial {trial_index}: update for decision node "
+                        f"{decision_node_id!r} requires a prior decision"
                     )
 
                 context = DecisionContext(
@@ -165,7 +170,7 @@ def replay_trial_program(
                     available_actions=state.available_actions,
                     actor_id=state.actor_id,
                     decision_index=state.decision_index,
-                    decision_label=node_id,
+                    decision_label=decision_node_id,
                 )
                 learner_id = str(payload.get("learner_id", state.actor_id))
                 learner_model = _get_actor_model(models=models, actor_id=learner_id)
@@ -182,10 +187,12 @@ def replay_trial_program(
 
             raise ValueError(f"trial {trial_index}: unsupported event phase {event.phase!r}")
 
-        for node_id in decision_order:
-            state = node_states[node_id]
+        for decision_node_id in decision_order:
+            state = node_states[decision_node_id]
             if state.action is None or state.probability is None or state.log_probability is None or state.decision_index is None:
-                raise ValueError(f"trial {trial_index}: node {node_id!r} is missing replay decision state")
+                raise ValueError(
+                    f"trial {trial_index}: decision node {decision_node_id!r} is missing replay decision state"
+                )
             learner_ids = tuple(state.learner_ids) if state.learner_ids is not None else ()
             steps.append(
                 ReplayStep(
@@ -196,7 +203,7 @@ def replay_trial_program(
                     actor_id=state.actor_id,
                     learner_ids=learner_ids,
                     decision_index=state.decision_index,
-                    node_id=node_id,
+                    decision_node_id=decision_node_id,
                 )
             )
 

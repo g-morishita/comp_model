@@ -34,7 +34,7 @@ def _trial(
         decision_index=decision_index,
         actor_id=actor_id,
         learner_ids=("subject",),
-        node_id=f"node_{decision_index}",
+        decision_node_id=f"node_{decision_index}",
         available_actions=(0, 1),
         action=action,
         observation={"state": 0, "trial": trial_index},

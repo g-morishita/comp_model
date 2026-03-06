@@ -7,7 +7,10 @@ import pytest
 
 from comp_model.core.events import EventPhase, validate_trace
 from comp_model.models import UniformRandomPolicyModel
-from comp_model.problems import DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram
+from comp_model.problems import (
+    DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
+    SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram,
+)
 from comp_model.runtime import (
     SimulationConfig,
     replay_trial_program,
@@ -96,6 +99,43 @@ def test_replay_trial_program_supports_multi_actor_trace() -> None:
 
     expected = 8 * float(np.log(0.5))
     assert replay.total_log_likelihood == pytest.approx(expected)
+
+
+def test_subject_first_program_keeps_subject_as_social_learner() -> None:
+    """Subject-first timing should still update the subject from demonstrator events."""
+
+    program = SubjectThenDemonstratorObservedOutcomeSelfOutcomeProgram(
+        reward_probabilities=[0.5, 0.5]
+    )
+    trace = run_trial_program(
+        program=program,
+        models={"demonstrator": UniformRandomPolicyModel(), "subject": UniformRandomPolicyModel()},
+        config=SimulationConfig(n_trials=1, seed=4),
+    )
+
+    validate_trace(trace)
+    trial_events = trace.by_trial(0)
+    phases = [event.phase for event in trial_events]
+    assert phases == [
+        EventPhase.OBSERVATION,
+        EventPhase.DECISION,
+        EventPhase.OUTCOME,
+        EventPhase.UPDATE,
+        EventPhase.OBSERVATION,
+        EventPhase.DECISION,
+        EventPhase.OUTCOME,
+        EventPhase.UPDATE,
+        EventPhase.UPDATE,
+    ]
+
+    replay = replay_trial_program(
+        trace=trace,
+        models={"demonstrator": UniformRandomPolicyModel(), "subject": UniformRandomPolicyModel()},
+    )
+    assert replay.steps[0].actor_id == "subject"
+    assert replay.steps[0].learner_ids == ("subject",)
+    assert replay.steps[1].actor_id == "demonstrator"
+    assert replay.steps[1].learner_ids == ("demonstrator", "subject")
 
 
 def test_run_social_episode_matches_direct_trial_program_execution() -> None:

@@ -10,6 +10,10 @@ ordered steps, node identities, and actor identities. This keeps timing
 semantics auditable and replay-consistent, even when one actor observes or
 updates before another actor makes a decision.
 
+Here `decision_node_id` means "this specific decision instance within the
+trial." All observation/decision/outcome/update steps for that one decision
+reuse the same identifier.
+
 ## 1. Implement a `TrialProgram`
 
 ```python
@@ -40,19 +44,47 @@ class ThreePhaseSocialProgram(TrialProgram):
     ) -> tuple[ProgramStep, ...]:
         del trial_index, trial_events
         return (
-            ProgramStep(EventPhase.OBSERVATION, node_id="demo_phase", actor_id="demonstrator"),
-            ProgramStep(EventPhase.DECISION, node_id="demo_phase", actor_id="demonstrator"),
-            ProgramStep(EventPhase.OUTCOME, node_id="demo_phase", actor_id="demonstrator"),
+            ProgramStep(
+                EventPhase.OBSERVATION,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+            ),
+            ProgramStep(
+                EventPhase.DECISION,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+            ),
+            ProgramStep(
+                EventPhase.OUTCOME,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+            ),
             ProgramStep(
                 EventPhase.UPDATE,
-                node_id="demo_phase",
+                decision_node_id="demo_phase",
                 actor_id="demonstrator",
                 learner_id="subject",
             ),
-            ProgramStep(EventPhase.OBSERVATION, node_id="subject_phase", actor_id="subject"),
-            ProgramStep(EventPhase.DECISION, node_id="subject_phase", actor_id="subject"),
-            ProgramStep(EventPhase.OUTCOME, node_id="subject_phase", actor_id="subject"),
-            ProgramStep(EventPhase.UPDATE, node_id="subject_phase", actor_id="subject"),
+            ProgramStep(
+                EventPhase.OBSERVATION,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.DECISION,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.OUTCOME,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.UPDATE,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
         )
 
     def available_actions(
@@ -80,7 +112,8 @@ class ThreePhaseSocialProgram(TrialProgram):
         demonstrator_action = next(
             event.payload["action"]
             for event in trial_events
-            if event.phase is EventPhase.DECISION and event.payload["node_id"] == "demo_phase"
+            if event.phase is EventPhase.DECISION
+            and event.payload["decision_node_id"] == "demo_phase"
         )
         return {
             "trial": trial_index,
@@ -100,7 +133,11 @@ class ThreePhaseSocialProgram(TrialProgram):
     ) -> dict[str, Any]:
         del trial_index, trial_events
         reward = 1.0 if rng.random() < self.reward_probabilities[int(action)] else 0.0
-        return {"reward": reward, "node_id": step.node_id, "actor_id": context.actor_id}
+        return {
+            "reward": reward,
+            "decision_node_id": step.decision_node_id,
+            "actor_id": context.actor_id,
+        }
 ```
 
 ## 2. Run with Multiple Actors
