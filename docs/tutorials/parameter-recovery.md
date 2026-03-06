@@ -229,6 +229,7 @@ result_wider = run_parameter_recovery(
 
 print("wider n_cases:", len(result_wider.cases))
 print("wider MAE:", result_wider.mean_absolute_error)
+print("true_estimate_correlation:", result_wider.true_estimate_correlation)
 ```
 
 Typical levers:
