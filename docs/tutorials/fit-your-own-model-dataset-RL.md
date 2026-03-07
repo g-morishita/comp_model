@@ -108,7 +108,7 @@ You can bridge between them:
 
 Which API to use:
 
-- one dataset/one block: `fit_model(...)` accepts `EpisodeTrace`, `BlockData`, or
+- one dataset/one block: `fit_dataset(...)` accepts `EpisodeTrace`, `BlockData`, or
   `Sequence[TrialDecision]`.
 - many subjects/blocks: `fit_study_data(...)` expects `StudyData`.
 

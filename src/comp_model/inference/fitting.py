@@ -37,7 +37,7 @@ class FitSpec:
     Parameters
     ----------
     inference : {"mle", "bayesian"}, optional
-        High-level inference family. ``fit_model`` currently supports
+        High-level inference family. ``fit_dataset`` currently supports
         ``"mle"`` only; ``"bayesian"`` is routed through Stan posterior APIs.
     solver : {"grid_search", "scipy_minimize", "transformed_scipy_minimize"} | None, optional
         Concrete MLE solver/backend. If omitted, a solver is chosen
@@ -120,7 +120,7 @@ def coerce_episode_trace(data: EpisodeTrace | BlockData | Sequence[TrialDecision
     )
 
 
-def build_model_fit_function(
+def _build_trace_fit_function(
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
     fit_spec: FitSpec,
@@ -227,13 +227,13 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     Raises
     ------
     ValueError
-        If inference type is unsupported in ``fit_model`` or solver hints
+        If inference type is unsupported in ``fit_dataset`` or solver hints
         are contradictory.
     """
 
     if fit_spec.inference == "bayesian":
         raise ValueError(
-            "fit_model currently supports only inference='mle'. "
+            "fit_dataset currently supports only inference='mle'. "
             "Use Stan Bayesian APIs (for example, sample_subject_hierarchical_posterior_stan)."
         )
     if fit_spec.inference != "mle":
@@ -249,7 +249,7 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     return solver
 
 
-def fit_model(
+def fit_dataset(
     data: EpisodeTrace | BlockData | Sequence[TrialDecision],
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
@@ -279,7 +279,7 @@ def fit_model(
     """
 
     trace = coerce_episode_trace(data)
-    fit_function = build_model_fit_function(
+    fit_function = _build_trace_fit_function(
         model_factory=model_factory,
         fit_spec=fit_spec,
         requirements=requirements,
@@ -288,7 +288,7 @@ def fit_model(
     return fit_function(trace)
 
 
-def fit_model_from_registry(
+def fit_dataset_from_registry(
     data: EpisodeTrace | BlockData | Sequence[TrialDecision],
     *,
     model_component_id: str,
@@ -324,7 +324,7 @@ def fit_model_from_registry(
     manifest = reg.get("model", model_component_id)
     fixed_kwargs = dict(model_kwargs) if model_kwargs is not None else {}
 
-    return fit_model(
+    return fit_dataset(
         data,
         model_factory=lambda params: reg.create_model(
             model_component_id,
@@ -348,8 +348,7 @@ __all__ = [
     "FitInferenceType",
     "FitSpec",
     "MLESolverType",
-    "build_model_fit_function",
     "coerce_episode_trace",
-    "fit_model",
-    "fit_model_from_registry",
+    "fit_dataset",
+    "fit_dataset_from_registry",
 ]

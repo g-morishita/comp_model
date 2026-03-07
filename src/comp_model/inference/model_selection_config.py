@@ -20,7 +20,7 @@ from .config_dispatch import (
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from .fitting import build_model_fit_function
+from .fitting import _build_trace_fit_function
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
 from .model_selection import (
@@ -94,7 +94,7 @@ def build_fit_function_from_model_config(
     )
     if estimator_type in MLE_ESTIMATORS:
         mle_fit_spec = fit_spec_from_config(estimator_cfg)
-        return build_model_fit_function(
+        return _build_trace_fit_function(
             model_factory=model_factory,
             fit_spec=mle_fit_spec,
             requirements=manifest.requirements,

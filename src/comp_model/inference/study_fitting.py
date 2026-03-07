@@ -12,7 +12,7 @@ from comp_model.inference.block_strategy import (
     coerce_block_fit_strategy,
 )
 from comp_model.inference.compatibility import assert_trace_compatible
-from comp_model.inference.fitting import FitSpec, fit_model_from_registry
+from comp_model.inference.fitting import FitSpec, fit_dataset_from_registry
 from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.inference.mle import MLEFitResult
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -118,7 +118,7 @@ def fit_block_data(
         Block-level fit summary.
     """
 
-    fit = fit_model_from_registry(
+    fit = fit_dataset_from_registry(
         block,
         model_component_id=model_component_id,
         fit_spec=fit_spec,
@@ -206,7 +206,7 @@ def fit_subject_data(
         block_traces=block_traces,
         likelihood_program=likelihood_program,
     )
-    joint_fit = fit_model_from_registry(
+    joint_fit = fit_dataset_from_registry(
         subject.blocks[0],
         model_component_id=model_component_id,
         fit_spec=fit_spec,

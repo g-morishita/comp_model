@@ -18,7 +18,7 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .criteria import compute_pointwise_information_criteria
 from .fit_result import extract_best_fit_summary
-from .fitting import FitSpec, build_model_fit_function, coerce_episode_trace
+from .fitting import FitSpec, _build_trace_fit_function, coerce_episode_trace
 from .likelihood import LikelihoodProgram
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
@@ -290,7 +290,7 @@ def compare_registry_candidate_models(
             component_id,
             **_merge_kwargs(fixed_kwargs, params),
         )
-        fit_function = build_model_fit_function(
+        fit_function = _build_trace_fit_function(
             model_factory=model_factory,
             fit_spec=spec.fit_spec,
             requirements=manifest.requirements,

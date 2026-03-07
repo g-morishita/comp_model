@@ -129,6 +129,10 @@ def group_events_by_trial(trace: EpisodeTrace) -> dict[int, list[SimulationEvent
 
 def validate_trace(trace: EpisodeTrace) -> None:
     """Validate that an episode trace follows canonical node dependencies.
+    In particular, this checks the followings:
+
+    1. Trace trial indices are non-decreasing
+    2. Trace trial indices start at 0 and increase by 1.
 
     Raises
     ------
