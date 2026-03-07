@@ -109,7 +109,7 @@ Focus:
   - `src/comp_model/recovery/config.py:70` (`load_json_config`)
   - exported in `src/comp_model/recovery/__init__.py:7`, `:40`
 - additional backward-compatible alias property:
-  - `src/comp_model/inference/hierarchical_mcmc.py:95`
+  - `src/comp_model/inference/hierarchical_posterior.py:95`
 - impact:
   - architecture policy inconsistency; increases maintenance cost and ambiguity.
 

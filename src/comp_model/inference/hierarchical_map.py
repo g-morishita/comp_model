@@ -1,8 +1,4 @@
-"""Legacy hierarchical MAP API placeholders.
-
-The previous SciPy-based hierarchical MAP implementation has been removed.
-Bayesian estimation is Stan-only in this package.
-"""
+"""Hierarchical MAP result types and removed legacy API placeholders."""
 
 from __future__ import annotations
 

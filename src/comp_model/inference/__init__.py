@@ -48,12 +48,12 @@ from .fitting import (
     fit_dataset,
     fit_dataset_from_registry,
 )
-from .hierarchical import (
+from .hierarchical_map import (
     HierarchicalBlockResult,
     HierarchicalStudyMapResult,
     HierarchicalSubjectMapResult,
 )
-from .hierarchical_mcmc import (
+from .hierarchical_posterior import (
     HierarchicalMCMCDraw,
     HierarchicalPosteriorCandidate,
     HierarchicalStudyPosteriorResult,
@@ -69,7 +69,7 @@ from .hierarchical_stan import (
 )
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
-from .mcmc import MCMCDiagnostics
+from .mcmc_diagnostics import MCMCDiagnostics
 from .mcmc_config import (
     HierarchicalStanEstimatorSpec,
     hierarchical_stan_estimator_spec_from_config,

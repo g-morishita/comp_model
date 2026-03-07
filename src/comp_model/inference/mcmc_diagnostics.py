@@ -1,8 +1,4 @@
-"""Shared MCMC result dataclasses.
-
-This module intentionally contains only lightweight, backend-agnostic result
-containers. Posterior sampling backends are implemented elsewhere (Stan).
-"""
+"""Shared MCMC diagnostics dataclasses."""
 
 from __future__ import annotations
 
