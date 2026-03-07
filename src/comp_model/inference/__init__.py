@@ -69,13 +69,13 @@ from .hierarchical_stan import (
 )
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
-from .mcmc_diagnostics import MCMCDiagnostics
 from .mcmc_config import (
     HierarchicalStanEstimatorSpec,
     hierarchical_stan_estimator_spec_from_config,
     sample_study_hierarchical_posterior_from_config,
     sample_subject_hierarchical_posterior_from_config,
 )
+from .mcmc_diagnostics import MCMCDiagnostics
 from .mle import (
     GridSearchMLEEstimator,
     MLECandidate,
