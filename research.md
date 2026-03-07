@@ -109,7 +109,7 @@ Focus:
   - `src/comp_model/recovery/config.py:70` (`load_json_config`)
   - exported in `src/comp_model/recovery/__init__.py:7`, `:40`
 - additional backward-compatible alias property:
-  - `src/comp_model/inference/hierarchical_mcmc.py:95`
+  - `src/comp_model/inference/hierarchical_posterior.py:95`
 - impact:
   - architecture policy inconsistency; increases maintenance cost and ambiguity.
 
@@ -289,7 +289,7 @@ Stan support for current mapped models:
    - `inference.__init__`
    - `bayes.py`, `bayes_config.py`, `map_study_fitting.py` dead routes
 3. Keep only supported surfaces:
-   - MLE (`fit_model`, config MLE)
+   - MLE (`fit_dataset`, config MLE)
    - Stan Bayesian (`within_subject_hierarchical_stan_map|nuts`)
 
 ### Phase 4: Analysis parity + docs hardening
@@ -318,4 +318,3 @@ Stan support for current mapped models:
 5. Phase 5 parity test harness.
 
 This order minimizes user-facing confusion first, then closes substantive parity gaps.
-

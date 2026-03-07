@@ -14,7 +14,7 @@ from comp_model.inference import (
     ActorSubsetReplayLikelihood,
     FitSpec,
     GridSearchMLEEstimator,
-    fit_model,
+    fit_dataset,
 )
 from comp_model.problems import (
     DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram,
@@ -163,7 +163,7 @@ def test_run_parameter_recovery_supports_custom_social_trace_factory() -> None:
     """Recovery should support multi-actor traces via trace_factory hook."""
 
     def fit_function(trace: Any):
-        return fit_model(
+        return fit_dataset(
             trace,
             model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
             fit_spec=FitSpec(

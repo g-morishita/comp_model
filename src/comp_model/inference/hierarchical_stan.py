@@ -1,4 +1,4 @@
-"""Stan NUTS backend for within-subject hierarchical Bayesian estimation.
+"""Stan backend for within-subject hierarchical Bayesian estimation.
 
 The Stan backend supports:
 
@@ -12,13 +12,11 @@ The Stan backend supports:
 
 Design notes
 ------------
-- This backend mirrors the same within-subject hierarchy used by the existing
-  Python hierarchical samplers: group-level location/scale in unconstrained
-  space and block-level latent ``z`` parameters.
+- This backend uses group-level location/scale in unconstrained space and
+  block-level latent ``z`` parameters.
 - Parameters are transformed from latent ``z`` into model space in Stan using
   configurable transform kinds.
-- Outputs are converted into the same public result dataclasses used by the
-  random-walk hierarchical sampler for API consistency.
+- Outputs are converted into shared public posterior result dataclasses.
 """
 
 from __future__ import annotations
@@ -41,7 +39,7 @@ from comp_model.core.data import (
 from comp_model.core.requirements import ComponentRequirements
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from .hierarchical_mcmc import (
+from .hierarchical_posterior import (
     HierarchicalMCMCDraw,
     HierarchicalPosteriorCandidate,
     HierarchicalStudyPosteriorResult,
@@ -55,7 +53,7 @@ from .hierarchical_stan_social import (
     social_pooled_cache_tag,
     social_supported_component_ids,
 )
-from .mcmc import MCMCDiagnostics
+from .mcmc_diagnostics import MCMCDiagnostics
 from .stan_backend import compile_cmdstan_model
 
 _ASOCIAL_COMPONENT_ID = "asocial_state_q_value_softmax"

@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from .fit_result import extract_best_fit_summary
-from .hierarchical import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
-from .hierarchical_mcmc import (
+from .hierarchical_map import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
+from .hierarchical_posterior import (
     HierarchicalStudyPosteriorResult,
     HierarchicalSubjectPosteriorResult,
 )

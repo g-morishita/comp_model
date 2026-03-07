@@ -422,8 +422,6 @@ def _extract_joint_subject_summary(fit_result: object) -> tuple[dict[str, float]
         params_raw = getattr(fit_result, "mean_best_params", None)
         if params_raw is None:
             params_raw = getattr(fit_result, "mean_map_params", None)
-        if params_raw is None:
-            params_raw = getattr(fit_result, "mean_block_map_params", None)
         if isinstance(params_raw, dict):
             log_posterior = getattr(fit_result, "total_log_posterior", None)
             if log_posterior is None:

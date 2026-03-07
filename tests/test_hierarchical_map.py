@@ -9,7 +9,7 @@ import pytest
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import BlockData, StudyData, SubjectData
-from comp_model.inference.hierarchical import (
+from comp_model.inference.hierarchical_map import (
     fit_study_hierarchical_map,
     fit_subject_hierarchical_map,
 )

@@ -12,7 +12,7 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import coerce_block_fit_strategy
-from .fitting import FitInferenceType, FitSpec, MLESolverType, fit_model_from_registry
+from .fitting import FitInferenceType, FitSpec, MLESolverType, fit_dataset_from_registry
 from .likelihood_config import likelihood_program_from_config
 from .mle import MLEFitResult
 from .study_fitting import (
@@ -245,7 +245,7 @@ def fit_dataset_from_config(
     )
 
     reg = registry if registry is not None else build_default_registry()
-    return fit_model_from_registry(
+    return fit_dataset_from_registry(
         data,
         model_component_id=model_spec.component_id,
         fit_spec=fit_spec,

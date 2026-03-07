@@ -1,4 +1,4 @@
-"""Social-model Stan adapter utilities for hierarchical within-subject NUTS.
+"""Social-model Stan adapter utilities for hierarchical within-subject inference.
 
 This module provides:
 

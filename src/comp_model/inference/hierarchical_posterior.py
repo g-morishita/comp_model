@@ -1,15 +1,11 @@
-"""Shared hierarchical posterior result dataclasses.
-
-This module contains only posterior result containers used by Stan-backed
-hierarchical sampling.
-"""
+"""Shared hierarchical posterior result dataclasses."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from .compatibility import CompatibilityReport
-from .mcmc import MCMCDiagnostics
+from .mcmc_diagnostics import MCMCDiagnostics
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,13 +85,6 @@ class HierarchicalSubjectPosteriorResult:
             values = [float(block[name]) for block in self.map_candidate.block_params]
             out[name] = float(sum(values) / len(values))
         return out
-
-    @property
-    def mean_block_map_params(self) -> dict[str, float]:
-        """Backward-compatible alias for mean MAP block parameters."""
-
-        return self.mean_map_params
-
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalStudyPosteriorResult:

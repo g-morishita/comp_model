@@ -44,17 +44,16 @@ from .fitting import (
     FitInferenceType,
     FitSpec,
     MLESolverType,
-    build_model_fit_function,
     coerce_episode_trace,
-    fit_model,
-    fit_model_from_registry,
+    fit_dataset,
+    fit_dataset_from_registry,
 )
-from .hierarchical import (
+from .hierarchical_map import (
     HierarchicalBlockResult,
     HierarchicalStudyMapResult,
     HierarchicalSubjectMapResult,
 )
-from .hierarchical_mcmc import (
+from .hierarchical_posterior import (
     HierarchicalMCMCDraw,
     HierarchicalPosteriorCandidate,
     HierarchicalStudyPosteriorResult,
@@ -70,13 +69,13 @@ from .hierarchical_stan import (
 )
 from .likelihood import ActionReplayLikelihood, ActorSubsetReplayLikelihood, LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
-from .mcmc import MCMCDiagnostics
 from .mcmc_config import (
     HierarchicalStanEstimatorSpec,
     hierarchical_stan_estimator_spec_from_config,
     sample_study_hierarchical_posterior_from_config,
     sample_subject_hierarchical_posterior_from_config,
 )
+from .mcmc_diagnostics import MCMCDiagnostics
 from .mle import (
     GridSearchMLEEstimator,
     MLECandidate,
@@ -244,7 +243,6 @@ __all__ = [
     "model_comparison_records",
     "study_model_comparison_records",
     "study_model_comparison_subject_records",
-    "build_model_fit_function",
     "build_map_fit_function",
     "check_trace_compatibility",
     "coerce_episode_trace",
@@ -264,8 +262,8 @@ __all__ = [
     "fit_block_from_config",
     "fit_dataset_from_config",
     "fit_dataset_auto_from_config",
-    "fit_model",
-    "fit_model_from_registry",
+    "fit_dataset",
+    "fit_dataset_from_registry",
     "fit_spec_from_config",
     "sample_study_hierarchical_posterior_from_config",
     "fit_study_data",

@@ -25,7 +25,7 @@ from .bayes import (
     normal_log_prior,
     uniform_log_prior,
 )
-from .hierarchical import (
+from .hierarchical_map import (
     HierarchicalStudyMapResult,
     HierarchicalSubjectMapResult,
 )

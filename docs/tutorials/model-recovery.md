@@ -45,7 +45,7 @@ function per candidate model:
 ```python
 from pathlib import Path
 
-from comp_model.inference import FitSpec, fit_model
+from comp_model.inference import FitSpec, fit_dataset
 from comp_model.models import (
     AsocialStateQValueSoftmaxModel,
     AsocialStateQValueSoftmaxPerseverationModel,
@@ -88,7 +88,7 @@ def q_softmax_perseveration_model_factory(
 
 
 def fit_q_softmax(trace):
-    return fit_model(
+    return fit_dataset(
         trace,
         model_factory=q_softmax_model_factory,
         fit_spec=FitSpec(
@@ -104,7 +104,7 @@ def fit_q_softmax(trace):
 
 
 def fit_q_softmax_perseveration(trace):
-    return fit_model(
+    return fit_dataset(
         trace,
         model_factory=q_softmax_perseveration_model_factory,
         fit_spec=FitSpec(
