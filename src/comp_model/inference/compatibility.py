@@ -8,8 +8,8 @@ from typing import Any
 
 from comp_model.core.events import (
     EpisodeTrace,
+    decision_records_from_trial_events,
     group_events_by_trial,
-    split_trial_events_into_phase_blocks,
     validate_trace,
 )
 from comp_model.core.requirements import ComponentRequirements
@@ -60,13 +60,13 @@ def check_trace_compatibility(
 
     grouped = group_events_by_trial(trace)
     for trial_index in sorted(grouped):
-        phase_blocks = split_trial_events_into_phase_blocks(
+        records = decision_records_from_trial_events(
             grouped[trial_index],
             trial_index=trial_index,
         )
-        for block_index, block in enumerate(phase_blocks):
-            observation_payload = block[0].payload
-            outcome_payload = block[2].payload
+        for block_index, record in enumerate(records):
+            observation_payload = record.observation_event.payload
+            outcome_payload = record.outcome_event.payload if record.outcome_event is not None else {}
 
             observation = (
                 observation_payload.get("observation") if isinstance(observation_payload, Mapping) else None

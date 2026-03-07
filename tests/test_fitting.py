@@ -231,6 +231,8 @@ def test_fit_model_multi_start_is_reproducible_with_seed() -> None:
 
     assert fit1.best.params == pytest.approx(fit2.best.params)
     assert fit1.best.log_likelihood == pytest.approx(fit2.best.log_likelihood)
+    assert len(fit1.candidates) == 5
+    assert len(fit2.candidates) == 5
 
 
 def test_fit_model_from_registry_component_id() -> None:

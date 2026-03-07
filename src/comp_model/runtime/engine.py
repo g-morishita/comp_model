@@ -2,7 +2,7 @@
 
 This module provides three runtime entry points:
 
-- :func:`run_trial_program`: multi-phase, multi-actor episode runner.
+- :func:`run_trial_program`: ordered multi-phase, multi-actor episode runner.
 - :func:`run_episode`: single-problem convenience wrapper.
 - :func:`run_social_episode`: social two-actor convenience wrapper.
 """
@@ -11,13 +11,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
+from typing import Any
 
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionContext, DecisionProblem
 from comp_model.core.events import EpisodeTrace, EventPhase, SimulationEvent
 from comp_model.runtime.probabilities import normalize_distribution, sample_action
-from comp_model.runtime.program import SingleStepProgramAdapter, TrialProgram
+from comp_model.runtime.program import ProgramStep, SingleStepProgramAdapter, TrialProgram
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,35 +47,46 @@ class SimulationConfig:
             raise ValueError("n_trials must be >= 0")
 
 
+@dataclass(slots=True)
+class _NodeExecutionState:
+    """Mutable per-node execution state tracked within one trial."""
+
+    context: DecisionContext[Any]
+    observation: Any
+    action: Any | None = None
+    outcome: Any = None
+    decision_done: bool = False
+    outcome_done: bool = False
+
+
 def run_trial_program(
     *,
     program: TrialProgram,
     models: Mapping[str, AgentModel],
     config: SimulationConfig,
 ) -> EpisodeTrace:
-    """Run a full episode from a multi-phase trial program.
+    """Run a full episode from an ordered trial program.
 
     Parameters
     ----------
     program : TrialProgram
-        Trial program that defines decision nodes and transition semantics.
+        Trial program that defines ordered steps and transition semantics.
     models : Mapping[str, AgentModel]
-        Actor-ID to model mapping. Every node actor and learner must exist in
-        this mapping.
+        Actor-ID to model mapping. Every actor and learner referenced by the
+        program must exist in this mapping.
     config : SimulationConfig
         Episode runtime options.
 
     Returns
     -------
     EpisodeTrace
-        Canonical event trace with one phase quartet per decision node:
-        ``OBSERVATION -> DECISION -> OUTCOME -> UPDATE``.
+        Canonical event trace in the exact order emitted by the program.
 
     Raises
     ------
     ValueError
-        If model mapping is empty, a node list is empty, or a node references
-        an unknown actor/learner.
+        If model mapping is empty, step list is empty, or a step violates
+        runtime dependency constraints.
     """
 
     if not models:
@@ -86,115 +98,202 @@ def run_trial_program(
     for model in _unique_models(models):
         model.start_episode()
 
+    # Episode-wide event log accumulated across all trials and returned as the
+    # final trace.
     events: list[SimulationEvent] = []
 
     for trial_index in range(config.n_trials):
+        # Per-trial event log reset on each trial. Programs can inspect this to
+        # condition later steps on earlier events from the same trial only.
         trial_events: list[SimulationEvent] = []
-        nodes = tuple(program.decision_nodes(trial_index=trial_index, trial_events=tuple(trial_events)))
-        if len(nodes) == 0:
-            raise ValueError(f"program returned no decision nodes for trial {trial_index}")
+        steps = tuple(program.trial_steps(trial_index=trial_index, trial_events=tuple(trial_events)))
+        if len(steps) == 0:
+            raise ValueError(f"program returned no steps for trial {trial_index}")
 
-        for decision_index, node in enumerate(nodes):
-            actor_model = _get_actor_model(models=models, actor_id=node.actor_id)
-            available_actions = tuple(
-                program.available_actions(
+        # decision_node_id names one decision instance inside the current trial.
+        # All later phases for that decision look up the same state entry.
+        node_states: dict[str, _NodeExecutionState] = {}
+        next_decision_index = 0
+
+        for step in steps:
+            if step.phase is EventPhase.OBSERVATION:
+                if step.decision_node_id in node_states:
+                    raise ValueError(
+                        "trial "
+                        f"{trial_index}: duplicate observation step for decision node "
+                        f"{step.decision_node_id!r}"
+                    )
+
+                available_actions = tuple(
+                    program.available_actions(
+                        trial_index=trial_index,
+                        step=step,
+                        trial_events=tuple(trial_events),
+                    )
+                )
+                context = DecisionContext(
                     trial_index=trial_index,
-                    node=node,
+                    available_actions=available_actions,
+                    actor_id=step.actor_id,
+                    decision_index=next_decision_index,
+                    decision_label=step.decision_node_id,
+                )
+                next_decision_index += 1
+
+                observation = program.observe(
+                    trial_index=trial_index,
+                    step=step,
+                    context=context,
                     trial_events=tuple(trial_events),
                 )
-            )
-            context = DecisionContext(
-                trial_index=trial_index,
-                available_actions=available_actions,
-                actor_id=node.actor_id,
-                decision_index=decision_index,
-                decision_label=node.node_id,
-            )
+                node_states[step.decision_node_id] = _NodeExecutionState(
+                    context=context,
+                    observation=observation,
+                )
+                _append_trial_event(
+                    all_events=events,
+                    trial_events=trial_events,
+                    event=SimulationEvent(
+                        trial_index=trial_index,
+                        phase=EventPhase.OBSERVATION,
+                        payload={
+                            "observation": observation,
+                            "available_actions": available_actions,
+                            "actor_id": step.actor_id,
+                            "decision_node_id": step.decision_node_id,
+                        },
+                    ),
+                )
+                continue
 
-            observation = program.observe(
-                trial_index=trial_index,
-                node=node,
-                context=context,
-                trial_events=tuple(trial_events),
-            )
-            _append_trial_event(
-                all_events=events,
-                trial_events=trial_events,
-                event=SimulationEvent(
-                    trial_index=trial_index,
-                    phase=EventPhase.OBSERVATION,
-                    payload={
-                        "observation": observation,
-                        "available_actions": available_actions,
-                        "actor_id": node.actor_id,
-                        "decision_index": decision_index,
-                        "node_id": node.node_id,
-                    },
-                ),
-            )
+            state = _get_node_state(node_states=node_states, step=step, trial_index=trial_index)
 
-            raw_distribution = actor_model.action_distribution(observation, context=context)
-            distribution = normalize_distribution(raw_distribution, available_actions)
-            action = sample_action(distribution, rng)
-            _append_trial_event(
-                all_events=events,
-                trial_events=trial_events,
-                event=SimulationEvent(
-                    trial_index=trial_index,
-                    phase=EventPhase.DECISION,
-                    payload={
-                        "distribution": distribution,
-                        "action": action,
-                        "actor_id": node.actor_id,
-                        "decision_index": decision_index,
-                        "node_id": node.node_id,
-                    },
-                ),
-            )
+            if step.phase is EventPhase.DECISION:
+                if state.decision_done:
+                    raise ValueError(
+                        "trial "
+                        f"{trial_index}: duplicate decision step for decision node "
+                        f"{step.decision_node_id!r}"
+                    )
+                if step.actor_id != state.context.actor_id:
+                    raise ValueError(
+                        f"trial {trial_index}: decision actor {step.actor_id!r} does not match "
+                        f"observation actor {state.context.actor_id!r} for decision node "
+                        f"{step.decision_node_id!r}"
+                    )
 
-            outcome = program.transition(
-                action,
-                trial_index=trial_index,
-                node=node,
-                context=context,
-                trial_events=tuple(trial_events),
-                rng=rng,
-            )
-            _append_trial_event(
-                all_events=events,
-                trial_events=trial_events,
-                event=SimulationEvent(
-                    trial_index=trial_index,
-                    phase=EventPhase.OUTCOME,
-                    payload={
-                        "outcome": outcome,
-                        "actor_id": node.actor_id,
-                        "decision_index": decision_index,
-                        "node_id": node.node_id,
-                    },
-                ),
-            )
+                actor_model = _get_actor_model(models=models, actor_id=step.actor_id)
+                raw_distribution = actor_model.action_distribution(
+                    state.observation,
+                    context=state.context,
+                )
+                distribution = normalize_distribution(raw_distribution, state.context.available_actions)
+                action = sample_action(distribution, rng)
+                state.action = action
+                state.decision_done = True
+                _append_trial_event(
+                    all_events=events,
+                    trial_events=trial_events,
+                    event=SimulationEvent(
+                        trial_index=trial_index,
+                        phase=EventPhase.DECISION,
+                        payload={
+                            "distribution": distribution,
+                            "action": action,
+                            "actor_id": step.actor_id,
+                            "decision_index": state.context.decision_index,
+                            "decision_node_id": step.decision_node_id,
+                        },
+                    ),
+                )
+                continue
 
-            learner_id = node.learner_id if node.learner_id is not None else node.actor_id
-            learner_model = _get_actor_model(models=models, actor_id=learner_id)
-            learner_context = context if learner_id == context.actor_id else replace(context, actor_id=learner_id)
-            learner_model.update(observation, action, outcome, context=learner_context)
-            _append_trial_event(
-                all_events=events,
-                trial_events=trial_events,
-                event=SimulationEvent(
+            if step.phase is EventPhase.OUTCOME:
+                if not state.decision_done:
+                    raise ValueError(
+                        f"trial {trial_index}: outcome step for decision node "
+                        f"{step.decision_node_id!r} "
+                        "requires a prior decision"
+                    )
+                if state.outcome_done:
+                    raise ValueError(
+                        f"trial {trial_index}: duplicate outcome step for decision node "
+                        f"{step.decision_node_id!r}"
+                    )
+                if step.actor_id != state.context.actor_id:
+                    raise ValueError(
+                        f"trial {trial_index}: outcome actor {step.actor_id!r} does not match "
+                        f"decision actor {state.context.actor_id!r} for decision node "
+                        f"{step.decision_node_id!r}"
+                    )
+                assert state.action is not None
+                outcome = program.transition(
+                    state.action,
                     trial_index=trial_index,
-                    phase=EventPhase.UPDATE,
-                    payload={
-                        "update_called": True,
-                        "action": action,
-                        "actor_id": node.actor_id,
-                        "learner_id": learner_id,
-                        "decision_index": decision_index,
-                        "node_id": node.node_id,
-                    },
-                ),
-            )
+                    step=step,
+                    context=state.context,
+                    trial_events=tuple(trial_events),
+                    rng=rng,
+                )
+                state.outcome = outcome
+                state.outcome_done = True
+                _append_trial_event(
+                    all_events=events,
+                    trial_events=trial_events,
+                    event=SimulationEvent(
+                        trial_index=trial_index,
+                        phase=EventPhase.OUTCOME,
+                        payload={
+                            "outcome": outcome,
+                            "actor_id": step.actor_id,
+                            "decision_index": state.context.decision_index,
+                            "decision_node_id": step.decision_node_id,
+                        },
+                    ),
+                )
+                continue
+
+            if step.phase is EventPhase.UPDATE:
+                if not state.decision_done:
+                    raise ValueError(
+                        f"trial {trial_index}: update step for decision node "
+                        f"{step.decision_node_id!r} "
+                        "requires a prior decision"
+                    )
+
+                learner_id = step.learner_id if step.learner_id is not None else state.context.actor_id
+                learner_model = _get_actor_model(models=models, actor_id=learner_id)
+                learner_context = (
+                    state.context
+                    if learner_id == state.context.actor_id
+                    else replace(state.context, actor_id=learner_id)
+                )
+                assert state.action is not None
+                learner_model.update(
+                    state.observation,
+                    state.action,
+                    state.outcome,
+                    context=learner_context,
+                )
+                _append_trial_event(
+                    all_events=events,
+                    trial_events=trial_events,
+                    event=SimulationEvent(
+                        trial_index=trial_index,
+                        phase=EventPhase.UPDATE,
+                        payload={
+                            "update_called": True,
+                            "action": state.action,
+                            "actor_id": state.context.actor_id,
+                            "learner_id": learner_id,
+                            "decision_index": state.context.decision_index,
+                            "decision_node_id": step.decision_node_id,
+                        },
+                    ),
+                )
+                continue
+
+            raise ValueError(f"trial {trial_index}: unsupported event phase {step.phase!r}")
 
     return EpisodeTrace(events=events)
 
@@ -214,13 +313,7 @@ def run_episode(problem: DecisionProblem, model: AgentModel, config: SimulationC
     Returns
     -------
     EpisodeTrace
-        Canonical trace with one decision node per trial.
-
-    Notes
-    -----
-    This function adapts ``problem`` using
-    :class:`comp_model.runtime.program.SingleStepProgramAdapter` and runs the
-    trial-program engine.
+        Canonical trace emitted by the ordered trial-program runtime.
     """
 
     program = SingleStepProgramAdapter(problem)
@@ -241,7 +334,7 @@ def run_social_episode(
     Parameters
     ----------
     program : TrialProgram
-        Multi-phase social program.
+        Ordered social trial program.
     subject_model : AgentModel
         Subject actor model.
     demonstrator_model : AgentModel
@@ -262,10 +355,6 @@ def run_social_episode(
     ------
     ValueError
         If actor IDs are empty or collide.
-
-    Notes
-    -----
-    This is a thin convenience wrapper around :func:`run_trial_program`.
     """
 
     subject_id = str(subject_actor_id).strip()
@@ -285,6 +374,25 @@ def run_social_episode(
         },
         config=config,
     )
+
+
+def _get_node_state(
+    *,
+    node_states: Mapping[str, _NodeExecutionState],
+    step: ProgramStep,
+    trial_index: int,
+) -> _NodeExecutionState:
+    """Resolve node execution state or raise a clear dependency error."""
+
+    state = node_states.get(step.decision_node_id)
+    if state is None:
+        raise ValueError(
+            "trial "
+            f"{trial_index}: step {step.phase.value!r} for decision node "
+            f"{step.decision_node_id!r} "
+            "requires a prior observation step"
+        )
+    return state
 
 
 def _get_actor_model(models: Mapping[str, AgentModel], actor_id: str) -> AgentModel:

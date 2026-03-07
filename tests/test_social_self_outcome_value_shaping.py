@@ -6,7 +6,7 @@ import pytest
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.models import SocialSelfOutcomeValueShapingModel
-from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.problems import DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram
 from comp_model.runtime import SimulationConfig, run_trial_program
 
 
@@ -41,7 +41,9 @@ def test_subject_distribution_reflects_same_trial_social_value_shaping() -> None
         pseudo_reward=1.0,
         initial_value=0.0,
     )
-    program = TwoStageSocialBanditProgram(reward_probabilities=[0.5, 0.5])
+    program = DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram(
+        reward_probabilities=[0.5, 0.5]
+    )
 
     trace = run_trial_program(
         program=program,

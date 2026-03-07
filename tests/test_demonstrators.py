@@ -11,7 +11,7 @@ from comp_model.demonstrators import (
     RLDemonstrator,
 )
 from comp_model.models import UniformRandomPolicyModel
-from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.problems import DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram
 from comp_model.runtime import SimulationConfig, run_trial_program
 
 
@@ -66,7 +66,9 @@ def test_rl_demonstrator_updates_q_values_from_outcomes() -> None:
 def test_demonstrators_work_as_runtime_actor_models() -> None:
     """Demonstrators should run as actor models inside multi-phase runtime."""
 
-    program = TwoStageSocialBanditProgram(reward_probabilities=[0.2, 0.8])
+    program = DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram(
+        reward_probabilities=[0.2, 0.8]
+    )
     trace = run_trial_program(
         program=program,
         models={

@@ -27,8 +27,8 @@ _TRIAL_COLUMNS = (
     "trial_index",
     "decision_index",
     "actor_id",
-    "learner_id",
-    "node_id",
+    "learner_ids_json",
+    "decision_node_id",
     "available_actions_json",
     "action_json",
     "observation_json",
@@ -222,7 +222,8 @@ def read_mapped_study_csv(
     actor_id : str, optional
         Actor ID assigned to converted decisions.
     learner_id : str | None, optional
-        Learner ID assigned to converted decisions. Defaults to ``actor_id``.
+        Single learner ID assigned to converted decisions. Defaults to
+        ``actor_id``.
 
     Returns
     -------
@@ -271,7 +272,8 @@ def study_from_mapped_rows(
     actor_id : str, optional
         Actor ID assigned to converted decisions.
     learner_id : str | None, optional
-        Learner ID assigned to converted decisions. Defaults to ``actor_id``.
+        Single learner ID assigned to converted decisions. Defaults to
+        ``actor_id``.
 
     Returns
     -------
@@ -385,7 +387,7 @@ def _study_from_mapped_rows(
                         trial_index=normalized_index,
                         decision_index=0,
                         actor_id=actor,
-                        learner_id=learner,
+                        learner_ids=(learner,),
                         available_actions=allowed_actions,
                         action=action,
                         observation={"raw_trial_index": raw_trial_index},
@@ -439,8 +441,10 @@ def _trial_row_to_csv_mapping(row: TrialDecision) -> dict[str, Any]:
         "trial_index": int(row.trial_index),
         "decision_index": int(row.decision_index),
         "actor_id": str(row.actor_id),
-        "learner_id": "" if row.learner_id is None else str(row.learner_id),
-        "node_id": "" if row.node_id is None else str(row.node_id),
+        "learner_ids_json": _json_or_empty(row.learner_ids),
+        "decision_node_id": (
+            "" if row.decision_node_id is None else str(row.decision_node_id)
+        ),
         "available_actions_json": _json_or_empty(row.available_actions),
         "action_json": _json_or_empty(row.action),
         "observation_json": _json_or_empty(row.observation),
@@ -460,10 +464,16 @@ def _trial_row_from_csv_mapping(raw: dict[str, Any], *, row_index: int) -> Trial
         row_index=row_index,
     )
     actor_id = _coerce_non_empty_str(raw.get("actor_id"), field_name="actor_id", row_index=row_index)
-    learner_id_raw = raw.get("learner_id", "")
-    learner_id = str(learner_id_raw) if str(learner_id_raw).strip() else None
-    node_id_raw = raw.get("node_id", "")
-    node_id = str(node_id_raw) if str(node_id_raw).strip() else None
+    learner_ids_value = _json_or_none(raw.get("learner_ids_json", ""))
+    learner_ids = (
+        tuple(str(value) for value in learner_ids_value)
+        if learner_ids_value is not None
+        else None
+    )
+    decision_node_id_raw = raw.get("decision_node_id", "")
+    decision_node_id = (
+        str(decision_node_id_raw) if str(decision_node_id_raw).strip() else None
+    )
 
     available_actions_value = _json_or_none(raw.get("available_actions_json", ""))
     available_actions = (
@@ -484,8 +494,8 @@ def _trial_row_from_csv_mapping(raw: dict[str, Any], *, row_index: int) -> Trial
         trial_index=trial_index,
         decision_index=decision_index,
         actor_id=actor_id,
-        learner_id=learner_id,
-        node_id=node_id,
+        learner_ids=learner_ids,
+        decision_node_id=decision_node_id,
         available_actions=available_actions,
         action=action,
         observation=observation,

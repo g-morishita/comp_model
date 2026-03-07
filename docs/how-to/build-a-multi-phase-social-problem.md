@@ -6,8 +6,13 @@ demonstrator phase plus subject phase).
 ## Why Trial Programs
 
 Multi-phase problems should be represented by a `TrialProgram` with explicit
-decision nodes and actor identities. This keeps timing semantics auditable and
-replay-consistent.
+ordered steps, node identities, and actor identities. This keeps timing
+semantics auditable and replay-consistent, even when one actor observes or
+updates before another actor makes a decision.
+
+Here `decision_node_id` means "this specific decision instance within the
+trial." All observation/decision/outcome/update steps for that one decision
+reuse the same identifier.
 
 ## 1. Implement a `TrialProgram`
 
@@ -20,8 +25,8 @@ from typing import Any, Sequence
 import numpy as np
 
 from comp_model.core.contracts import DecisionContext
-from comp_model.core.events import SimulationEvent
-from comp_model.runtime.program import DecisionNode, TrialProgram
+from comp_model.core.events import EventPhase, SimulationEvent
+from comp_model.runtime.program import ProgramStep, TrialProgram
 
 
 @dataclass(slots=True)
@@ -31,51 +36,108 @@ class ThreePhaseSocialProgram(TrialProgram):
     def reset(self, *, rng: np.random.Generator) -> None:
         self._rng = rng
 
-    def decision_nodes(
+    def trial_steps(
         self,
         *,
         trial_index: int,
         trial_events: Sequence[SimulationEvent],
-    ) -> tuple[DecisionNode, ...]:
-        del trial_events
+    ) -> tuple[ProgramStep, ...]:
+        del trial_index, trial_events
         return (
-            DecisionNode(node_id="demo_phase", actor_id="demonstrator"),
-            DecisionNode(node_id="subject_phase", actor_id="subject"),
-            DecisionNode(node_id="post_phase", actor_id="subject"),
+            ProgramStep(
+                EventPhase.OBSERVATION,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+            ),
+            ProgramStep(
+                EventPhase.DECISION,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+            ),
+            ProgramStep(
+                EventPhase.OUTCOME,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+            ),
+            ProgramStep(
+                EventPhase.UPDATE,
+                decision_node_id="demo_phase",
+                actor_id="demonstrator",
+                learner_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.OBSERVATION,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.DECISION,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.OUTCOME,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
+            ProgramStep(
+                EventPhase.UPDATE,
+                decision_node_id="subject_phase",
+                actor_id="subject",
+            ),
         )
 
     def available_actions(
         self,
         *,
         trial_index: int,
-        node: DecisionNode,
+        step: ProgramStep,
         trial_events: Sequence[SimulationEvent],
     ) -> tuple[int, int]:
-        del trial_index, node, trial_events
+        del trial_index, step, trial_events
         return (0, 1)
 
     def observe(
         self,
         *,
         trial_index: int,
-        node: DecisionNode,
+        step: ProgramStep,
         context: DecisionContext[Any],
         trial_events: Sequence[SimulationEvent],
     ) -> dict[str, Any]:
-        return {"trial": trial_index, "node_id": node.node_id}
+        del context
+        if step.actor_id == "demonstrator":
+            return {"trial": trial_index, "stage": "demonstrator"}
+
+        demonstrator_action = next(
+            event.payload["action"]
+            for event in trial_events
+            if event.phase is EventPhase.DECISION
+            and event.payload["decision_node_id"] == "demo_phase"
+        )
+        return {
+            "trial": trial_index,
+            "stage": "subject",
+            "demonstrator_action": demonstrator_action,
+        }
 
     def transition(
         self,
         action: Any,
         *,
         trial_index: int,
-        node: DecisionNode,
+        step: ProgramStep,
         context: DecisionContext[Any],
         trial_events: Sequence[SimulationEvent],
         rng: np.random.Generator,
     ) -> dict[str, Any]:
+        del trial_index, trial_events
         reward = 1.0 if rng.random() < self.reward_probabilities[int(action)] else 0.0
-        return {"reward": reward, "node_id": node.node_id}
+        return {
+            "reward": reward,
+            "decision_node_id": step.decision_node_id,
+            "actor_id": context.actor_id,
+        }
 ```
 
 ## 2. Run with Multiple Actors
@@ -97,10 +159,11 @@ trace = run_trial_program(
 
 ## 3. Verify Timing Semantics
 
-Check each trial has node order you intend:
+Check each trial has step order you intend:
 
-- demonstrator node first,
-- subject nodes after.
+- demonstrator observation/decision/outcome first,
+- any social update steps next,
+- subject observation/decision after that.
 
 Add tests asserting actor/node order and event-phase order.
 

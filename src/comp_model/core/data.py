@@ -11,7 +11,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from .events import EpisodeTrace, EventPhase, SimulationEvent, validate_trace
+from .events import (
+    EpisodeTrace,
+    EventPhase,
+    SimulationEvent,
+    decision_records_from_trace,
+    validate_trace,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,9 +32,11 @@ class TrialDecision:
         Zero-based decision-node index within the trial.
     actor_id : str, optional
         Actor that produced the decision.
-    learner_id : str | None, optional
-        Actor that receives the update callback. ``None`` implies ``actor_id``.
-    node_id : str | None, optional
+    learner_ids : tuple[str, ...] | None, optional
+        Actors that receive update callbacks for this decision in chronological
+        order. ``None`` implies one update for ``actor_id``. ``()`` means this
+        decision emits no update events.
+    decision_node_id : str | None, optional
         Optional decision-node identifier.
     available_actions : tuple[Any, ...] | None, optional
         Legal actions at decision time. If ``None``, conversion requires
@@ -54,8 +62,8 @@ class TrialDecision:
     trial_index: int
     decision_index: int = 0
     actor_id: str = "subject"
-    learner_id: str | None = None
-    node_id: str | None = None
+    learner_ids: tuple[str, ...] | None = None
+    decision_node_id: str | None = None
     available_actions: tuple[Any, ...] | None = None
     action: Any | None = None
     observation: Any = None
@@ -72,6 +80,10 @@ class TrialDecision:
             raise ValueError("available_actions must not be empty when provided")
         if self.available_actions is not None and self.action is not None and self.action not in self.available_actions:
             raise ValueError("action must be one of available_actions")
+        if self.learner_ids is not None:
+            for learner_id in self.learner_ids:
+                if not str(learner_id).strip():
+                    raise ValueError("learner_ids must contain only non-empty strings")
 
 
 @dataclass(frozen=True, slots=True)
@@ -228,11 +240,13 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                 f"decision row trial={row.trial_index} index={row.decision_index} is missing action"
             )
 
-        learner_id = row.learner_id if row.learner_id is not None else row.actor_id
-        node_id = row.node_id if row.node_id is not None else f"decision_{row.decision_index}"
+        decision_node_id = (
+            row.decision_node_id if row.decision_node_id is not None else f"decision_{row.decision_index}"
+        )
 
         observation = row.observation if row.observation is not None else {"trial_index": row.trial_index}
         outcome = _coerce_outcome(row)
+        learner_ids = row.learner_ids if row.learner_ids is not None else (row.actor_id,)
 
         distribution = _one_hot_distribution(available_actions, action)
         events.extend(
@@ -245,7 +259,7 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "available_actions": available_actions,
                         "actor_id": row.actor_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
                 ),
                 SimulationEvent(
@@ -256,9 +270,13 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "action": action,
                         "actor_id": row.actor_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
                 ),
+            )
+        )
+        if outcome is not None:
+            events.append(
                 SimulationEvent(
                     trial_index=row.trial_index,
                     phase=EventPhase.OUTCOME,
@@ -266,9 +284,12 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "outcome": outcome,
                         "actor_id": row.actor_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
-                ),
+                )
+            )
+        for learner_id in learner_ids:
+            events.append(
                 SimulationEvent(
                     trial_index=row.trial_index,
                     phase=EventPhase.UPDATE,
@@ -278,11 +299,10 @@ def trace_from_trial_decisions(decisions: Sequence[TrialDecision]) -> EpisodeTra
                         "actor_id": row.actor_id,
                         "learner_id": learner_id,
                         "decision_index": row.decision_index,
-                        "node_id": node_id,
+                        "decision_node_id": decision_node_id,
                     },
-                ),
+                )
             )
-        )
 
     trace = EpisodeTrace(events=events)
     validate_trace(trace)
@@ -306,49 +326,35 @@ def trial_decisions_from_trace(trace: EpisodeTrace) -> tuple[TrialDecision, ...]
     validate_trace(trace)
 
     rows: list[TrialDecision] = []
-    grouped: dict[int, list[SimulationEvent]] = {}
-    for event in trace.events:
-        grouped.setdefault(event.trial_index, []).append(event)
+    for record in decision_records_from_trace(trace):
+        observation_payload = _payload_mapping(record.observation_event.payload, record.trial_index)
+        decision_payload = _payload_mapping(record.decision_event.payload, record.trial_index)
+        outcome_payload = (
+            _payload_mapping(record.outcome_event.payload, record.trial_index)
+            if record.outcome_event is not None
+            else {}
+        )
+        learner_ids = tuple(
+            str(_payload_mapping(update_event.payload, record.trial_index).get("learner_id", record.actor_id))
+            for update_event in record.update_events
+        )
+        outcome = outcome_payload.get("outcome")
+        reward = _extract_reward(outcome)
 
-    for trial_index in sorted(grouped):
-        events = grouped[trial_index]
-        for offset in range(0, len(events), 4):
-            observation_event = events[offset]
-            decision_event = events[offset + 1]
-            outcome_event = events[offset + 2]
-            update_event = events[offset + 3]
-
-            observation_payload = _payload_mapping(observation_event.payload, trial_index)
-            decision_payload = _payload_mapping(decision_event.payload, trial_index)
-            outcome_payload = _payload_mapping(outcome_event.payload, trial_index)
-            update_payload = _payload_mapping(update_event.payload, trial_index)
-
-            actor_id = str(decision_payload.get("actor_id", "subject"))
-            learner_value = update_payload.get("learner_id")
-            learner_id = str(learner_value) if learner_value is not None else actor_id
-
-            node_value = decision_payload.get("node_id")
-            node_id = str(node_value) if node_value is not None else None
-
-            decision_value = int(decision_payload.get("decision_index", offset // 4))
-
-            outcome = outcome_payload.get("outcome")
-            reward = _extract_reward(outcome)
-
-            rows.append(
-                TrialDecision(
-                    trial_index=trial_index,
-                    decision_index=decision_value,
-                    actor_id=actor_id,
-                    learner_id=learner_id,
-                    node_id=node_id,
-                    available_actions=tuple(observation_payload["available_actions"]),
-                    action=decision_payload.get("action"),
-                    observation=observation_payload.get("observation"),
-                    outcome=outcome,
-                    reward=reward,
-                )
+        rows.append(
+            TrialDecision(
+                trial_index=record.trial_index,
+                decision_index=record.decision_index,
+                actor_id=record.actor_id,
+                learner_ids=learner_ids,
+                decision_node_id=record.decision_node_id,
+                available_actions=tuple(observation_payload["available_actions"]),
+                action=decision_payload.get("action"),
+                observation=observation_payload.get("observation"),
+                outcome=outcome,
+                reward=reward,
             )
+        )
 
     _validate_trial_decision_order(tuple(rows))
     return tuple(rows)
@@ -471,7 +477,7 @@ def _coerce_outcome(row: TrialDecision) -> Any:
     if row.reward is not None:
         return {"reward": float(row.reward)}
 
-    return {}
+    return None
 
 
 def _one_hot_distribution(available_actions: tuple[Any, ...], action: Any) -> dict[Any, float]:

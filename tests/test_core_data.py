@@ -59,8 +59,8 @@ def test_trial_decisions_roundtrip_preserves_multi_decision_rows() -> None:
             trial_index=0,
             decision_index=0,
             actor_id="demonstrator",
-            learner_id="subject",
-            node_id="demo",
+            learner_ids=("subject",),
+            decision_node_id="demo",
             available_actions=(0, 1),
             action=1,
             observation={"stage": "demo"},
@@ -70,8 +70,8 @@ def test_trial_decisions_roundtrip_preserves_multi_decision_rows() -> None:
             trial_index=0,
             decision_index=1,
             actor_id="subject",
-            learner_id="subject",
-            node_id="subject",
+            learner_ids=("subject",),
+            decision_node_id="subject",
             available_actions=(0, 1),
             action=0,
             observation={"stage": "subject"},
@@ -84,10 +84,10 @@ def test_trial_decisions_roundtrip_preserves_multi_decision_rows() -> None:
 
     assert len(recovered) == 2
     assert recovered[0].actor_id == "demonstrator"
-    assert recovered[0].learner_id == "subject"
-    assert recovered[0].node_id == "demo"
+    assert recovered[0].learner_ids == ("subject",)
+    assert recovered[0].decision_node_id == "demo"
     assert recovered[1].decision_index == 1
-    assert recovered[1].node_id == "subject"
+    assert recovered[1].decision_node_id == "subject"
 
 
 def test_attach_missing_event_traces_builds_trace_from_trials() -> None:

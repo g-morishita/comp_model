@@ -74,7 +74,9 @@ class MLEFitResult:
     best : MLECandidate
         Candidate with the maximum log-likelihood.
     candidates : tuple[MLECandidate, ...]
-        All evaluated candidates.
+        Candidate records retained by the estimator. Grid search retains every
+        evaluated grid point, while optimizer-backed estimators retain one
+        terminal candidate per start.
     compatibility : CompatibilityReport | None
         Compatibility report when requirements were checked.
     scipy_diagnostics : ScipyMinimizeDiagnostics | None
@@ -266,16 +268,11 @@ class ScipyMinimizeMLEEstimator:
         total_n_function_evaluations = 0
 
         for start_vector in start_vectors:
-            run_candidates: list[MLECandidate] = []
-
             def objective(x: np.ndarray) -> float:
                 params = _vector_to_params(names, x)
                 model = self._model_factory(params)
                 replay_result = self._likelihood_program.evaluate(trace, model)
                 log_likelihood = float(replay_result.total_log_likelihood)
-                candidate = MLECandidate(params=params, log_likelihood=log_likelihood)
-                run_candidates.append(candidate)
-                candidates.append(candidate)
 
                 if not np.isfinite(log_likelihood):
                     return 1e15
@@ -297,18 +294,16 @@ class ScipyMinimizeMLEEstimator:
                 params=final_params,
                 log_likelihood=float(final_replay.total_log_likelihood),
             )
-            run_candidates.append(final_candidate)
             candidates.append(final_candidate)
 
-            run_best = max(run_candidates, key=lambda item: item.log_likelihood)
-            if run_best.log_likelihood > best_run_log_likelihood:
-                best_run_log_likelihood = run_best.log_likelihood
+            if final_candidate.log_likelihood > best_run_log_likelihood:
+                best_run_log_likelihood = final_candidate.log_likelihood
                 best_result = result
 
             total_n_iterations += max(0, int(getattr(result, "nit", 0)))
             total_n_function_evaluations += max(
                 0,
-                int(getattr(result, "nfev", len(run_candidates))),
+                int(getattr(result, "nfev", 0)),
             )
 
         best = max(candidates, key=lambda item: item.log_likelihood)
@@ -602,16 +597,11 @@ class TransformedScipyMinimizeMLEEstimator:
         total_n_function_evaluations = 0
 
         for start_vector in start_vectors:
-            run_candidates: list[MLECandidate] = []
-
             def objective(z_vector: np.ndarray) -> float:
                 params = _vector_to_constrained_params(names, z_vector, transforms=transforms)
                 model = self._model_factory(params)
                 replay_result = self._likelihood_program.evaluate(trace, model)
                 log_likelihood = float(replay_result.total_log_likelihood)
-                candidate = MLECandidate(params=params, log_likelihood=log_likelihood)
-                run_candidates.append(candidate)
-                candidates.append(candidate)
 
                 if not np.isfinite(log_likelihood):
                     return 1e15
@@ -637,18 +627,16 @@ class TransformedScipyMinimizeMLEEstimator:
                 params=final_params,
                 log_likelihood=float(final_replay.total_log_likelihood),
             )
-            run_candidates.append(final_candidate)
             candidates.append(final_candidate)
 
-            run_best = max(run_candidates, key=lambda item: item.log_likelihood)
-            if run_best.log_likelihood > best_run_log_likelihood:
-                best_run_log_likelihood = run_best.log_likelihood
+            if final_candidate.log_likelihood > best_run_log_likelihood:
+                best_run_log_likelihood = final_candidate.log_likelihood
                 best_result = result
 
             total_n_iterations += max(0, int(getattr(result, "nit", 0)))
             total_n_function_evaluations += max(
                 0,
-                int(getattr(result, "nfev", len(run_candidates))),
+                int(getattr(result, "nfev", 0)),
             )
 
         best = max(candidates, key=lambda item: item.log_likelihood)

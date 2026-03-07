@@ -13,7 +13,7 @@ from comp_model.inference import (
     compare_subject_candidates_from_config,
 )
 from comp_model.models import UniformRandomPolicyModel
-from comp_model.problems import TwoStageSocialBanditProgram
+from comp_model.problems import DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram
 from comp_model.runtime import SimulationConfig, run_trial_program
 
 
@@ -35,7 +35,7 @@ def _social_trace(*, n_trials: int, seed: int):
     """Generate one two-actor social trace for model-selection config tests."""
 
     return run_trial_program(
-        program=TwoStageSocialBanditProgram([0.5, 0.5]),
+        program=DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram([0.5, 0.5]),
         models={
             "subject": UniformRandomPolicyModel(),
             "demonstrator": FixedSequenceDemonstrator(sequence=[1] * n_trials),
