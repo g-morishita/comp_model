@@ -232,7 +232,7 @@ def test_scipy_mle_finds_empirical_optimum_for_fixed_choice_model() -> None:
     assert fit.best.params["p_right"] == pytest.approx(empirical_p_right, abs=1e-4)
     assert fit.scipy_diagnostics is not None
     assert fit.scipy_diagnostics.success
-    assert len(fit.candidates) >= 2
+    assert len(fit.candidates) == 5
 
 
 def test_scipy_mle_respects_parameter_bounds() -> None:
