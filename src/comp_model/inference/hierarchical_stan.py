@@ -1011,6 +1011,9 @@ def _build_study_stan_job(
     flat_initial_block_params: list[Mapping[str, float]] | None = (
         [] if initial_block_params_by_subject is not None else None
     )
+    initial_block_params_by_subject_map = (
+        initial_block_params_by_subject if initial_block_params_by_subject is not None else {}
+    )
 
     for subject_index, subject in enumerate(study.subjects, start=1):
         subject_ids.append(subject.subject_id)
@@ -1024,7 +1027,7 @@ def _build_study_stan_job(
 
         if flat_initial_block_params is None:
             continue
-        subject_initial = initial_block_params_by_subject.get(subject.subject_id)
+        subject_initial = initial_block_params_by_subject_map.get(subject.subject_id)
         if subject_initial is None:
             flat_initial_block_params.extend({} for _ in subject.blocks)
             continue
