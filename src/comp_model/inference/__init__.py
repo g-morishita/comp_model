@@ -3,7 +3,7 @@
 from .block_strategy import BlockFitStrategy
 from .cli import run_fit_cli
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from .config import (
+from .fit.config import (
     ModelComponentSpec,
     fit_block_from_config,
     fit_trace_from_config,
@@ -12,7 +12,7 @@ from .config import (
     fit_subject_from_config,
     model_component_spec_from_config,
 )
-from .config_dispatch import (
+from .fit.dispatch import (
     BAYES_ESTIMATORS,
     MAP_ESTIMATORS,
     MCMC_ESTIMATORS,
@@ -24,8 +24,8 @@ from .config_dispatch import (
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from .fit_result import BestFitSummary, extract_best_fit_summary
-from .fitting import (
+from .fit.result import BestFitSummary, extract_best_fit_summary
+from .fit.core import (
     FitInferenceType,
     FitSpec,
     MLESolverType,
@@ -36,6 +36,23 @@ from .fitting import (
     fit_trace,
     fit_trace_from_registry,
 )
+from .fit.group import (
+    BlockFitResult,
+    StudyFitResult,
+    SubjectFitResult,
+    fit_block,
+    fit_study,
+    fit_subject,
+)
+from .fit.mle import (
+    GridSearchMLEEstimator,
+    MLECandidate,
+    MLEFitResult,
+    ScipyMinimizeDiagnostics,
+    ScipyMinimizeMLEEstimator,
+    TransformedScipyMinimizeMLEEstimator,
+)
+from .fit.tabular import fit_study_csv_from_config, fit_trial_csv_from_config
 from .hierarchical_posterior import (
     StanPosteriorDraw,
     StudySubjectBlockHierarchyPosteriorCandidate,
@@ -73,14 +90,6 @@ from .stan_config import (
     stan_estimator_spec_from_config,
 )
 from .mcmc_diagnostics import MCMCDiagnostics
-from .mle import (
-    GridSearchMLEEstimator,
-    MLECandidate,
-    MLEFitResult,
-    ScipyMinimizeDiagnostics,
-    ScipyMinimizeMLEEstimator,
-    TransformedScipyMinimizeMLEEstimator,
-)
 from .model_selection import (
     CandidateComparison,
     CandidateFitSpec,
@@ -133,14 +142,6 @@ from .serialization import (
     write_study_model_comparison_subject_csv,
     write_subject_model_comparison_csv,
 )
-from .study_fitting import (
-    BlockFitResult,
-    StudyFitResult,
-    SubjectFitResult,
-    fit_block,
-    fit_study,
-    fit_subject,
-)
 from .study_model_selection import (
     StudyCandidateComparison,
     StudyModelComparisonResult,
@@ -149,7 +150,6 @@ from .study_model_selection import (
     compare_study_candidate_models,
     compare_subject_candidate_models,
 )
-from .tabular import fit_study_csv_from_config, fit_trial_csv_from_config
 from .transforms import (
     ParameterTransform,
     identity_transform,

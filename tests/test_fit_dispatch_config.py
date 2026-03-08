@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import comp_model.inference.config_dispatch as config_dispatch_module
+import comp_model.inference.fit.dispatch as config_dispatch_module
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     fit_block_auto_from_config,
@@ -152,4 +152,3 @@ def test_fit_auto_rejects_legacy_scipy_map_estimator() -> None:
 
     with pytest.raises(ValueError, match="unsupported estimator.type"):
         fit_trace_auto_from_config(rows, config=config)
-

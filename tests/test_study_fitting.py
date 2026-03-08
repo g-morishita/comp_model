@@ -8,7 +8,7 @@ import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import FitSpec
-from comp_model.inference.study_fitting import fit_block, fit_study, fit_subject
+from comp_model.inference.fit.group import fit_block, fit_study, fit_subject
 
 
 def _make_trial(trial_index: int, action: int, reward: float) -> TrialDecision:

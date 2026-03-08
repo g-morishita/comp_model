@@ -11,25 +11,24 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecisio
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
-from .block_strategy import coerce_block_fit_strategy
-from .fitting import FitInferenceType, FitSpec, MLESolverType, fit_trace_from_registry
-from .likelihood_config import likelihood_program_from_config
-from .mle import MLEFitResult
-from .study_fitting import (
+from ..block_strategy import BlockFitStrategy, coerce_block_fit_strategy
+from ..likelihood_config import likelihood_program_from_config
+from ..transforms import (
+    ParameterTransform,
+    identity_transform,
+    positive_log_transform,
+    unit_interval_logit_transform,
+)
+from .core import FitInferenceType, FitSpec, MLESolverType, fit_trace_from_registry
+from .group import (
     BlockFitResult,
-    BlockFitStrategy,
     StudyFitResult,
     SubjectFitResult,
     fit_block,
     fit_study,
     fit_subject,
 )
-from .transforms import (
-    ParameterTransform,
-    identity_transform,
-    positive_log_transform,
-    unit_interval_logit_transform,
-)
+from .mle import MLEFitResult
 
 
 @dataclass(frozen=True, slots=True)

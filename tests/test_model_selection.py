@@ -19,7 +19,7 @@ from comp_model.inference import (
     compare_registry_candidate_models,
 )
 from comp_model.inference.likelihood import ActionReplayLikelihood
-from comp_model.inference.mle import GridSearchMLEEstimator
+from comp_model.inference.fit.mle import GridSearchMLEEstimator
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.plugins import build_default_registry
 from comp_model.problems import StationaryBanditProblem

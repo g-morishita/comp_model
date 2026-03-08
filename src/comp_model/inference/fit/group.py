@@ -5,19 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, get_block_trace
-from comp_model.inference.block_strategy import (
+from comp_model.plugins import PluginRegistry, build_default_registry
+
+from ..block_strategy import (
     JOINT_BLOCK_ID,
     BlockFitStrategy,
     coerce_block_fit_strategy,
 )
-from comp_model.inference.fitting import (
+from ..likelihood import LikelihoodProgram
+from .core import (
     FitSpec,
     fit_joint_traces_from_registry,
     fit_trace_from_registry,
 )
-from comp_model.inference.likelihood import LikelihoodProgram
-from comp_model.inference.mle import MLEFitResult
-from comp_model.plugins import PluginRegistry, build_default_registry
+from .mle import MLEFitResult
 
 
 @dataclass(frozen=True, slots=True)

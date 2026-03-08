@@ -17,8 +17,8 @@ from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .criteria import compute_pointwise_information_criteria
-from .fit_result import extract_best_fit_summary
-from .fitting import FitSpec, _build_trace_fit_function, coerce_episode_trace
+from .fit.core import FitSpec, _build_trace_fit_function, coerce_episode_trace
+from .fit.result import extract_best_fit_summary
 from .likelihood import LikelihoodProgram
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]

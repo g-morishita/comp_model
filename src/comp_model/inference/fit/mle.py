@@ -12,13 +12,13 @@ import numpy as np
 from comp_model.core.contracts import AgentModel
 from comp_model.core.events import EpisodeTrace
 from comp_model.core.requirements import ComponentRequirements
-from comp_model.inference.compatibility import (
+from ..compatibility import (
     CompatibilityReport,
     assert_trace_compatible,
     check_trace_compatibility,
 )
-from comp_model.inference.likelihood import LikelihoodProgram
-from comp_model.inference.transforms import ParameterTransform, identity_transform
+from ..likelihood import LikelihoodProgram
+from ..transforms import ParameterTransform, identity_transform
 
 
 @dataclass(frozen=True, slots=True)

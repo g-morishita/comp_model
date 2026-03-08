@@ -6,7 +6,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from .fit_result import extract_best_fit_summary
+from .fit.result import extract_best_fit_summary
 from .hierarchical_posterior import (
     StudySubjectBlockHierarchyPosteriorResult,
     StudySubjectHierarchyPosteriorResult,
@@ -15,7 +15,7 @@ from .hierarchical_posterior import (
 )
 from .model_selection import ModelComparisonResult
 from .posterior import PosteriorSummary, posterior_summary_records
-from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
+from .fit.group import BlockFitResult, StudyFitResult, SubjectFitResult
 from .study_model_selection import (
     StudyModelComparisonResult,
     SubjectModelComparisonResult,

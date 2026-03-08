@@ -10,7 +10,7 @@ from comp_model.core.config_validation import validate_allowed_keys
 from comp_model.core.data import StudyData, SubjectData
 from comp_model.plugins import PluginRegistry, build_default_registry
 
-from .config import model_component_spec_from_config
+from .fit.config import model_component_spec_from_config
 from .hierarchical_posterior import (
     StudySubjectBlockHierarchyPosteriorResult,
     StudySubjectHierarchyPosteriorResult,

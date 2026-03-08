@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from .hierarchical_posterior import mean_params_from_result
+from ..hierarchical_posterior import mean_params_from_result
 
 
 @dataclass(frozen=True, slots=True)

@@ -19,8 +19,8 @@ from .config import (
     fit_study_from_config,
     fit_subject_from_config,
 )
-from .fitting import coerce_episode_trace
-from .stan_config import STUDY_STAN_ESTIMATORS, SUBJECT_STAN_ESTIMATORS, infer_study_stan_from_config, infer_subject_stan_from_config
+from .core import coerce_episode_trace
+from ..stan_config import STUDY_STAN_ESTIMATORS, SUBJECT_STAN_ESTIMATORS, infer_study_stan_from_config, infer_subject_stan_from_config
 
 MLE_ESTIMATORS = {"mle"}
 MAP_ESTIMATORS: set[str] = set()

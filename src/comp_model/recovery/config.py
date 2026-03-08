@@ -20,14 +20,14 @@ from comp_model.core.config_validation import validate_allowed_keys, validate_re
 from comp_model.core.data import SubjectData
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
-from comp_model.inference.config_dispatch import (
+from comp_model.inference.fit.dispatch import (
     BAYES_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from comp_model.inference.mle import MLECandidate, MLEFitResult
-from comp_model.inference.study_fitting import SubjectFitResult
+from comp_model.inference.fit.group import SubjectFitResult
+from comp_model.inference.fit.mle import MLECandidate, MLEFitResult
 from comp_model.inference.model_selection import SelectionCriterion
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.inference.transforms import (

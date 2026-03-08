@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from comp_model.inference.mle import MLECandidate, MLEFitResult
+from comp_model.inference.fit.group import BlockFitResult, StudyFitResult, SubjectFitResult
+from comp_model.inference.fit.mle import MLECandidate, MLEFitResult
 from comp_model.inference.serialization import (
     block_fit_records,
     study_fit_records,
@@ -17,7 +18,6 @@ from comp_model.inference.serialization import (
     write_study_fit_records_csv,
     write_study_fit_summary_csv,
 )
-from comp_model.inference.study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
 
 
 def _mock_block(block_id: str) -> BlockFitResult:
