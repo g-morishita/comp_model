@@ -10,12 +10,10 @@ import pytest
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import TrialDecision
 from comp_model.inference import (
-    BayesFitResult,
     CandidateFitSpec,
     FitSpec,
     MLECandidate,
     MLEFitResult,
-    PosteriorCandidate,
     RegistryCandidateFitSpec,
     compare_candidate_models,
     compare_registry_candidate_models,
@@ -59,6 +57,24 @@ class FixedChoiceModel:
         """No-op update."""
 
 
+@dataclass(frozen=True, slots=True)
+class _MapCandidate:
+    """Minimal MAP candidate shape for model-selection tests."""
+
+    params: dict[str, float]
+    log_likelihood: float
+    log_prior: float
+    log_posterior: float
+
+
+@dataclass(frozen=True, slots=True)
+class _MapFitResult:
+    """Minimal MAP fit-result shape for model-selection tests."""
+
+    map_candidate: _MapCandidate
+    candidates: tuple[_MapCandidate, ...]
+
+
 
 def _fit_fixed_choice(trace: Any) -> MLEFitResult:
     """Fit fixed-choice model with grid-search MLE."""
@@ -95,16 +111,16 @@ def _constant_map_fit(
     log_likelihood: float,
     log_prior: float,
     params: dict[str, float],
-) -> BayesFitResult:
+) -> _MapFitResult:
     """Build a constant MAP fit result helper for compatibility tests."""
 
-    candidate = PosteriorCandidate(
+    candidate = _MapCandidate(
         params=dict(params),
         log_likelihood=float(log_likelihood),
         log_prior=float(log_prior),
         log_posterior=float(log_likelihood + log_prior),
     )
-    return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
+    return _MapFitResult(map_candidate=candidate, candidates=(candidate,))
 
 
 def test_compare_candidate_models_prefers_higher_log_likelihood() -> None:

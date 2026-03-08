@@ -13,12 +13,10 @@ from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
     ActorSubsetReplayLikelihood,
-    BayesFitResult,
     FitSpec,
     GridSearchMLEEstimator,
     MLECandidate,
     MLEFitResult,
-    PosteriorCandidate,
     fit_dataset,
 )
 from comp_model.models import UniformRandomPolicyModel
@@ -61,6 +59,24 @@ class FixedChoiceModel:
         """No-op update."""
 
 
+@dataclass(frozen=True, slots=True)
+class _MapCandidate:
+    """Minimal MAP candidate shape for model-recovery tests."""
+
+    params: dict[str, float]
+    log_likelihood: float
+    log_prior: float
+    log_posterior: float
+
+
+@dataclass(frozen=True, slots=True)
+class _MapFitResult:
+    """Minimal MAP fit-result shape for model-recovery tests."""
+
+    map_candidate: _MapCandidate
+    candidates: tuple[_MapCandidate, ...]
+
+
 
 def _fit_fixed_choice(trace: Any) -> MLEFitResult:
     """Fit fixed-choice model with grid-search MLE."""
@@ -83,16 +99,16 @@ def _fit_uniform_policy(trace: Any) -> MLEFitResult:
     return MLEFitResult(best=candidate, candidates=(candidate,))
 
 
-def _fit_constant_map(trace: Any) -> BayesFitResult:
+def _fit_constant_map(trace: Any) -> _MapFitResult:
     """Return a constant MAP fit result for compatibility tests."""
 
-    candidate = PosteriorCandidate(
+    candidate = _MapCandidate(
         params={"p_right": 0.8},
         log_likelihood=-5.0,
         log_prior=-0.5,
         log_posterior=-5.5,
     )
-    return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
+    return _MapFitResult(map_candidate=candidate, candidates=(candidate,))
 
 
 def test_run_model_recovery_prefers_matching_candidate() -> None:

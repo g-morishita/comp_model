@@ -7,14 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from .fit_result import extract_best_fit_summary
-from .hierarchical_map import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
 from .hierarchical_posterior import (
     StudySubjectBlockHierarchyPosteriorResult,
     StudySubjectHierarchyPosteriorResult,
     SubjectBlockHierarchyPosteriorResult,
     SubjectSharedPosteriorResult,
 )
-from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .model_selection import ModelComparisonResult
 from .posterior import PosteriorSummary, posterior_summary_records
 from .study_fitting import BlockFitResult, StudyFitResult, SubjectFitResult
@@ -154,79 +152,6 @@ def write_study_fit_summary_csv(study_result: StudyFitResult, path: str | Path) 
     return write_records_csv(study_summary_records(study_result), path)
 
 
-def hierarchical_subject_block_records(subject_result: HierarchicalSubjectMapResult) -> list[dict[str, Any]]:
-    """Convert one hierarchical subject result to per-block rows.
-
-    Parameters
-    ----------
-    subject_result : HierarchicalSubjectMapResult
-        Subject-level hierarchical MAP output.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Per-block flattened rows including parameter values.
-    """
-
-    rows: list[dict[str, Any]] = []
-    for block in subject_result.block_results:
-        row: dict[str, Any] = {
-            "subject_id": subject_result.subject_id,
-            "block_id": block.block_id,
-            "log_likelihood": float(block.log_likelihood),
-        }
-        for key, value in sorted(block.params.items()):
-            row[f"param__{key}"] = float(value)
-        rows.append(row)
-    return rows
-
-
-def hierarchical_study_block_records(study_result: HierarchicalStudyMapResult) -> list[dict[str, Any]]:
-    """Convert hierarchical study result to per-block rows."""
-
-    rows: list[dict[str, Any]] = []
-    for subject in study_result.subject_results:
-        rows.extend(hierarchical_subject_block_records(subject))
-    return rows
-
-
-def hierarchical_subject_summary_records(subject_result: HierarchicalSubjectMapResult) -> list[dict[str, Any]]:
-    """Convert one hierarchical subject result to summary rows.
-
-    Parameters
-    ----------
-    subject_result : HierarchicalSubjectMapResult
-        Subject-level hierarchical MAP output.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        One-row subject summary.
-    """
-
-    row: dict[str, Any] = {
-        "subject_id": subject_result.subject_id,
-        "n_blocks": len(subject_result.block_results),
-        "total_log_likelihood": float(subject_result.total_log_likelihood),
-        "total_log_prior": float(subject_result.total_log_prior),
-        "total_log_posterior": float(subject_result.total_log_posterior),
-    }
-    for key, value in sorted(subject_result.group_location_z.items()):
-        row[f"group_location_z__{key}"] = float(value)
-    for key, value in sorted(subject_result.group_scale_z.items()):
-        row[f"group_scale__{key}"] = float(value)
-    return [row]
-
-
-def hierarchical_study_summary_records(study_result: HierarchicalStudyMapResult) -> list[dict[str, Any]]:
-    """Convert hierarchical study result to subject-level summary rows."""
-
-    rows: list[dict[str, Any]] = []
-    for subject in study_result.subject_results:
-        rows.extend(hierarchical_subject_summary_records(subject))
-    return rows
-
-
 def hierarchical_mcmc_subject_draw_records(
     subject_result: SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult,
 ) -> list[dict[str, Any]]:
@@ -348,67 +273,6 @@ def hierarchical_mcmc_study_summary_records(
     for key, value in sorted(map_candidate.population_scale.items()):
         row[f"map_population_scale__{key}"] = float(value)
     return [row]
-
-
-def map_block_fit_records(block_result: MapBlockFitResult, *, subject_id: str | None = None) -> list[dict[str, Any]]:
-    """Convert one MAP block-fit result to flat row records."""
-
-    candidate = block_result.fit_result.map_candidate
-    row: dict[str, Any] = {
-        "subject_id": subject_id,
-        "block_id": block_result.block_id,
-        "n_trials": int(block_result.n_trials),
-        "log_likelihood": float(candidate.log_likelihood),
-        "log_prior": float(candidate.log_prior),
-        "log_posterior": float(candidate.log_posterior),
-    }
-    for key, value in sorted(candidate.params.items()):
-        row[f"param__{key}"] = float(value)
-    return [row]
-
-
-def map_subject_fit_records(subject_result: MapSubjectFitResult) -> list[dict[str, Any]]:
-    """Convert one MAP subject-fit result to flat block rows."""
-
-    rows: list[dict[str, Any]] = []
-    for block in subject_result.block_results:
-        rows.extend(map_block_fit_records(block, subject_id=subject_result.subject_id))
-    return rows
-
-
-def map_study_fit_records(study_result: MapStudyFitResult) -> list[dict[str, Any]]:
-    """Convert MAP study fit result to flat block rows."""
-
-    rows: list[dict[str, Any]] = []
-    for subject in study_result.subject_results:
-        rows.extend(map_subject_fit_records(subject))
-    return rows
-
-
-def map_subject_summary_records(subject_result: MapSubjectFitResult) -> list[dict[str, Any]]:
-    """Convert one MAP subject fit result to summary row."""
-
-    fit_mode, input_n_blocks = _subject_fit_mode_and_input_n_blocks(subject_result)
-    row: dict[str, Any] = {
-        "subject_id": subject_result.subject_id,
-        "n_blocks": len(subject_result.block_results),
-        "input_n_blocks": int(input_n_blocks),
-        "fit_mode": fit_mode,
-        "total_log_likelihood": float(subject_result.total_log_likelihood),
-        "total_log_posterior": float(subject_result.total_log_posterior),
-    }
-    for key, value in sorted(subject_result.mean_map_params.items()):
-        row[f"mean_map_param__{key}"] = float(value)
-    return [row]
-
-
-def map_study_summary_records(study_result: MapStudyFitResult) -> list[dict[str, Any]]:
-    """Convert MAP study fit result to subject-level summary rows."""
-
-    rows: list[dict[str, Any]] = []
-    for subject in study_result.subject_results:
-        rows.extend(map_subject_summary_records(subject))
-    return rows
 
 
 def model_comparison_records(result: ModelComparisonResult) -> list[dict[str, Any]]:
@@ -546,24 +410,6 @@ def study_model_comparison_subject_records(result: StudyModelComparisonResult) -
     return rows
 
 
-def write_hierarchical_study_block_records_csv(
-    study_result: HierarchicalStudyMapResult,
-    path: str | Path,
-) -> Path:
-    """Write hierarchical study block rows to CSV."""
-
-    return write_records_csv(hierarchical_study_block_records(study_result), path)
-
-
-def write_hierarchical_study_summary_csv(
-    study_result: HierarchicalStudyMapResult,
-    path: str | Path,
-) -> Path:
-    """Write hierarchical study summary rows to CSV."""
-
-    return write_records_csv(hierarchical_study_summary_records(study_result), path)
-
-
 def write_hierarchical_mcmc_study_draw_records_csv(
     study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
     path: str | Path,
@@ -602,18 +448,6 @@ def _subject_fit_mode_and_input_n_blocks(subject_result: Any) -> tuple[str, int]
     return fit_mode, input_n_blocks
 
 
-def write_map_study_fit_records_csv(study_result: MapStudyFitResult, path: str | Path) -> Path:
-    """Write MAP study block-level fit rows to CSV."""
-
-    return write_records_csv(map_study_fit_records(study_result), path)
-
-
-def write_map_study_fit_summary_csv(study_result: MapStudyFitResult, path: str | Path) -> Path:
-    """Write MAP study subject-level summaries to CSV."""
-
-    return write_records_csv(map_study_summary_records(study_result), path)
-
-
 def write_model_comparison_csv(result: ModelComparisonResult, path: str | Path) -> Path:
     """Write model-comparison rows to CSV."""
 
@@ -646,19 +480,10 @@ def write_posterior_summary_csv(summary: PosteriorSummary, path: str | Path) -> 
 
 __all__ = [
     "block_fit_records",
-    "hierarchical_study_block_records",
-    "hierarchical_study_summary_records",
     "hierarchical_mcmc_study_draw_records",
     "hierarchical_mcmc_study_summary_records",
     "hierarchical_mcmc_subject_draw_records",
     "hierarchical_mcmc_subject_summary_records",
-    "hierarchical_subject_block_records",
-    "hierarchical_subject_summary_records",
-    "map_block_fit_records",
-    "map_study_fit_records",
-    "map_study_summary_records",
-    "map_subject_fit_records",
-    "map_subject_summary_records",
     "model_comparison_records",
     "study_model_comparison_records",
     "study_model_comparison_subject_records",
@@ -667,12 +492,8 @@ __all__ = [
     "study_summary_records",
     "subject_fit_records",
     "subject_summary_records",
-    "write_hierarchical_study_block_records_csv",
     "write_hierarchical_mcmc_study_draw_records_csv",
     "write_hierarchical_mcmc_study_summary_csv",
-    "write_hierarchical_study_summary_csv",
-    "write_map_study_fit_records_csv",
-    "write_map_study_fit_summary_csv",
     "write_model_comparison_csv",
     "write_study_model_comparison_csv",
     "write_study_model_comparison_subject_csv",

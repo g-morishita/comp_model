@@ -2,19 +2,36 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pytest
 
 from comp_model.inference import (
-    BayesFitResult,
     MCMCDiagnostics,
     MLECandidate,
     MLEFitResult,
-    PosteriorCandidate,
     StanPosteriorDraw,
     SubjectBlockHierarchyPosteriorCandidate,
     SubjectBlockHierarchyPosteriorResult,
     extract_best_fit_summary,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class _MapCandidate:
+    """Minimal MAP candidate shape for fit-result tests."""
+
+    params: dict[str, float]
+    log_likelihood: float
+    log_prior: float
+    log_posterior: float
+
+
+@dataclass(frozen=True, slots=True)
+class _MapFitResult:
+    """Minimal MAP fit-result shape for fit-result tests."""
+
+    map_candidate: _MapCandidate
 
 
 def test_extract_best_fit_summary_from_mle_result() -> None:
@@ -34,14 +51,13 @@ def test_extract_best_fit_summary_from_mle_result() -> None:
 def test_extract_best_fit_summary_from_map_result() -> None:
     """MAP-style results should expose both likelihood and posterior values."""
 
-    result = BayesFitResult(
-        map_candidate=PosteriorCandidate(
+    result = _MapFitResult(
+        map_candidate=_MapCandidate(
             params={"alpha": 0.4},
             log_likelihood=-9.0,
             log_prior=-0.5,
             log_posterior=-9.5,
         ),
-        candidates=(),
     )
     summary = extract_best_fit_summary(result)
 
@@ -98,4 +114,3 @@ def test_extract_best_fit_summary_from_subject_block_hierarchy_result() -> None:
     assert summary.params["beta"] == pytest.approx(3.0)
     assert summary.log_likelihood == pytest.approx(-12.0)
     assert summary.log_posterior == pytest.approx(-13.5)
-

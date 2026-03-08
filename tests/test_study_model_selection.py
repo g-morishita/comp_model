@@ -8,12 +8,10 @@ import numpy as np
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
-    BayesFitResult,
     BlockFitResult,
     CandidateFitSpec,
     MLECandidate,
     MLEFitResult,
-    PosteriorCandidate,
     SubjectFitResult,
     compare_study_candidate_models,
     compare_subject_candidate_models,
@@ -34,6 +32,24 @@ def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class _MapCandidate:
+    """Minimal MAP candidate shape for subject/study comparison tests."""
+
+    params: dict[str, float]
+    log_likelihood: float
+    log_prior: float
+    log_posterior: float
+
+
+@dataclass(frozen=True, slots=True)
+class _MapFitResult:
+    """Minimal MAP fit-result shape for subject/study comparison tests."""
+
+    map_candidate: _MapCandidate
+    candidates: tuple[_MapCandidate, ...]
+
+
 def _constant_mle_fit(*, log_likelihood: float, alpha: float = 0.3):
     """Build deterministic MLE fit function."""
 
@@ -48,13 +64,13 @@ def _constant_map_fit(*, log_likelihood: float, log_prior: float, alpha: float =
     """Build deterministic MAP fit function."""
 
     def _fit(trace):
-        candidate = PosteriorCandidate(
+        candidate = _MapCandidate(
             params={"alpha": alpha},
             log_likelihood=log_likelihood,
             log_prior=log_prior,
             log_posterior=log_likelihood + log_prior,
         )
-        return BayesFitResult(map_candidate=candidate, candidates=(candidate,))
+        return _MapFitResult(map_candidate=candidate, candidates=(candidate,))
 
     return _fit
 
@@ -63,7 +79,7 @@ def _constant_map_fit(*, log_likelihood: float, log_prior: float, alpha: float =
 class _FakePosteriorFit:
     """Minimal posterior-fit object with pointwise draws for IC criteria."""
 
-    map_candidate: PosteriorCandidate
+    map_candidate: _MapCandidate
     pointwise_log_likelihood_draws: np.ndarray
 
 
@@ -77,7 +93,7 @@ def _constant_pointwise_posterior_fit(
     """Build deterministic posterior fit function with pointwise draws."""
 
     def _fit(trace):
-        candidate = PosteriorCandidate(
+        candidate = _MapCandidate(
             params={"alpha": alpha},
             log_likelihood=log_likelihood,
             log_prior=log_prior,
