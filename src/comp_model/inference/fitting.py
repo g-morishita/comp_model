@@ -120,6 +120,96 @@ def coerce_episode_trace(data: EpisodeTrace | BlockData | Sequence[TrialDecision
     )
 
 
+def coerce_episode_traces(
+    data_items: Sequence[EpisodeTrace | BlockData | Sequence[TrialDecision]],
+) -> tuple[EpisodeTrace, ...]:
+    """Coerce one or more trace-like containers into canonical traces."""
+
+    if not isinstance(data_items, Sequence) or isinstance(data_items, (str, bytes, bytearray)):
+        raise TypeError(
+            "data_items must be a non-empty sequence of EpisodeTrace, BlockData, "
+            "or non-empty sequences of TrialDecision"
+        )
+
+    items = tuple(data_items)
+    if not items:
+        raise ValueError("data_items must include at least one trace-like container")
+
+    return tuple(coerce_episode_trace(item) for item in items)
+
+
+def _build_joint_trace_fit_function(
+    *,
+    model_factory: Callable[[dict[str, float]], AgentModel],
+    fit_spec: FitSpec,
+    requirements: ComponentRequirements | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> Callable[[tuple[EpisodeTrace, ...]], MLEFitResult]:
+    """Build a reusable traces->fit callable for shared-parameter fitting."""
+
+    likelihood = likelihood_program if likelihood_program is not None else ActionReplayLikelihood()
+
+    solver = _resolve_mle_solver(fit_spec)
+
+    if solver == "grid_search":
+        if fit_spec.parameter_grid is None:
+            raise ValueError("fit_spec.parameter_grid is required for grid_search")
+
+        grid_estimator = GridSearchMLEEstimator(
+            likelihood_program=likelihood,
+            model_factory=model_factory,
+            requirements=requirements,
+        )
+        return lambda traces: grid_estimator.fit_traces(
+            traces=traces,
+            parameter_grid=fit_spec.parameter_grid or {},
+        )
+
+    if solver == "scipy_minimize":
+        if fit_spec.initial_params is None:
+            raise ValueError("fit_spec.initial_params is required for scipy_minimize")
+
+        scipy_estimator = ScipyMinimizeMLEEstimator(
+            likelihood_program=likelihood,
+            model_factory=model_factory,
+            requirements=requirements,
+            method=fit_spec.method,
+            tol=fit_spec.tol,
+        )
+        return lambda traces: scipy_estimator.fit_traces(
+            traces=traces,
+            initial_params=fit_spec.initial_params or {},
+            bounds=fit_spec.bounds,
+            n_starts=fit_spec.n_starts,
+            random_seed=fit_spec.random_seed,
+        )
+
+    if solver == "transformed_scipy_minimize":
+        if fit_spec.initial_params is None:
+            raise ValueError("fit_spec.initial_params is required for transformed_scipy_minimize")
+
+        transformed_estimator = TransformedScipyMinimizeMLEEstimator(
+            likelihood_program=likelihood,
+            model_factory=model_factory,
+            transforms=fit_spec.transforms,
+            requirements=requirements,
+            method=fit_spec.method,
+            tol=fit_spec.tol,
+        )
+        return lambda traces: transformed_estimator.fit_traces(
+            traces=traces,
+            initial_params=fit_spec.initial_params or {},
+            bounds_z=fit_spec.bounds_z,
+            n_starts=fit_spec.n_starts,
+            random_seed=fit_spec.random_seed,
+        )
+
+    raise ValueError(
+        "fit_spec.solver must be one of "
+        "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
+    )
+
+
 def _build_trace_fit_function(
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
@@ -151,64 +241,13 @@ def _build_trace_fit_function(
         If ``fit_spec`` is invalid for the selected estimator.
     """
 
-    likelihood = likelihood_program if likelihood_program is not None else ActionReplayLikelihood()
-
-    solver = _resolve_mle_solver(fit_spec)
-
-    if solver == "grid_search":
-        if fit_spec.parameter_grid is None:
-            raise ValueError("fit_spec.parameter_grid is required for grid_search")
-
-        grid_estimator = GridSearchMLEEstimator(
-            likelihood_program=likelihood,
-            model_factory=model_factory,
-            requirements=requirements,
-        )
-        return lambda trace: grid_estimator.fit(trace=trace, parameter_grid=fit_spec.parameter_grid or {})
-
-    if solver == "scipy_minimize":
-        if fit_spec.initial_params is None:
-            raise ValueError("fit_spec.initial_params is required for scipy_minimize")
-
-        scipy_estimator = ScipyMinimizeMLEEstimator(
-            likelihood_program=likelihood,
-            model_factory=model_factory,
-            requirements=requirements,
-            method=fit_spec.method,
-            tol=fit_spec.tol,
-        )
-        return lambda trace: scipy_estimator.fit(
-            trace=trace,
-            initial_params=fit_spec.initial_params or {},
-            bounds=fit_spec.bounds,
-            n_starts=fit_spec.n_starts,
-            random_seed=fit_spec.random_seed,
-        )
-
-    if solver == "transformed_scipy_minimize":
-        if fit_spec.initial_params is None:
-            raise ValueError("fit_spec.initial_params is required for transformed_scipy_minimize")
-
-        transformed_estimator = TransformedScipyMinimizeMLEEstimator(
-            likelihood_program=likelihood,
-            model_factory=model_factory,
-            transforms=fit_spec.transforms,
-            requirements=requirements,
-            method=fit_spec.method,
-            tol=fit_spec.tol,
-        )
-        return lambda trace: transformed_estimator.fit(
-            trace=trace,
-            initial_params=fit_spec.initial_params or {},
-            bounds_z=fit_spec.bounds_z,
-            n_starts=fit_spec.n_starts,
-            random_seed=fit_spec.random_seed,
-        )
-
-    raise ValueError(
-        "fit_spec.solver must be one of "
-        "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
+    joint_fit = _build_joint_trace_fit_function(
+        model_factory=model_factory,
+        fit_spec=fit_spec,
+        requirements=requirements,
+        likelihood_program=likelihood_program,
     )
+    return lambda trace: joint_fit((trace,))
 
 
 def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
@@ -227,13 +266,13 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     Raises
     ------
     ValueError
-        If inference type is unsupported in ``fit_trace`` or solver hints
-        are contradictory.
+        If inference type is unsupported in the reusable MLE fitting helpers or
+        solver hints are contradictory.
     """
 
     if fit_spec.inference == "bayesian":
         raise ValueError(
-            "fit_trace currently supports only inference='mle'. "
+            "fit_trace and fit_joint_traces currently support only inference='mle'. "
             "Use Stan Bayesian APIs (for example, draw_subject_block_hierarchy_posterior_stan)."
         )
     if fit_spec.inference != "mle":
@@ -278,14 +317,52 @@ def fit_trace(
         Fitting result.
     """
 
-    trace = coerce_episode_trace(data)
-    fit_function = _build_trace_fit_function(
+    return fit_joint_traces(
+        (data,),
         model_factory=model_factory,
         fit_spec=fit_spec,
         requirements=requirements,
         likelihood_program=likelihood_program,
     )
-    return fit_function(trace)
+
+
+def fit_joint_traces(
+    data_items: Sequence[EpisodeTrace | BlockData | Sequence[TrialDecision]],
+    *,
+    model_factory: Callable[[dict[str, float]], AgentModel],
+    fit_spec: FitSpec,
+    requirements: ComponentRequirements | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> MLEFitResult:
+    """Fit one shared parameter set across multiple trace-like containers.
+
+    Parameters
+    ----------
+    data_items : Sequence[EpisodeTrace | BlockData | Sequence[TrialDecision]]
+        One or more trace-like containers fit jointly with shared parameters.
+    model_factory : Callable[[dict[str, float]], AgentModel]
+        Factory building model instances from parameter mappings.
+    fit_spec : FitSpec
+        Estimator specification.
+    requirements : ComponentRequirements | None, optional
+        Optional compatibility requirements checked for every trace.
+    likelihood_program : LikelihoodProgram | None, optional
+        Likelihood program. Defaults to :class:`ActionReplayLikelihood`.
+
+    Returns
+    -------
+    MLEFitResult
+        Shared-parameter fitting result.
+    """
+
+    traces = coerce_episode_traces(data_items)
+    fit_function = _build_joint_trace_fit_function(
+        model_factory=model_factory,
+        fit_spec=fit_spec,
+        requirements=requirements,
+        likelihood_program=likelihood_program,
+    )
+    return fit_function(traces)
 
 
 def fit_trace_from_registry(
@@ -336,6 +413,33 @@ def fit_trace_from_registry(
     )
 
 
+def fit_joint_traces_from_registry(
+    data_items: Sequence[EpisodeTrace | BlockData | Sequence[TrialDecision]],
+    *,
+    model_component_id: str,
+    fit_spec: FitSpec,
+    model_kwargs: Mapping[str, Any] | None = None,
+    registry: PluginRegistry | None = None,
+    likelihood_program: LikelihoodProgram | None = None,
+) -> MLEFitResult:
+    """Fit one registered model jointly across multiple trace-like containers."""
+
+    reg = registry if registry is not None else build_default_registry()
+    manifest = reg.get("model", model_component_id)
+    fixed_kwargs = dict(model_kwargs) if model_kwargs is not None else {}
+
+    return fit_joint_traces(
+        data_items,
+        model_factory=lambda params: reg.create_model(
+            model_component_id,
+            **_merge_kwargs(fixed_kwargs, params),
+        ),
+        fit_spec=fit_spec,
+        requirements=manifest.requirements,
+        likelihood_program=likelihood_program,
+    )
+
+
 def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[str, Any]:
     """Merge fixed kwargs and per-candidate parameter kwargs."""
 
@@ -349,6 +453,9 @@ __all__ = [
     "FitSpec",
     "MLESolverType",
     "coerce_episode_trace",
+    "coerce_episode_traces",
+    "fit_joint_traces",
+    "fit_joint_traces_from_registry",
     "fit_trace",
     "fit_trace_from_registry",
 ]

@@ -8,11 +8,13 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, get_block_tr
 from comp_model.inference.block_strategy import (
     JOINT_BLOCK_ID,
     BlockFitStrategy,
-    JointBlockLikelihoodProgram,
     coerce_block_fit_strategy,
 )
-from comp_model.inference.compatibility import assert_trace_compatible
-from comp_model.inference.fitting import FitSpec, fit_trace_from_registry
+from comp_model.inference.fitting import (
+    FitSpec,
+    fit_joint_traces_from_registry,
+    fit_trace_from_registry,
+)
 from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.inference.mle import MLEFitResult
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -195,22 +197,13 @@ def fit_subject(
         )
 
     block_traces = tuple(get_block_trace(block) for block in subject.blocks)
-    requirements = reg.get("model", model_component_id).requirements
-    if requirements is not None:
-        for trace in block_traces:
-            assert_trace_compatible(trace, requirements)
-
-    joint_likelihood = JointBlockLikelihoodProgram(
-        block_traces=block_traces,
-        likelihood_program=likelihood_program,
-    )
-    joint_fit = fit_trace_from_registry(
-        subject.blocks[0],
+    joint_fit = fit_joint_traces_from_registry(
+        block_traces,
         model_component_id=model_component_id,
         fit_spec=fit_spec,
         model_kwargs=model_kwargs,
         registry=reg,
-        likelihood_program=joint_likelihood,
+        likelihood_program=likelihood_program,
     )
     block_results = (
         BlockFitResult(

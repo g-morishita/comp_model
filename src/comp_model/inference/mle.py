@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from itertools import product
 from typing import Any, Callable
@@ -138,19 +138,33 @@ class GridSearchMLEEstimator:
             If compatibility fails or the parameter grid is empty.
         """
 
-        compatibility: CompatibilityReport | None = None
-        if self._requirements is not None:
-            compatibility = check_trace_compatibility(trace, self._requirements)
-            assert_trace_compatible(trace, self._requirements)
+        return self.fit_traces((trace,), parameter_grid=parameter_grid)
+
+    def fit_traces(
+        self,
+        traces: Sequence[EpisodeTrace],
+        parameter_grid: dict[str, list[float]],
+    ) -> MLEFitResult:
+        """Fit one shared parameter set across one or more traces."""
+
+        trace_tuple = _require_traces(traces)
+        compatibility = _compatibility_report_for_traces(
+            trace_tuple,
+            requirements=self._requirements,
+        )
 
         candidates: list[MLECandidate] = []
         for params in _iter_parameter_grid(parameter_grid):
             model = self._model_factory(params)
-            replay_result = self._likelihood_program.evaluate(trace, model)
+            log_likelihood = _total_log_likelihood_over_traces(
+                trace_tuple,
+                likelihood_program=self._likelihood_program,
+                model=model,
+            )
             candidates.append(
                 MLECandidate(
                     params=dict(params),
-                    log_likelihood=float(replay_result.total_log_likelihood),
+                    log_likelihood=log_likelihood,
                 )
             )
 
@@ -239,10 +253,30 @@ class ScipyMinimizeMLEEstimator:
             If SciPy is not installed.
         """
 
-        compatibility: CompatibilityReport | None = None
-        if self._requirements is not None:
-            compatibility = check_trace_compatibility(trace, self._requirements)
-            assert_trace_compatible(trace, self._requirements)
+        return self.fit_traces(
+            (trace,),
+            initial_params=initial_params,
+            bounds=bounds,
+            n_starts=n_starts,
+            random_seed=random_seed,
+        )
+
+    def fit_traces(
+        self,
+        traces: Sequence[EpisodeTrace],
+        initial_params: Mapping[str, float],
+        *,
+        bounds: Mapping[str, tuple[float | None, float | None]] | None = None,
+        n_starts: int = 5,
+        random_seed: int | None = 0,
+    ) -> MLEFitResult:
+        """Fit one shared parameter set across one or more traces."""
+
+        trace_tuple = _require_traces(traces)
+        compatibility = _compatibility_report_for_traces(
+            trace_tuple,
+            requirements=self._requirements,
+        )
 
         minimize = _load_scipy_minimize()
 
@@ -271,8 +305,11 @@ class ScipyMinimizeMLEEstimator:
             def objective(x: np.ndarray) -> float:
                 params = _vector_to_params(names, x)
                 model = self._model_factory(params)
-                replay_result = self._likelihood_program.evaluate(trace, model)
-                log_likelihood = float(replay_result.total_log_likelihood)
+                log_likelihood = _total_log_likelihood_over_traces(
+                    trace_tuple,
+                    likelihood_program=self._likelihood_program,
+                    model=model,
+                )
 
                 if not np.isfinite(log_likelihood):
                     return 1e15
@@ -289,10 +326,13 @@ class ScipyMinimizeMLEEstimator:
 
             final_params = _vector_to_params(names, np.asarray(result.x, dtype=float))
             final_model = self._model_factory(final_params)
-            final_replay = self._likelihood_program.evaluate(trace, final_model)
             final_candidate = MLECandidate(
                 params=final_params,
-                log_likelihood=float(final_replay.total_log_likelihood),
+                log_likelihood=_total_log_likelihood_over_traces(
+                    trace_tuple,
+                    likelihood_program=self._likelihood_program,
+                    model=final_model,
+                ),
             )
             candidates.append(final_candidate)
 
@@ -322,6 +362,62 @@ class ScipyMinimizeMLEEstimator:
             compatibility=compatibility,
             scipy_diagnostics=diagnostics,
         )
+
+
+def _require_traces(traces: Sequence[EpisodeTrace]) -> tuple[EpisodeTrace, ...]:
+    """Normalize a trace sequence and reject empty collections."""
+
+    trace_tuple = tuple(traces)
+    if not trace_tuple:
+        raise ValueError("traces must include at least one trace")
+    return trace_tuple
+
+
+def _compatibility_report_for_traces(
+    traces: tuple[EpisodeTrace, ...],
+    *,
+    requirements: ComponentRequirements | None,
+) -> CompatibilityReport | None:
+    """Validate compatibility for one or more traces."""
+
+    if requirements is None:
+        return None
+
+    if len(traces) == 1:
+        compatibility = check_trace_compatibility(traces[0], requirements)
+        assert_trace_compatible(traces[0], requirements)
+        return compatibility
+
+    issues: list[str] = []
+    for index, trace in enumerate(traces):
+        report = check_trace_compatibility(trace, requirements)
+        issues.extend(f"trace[{index}]: {issue}" for issue in report.issues)
+
+    compatibility = CompatibilityReport(
+        is_compatible=len(issues) == 0,
+        issues=tuple(issues),
+    )
+    if compatibility.is_compatible:
+        return compatibility
+
+    formatted = "\n".join(f"- {issue}" for issue in compatibility.issues)
+    raise ValueError(f"traces are not compatible with component requirements:\n{formatted}")
+
+
+def _total_log_likelihood_over_traces(
+    traces: tuple[EpisodeTrace, ...],
+    *,
+    likelihood_program: LikelihoodProgram,
+    model: AgentModel,
+) -> float:
+    """Evaluate one model across traces and sum log likelihoods."""
+
+    return float(
+        sum(
+            float(likelihood_program.evaluate(trace, model).total_log_likelihood)
+            for trace in traces
+        )
+    )
 
 
 def _load_scipy_minimize() -> Callable[..., Any]:
@@ -560,10 +656,30 @@ class TransformedScipyMinimizeMLEEstimator:
             If SciPy is not installed.
         """
 
-        compatibility: CompatibilityReport | None = None
-        if self._requirements is not None:
-            compatibility = check_trace_compatibility(trace, self._requirements)
-            assert_trace_compatible(trace, self._requirements)
+        return self.fit_traces(
+            (trace,),
+            initial_params=initial_params,
+            bounds_z=bounds_z,
+            n_starts=n_starts,
+            random_seed=random_seed,
+        )
+
+    def fit_traces(
+        self,
+        traces: Sequence[EpisodeTrace],
+        initial_params: Mapping[str, float],
+        *,
+        bounds_z: Mapping[str, tuple[float | None, float | None]] | None = None,
+        n_starts: int = 5,
+        random_seed: int | None = 0,
+    ) -> MLEFitResult:
+        """Fit one shared parameter set across one or more traces."""
+
+        trace_tuple = _require_traces(traces)
+        compatibility = _compatibility_report_for_traces(
+            trace_tuple,
+            requirements=self._requirements,
+        )
 
         minimize = _load_scipy_minimize()
 
@@ -600,8 +716,11 @@ class TransformedScipyMinimizeMLEEstimator:
             def objective(z_vector: np.ndarray) -> float:
                 params = _vector_to_constrained_params(names, z_vector, transforms=transforms)
                 model = self._model_factory(params)
-                replay_result = self._likelihood_program.evaluate(trace, model)
-                log_likelihood = float(replay_result.total_log_likelihood)
+                log_likelihood = _total_log_likelihood_over_traces(
+                    trace_tuple,
+                    likelihood_program=self._likelihood_program,
+                    model=model,
+                )
 
                 if not np.isfinite(log_likelihood):
                     return 1e15
@@ -622,10 +741,13 @@ class TransformedScipyMinimizeMLEEstimator:
                 transforms=transforms,
             )
             final_model = self._model_factory(final_params)
-            final_replay = self._likelihood_program.evaluate(trace, final_model)
             final_candidate = MLECandidate(
                 params=final_params,
-                log_likelihood=float(final_replay.total_log_likelihood),
+                log_likelihood=_total_log_likelihood_over_traces(
+                    trace_tuple,
+                    likelihood_program=self._likelihood_program,
+                    model=final_model,
+                ),
             )
             candidates.append(final_candidate)
 

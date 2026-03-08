@@ -9,7 +9,7 @@ import pytest
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import BlockData, TrialDecision
-from comp_model.inference import FitSpec, fit_trace
+from comp_model.inference import FitSpec, fit_joint_traces, fit_trace
 from comp_model.problems import StationaryBanditProblem
 from comp_model.runtime import SimulationConfig, run_episode
 
@@ -102,6 +102,68 @@ def test_fit_trace_accepts_block_data_with_trial_rows() -> None:
     assert fit.best.params["p_right"] == pytest.approx(0.9)
 
 
+def test_fit_joint_traces_shares_one_parameter_set_across_blocks() -> None:
+    """fit_joint_traces should optimize one shared parameter set over blocks."""
+
+    block_1 = BlockData(
+        block_id="b1",
+        trials=(
+            TrialDecision(
+                trial_index=0,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 1.0},
+            ),
+            TrialDecision(
+                trial_index=1,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 1.0},
+            ),
+        ),
+    )
+    block_2 = BlockData(
+        block_id="b2",
+        trials=(
+            TrialDecision(
+                trial_index=0,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 0.0},
+            ),
+            TrialDecision(
+                trial_index=1,
+                decision_index=0,
+                actor_id="subject",
+                available_actions=(0, 1),
+                action=1,
+                observation={"state": 0},
+                outcome={"reward": 1.0},
+            ),
+        ),
+    )
+
+    fit = fit_joint_traces(
+        (block_1, block_2),
+        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
+        fit_spec=FitSpec(
+            solver="grid_search",
+            parameter_grid={"p_right": [0.2, 0.5, 0.8]},
+        ),
+    )
+
+    assert fit.best.params["p_right"] == pytest.approx(0.8)
+
+
 def test_fit_trace_rejects_missing_estimator_inputs() -> None:
     """fit_trace should enforce estimator-specific FitSpec requirements."""
 
@@ -160,7 +222,7 @@ def test_fit_trace_rejects_bayesian_inference_flag() -> None:
         ),
     )
 
-    with pytest.raises(ValueError, match="supports only inference='mle'"):
+    with pytest.raises(ValueError, match="support[s]? only inference='mle'"):
         fit_trace(
             decisions,
             model_factory=lambda params: FixedChoiceModel(p_right=params.get("p_right", 0.5)),
