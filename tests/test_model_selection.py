@@ -11,7 +11,7 @@ from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import TrialDecision
 from comp_model.inference import (
     CandidateFitSpec,
-    FitSpec,
+    MLEFitSpec,
     MLECandidate,
     MLEFitResult,
     RegistryCandidateFitSpec,
@@ -19,7 +19,7 @@ from comp_model.inference import (
     compare_registry_candidate_models,
 )
 from comp_model.inference.likelihood import ActionReplayLikelihood
-from comp_model.inference.fit.mle import GridSearchMLEEstimator
+from comp_model.inference.mle.estimators import GridSearchMLEEstimator
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.plugins import build_default_registry
 from comp_model.problems import StationaryBanditProblem
@@ -222,7 +222,7 @@ def test_compare_registry_candidate_models_runs_end_to_end() -> None:
             RegistryCandidateFitSpec(
                 name="good",
                 model_component_id="asocial_state_q_value_softmax",
-                fit_spec=FitSpec(
+                fit_spec=MLEFitSpec(
                     solver="grid_search",
                     parameter_grid={
                         "alpha": [0.3],
@@ -235,7 +235,7 @@ def test_compare_registry_candidate_models_runs_end_to_end() -> None:
             RegistryCandidateFitSpec(
                 name="bad",
                 model_component_id="asocial_state_q_value_softmax",
-                fit_spec=FitSpec(
+                fit_spec=MLEFitSpec(
                     solver="grid_search",
                     parameter_grid={
                         "alpha": [0.95],

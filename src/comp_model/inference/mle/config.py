@@ -1,9 +1,8 @@
-"""Config-driven model fitting helpers."""
+"""Config-driven helpers for maximum-likelihood fitting."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import Any
 
 from comp_model.core.config_validation import validate_allowed_keys
@@ -12,6 +11,7 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from ..block_strategy import BlockFitStrategy, coerce_block_fit_strategy
+from ..component_config import ModelComponentSpec, model_component_spec_from_config
 from ..likelihood_config import likelihood_program_from_config
 from ..transforms import (
     ParameterTransform,
@@ -19,7 +19,7 @@ from ..transforms import (
     positive_log_transform,
     unit_interval_logit_transform,
 )
-from .core import FitInferenceType, FitSpec, MLESolverType, fit_trace_from_registry
+from .fitting import MLEFitSpec, MLESolverType, fit_trace_from_registry
 from .group import (
     BlockFitResult,
     StudyFitResult,
@@ -28,27 +28,11 @@ from .group import (
     fit_study,
     fit_subject,
 )
-from .mle import MLEFitResult
+from .estimators import MLEFitResult
 
 
-@dataclass(frozen=True, slots=True)
-class ModelComponentSpec:
-    """Model component spec parsed from config.
-
-    Parameters
-    ----------
-    component_id : str
-        Model component ID in plugin registry.
-    kwargs : dict[str, Any]
-        Fixed model constructor kwargs.
-    """
-
-    component_id: str
-    kwargs: dict[str, Any]
-
-
-def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
-    """Parse estimator config mapping into :class:`FitSpec`.
+def mle_fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> MLEFitSpec:
+    """Parse estimator config mapping into :class:`MLEFitSpec`.
 
     Parameters
     ----------
@@ -57,7 +41,7 @@ def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
 
     Returns
     -------
-    FitSpec
+    MLEFitSpec
         Parsed fit specification.
 
     Raises
@@ -67,14 +51,7 @@ def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
     """
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
-    inference_raw = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
-    inference = _coerce_fit_inference(inference_raw, field_name="estimator.type")
-    if inference == "bayesian":
-        raise ValueError(
-            "fit_spec_from_config currently supports only estimator.type='mle'. "
-            "For Bayesian inference, use Stan hierarchical estimator types "
-            "with fit_*_auto_from_config."
-        )
+    _require_mle_estimator_type(estimator.get("type"), field_name="estimator.type")
 
     solver_raw = estimator.get("solver")
     if solver_raw is not None:
@@ -94,8 +71,7 @@ def fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> FitSpec:
         allow_solver_key=True,
     )
 
-    return FitSpec(
-        inference=inference,
+    return MLEFitSpec(
         solver=solver,
         parameter_grid=(
             _coerce_float_list_mapping(estimator.get("parameter_grid"), field_name="estimator.parameter_grid")
@@ -175,14 +151,15 @@ def _validate_estimator_keys_for_solver(
     )
 
 
-def _coerce_fit_inference(raw: str, *, field_name: str) -> FitInferenceType:
-    """Coerce a string to a supported fit inference literal."""
+def _require_mle_estimator_type(raw: Any, *, field_name: str) -> None:
+    """Validate that an estimator config declares MLE explicitly."""
 
-    if raw == "mle":
-        return "mle"
-    if raw == "bayesian":
-        return "bayesian"
-    raise ValueError(f"{field_name} must be one of {{'mle', 'bayesian'}}")
+    value = _coerce_non_empty_str(raw, field_name=field_name)
+    if value != "mle":
+        raise ValueError(
+            f"{field_name} must be 'mle' for direct MLE fitting helpers; "
+            "use fit_*_auto_from_config for estimator dispatch"
+        )
 
 
 def _coerce_mle_solver(raw: str, *, field_name: str) -> MLESolverType:
@@ -198,16 +175,6 @@ def _coerce_mle_solver(raw: str, *, field_name: str) -> MLESolverType:
         f"{field_name} must be one of "
         "{'grid_search', 'scipy_minimize', 'transformed_scipy_minimize'}"
     )
-
-
-def model_component_spec_from_config(model_cfg: Mapping[str, Any]) -> ModelComponentSpec:
-    """Parse model component spec from config mapping."""
-
-    mapping = _require_mapping(model_cfg, field_name="model")
-    validate_allowed_keys(mapping, field_name="model", allowed_keys=("component_id", "kwargs"))
-    component_id = _coerce_non_empty_str(mapping.get("component_id"), field_name="model.component_id")
-    kwargs = _require_mapping(mapping.get("kwargs", {}), field_name="model.kwargs")
-    return ModelComponentSpec(component_id=component_id, kwargs=dict(kwargs))
 
 
 def fit_trace_from_config(
@@ -236,7 +203,7 @@ def fit_trace_from_config(
     cfg = _require_mapping(config, field_name="config")
     validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
-    fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    fit_spec = mle_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
@@ -265,7 +232,7 @@ def fit_block_from_config(
     cfg = _require_mapping(config, field_name="config")
     validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator", "likelihood"))
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
-    fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    fit_spec = mle_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
@@ -298,7 +265,7 @@ def fit_subject_from_config(
         allowed_keys=("model", "estimator", "likelihood", "block_fit_strategy"),
     )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
-    fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    fit_spec = mle_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
@@ -336,7 +303,7 @@ def fit_study_from_config(
         allowed_keys=("model", "estimator", "likelihood", "block_fit_strategy"),
     )
     model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
-    fit_spec = fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
+    fit_spec = mle_fit_spec_from_config(_require_mapping(cfg.get("estimator"), field_name="config.estimator"))
     likelihood_cfg = (
         _require_mapping(cfg.get("likelihood"), field_name="config.likelihood")
         if "likelihood" in cfg
@@ -460,7 +427,7 @@ __all__ = [
     "ModelComponentSpec",
     "fit_block_from_config",
     "fit_trace_from_config",
-    "fit_spec_from_config",
+    "mle_fit_spec_from_config",
     "fit_study_from_config",
     "fit_subject_from_config",
     "model_component_spec_from_config",

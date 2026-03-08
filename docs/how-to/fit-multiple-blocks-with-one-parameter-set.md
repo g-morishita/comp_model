@@ -50,10 +50,9 @@ print("n_blocks:", len(subject.blocks))
 ## Step 2: Fit One Shared Parameter Set Across Blocks
 
 ```python
-from comp_model.inference import FitSpec, fit_subject
+from comp_model.inference import MLEFitSpec, fit_subject
 
-fit_spec = FitSpec(
-    inference="mle",
+fit_spec = MLEFitSpec(
     initial_params={"alpha": 0.3, "beta": 2.0},
     bounds={"alpha": (0.0, 1.0), "beta": (0.01, 10.0)},
     method="L-BFGS-B",

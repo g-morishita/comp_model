@@ -45,7 +45,7 @@ function per candidate model:
 ```python
 from pathlib import Path
 
-from comp_model.inference import FitSpec, fit_trace
+from comp_model.inference import MLEFitSpec, fit_trace
 from comp_model.models import (
     AsocialStateQValueSoftmaxModel,
     AsocialStateQValueSoftmaxPerseverationModel,
@@ -91,8 +91,7 @@ def fit_q_softmax(trace):
     return fit_trace(
         trace,
         model_factory=q_softmax_model_factory,
-        fit_spec=FitSpec(
-            inference="mle",
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={
                 "alpha": [0.2, 0.4],
@@ -107,8 +106,7 @@ def fit_q_softmax_perseveration(trace):
     return fit_trace(
         trace,
         model_factory=q_softmax_perseveration_model_factory,
-        fit_spec=FitSpec(
-            inference="mle",
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={
                 "alpha": [0.2, 0.4],

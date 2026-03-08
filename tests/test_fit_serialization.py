@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from comp_model.inference.fit.group import BlockFitResult, StudyFitResult, SubjectFitResult
-from comp_model.inference.fit.mle import MLECandidate, MLEFitResult
+from comp_model.inference.mle.group import BlockFitResult, StudyFitResult, SubjectFitResult
+from comp_model.inference.mle.estimators import MLECandidate, MLEFitResult
 from comp_model.inference.serialization import (
     block_fit_records,
     study_fit_records,

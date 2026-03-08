@@ -38,7 +38,7 @@ First, define small reusable functions:
 - `fit_function(trace)` fits one synthetic dataset.
 
 ```python
-from comp_model.inference import FitSpec, fit_trace
+from comp_model.inference import MLEFitSpec, fit_trace
 from comp_model.models import AsocialStateQValueSoftmaxModel
 from comp_model.problems import StationaryBanditProblem
 
@@ -59,8 +59,7 @@ def fit_function(trace):
     return fit_trace(
         trace,
         model_factory=model_factory,
-        fit_spec=FitSpec(
-            inference="mle",
+        fit_spec=MLEFitSpec(
             solver="scipy_minimize",
             initial_params={"alpha": 0.3, "beta": 2.0},
             bounds={
@@ -77,7 +76,7 @@ def fit_function(trace):
 ### Quick quiz
 
 ??? question "If you want to estimate `initial_value` too, what should you change?"
-    In `model_factory`, replace `initial_value=0.0` with `initial_value=params["initial_value"]`, then add `initial_value` to `initial_params` and `bounds` inside `FitSpec`.
+    In `model_factory`, replace `initial_value=0.0` with `initial_value=params["initial_value"]`, then add `initial_value` to `initial_params` and `bounds` inside `MLEFitSpec`.
 
 ## Step 2: Run parameter recovery from parameter distributions
 

@@ -13,7 +13,7 @@ from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
     ActorSubsetReplayLikelihood,
-    FitSpec,
+    MLEFitSpec,
     fit_trace,
 )
 from comp_model.models import UniformRandomPolicyModel
@@ -119,7 +119,7 @@ def test_fit_trace_supports_social_trace_with_actor_subset_likelihood() -> None:
     fit = fit_trace(
         trace,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={"p_right": [0.2, 0.5, 0.8]},
         ),

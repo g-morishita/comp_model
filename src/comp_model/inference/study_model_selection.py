@@ -12,7 +12,7 @@ from comp_model.core.events import EventPhase
 
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .criteria import compute_pointwise_information_criteria
-from .fit.result import extract_best_fit_summary
+from .best_fit_summary import extract_best_fit_summary
 from .model_selection import CandidateFitSpec
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]

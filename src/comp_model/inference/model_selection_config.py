@@ -11,15 +11,16 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
-from .fit.config import fit_spec_from_config, model_component_spec_from_config
-from .fit.dispatch import (
+from .component_config import model_component_spec_from_config
+from .mle.config import mle_fit_spec_from_config
+from .estimator_dispatch import (
     MAP_ESTIMATORS,
     MLE_ESTIMATORS,
     SUBJECT_BAYES_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from .fit.core import _build_trace_fit_function
+from .mle.fitting import _build_trace_fit_function
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
 from .model_selection import (
@@ -92,7 +93,7 @@ def build_fit_function_from_model_config(
         field_name="estimator.type",
     )
     if estimator_type in MLE_ESTIMATORS:
-        mle_fit_spec = fit_spec_from_config(estimator_cfg)
+        mle_fit_spec = mle_fit_spec_from_config(estimator_cfg)
         return _build_trace_fit_function(
             model_factory=model_factory,
             fit_spec=mle_fit_spec,

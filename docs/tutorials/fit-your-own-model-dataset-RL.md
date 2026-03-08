@@ -304,17 +304,17 @@ It verifies the converted file by:
 `FIT_CONFIG` is an in-script Python dictionary (not a required YAML file).
 
 If you prefer a no-config API, you can call `fit_study(...)` with
-`FitSpec(...)` directly:
+`MLEFitSpec(...)` directly:
 
 ```python
-from comp_model.inference import FitSpec, fit_study
+from comp_model.inference import MLEFitSpec, fit_study
 from comp_model.io import read_study_decisions_csv
 
 study = read_study_decisions_csv(canonical_csv_path)
 result = fit_study(
     study,
     model_component_id="asocial_state_q_value_softmax",
-    fit_spec=FitSpec(
+    fit_spec=MLEFitSpec(
         solver="grid_search",
         parameter_grid={
             "alpha": [0.1, 0.3, 0.5, 0.7],

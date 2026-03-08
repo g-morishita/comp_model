@@ -3,16 +3,15 @@
 from .block_strategy import BlockFitStrategy
 from .cli import run_fit_cli
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from .fit.config import (
-    ModelComponentSpec,
+from .component_config import ModelComponentSpec, model_component_spec_from_config
+from .mle.config import (
     fit_block_from_config,
     fit_trace_from_config,
-    fit_spec_from_config,
+    mle_fit_spec_from_config,
     fit_study_from_config,
     fit_subject_from_config,
-    model_component_spec_from_config,
 )
-from .fit.dispatch import (
+from .estimator_dispatch import (
     BAYES_ESTIMATORS,
     MAP_ESTIMATORS,
     MCMC_ESTIMATORS,
@@ -24,10 +23,9 @@ from .fit.dispatch import (
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from .fit.result import BestFitSummary, extract_best_fit_summary
-from .fit.core import (
-    FitInferenceType,
-    FitSpec,
+from .best_fit_summary import BestFitSummary, extract_best_fit_summary
+from .mle.fitting import (
+    MLEFitSpec,
     MLESolverType,
     coerce_episode_trace,
     coerce_episode_traces,
@@ -36,7 +34,7 @@ from .fit.core import (
     fit_trace,
     fit_trace_from_registry,
 )
-from .fit.group import (
+from .mle.group import (
     BlockFitResult,
     StudyFitResult,
     SubjectFitResult,
@@ -44,7 +42,7 @@ from .fit.group import (
     fit_study,
     fit_subject,
 )
-from .fit.mle import (
+from .mle.estimators import (
     GridSearchMLEEstimator,
     MLECandidate,
     MLEFitResult,
@@ -52,8 +50,8 @@ from .fit.mle import (
     ScipyMinimizeMLEEstimator,
     TransformedScipyMinimizeMLEEstimator,
 )
-from .fit.tabular import fit_study_csv_from_config, fit_trial_csv_from_config
-from .hierarchical_posterior import (
+from .tabular_fit import fit_study_csv_from_config, fit_trial_csv_from_config
+from .stan_posterior import (
     StanPosteriorDraw,
     StudySubjectBlockHierarchyPosteriorCandidate,
     StudySubjectBlockHierarchyPosteriorResult,
@@ -165,8 +163,7 @@ __all__ = [
     "CandidateComparison",
     "CandidateFitSpec",
     "CompatibilityReport",
-    "FitInferenceType",
-    "FitSpec",
+    "MLEFitSpec",
     "GridSearchMLEEstimator",
     "BAYES_ESTIMATORS",
     "STUDY_BAYES_ESTIMATORS",
@@ -246,7 +243,7 @@ __all__ = [
     "fit_trace_auto_from_config",
     "fit_trace",
     "fit_trace_from_registry",
-    "fit_spec_from_config",
+    "mle_fit_spec_from_config",
     "infer_study_stan_from_config",
     "fit_study",
     "fit_study_auto_from_config",

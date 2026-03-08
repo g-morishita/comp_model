@@ -1,4 +1,4 @@
-"""Explicit Stan posterior result dataclasses for hierarchical estimators."""
+"""Stan posterior draw, candidate, and result dataclasses."""
 
 from __future__ import annotations
 
@@ -319,8 +319,8 @@ class StudySubjectBlockHierarchyPosteriorResult:
         }
 
 
-def mean_params_from_result(fit_result: Any) -> dict[str, float]:
-    """Extract one representative parameter mapping from a hierarchical result."""
+def mean_params_from_stan_posterior_result(fit_result: Any) -> dict[str, float]:
+    """Extract one representative parameter mapping from a Stan posterior result."""
 
     if isinstance(fit_result, SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult):
         return fit_result.mean_map_params
@@ -330,7 +330,7 @@ def mean_params_from_result(fit_result: Any) -> dict[str, float]:
         return _mean_params(
             _flatten_nested_params(fit_result.map_candidate.block_params_by_subject)
         )
-    raise TypeError(f"unsupported hierarchical posterior result: {type(fit_result)!r}")
+    raise TypeError(f"unsupported Stan posterior result: {type(fit_result)!r}")
 
 
 __all__ = [
@@ -343,5 +343,5 @@ __all__ = [
     "SubjectBlockHierarchyPosteriorResult",
     "SubjectSharedPosteriorCandidate",
     "SubjectSharedPosteriorResult",
-    "mean_params_from_result",
+    "mean_params_from_stan_posterior_result",
 ]

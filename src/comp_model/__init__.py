@@ -21,7 +21,7 @@ from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
 from .inference import (
     ActorSubsetReplayLikelihood,
-    FitSpec,
+    MLEFitSpec,
     compare_candidate_models,
     compare_dataset_candidates_from_config,
     compare_registry_candidate_models,
@@ -97,7 +97,7 @@ __all__ = [
     "AgentModel",
     "DecisionContext",
     "DecisionProblem",
-    "FitSpec",
+    "MLEFitSpec",
     "ActorSubsetReplayLikelihood",
     "SimulationConfig",
     "StudyData",

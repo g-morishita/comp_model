@@ -17,8 +17,8 @@ from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .criteria import compute_pointwise_information_criteria
-from .fit.core import FitSpec, _build_trace_fit_function, coerce_episode_trace
-from .fit.result import extract_best_fit_summary
+from .mle.fitting import MLEFitSpec, _build_trace_fit_function, coerce_episode_trace
+from .best_fit_summary import extract_best_fit_summary
 from .likelihood import LikelihoodProgram
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
@@ -64,7 +64,7 @@ class RegistryCandidateFitSpec:
         Candidate label used in outputs.
     model_component_id : str
         Plugin model component ID.
-    fit_spec : FitSpec
+    fit_spec : MLEFitSpec
         Estimator specification for this candidate.
     model_kwargs : dict[str, Any] | None, optional
         Fixed keyword arguments passed to model construction.
@@ -75,7 +75,7 @@ class RegistryCandidateFitSpec:
 
     name: str
     model_component_id: str
-    fit_spec: FitSpec
+    fit_spec: MLEFitSpec
     model_kwargs: dict[str, Any] | None = None
     n_parameters: int | None = None
 

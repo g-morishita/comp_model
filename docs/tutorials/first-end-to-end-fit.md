@@ -208,7 +208,7 @@ To do this, we use `fit_trace(...)`. It takes three core inputs:
 Here is the fitting code:
 
 ```python
-from comp_model.inference import FitSpec, fit_trace
+from comp_model.inference import MLEFitSpec, fit_trace
 from comp_model.models import AsocialStateQValueSoftmaxModel
 
 pilot_fit_result = fit_trace(
@@ -218,8 +218,7 @@ pilot_fit_result = fit_trace(
         beta=params["beta"],
         initial_value=0.0,  # fixed (not estimated)
     ),
-    fit_spec=FitSpec(
-        inference="mle",
+    fit_spec=MLEFitSpec(
         initial_params={
             "alpha": 0.3,
             "beta": 2.0,
@@ -261,8 +260,6 @@ In this example, `alpha` and `beta` are estimated (`params["alpha"]`, `params["b
 
 `fit_spec` defines the estimation setup:
 
-- `inference="mle"`:
-  use maximum-likelihood estimation.
 - `initial_params={"alpha": 0.3, "beta": 2.0}`:
   one anchor start for optimization.
 - `n_starts=5`:
@@ -314,8 +311,7 @@ fit_result = fit_trace(
         beta=params["beta"],
         initial_value=0.0,  # fixed (not estimated)
     ),
-    fit_spec=FitSpec(
-        inference="mle",
+    fit_spec=MLEFitSpec(
         initial_params={
             "alpha": 0.3,
             "beta": 2.0,

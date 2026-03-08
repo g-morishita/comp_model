@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import comp_model.inference.fit.dispatch as config_dispatch_module
+import comp_model.inference.estimator_dispatch as config_dispatch_module
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     fit_block_auto_from_config,

@@ -80,7 +80,7 @@ Config files can be JSON (`.json`) or YAML (`.yaml` / `.yml`).
 from comp_model.problems import StationaryBanditProblem
 from comp_model.models import AsocialStateQValueSoftmaxModel
 from comp_model.runtime import SimulationConfig, run_episode
-from comp_model.inference import FitSpec, fit_trace
+from comp_model.inference import MLEFitSpec, fit_trace
 
 problem = StationaryBanditProblem(reward_probabilities=[0.2, 0.8])
 model = AsocialStateQValueSoftmaxModel(alpha=0.2, beta=3.0, initial_value=0.0)
@@ -89,7 +89,7 @@ trace = run_episode(problem=problem, model=model, config=SimulationConfig(n_tria
 fit_result = fit_trace(
     trace,
     model_factory=lambda params: AsocialStateQValueSoftmaxModel(**params),
-    fit_spec=FitSpec(
+    fit_spec=MLEFitSpec(
         solver="grid_search",
         parameter_grid={
             "alpha": [0.1, 0.2, 0.3],

@@ -9,7 +9,7 @@ from typing import Any, Literal, Sequence
 
 from comp_model.core import load_config_mapping
 
-from .fit.tabular import fit_study_csv_from_config, fit_trial_csv_from_config
+from .tabular_fit import fit_study_csv_from_config, fit_trial_csv_from_config
 
 
 def run_fit_cli(argv: Sequence[str] | None = None) -> int:

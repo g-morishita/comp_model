@@ -28,7 +28,7 @@ from comp_model.core.data import (
 from comp_model.core.requirements import ComponentRequirements
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
-from .hierarchical_posterior import (
+from .stan_posterior import (
     StanPosteriorDraw,
     StudySubjectBlockHierarchyPosteriorCandidate,
     StudySubjectBlockHierarchyPosteriorResult,

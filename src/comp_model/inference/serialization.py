@@ -6,8 +6,8 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from .fit.result import extract_best_fit_summary
-from .hierarchical_posterior import (
+from .best_fit_summary import extract_best_fit_summary
+from .stan_posterior import (
     StudySubjectBlockHierarchyPosteriorResult,
     StudySubjectHierarchyPosteriorResult,
     SubjectBlockHierarchyPosteriorResult,
@@ -15,7 +15,7 @@ from .hierarchical_posterior import (
 )
 from .model_selection import ModelComparisonResult
 from .posterior import PosteriorSummary, posterior_summary_records
-from .fit.group import BlockFitResult, StudyFitResult, SubjectFitResult
+from .mle.group import BlockFitResult, StudyFitResult, SubjectFitResult
 from .study_model_selection import (
     StudyModelComparisonResult,
     SubjectModelComparisonResult,

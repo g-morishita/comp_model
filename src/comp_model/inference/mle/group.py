@@ -13,12 +13,12 @@ from ..block_strategy import (
     coerce_block_fit_strategy,
 )
 from ..likelihood import LikelihoodProgram
-from .core import (
-    FitSpec,
+from .fitting import (
+    MLEFitSpec,
     fit_joint_traces_from_registry,
     fit_trace_from_registry,
 )
-from .mle import MLEFitResult
+from .estimators import MLEFitResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,7 +95,7 @@ def fit_block(
     block: BlockData,
     *,
     model_component_id: str,
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
@@ -108,8 +108,8 @@ def fit_block(
         Block dataset.
     model_component_id : str
         Registered model component ID.
-    fit_spec : FitSpec
-        Estimator specification.
+    fit_spec : MLEFitSpec
+        MLE estimator specification.
     model_kwargs : dict[str, object] | None, optional
         Fixed model constructor kwargs.
     registry : PluginRegistry | None, optional
@@ -140,7 +140,7 @@ def fit_subject(
     subject: SubjectData,
     *,
     model_component_id: str,
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
@@ -154,8 +154,8 @@ def fit_subject(
         Subject dataset.
     model_component_id : str
         Registered model component ID.
-    fit_spec : FitSpec
-        Estimator specification.
+    fit_spec : MLEFitSpec
+        MLE estimator specification.
     model_kwargs : dict[str, object] | None, optional
         Fixed model constructor kwargs.
     registry : PluginRegistry | None, optional
@@ -228,7 +228,7 @@ def fit_study(
     study: StudyData,
     *,
     model_component_id: str,
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     model_kwargs: dict[str, object] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
@@ -242,8 +242,8 @@ def fit_study(
         Study dataset.
     model_component_id : str
         Registered model component ID.
-    fit_spec : FitSpec
-        Estimator specification.
+    fit_spec : MLEFitSpec
+        MLE estimator specification.
     model_kwargs : dict[str, object] | None, optional
         Fixed model constructor kwargs.
     registry : PluginRegistry | None, optional

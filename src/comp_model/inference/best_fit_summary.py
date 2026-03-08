@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from ..hierarchical_posterior import mean_params_from_result
+from .stan_posterior import mean_params_from_stan_posterior_result
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +71,7 @@ def extract_best_fit_summary(fit_result: Any) -> BestFitSummary:
     if map_candidate is not None:
         if hasattr(fit_result, "draws"):
             try:
-                params = mean_params_from_result(fit_result)
+                params = mean_params_from_stan_posterior_result(fit_result)
             except TypeError:
                 params = _hierarchical_params_from_map_candidate(map_candidate)
             log_likelihood = _coerce_float(

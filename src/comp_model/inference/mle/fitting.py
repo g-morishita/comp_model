@@ -1,4 +1,4 @@
-"""Reusable model-fitting helpers for traces, blocks, and recovery pipelines."""
+"""Reusable MLE fitting helpers for traces, blocks, and recovery pipelines."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from comp_model.core.requirements import ComponentRequirements
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from ..likelihood import ActionReplayLikelihood, LikelihoodProgram
-from .mle import (
+from .estimators import (
     GridSearchMLEEstimator,
     MLEFitResult,
     ScipyMinimizeMLEEstimator,
@@ -26,19 +26,15 @@ from .mle import (
 )
 from ..transforms import ParameterTransform
 
-FitInferenceType = Literal["mle", "bayesian"]
 MLESolverType = Literal["grid_search", "scipy_minimize", "transformed_scipy_minimize"]
 
 
 @dataclass(frozen=True, slots=True)
-class FitSpec:
-    """Estimator specification for model fitting.
+class MLEFitSpec:
+    """Estimator specification for maximum-likelihood fitting.
 
     Parameters
     ----------
-    inference : {"mle", "bayesian"}, optional
-        High-level inference family. ``fit_trace`` currently supports
-        ``"mle"`` only; ``"bayesian"`` is routed through Stan posterior APIs.
     solver : {"grid_search", "scipy_minimize", "transformed_scipy_minimize"} | None, optional
         Concrete MLE solver/backend. If omitted, a solver is chosen
         automatically:
@@ -66,7 +62,6 @@ class FitSpec:
         Set to ``None`` to disable deterministic seeding.
     """
 
-    inference: FitInferenceType = "mle"
     solver: MLESolverType | None = None
     parameter_grid: dict[str, list[float]] | None = None
     initial_params: dict[str, float] | None = None
@@ -141,7 +136,7 @@ def coerce_episode_traces(
 def _build_joint_trace_fit_function(
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     requirements: ComponentRequirements | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> Callable[[tuple[EpisodeTrace, ...]], MLEFitResult]:
@@ -213,7 +208,7 @@ def _build_joint_trace_fit_function(
 def _build_trace_fit_function(
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     requirements: ComponentRequirements | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> Callable[[EpisodeTrace], MLEFitResult]:
@@ -223,7 +218,7 @@ def _build_trace_fit_function(
     ----------
     model_factory : Callable[[dict[str, float]], AgentModel]
         Factory building a model instance from parameter mapping.
-    fit_spec : FitSpec
+    fit_spec : MLEFitSpec
         Estimator specification.
     requirements : ComponentRequirements | None, optional
         Optional compatibility requirements checked before fitting.
@@ -250,13 +245,13 @@ def _build_trace_fit_function(
     return lambda trace: joint_fit((trace,))
 
 
-def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
-    """Resolve high-level fit spec into one concrete MLE solver.
+def _resolve_mle_solver(fit_spec: MLEFitSpec) -> MLESolverType:
+    """Resolve one MLE fit spec into one concrete solver.
 
     Parameters
     ----------
-    fit_spec : FitSpec
-        Fit specification containing inference family and optional solver hints.
+    fit_spec : MLEFitSpec
+        Fit specification containing optional solver hints.
 
     Returns
     -------
@@ -266,17 +261,8 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     Raises
     ------
     ValueError
-        If inference type is unsupported in the reusable MLE fitting helpers or
-        solver hints are contradictory.
+        If solver hints are contradictory.
     """
-
-    if fit_spec.inference == "bayesian":
-        raise ValueError(
-            "fit_trace and fit_joint_traces currently support only inference='mle'. "
-            "Use Stan Bayesian APIs (for example, draw_subject_block_hierarchy_posterior_stan)."
-        )
-    if fit_spec.inference != "mle":
-        raise ValueError("fit_spec.inference must be either 'mle' or 'bayesian'")
 
     solver = fit_spec.solver
     if solver is None:
@@ -292,7 +278,7 @@ def fit_trace(
     data: EpisodeTrace | BlockData | Sequence[TrialDecision],
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     requirements: ComponentRequirements | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> MLEFitResult:
@@ -304,8 +290,8 @@ def fit_trace(
         Input trace-like container to fit.
     model_factory : Callable[[dict[str, float]], AgentModel]
         Factory building model instances from parameter mappings.
-    fit_spec : FitSpec
-        Estimator specification.
+    fit_spec : MLEFitSpec
+        MLE estimator specification.
     requirements : ComponentRequirements | None, optional
         Optional compatibility requirements checked before fitting.
     likelihood_program : LikelihoodProgram | None, optional
@@ -330,7 +316,7 @@ def fit_joint_traces(
     data_items: Sequence[EpisodeTrace | BlockData | Sequence[TrialDecision]],
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     requirements: ComponentRequirements | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> MLEFitResult:
@@ -342,8 +328,8 @@ def fit_joint_traces(
         One or more trace-like containers fit jointly with shared parameters.
     model_factory : Callable[[dict[str, float]], AgentModel]
         Factory building model instances from parameter mappings.
-    fit_spec : FitSpec
-        Estimator specification.
+    fit_spec : MLEFitSpec
+        MLE estimator specification.
     requirements : ComponentRequirements | None, optional
         Optional compatibility requirements checked for every trace.
     likelihood_program : LikelihoodProgram | None, optional
@@ -369,7 +355,7 @@ def fit_trace_from_registry(
     data: EpisodeTrace | BlockData | Sequence[TrialDecision],
     *,
     model_component_id: str,
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     model_kwargs: Mapping[str, Any] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
@@ -382,8 +368,8 @@ def fit_trace_from_registry(
         Input trace-like container to fit.
     model_component_id : str
         Model component ID in the plugin registry.
-    fit_spec : FitSpec
-        Estimator specification.
+    fit_spec : MLEFitSpec
+        MLE estimator specification.
     model_kwargs : Mapping[str, Any] | None, optional
         Fixed model kwargs applied for every candidate before parameter updates.
     registry : PluginRegistry | None, optional
@@ -417,7 +403,7 @@ def fit_joint_traces_from_registry(
     data_items: Sequence[EpisodeTrace | BlockData | Sequence[TrialDecision]],
     *,
     model_component_id: str,
-    fit_spec: FitSpec,
+    fit_spec: MLEFitSpec,
     model_kwargs: Mapping[str, Any] | None = None,
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
@@ -449,8 +435,7 @@ def _merge_kwargs(base: Mapping[str, Any], override: Mapping[str, Any]) -> dict[
 
 
 __all__ = [
-    "FitInferenceType",
-    "FitSpec",
+    "MLEFitSpec",
     "MLESolverType",
     "coerce_episode_trace",
     "coerce_episode_traces",

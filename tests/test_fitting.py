@@ -9,7 +9,7 @@ import pytest
 
 from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import BlockData, TrialDecision
-from comp_model.inference import FitSpec, fit_joint_traces, fit_trace
+from comp_model.inference import MLEFitSpec, fit_joint_traces, fit_trace
 from comp_model.problems import StationaryBanditProblem
 from comp_model.runtime import SimulationConfig, run_episode
 
@@ -56,7 +56,7 @@ def test_fit_trace_on_episode_trace_with_grid_search() -> None:
     fit = fit_trace(
         trace,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={"p_right": [0.2, 0.5, 0.8]},
         ),
@@ -93,7 +93,7 @@ def test_fit_trace_accepts_block_data_with_trial_rows() -> None:
     fit = fit_trace(
         block,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={"p_right": [0.1, 0.9]},
         ),
@@ -155,7 +155,7 @@ def test_fit_joint_traces_shares_one_parameter_set_across_blocks() -> None:
     fit = fit_joint_traces(
         (block_1, block_2),
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={"p_right": [0.2, 0.5, 0.8]},
         ),
@@ -165,7 +165,7 @@ def test_fit_joint_traces_shares_one_parameter_set_across_blocks() -> None:
 
 
 def test_fit_trace_rejects_missing_estimator_inputs() -> None:
-    """fit_trace should enforce estimator-specific FitSpec requirements."""
+    """fit_trace should enforce estimator-specific MLEFitSpec requirements."""
 
     decisions = (
         TrialDecision(
@@ -183,12 +183,12 @@ def test_fit_trace_rejects_missing_estimator_inputs() -> None:
         fit_trace(
             decisions,
             model_factory=lambda params: FixedChoiceModel(p_right=params.get("p_right", 0.5)),
-            fit_spec=FitSpec(solver="grid_search"),
+            fit_spec=MLEFitSpec(solver="grid_search"),
         )
 
 
-def test_fit_trace_supports_high_level_mle_inference_defaults() -> None:
-    """FitSpec should allow inference='mle' without explicitly naming solver."""
+def test_fit_trace_defaults_to_scipy_solver_without_explicit_solver() -> None:
+    """MLEFitSpec should default to SciPy optimization without an explicit solver."""
 
     generating_model = FixedChoiceModel(p_right=0.8)
     problem = StationaryBanditProblem([0.5, 0.5])
@@ -197,37 +197,13 @@ def test_fit_trace_supports_high_level_mle_inference_defaults() -> None:
     fit = fit_trace(
         trace,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
-            inference="mle",
+        fit_spec=MLEFitSpec(
             initial_params={"p_right": 0.4},
             bounds={"p_right": (0.0, 1.0)},
         ),
     )
 
     assert 0.0 <= fit.best.params["p_right"] <= 1.0
-
-
-def test_fit_trace_rejects_bayesian_inference_flag() -> None:
-    """fit_trace should fail fast when FitSpec requests Bayesian inference."""
-
-    decisions = (
-        TrialDecision(
-            trial_index=0,
-            decision_index=0,
-            actor_id="subject",
-            available_actions=(0, 1),
-            action=0,
-            observation={"state": 0},
-            outcome={"reward": 0.0},
-        ),
-    )
-
-    with pytest.raises(ValueError, match="support[s]? only inference='mle'"):
-        fit_trace(
-            decisions,
-            model_factory=lambda params: FixedChoiceModel(p_right=params.get("p_right", 0.5)),
-            fit_spec=FitSpec(inference="bayesian"),
-        )
 
 
 def test_fit_trace_rejects_single_start_for_scipy_solver() -> None:
@@ -249,8 +225,7 @@ def test_fit_trace_rejects_single_start_for_scipy_solver() -> None:
         fit_trace(
             decisions,
             model_factory=lambda params: FixedChoiceModel(p_right=params.get("p_right", 0.5)),
-            fit_spec=FitSpec(
-                inference="mle",
+            fit_spec=MLEFitSpec(
                 solver="scipy_minimize",
                 initial_params={"p_right": 0.5},
                 bounds={"p_right": (0.0, 1.0)},
@@ -269,8 +244,7 @@ def test_fit_trace_multi_start_is_reproducible_with_seed() -> None:
     fit1 = fit_trace(
         trace,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
-            inference="mle",
+        fit_spec=MLEFitSpec(
             solver="scipy_minimize",
             initial_params={"p_right": 0.5},
             bounds={"p_right": (0.0, 1.0)},
@@ -281,8 +255,7 @@ def test_fit_trace_multi_start_is_reproducible_with_seed() -> None:
     fit2 = fit_trace(
         trace,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_spec=FitSpec(
-            inference="mle",
+        fit_spec=MLEFitSpec(
             solver="scipy_minimize",
             initial_params={"p_right": 0.5},
             bounds={"p_right": (0.0, 1.0)},
@@ -309,7 +282,7 @@ def test_fit_trace_from_registry_component_id() -> None:
     fit = fit_trace_from_registry(
         trace,
         model_component_id="asocial_state_q_value_softmax",
-        fit_spec=FitSpec(
+        fit_spec=MLEFitSpec(
             solver="grid_search",
             parameter_grid={
                 "alpha": [0.2],

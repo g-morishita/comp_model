@@ -7,8 +7,8 @@ import math
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
-from comp_model.inference import FitSpec
-from comp_model.inference.fit.group import fit_block, fit_study, fit_subject
+from comp_model.inference import MLEFitSpec
+from comp_model.inference.mle.group import fit_block, fit_study, fit_subject
 
 
 def _make_trial(trial_index: int, action: int, reward: float) -> TrialDecision:
@@ -25,10 +25,10 @@ def _make_trial(trial_index: int, action: int, reward: float) -> TrialDecision:
     )
 
 
-def _fit_spec() -> FitSpec:
+def _fit_spec() -> MLEFitSpec:
     """Return deterministic one-candidate fit spec for asocial state model."""
 
-    return FitSpec(
+    return MLEFitSpec(
         solver="grid_search",
         parameter_grid={
             "alpha": [0.3],

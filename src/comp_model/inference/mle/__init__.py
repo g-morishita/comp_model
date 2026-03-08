@@ -1,17 +1,15 @@
-"""Fitting subpackage for MLE fit primitives, wrappers, and config entrypoints."""
+"""Maximum-likelihood fitting primitives, wrappers, and config entrypoints."""
 
+from ..component_config import ModelComponentSpec, model_component_spec_from_config
 from .config import (
-    ModelComponentSpec,
     fit_block_from_config,
-    fit_spec_from_config,
+    mle_fit_spec_from_config,
     fit_study_from_config,
     fit_subject_from_config,
     fit_trace_from_config,
-    model_component_spec_from_config,
 )
-from .core import (
-    FitInferenceType,
-    FitSpec,
+from .fitting import (
+    MLEFitSpec,
     MLESolverType,
     coerce_episode_trace,
     coerce_episode_traces,
@@ -19,18 +17,6 @@ from .core import (
     fit_joint_traces_from_registry,
     fit_trace,
     fit_trace_from_registry,
-)
-from .dispatch import (
-    BAYES_ESTIMATORS,
-    MAP_ESTIMATORS,
-    MCMC_ESTIMATORS,
-    MLE_ESTIMATORS,
-    STUDY_BAYES_ESTIMATORS,
-    SUBJECT_BAYES_ESTIMATORS,
-    fit_block_auto_from_config,
-    fit_study_auto_from_config,
-    fit_subject_auto_from_config,
-    fit_trace_auto_from_config,
 )
 from .group import (
     BlockFitResult,
@@ -40,7 +26,7 @@ from .group import (
     fit_study,
     fit_subject,
 )
-from .mle import (
+from .estimators import (
     GridSearchMLEEstimator,
     MLECandidate,
     MLEFitResult,
@@ -48,25 +34,15 @@ from .mle import (
     ScipyMinimizeMLEEstimator,
     TransformedScipyMinimizeMLEEstimator,
 )
-from .result import BestFitSummary, extract_best_fit_summary
-from .tabular import fit_study_csv_from_config, fit_trial_csv_from_config
 
 __all__ = [
-    "BAYES_ESTIMATORS",
-    "BestFitSummary",
     "BlockFitResult",
-    "FitInferenceType",
-    "FitSpec",
     "GridSearchMLEEstimator",
-    "MAP_ESTIMATORS",
-    "MCMC_ESTIMATORS",
+    "MLEFitSpec",
     "MLECandidate",
     "MLEFitResult",
-    "MLE_ESTIMATORS",
     "MLESolverType",
     "ModelComponentSpec",
-    "STUDY_BAYES_ESTIMATORS",
-    "SUBJECT_BAYES_ESTIMATORS",
     "ScipyMinimizeDiagnostics",
     "ScipyMinimizeMLEEstimator",
     "StudyFitResult",
@@ -74,24 +50,17 @@ __all__ = [
     "TransformedScipyMinimizeMLEEstimator",
     "coerce_episode_trace",
     "coerce_episode_traces",
-    "extract_best_fit_summary",
     "fit_block",
-    "fit_block_auto_from_config",
     "fit_block_from_config",
     "fit_joint_traces",
     "fit_joint_traces_from_registry",
-    "fit_spec_from_config",
     "fit_study",
-    "fit_study_auto_from_config",
-    "fit_study_csv_from_config",
     "fit_study_from_config",
     "fit_subject",
-    "fit_subject_auto_from_config",
     "fit_subject_from_config",
     "fit_trace",
-    "fit_trace_auto_from_config",
     "fit_trace_from_config",
     "fit_trace_from_registry",
-    "fit_trial_csv_from_config",
+    "mle_fit_spec_from_config",
     "model_component_spec_from_config",
 ]
