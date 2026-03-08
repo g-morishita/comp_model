@@ -9,8 +9,10 @@ from typing import Any
 from .fit_result import extract_best_fit_summary
 from .hierarchical_map import HierarchicalStudyMapResult, HierarchicalSubjectMapResult
 from .hierarchical_posterior import (
-    HierarchicalStudyPosteriorResult,
-    HierarchicalSubjectPosteriorResult,
+    StudySubjectBlockHierarchyPosteriorResult,
+    StudySubjectHierarchyPosteriorResult,
+    SubjectBlockHierarchyPosteriorResult,
+    SubjectSharedPosteriorResult,
 )
 from .map_study_fitting import MapBlockFitResult, MapStudyFitResult, MapSubjectFitResult
 from .model_selection import ModelComparisonResult
@@ -226,13 +228,13 @@ def hierarchical_study_summary_records(study_result: HierarchicalStudyMapResult)
 
 
 def hierarchical_mcmc_subject_draw_records(
-    subject_result: HierarchicalSubjectPosteriorResult,
+    subject_result: SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult,
 ) -> list[dict[str, Any]]:
     """Convert one hierarchical-MCMC subject result to draw-level rows.
 
     Parameters
     ----------
-    subject_result : HierarchicalSubjectPosteriorResult
+    subject_result : SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult
         Subject-level hierarchical posterior output.
 
     Returns
@@ -251,10 +253,15 @@ def hierarchical_mcmc_subject_draw_records(
             "log_prior": float(draw.candidate.log_prior),
             "log_posterior": float(draw.candidate.log_posterior),
         }
-        for key, value in sorted(draw.candidate.group_location_z.items()):
-            row[f"group_location_z__{key}"] = float(value)
-        for key, value in sorted(draw.candidate.group_scale_z.items()):
-            row[f"group_scale__{key}"] = float(value)
+        if hasattr(draw.candidate, "subject_params"):
+            for key, value in sorted(draw.candidate.subject_params.items()):
+                row[f"subject_param__{key}"] = float(value)
+        if hasattr(draw.candidate, "subject_location_z"):
+            for key, value in sorted(draw.candidate.subject_location_z.items()):
+                row[f"subject_location_z__{key}"] = float(value)
+        if hasattr(draw.candidate, "subject_scale"):
+            for key, value in sorted(draw.candidate.subject_scale.items()):
+                row[f"subject_scale__{key}"] = float(value)
         for block_index, block_params in enumerate(draw.candidate.block_params):
             for key, value in sorted(block_params.items()):
                 row[f"block_{block_index}__param__{key}"] = float(value)
@@ -263,18 +270,40 @@ def hierarchical_mcmc_subject_draw_records(
 
 
 def hierarchical_mcmc_study_draw_records(
-    study_result: HierarchicalStudyPosteriorResult,
+    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
 ) -> list[dict[str, Any]]:
-    """Convert hierarchical-MCMC study result to draw-level rows."""
+    """Convert study-level posterior result to draw-level rows."""
 
     rows: list[dict[str, Any]] = []
-    for subject in study_result.subject_results:
-        rows.extend(hierarchical_mcmc_subject_draw_records(subject))
+    for draw in study_result.draws:
+        row: dict[str, Any] = {
+            "iteration": int(draw.iteration),
+            "accepted": bool(draw.accepted),
+            "log_likelihood": float(draw.candidate.log_likelihood),
+            "log_prior": float(draw.candidate.log_prior),
+            "log_posterior": float(draw.candidate.log_posterior),
+        }
+        for key, value in sorted(draw.candidate.population_location_z.items()):
+            row[f"population_location_z__{key}"] = float(value)
+        for key, value in sorted(draw.candidate.population_scale.items()):
+            row[f"population_scale__{key}"] = float(value)
+        if hasattr(draw.candidate, "subject_location_z"):
+            for subject_index, subject_location in enumerate(draw.candidate.subject_location_z):
+                for key, value in sorted(subject_location.items()):
+                    row[f"subject_{subject_index}__location_z__{key}"] = float(value)
+        for subject_index, subject_params in enumerate(draw.candidate.subject_params):
+            for key, value in sorted(subject_params.items()):
+                row[f"subject_{subject_index}__param__{key}"] = float(value)
+        for subject_index, block_params_by_subject in enumerate(draw.candidate.block_params_by_subject):
+            for block_index, block_params in enumerate(block_params_by_subject):
+                for key, value in sorted(block_params.items()):
+                    row[f"subject_{subject_index}__block_{block_index}__param__{key}"] = float(value)
+        rows.append(row)
     return rows
 
 
 def hierarchical_mcmc_subject_summary_records(
-    subject_result: HierarchicalSubjectPosteriorResult,
+    subject_result: SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult,
 ) -> list[dict[str, Any]]:
     """Convert one hierarchical-MCMC subject result to summary row."""
 
@@ -288,22 +317,37 @@ def hierarchical_mcmc_subject_summary_records(
         "map_log_prior": float(map_candidate.log_prior),
         "map_log_posterior": float(map_candidate.log_posterior),
     }
-    for key, value in sorted(map_candidate.group_location_z.items()):
-        row[f"map_group_location_z__{key}"] = float(value)
-    for key, value in sorted(map_candidate.group_scale_z.items()):
-        row[f"map_group_scale__{key}"] = float(value)
+    if hasattr(map_candidate, "subject_params"):
+        for key, value in sorted(map_candidate.subject_params.items()):
+            row[f"map_subject_param__{key}"] = float(value)
+    if hasattr(map_candidate, "subject_location_z"):
+        for key, value in sorted(map_candidate.subject_location_z.items()):
+            row[f"map_subject_location_z__{key}"] = float(value)
+    if hasattr(map_candidate, "subject_scale"):
+        for key, value in sorted(map_candidate.subject_scale.items()):
+            row[f"map_subject_scale__{key}"] = float(value)
     return [row]
 
 
 def hierarchical_mcmc_study_summary_records(
-    study_result: HierarchicalStudyPosteriorResult,
+    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
 ) -> list[dict[str, Any]]:
-    """Convert hierarchical-MCMC study result to subject summary rows."""
+    """Convert study-level posterior result to summary rows."""
 
-    rows: list[dict[str, Any]] = []
-    for subject in study_result.subject_results:
-        rows.extend(hierarchical_mcmc_subject_summary_records(subject))
-    return rows
+    map_candidate = study_result.map_candidate
+    row: dict[str, Any] = {
+        "n_draws": len(study_result.draws),
+        "n_subjects": int(study_result.n_subjects),
+        "acceptance_rate": float(study_result.diagnostics.acceptance_rate),
+        "map_log_likelihood": float(map_candidate.log_likelihood),
+        "map_log_prior": float(map_candidate.log_prior),
+        "map_log_posterior": float(map_candidate.log_posterior),
+    }
+    for key, value in sorted(map_candidate.population_location_z.items()):
+        row[f"map_population_location_z__{key}"] = float(value)
+    for key, value in sorted(map_candidate.population_scale.items()):
+        row[f"map_population_scale__{key}"] = float(value)
+    return [row]
 
 
 def map_block_fit_records(block_result: MapBlockFitResult, *, subject_id: str | None = None) -> list[dict[str, Any]]:
@@ -521,7 +565,7 @@ def write_hierarchical_study_summary_csv(
 
 
 def write_hierarchical_mcmc_study_draw_records_csv(
-    study_result: HierarchicalStudyPosteriorResult,
+    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
     path: str | Path,
 ) -> Path:
     """Write hierarchical-MCMC study draw rows to CSV."""
@@ -530,7 +574,7 @@ def write_hierarchical_mcmc_study_draw_records_csv(
 
 
 def write_hierarchical_mcmc_study_summary_csv(
-    study_result: HierarchicalStudyPosteriorResult,
+    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
     path: str | Path,
 ) -> Path:
     """Write hierarchical-MCMC study summary rows to CSV."""

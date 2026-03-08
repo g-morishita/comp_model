@@ -1218,8 +1218,8 @@ def test_parameter_recovery_supports_subject_level_joint_block_fit_strategy() ->
     }
 
 
-def test_parameter_recovery_supports_subject_level_pooled_stan_estimator(monkeypatch) -> None:
-    """Subject-level parameter recovery should dispatch pooled Stan estimators."""
+def test_parameter_recovery_supports_subject_level_shared_stan_estimator(monkeypatch) -> None:
+    """Subject-level parameter recovery should dispatch shared-parameter Stan estimators."""
 
     captured: dict[str, object] = {}
 
@@ -1274,7 +1274,7 @@ def test_parameter_recovery_supports_subject_level_pooled_stan_estimator(monkeyp
             "kwargs": {},
         },
         "estimator": {
-            "type": "within_subject_pooled_stan_map",
+            "type": "subject_shared_stan_map",
             "parameter_names": ["alpha", "beta", "initial_value"],
         },
         "true_parameter_sets": [
@@ -1291,7 +1291,7 @@ def test_parameter_recovery_supports_subject_level_pooled_stan_estimator(monkeyp
         "beta": 1.5,
         "initial_value": 0.0,
     }
-    assert captured["estimator_type"] == "within_subject_pooled_stan_map"
+    assert captured["estimator_type"] == "subject_shared_stan_map"
     assert captured["n_blocks"] == 2
 
 

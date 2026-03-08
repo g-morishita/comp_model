@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from .hierarchical_posterior import mean_params_from_result
+
 
 @dataclass(frozen=True, slots=True)
 class BestFitSummary:
@@ -67,10 +69,11 @@ def extract_best_fit_summary(fit_result: Any) -> BestFitSummary:
     # MAP-style result: ``result.map_candidate.params`` etc.
     map_candidate = getattr(fit_result, "map_candidate", None)
     if map_candidate is not None:
-        # Hierarchical posterior-style result:
-        # ``result.map_candidate.block_params`` with per-block parameters.
-        if hasattr(map_candidate, "block_params"):
-            params = _hierarchical_params_from_map_candidate(map_candidate)
+        if hasattr(fit_result, "draws"):
+            try:
+                params = mean_params_from_result(fit_result)
+            except TypeError:
+                params = _hierarchical_params_from_map_candidate(map_candidate)
             log_likelihood = _coerce_float(
                 getattr(map_candidate, "log_likelihood", None),
                 field_name="fit_result.map_candidate.log_likelihood",

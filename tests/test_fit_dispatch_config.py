@@ -34,7 +34,8 @@ def _mle_config() -> dict:
     return {
         "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {}},
         "estimator": {
-            "type": "mle", "solver": "grid_search",
+            "type": "mle",
+            "solver": "grid_search",
             "parameter_grid": {
                 "alpha": [0.3],
                 "beta": [2.0],
@@ -44,18 +45,15 @@ def _mle_config() -> dict:
     }
 
 
-def _stan_map_config() -> dict:
-    """Build one minimal Stan MAP config."""
+def _subject_shared_map_config() -> dict:
+    """Build one minimal subject-shared Stan MAP config."""
 
     return {
         "model": {"component_id": "asocial_state_q_value_softmax", "kwargs": {"initial_value": 0.0}},
         "estimator": {
-            "type": "within_subject_hierarchical_stan_map",
+            "type": "subject_shared_stan_map",
             "parameter_names": ["alpha", "beta"],
-            "transforms": {
-                "alpha": "unit_interval_logit",
-                "beta": "positive_log",
-            },
+            "transforms": {"alpha": "unit_interval_logit", "beta": "positive_log"},
             "max_iterations": 50,
             "method": "lbfgs",
             "random_seed": 7,
@@ -63,8 +61,22 @@ def _stan_map_config() -> dict:
     }
 
 
-def test_fit_dataset_auto_dispatches_mle_and_stan_map(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Dataset auto-dispatch should route MLE and Stan MAP fit paths."""
+def _study_subject_nuts_config() -> dict:
+    """Build one minimal population -> subject Stan NUTS config."""
+
+    cfg = _subject_shared_map_config()
+    cfg["estimator"] = {
+        "type": "study_subject_hierarchy_stan_nuts",
+        "parameter_names": ["alpha"],
+        "n_samples": 10,
+        "n_warmup": 8,
+        "n_chains": 2,
+    }
+    return cfg
+
+
+def test_fit_dataset_auto_dispatches_mle_and_subject_stan(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Dataset auto-dispatch should route MLE and subject-level Stan fit paths."""
 
     rows = (_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0))
 
@@ -74,15 +86,15 @@ def test_fit_dataset_auto_dispatches_mle_and_stan_map(monkeypatch: pytest.Monkey
     sentinel = object()
     monkeypatch.setattr(
         config_dispatch_module,
-        "sample_subject_hierarchical_posterior_from_config",
+        "infer_subject_stan_from_config",
         lambda *args, **kwargs: sentinel,
     )
-    map_result = fit_dataset_auto_from_config(rows, config=_stan_map_config())
+    map_result = fit_dataset_auto_from_config(rows, config=_subject_shared_map_config())
     assert map_result is sentinel
 
 
 def test_fit_block_subject_study_auto_dispatch_stan(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Block/subject/study auto-dispatch should route Stan estimators."""
+    """Block/subject/study auto-dispatch should route explicit Stan estimators."""
 
     block = BlockData(
         block_id="b0",
@@ -95,23 +107,38 @@ def test_fit_block_subject_study_auto_dispatch_stan(monkeypatch: pytest.MonkeyPa
     sentinel_study = object()
     monkeypatch.setattr(
         config_dispatch_module,
-        "sample_subject_hierarchical_posterior_from_config",
+        "infer_subject_stan_from_config",
         lambda *args, **kwargs: sentinel_subject,
     )
     monkeypatch.setattr(
         config_dispatch_module,
-        "sample_study_hierarchical_posterior_from_config",
+        "infer_study_stan_from_config",
         lambda *args, **kwargs: sentinel_study,
     )
 
-    block_result = fit_block_auto_from_config(block, config=_stan_map_config())
+    block_result = fit_block_auto_from_config(block, config=_subject_shared_map_config())
     assert block_result is sentinel_subject
 
-    subject_result = fit_subject_auto_from_config(subject, config=_stan_map_config())
+    subject_result = fit_subject_auto_from_config(subject, config=_subject_shared_map_config())
     assert subject_result is sentinel_subject
 
-    study_result = fit_study_auto_from_config(study, config=_stan_map_config())
+    study_result = fit_study_auto_from_config(study, config=_study_subject_nuts_config())
     assert study_result is sentinel_study
+
+
+def test_fit_auto_rejects_study_estimators_for_dataset_and_subject_estimators_for_study() -> None:
+    """Auto-dispatch should reject mismatched estimator/input hierarchy combinations."""
+
+    rows = (_trial(0, 1, 1.0),)
+    block = BlockData(block_id="b1", trials=rows)
+    subject = SubjectData(subject_id="s1", blocks=(block,))
+    study = StudyData(subjects=(subject,))
+
+    with pytest.raises(ValueError, match="study-level Stan estimators require StudyData"):
+        fit_dataset_auto_from_config(rows, config=_study_subject_nuts_config())
+
+    with pytest.raises(ValueError, match="subject-level Stan estimators require SubjectData"):
+        fit_study_auto_from_config(study, config=_subject_shared_map_config())
 
 
 def test_fit_auto_rejects_legacy_scipy_map_estimator() -> None:

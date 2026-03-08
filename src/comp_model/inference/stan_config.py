@@ -1,13 +1,4 @@
-"""Config-driven Stan hierarchical Bayesian helpers.
-
-Pure-Python Bayesian samplers/optimizers have been removed. Bayesian inference
-is Stan-backed via:
-
-- ``within_subject_hierarchical_stan_nuts`` (posterior sampling)
-- ``within_subject_hierarchical_stan_map`` (posterior-mode optimization)
-- ``within_subject_pooled_stan_nuts`` (shared-parameter posterior sampling)
-- ``within_subject_pooled_stan_map`` (shared-parameter posterior-mode optimization)
-"""
+"""Config-driven helpers for explicit Stan Bayesian hierarchy estimators."""
 
 from __future__ import annotations
 
@@ -21,24 +12,46 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .config import model_component_spec_from_config
 from .hierarchical_posterior import (
-    HierarchicalStudyPosteriorResult,
-    HierarchicalSubjectPosteriorResult,
+    StudySubjectBlockHierarchyPosteriorResult,
+    StudySubjectHierarchyPosteriorResult,
+    SubjectBlockHierarchyPosteriorResult,
+    SubjectSharedPosteriorResult,
 )
 from .hierarchical_stan import (
-    optimize_study_hierarchical_posterior_stan,
-    optimize_study_pooled_posterior_stan,
-    optimize_subject_hierarchical_posterior_stan,
-    optimize_subject_pooled_posterior_stan,
-    sample_study_hierarchical_posterior_stan,
-    sample_study_pooled_posterior_stan,
-    sample_subject_hierarchical_posterior_stan,
-    sample_subject_pooled_posterior_stan,
+    draw_study_subject_block_hierarchy_posterior_stan,
+    draw_study_subject_hierarchy_posterior_stan,
+    draw_subject_block_hierarchy_posterior_stan,
+    draw_subject_shared_posterior_stan,
+    estimate_study_subject_block_hierarchy_map_stan,
+    estimate_study_subject_hierarchy_map_stan,
+    estimate_subject_block_hierarchy_map_stan,
+    estimate_subject_shared_map_stan,
 )
+
+SUBJECT_NUTS_ESTIMATORS = {
+    "subject_shared_stan_nuts",
+    "subject_block_hierarchy_stan_nuts",
+}
+SUBJECT_MAP_ESTIMATORS = {
+    "subject_shared_stan_map",
+    "subject_block_hierarchy_stan_map",
+}
+STUDY_NUTS_ESTIMATORS = {
+    "study_subject_hierarchy_stan_nuts",
+    "study_subject_block_hierarchy_stan_nuts",
+}
+STUDY_MAP_ESTIMATORS = {
+    "study_subject_hierarchy_stan_map",
+    "study_subject_block_hierarchy_stan_map",
+}
+SUBJECT_STAN_ESTIMATORS = SUBJECT_NUTS_ESTIMATORS | SUBJECT_MAP_ESTIMATORS
+STUDY_STAN_ESTIMATORS = STUDY_NUTS_ESTIMATORS | STUDY_MAP_ESTIMATORS
+STAN_ESTIMATORS = SUBJECT_STAN_ESTIMATORS | STUDY_STAN_ESTIMATORS
 
 
 @dataclass(frozen=True, slots=True)
-class HierarchicalStanEstimatorSpec:
-    """Parsed estimator spec for within-subject hierarchical Stan estimators."""
+class StanEstimatorSpec:
+    """Parsed estimator spec for explicit Stan Bayesian estimators."""
 
     estimator_type: str
     parameter_names: tuple[str, ...]
@@ -73,29 +86,39 @@ class HierarchicalStanEstimatorSpec:
     history_size: int | None = None
 
 
-def hierarchical_stan_estimator_spec_from_config(
-    estimator_cfg: Mapping[str, Any],
-) -> HierarchicalStanEstimatorSpec:
-    """Parse hierarchical Stan estimator config mapping."""
+def stan_estimator_spec_from_config(estimator_cfg: Mapping[str, Any]) -> StanEstimatorSpec:
+    """Parse explicit Stan estimator config mapping."""
 
     estimator = _require_mapping(estimator_cfg, field_name="estimator")
     estimator_type = _coerce_non_empty_str(estimator.get("type"), field_name="estimator.type")
-    if estimator_type in {"within_subject_hierarchical_stan_nuts", "within_subject_pooled_stan_nuts"}:
-        validate_allowed_keys(
-            estimator,
-            field_name="estimator",
-            allowed_keys=(
-                "type",
-                "parameter_names",
-                "transforms",
-                "initial_group_location",
-                "initial_group_scale",
-                "initial_block_params",
-                "initial_block_params_by_subject",
-                "mu_prior_mean",
-                "mu_prior_std",
-                "log_sigma_prior_mean",
-                "log_sigma_prior_std",
+    if estimator_type not in STAN_ESTIMATORS:
+        raise ValueError(
+            "estimator.type must be one of "
+            f"{sorted(STAN_ESTIMATORS)!r}"
+        )
+
+    is_subject = estimator_type in SUBJECT_STAN_ESTIMATORS
+    is_nuts = estimator_type in SUBJECT_NUTS_ESTIMATORS | STUDY_NUTS_ESTIMATORS
+    allowed_keys = {
+        "type",
+        "parameter_names",
+        "transforms",
+        "initial_group_location",
+        "initial_group_scale",
+        "mu_prior_mean",
+        "mu_prior_std",
+        "log_sigma_prior_mean",
+        "log_sigma_prior_std",
+        "refresh",
+        "random_seed",
+    }
+    if is_subject:
+        allowed_keys.add("initial_block_params")
+    else:
+        allowed_keys.add("initial_block_params_by_subject")
+    if is_nuts:
+        allowed_keys.update(
+            {
                 "n_samples",
                 "n_warmup",
                 "thin",
@@ -104,26 +127,11 @@ def hierarchical_stan_estimator_spec_from_config(
                 "adapt_delta",
                 "max_treedepth",
                 "step_size",
-                "refresh",
-                "random_seed",
-            ),
+            }
         )
-    elif estimator_type in {"within_subject_hierarchical_stan_map", "within_subject_pooled_stan_map"}:
-        validate_allowed_keys(
-            estimator,
-            field_name="estimator",
-            allowed_keys=(
-                "type",
-                "parameter_names",
-                "transforms",
-                "initial_group_location",
-                "initial_group_scale",
-                "initial_block_params",
-                "initial_block_params_by_subject",
-                "mu_prior_mean",
-                "mu_prior_std",
-                "log_sigma_prior_mean",
-                "log_sigma_prior_std",
+    else:
+        allowed_keys.update(
+            {
                 "method",
                 "max_iterations",
                 "jacobian",
@@ -134,16 +142,13 @@ def hierarchical_stan_estimator_spec_from_config(
                 "tol_rel_grad",
                 "tol_param",
                 "history_size",
-                "refresh",
-                "random_seed",
-            ),
+            }
         )
-    else:
-        raise ValueError(
-            "estimator.type must be one of "
-            "{'within_subject_hierarchical_stan_nuts', 'within_subject_hierarchical_stan_map', "
-            "'within_subject_pooled_stan_nuts', 'within_subject_pooled_stan_map'}"
-        )
+    validate_allowed_keys(
+        estimator,
+        field_name="estimator",
+        allowed_keys=tuple(sorted(allowed_keys)),
+    )
 
     raw_names = _require_sequence(estimator.get("parameter_names"), field_name="estimator.parameter_names")
     parameter_names = tuple(
@@ -158,14 +163,11 @@ def hierarchical_stan_estimator_spec_from_config(
     thin = int(estimator.get("thin", 1))
     n_chains = int(estimator.get("n_chains", 4))
     parallel_chains = (
-        int(estimator["parallel_chains"])
-        if estimator.get("parallel_chains") is not None
-        else None
+        int(estimator["parallel_chains"]) if estimator.get("parallel_chains") is not None else None
     )
     adapt_delta = float(estimator.get("adapt_delta", 0.9))
     max_treedepth = int(estimator.get("max_treedepth", 12))
-
-    if estimator_type in {"within_subject_hierarchical_stan_nuts", "within_subject_pooled_stan_nuts"}:
+    if is_nuts:
         if n_samples <= 0:
             raise ValueError("estimator.n_samples must be > 0")
         if n_warmup < 0:
@@ -220,22 +222,14 @@ def hierarchical_stan_estimator_spec_from_config(
     max_iterations = int(estimator.get("max_iterations", 2000))
     if max_iterations <= 0:
         raise ValueError("estimator.max_iterations must be > 0")
-    init_alpha = (
-        float(estimator["init_alpha"])
-        if estimator.get("init_alpha") is not None
-        else None
-    )
+    init_alpha = float(estimator["init_alpha"]) if estimator.get("init_alpha") is not None else None
     if init_alpha is not None and init_alpha <= 0.0:
         raise ValueError("estimator.init_alpha must be > 0")
-    history_size = (
-        int(estimator["history_size"])
-        if estimator.get("history_size") is not None
-        else None
-    )
+    history_size = int(estimator["history_size"]) if estimator.get("history_size") is not None else None
     if history_size is not None and history_size <= 0:
         raise ValueError("estimator.history_size must be > 0")
 
-    return HierarchicalStanEstimatorSpec(
+    return StanEstimatorSpec(
         estimator_type=estimator_type,
         parameter_names=parameter_names,
         transform_kinds=(
@@ -255,14 +249,8 @@ def hierarchical_stan_estimator_spec_from_config(
         ),
         initial_block_params=initial_block_params,
         initial_block_params_by_subject=initial_block_params_by_subject,
-        mu_prior_mean=_coerce_float_or_mapping(
-            estimator.get("mu_prior_mean", 0.0),
-            field_name="estimator.mu_prior_mean",
-        ),
-        mu_prior_std=_coerce_float_or_mapping(
-            estimator.get("mu_prior_std", 2.0),
-            field_name="estimator.mu_prior_std",
-        ),
+        mu_prior_mean=_coerce_float_or_mapping(estimator.get("mu_prior_mean", 0.0), field_name="estimator.mu_prior_mean"),
+        mu_prior_std=_coerce_float_or_mapping(estimator.get("mu_prior_std", 2.0), field_name="estimator.mu_prior_std"),
         log_sigma_prior_mean=_coerce_float_or_mapping(
             estimator.get("log_sigma_prior_mean", -1.0),
             field_name="estimator.log_sigma_prior_mean",
@@ -280,63 +268,38 @@ def hierarchical_stan_estimator_spec_from_config(
         max_treedepth=max_treedepth,
         step_size=(float(estimator["step_size"]) if estimator.get("step_size") is not None else None),
         refresh=refresh,
-        random_seed=(
-            int(estimator["random_seed"])
-            if estimator.get("random_seed") is not None
-            else None
-        ),
+        random_seed=(int(estimator["random_seed"]) if estimator.get("random_seed") is not None else None),
         method=method,
         max_iterations=max_iterations,
         jacobian=bool(estimator.get("jacobian", False)),
         init_alpha=init_alpha,
-        tol_obj=(
-            float(estimator["tol_obj"])
-            if estimator.get("tol_obj") is not None
-            else None
-        ),
-        tol_rel_obj=(
-            float(estimator["tol_rel_obj"])
-            if estimator.get("tol_rel_obj") is not None
-            else None
-        ),
-        tol_grad=(
-            float(estimator["tol_grad"])
-            if estimator.get("tol_grad") is not None
-            else None
-        ),
-        tol_rel_grad=(
-            float(estimator["tol_rel_grad"])
-            if estimator.get("tol_rel_grad") is not None
-            else None
-        ),
-        tol_param=(
-            float(estimator["tol_param"])
-            if estimator.get("tol_param") is not None
-            else None
-        ),
+        tol_obj=(float(estimator["tol_obj"]) if estimator.get("tol_obj") is not None else None),
+        tol_rel_obj=(float(estimator["tol_rel_obj"]) if estimator.get("tol_rel_obj") is not None else None),
+        tol_grad=(float(estimator["tol_grad"]) if estimator.get("tol_grad") is not None else None),
+        tol_rel_grad=(float(estimator["tol_rel_grad"]) if estimator.get("tol_rel_grad") is not None else None),
+        tol_param=(float(estimator["tol_param"]) if estimator.get("tol_param") is not None else None),
         history_size=history_size,
     )
 
 
-def sample_subject_hierarchical_posterior_from_config(
+def infer_subject_stan_from_config(
     subject: SubjectData,
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
-) -> HierarchicalSubjectPosteriorResult:
-    """Run hierarchical Stan Bayesian estimation for one subject from config."""
+) -> SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult:
+    """Run subject-level Stan Bayesian estimation from declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
-    validate_allowed_keys(
-        cfg,
-        field_name="config",
-        allowed_keys=("model", "estimator"),
-    )
-    model_spec = model_component_spec_from_config(
-        _require_mapping(cfg.get("model"), field_name="config.model")
-    )
+    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator"))
+    model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     estimator_cfg = _require_mapping(cfg.get("estimator"), field_name="config.estimator")
-    stan_spec = hierarchical_stan_estimator_spec_from_config(estimator_cfg)
+    stan_spec = stan_estimator_spec_from_config(estimator_cfg)
+    if stan_spec.estimator_type not in SUBJECT_STAN_ESTIMATORS:
+        raise ValueError(
+            f"subject fitting requires estimator.type in {sorted(SUBJECT_STAN_ESTIMATORS)!r}; "
+            f"got {stan_spec.estimator_type!r}"
+        )
 
     reg = registry if registry is not None else build_default_registry()
     manifest = reg.get("model", model_spec.component_id)
@@ -357,8 +320,8 @@ def sample_subject_hierarchical_posterior_from_config(
         "refresh": stan_spec.refresh,
     }
 
-    if stan_spec.estimator_type == "within_subject_hierarchical_stan_map":
-        return optimize_subject_hierarchical_posterior_stan(
+    if stan_spec.estimator_type == "subject_shared_stan_map":
+        return estimate_subject_shared_map_stan(
             subject,
             **common_kwargs,
             method=stan_spec.method,
@@ -372,23 +335,8 @@ def sample_subject_hierarchical_posterior_from_config(
             tol_param=stan_spec.tol_param,
             history_size=stan_spec.history_size,
         )
-    if stan_spec.estimator_type == "within_subject_pooled_stan_map":
-        return optimize_subject_pooled_posterior_stan(
-            subject,
-            **common_kwargs,
-            method=stan_spec.method,
-            max_iterations=stan_spec.max_iterations,
-            jacobian=stan_spec.jacobian,
-            init_alpha=stan_spec.init_alpha,
-            tol_obj=stan_spec.tol_obj,
-            tol_rel_obj=stan_spec.tol_rel_obj,
-            tol_grad=stan_spec.tol_grad,
-            tol_rel_grad=stan_spec.tol_rel_grad,
-            tol_param=stan_spec.tol_param,
-            history_size=stan_spec.history_size,
-        )
-    if stan_spec.estimator_type == "within_subject_pooled_stan_nuts":
-        return sample_subject_pooled_posterior_stan(
+    if stan_spec.estimator_type == "subject_shared_stan_nuts":
+        return draw_subject_shared_posterior_stan(
             subject,
             **common_kwargs,
             n_samples=stan_spec.n_samples,
@@ -400,8 +348,22 @@ def sample_subject_hierarchical_posterior_from_config(
             max_treedepth=stan_spec.max_treedepth,
             step_size=stan_spec.step_size,
         )
-
-    return sample_subject_hierarchical_posterior_stan(
+    if stan_spec.estimator_type == "subject_block_hierarchy_stan_map":
+        return estimate_subject_block_hierarchy_map_stan(
+            subject,
+            **common_kwargs,
+            method=stan_spec.method,
+            max_iterations=stan_spec.max_iterations,
+            jacobian=stan_spec.jacobian,
+            init_alpha=stan_spec.init_alpha,
+            tol_obj=stan_spec.tol_obj,
+            tol_rel_obj=stan_spec.tol_rel_obj,
+            tol_grad=stan_spec.tol_grad,
+            tol_rel_grad=stan_spec.tol_rel_grad,
+            tol_param=stan_spec.tol_param,
+            history_size=stan_spec.history_size,
+        )
+    return draw_subject_block_hierarchy_posterior_stan(
         subject,
         **common_kwargs,
         n_samples=stan_spec.n_samples,
@@ -415,25 +377,24 @@ def sample_subject_hierarchical_posterior_from_config(
     )
 
 
-def sample_study_hierarchical_posterior_from_config(
+def infer_study_stan_from_config(
     study: StudyData,
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
-) -> HierarchicalStudyPosteriorResult:
-    """Run hierarchical Stan Bayesian estimation for all study subjects."""
+) -> StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult:
+    """Run study-level Stan Bayesian estimation from declarative config."""
 
     cfg = _require_mapping(config, field_name="config")
-    validate_allowed_keys(
-        cfg,
-        field_name="config",
-        allowed_keys=("model", "estimator"),
-    )
-    model_spec = model_component_spec_from_config(
-        _require_mapping(cfg.get("model"), field_name="config.model")
-    )
+    validate_allowed_keys(cfg, field_name="config", allowed_keys=("model", "estimator"))
+    model_spec = model_component_spec_from_config(_require_mapping(cfg.get("model"), field_name="config.model"))
     estimator_cfg = _require_mapping(cfg.get("estimator"), field_name="config.estimator")
-    stan_spec = hierarchical_stan_estimator_spec_from_config(estimator_cfg)
+    stan_spec = stan_estimator_spec_from_config(estimator_cfg)
+    if stan_spec.estimator_type not in STUDY_STAN_ESTIMATORS:
+        raise ValueError(
+            f"study fitting requires estimator.type in {sorted(STUDY_STAN_ESTIMATORS)!r}; "
+            f"got {stan_spec.estimator_type!r}"
+        )
 
     reg = registry if registry is not None else build_default_registry()
     manifest = reg.get("model", model_spec.component_id)
@@ -454,8 +415,8 @@ def sample_study_hierarchical_posterior_from_config(
         "refresh": stan_spec.refresh,
     }
 
-    if stan_spec.estimator_type == "within_subject_hierarchical_stan_map":
-        return optimize_study_hierarchical_posterior_stan(
+    if stan_spec.estimator_type == "study_subject_hierarchy_stan_map":
+        return estimate_study_subject_hierarchy_map_stan(
             study,
             **common_kwargs,
             method=stan_spec.method,
@@ -469,23 +430,8 @@ def sample_study_hierarchical_posterior_from_config(
             tol_param=stan_spec.tol_param,
             history_size=stan_spec.history_size,
         )
-    if stan_spec.estimator_type == "within_subject_pooled_stan_map":
-        return optimize_study_pooled_posterior_stan(
-            study,
-            **common_kwargs,
-            method=stan_spec.method,
-            max_iterations=stan_spec.max_iterations,
-            jacobian=stan_spec.jacobian,
-            init_alpha=stan_spec.init_alpha,
-            tol_obj=stan_spec.tol_obj,
-            tol_rel_obj=stan_spec.tol_rel_obj,
-            tol_grad=stan_spec.tol_grad,
-            tol_rel_grad=stan_spec.tol_rel_grad,
-            tol_param=stan_spec.tol_param,
-            history_size=stan_spec.history_size,
-        )
-    if stan_spec.estimator_type == "within_subject_pooled_stan_nuts":
-        return sample_study_pooled_posterior_stan(
+    if stan_spec.estimator_type == "study_subject_hierarchy_stan_nuts":
+        return draw_study_subject_hierarchy_posterior_stan(
             study,
             **common_kwargs,
             n_samples=stan_spec.n_samples,
@@ -497,8 +443,22 @@ def sample_study_hierarchical_posterior_from_config(
             max_treedepth=stan_spec.max_treedepth,
             step_size=stan_spec.step_size,
         )
-
-    return sample_study_hierarchical_posterior_stan(
+    if stan_spec.estimator_type == "study_subject_block_hierarchy_stan_map":
+        return estimate_study_subject_block_hierarchy_map_stan(
+            study,
+            **common_kwargs,
+            method=stan_spec.method,
+            max_iterations=stan_spec.max_iterations,
+            jacobian=stan_spec.jacobian,
+            init_alpha=stan_spec.init_alpha,
+            tol_obj=stan_spec.tol_obj,
+            tol_rel_obj=stan_spec.tol_rel_obj,
+            tol_grad=stan_spec.tol_grad,
+            tol_rel_grad=stan_spec.tol_rel_grad,
+            tol_param=stan_spec.tol_param,
+            history_size=stan_spec.history_size,
+        )
+    return draw_study_subject_block_hierarchy_posterior_stan(
         study,
         **common_kwargs,
         n_samples=stan_spec.n_samples,
@@ -522,11 +482,7 @@ def _parse_transform_kinds(raw: Any, *, field_name: str) -> dict[str, str]:
             kind = str(spec).strip()
         else:
             spec_mapping = _require_mapping(spec, field_name=f"{field_name}.{param_name}")
-            validate_allowed_keys(
-                spec_mapping,
-                field_name=f"{field_name}.{param_name}",
-                allowed_keys=("kind",),
-            )
+            validate_allowed_keys(spec_mapping, field_name=f"{field_name}.{param_name}", allowed_keys=("kind",))
             kind = _coerce_non_empty_str(
                 spec_mapping.get("kind"),
                 field_name=f"{field_name}.{param_name}.kind",
@@ -561,7 +517,6 @@ def _coerce_non_empty_str(raw: Any, *, field_name: str) -> str:
 
     if raw is None:
         raise ValueError(f"{field_name} must be a non-empty string")
-
     value = str(raw).strip()
     if not value:
         raise ValueError(f"{field_name} must be a non-empty string")
@@ -585,8 +540,15 @@ def _require_sequence(raw: Any, *, field_name: str) -> list[Any]:
 
 
 __all__ = [
-    "HierarchicalStanEstimatorSpec",
-    "hierarchical_stan_estimator_spec_from_config",
-    "sample_study_hierarchical_posterior_from_config",
-    "sample_subject_hierarchical_posterior_from_config",
+    "STAN_ESTIMATORS",
+    "STUDY_MAP_ESTIMATORS",
+    "STUDY_NUTS_ESTIMATORS",
+    "STUDY_STAN_ESTIMATORS",
+    "SUBJECT_MAP_ESTIMATORS",
+    "SUBJECT_NUTS_ESTIMATORS",
+    "SUBJECT_STAN_ESTIMATORS",
+    "StanEstimatorSpec",
+    "infer_study_stan_from_config",
+    "infer_subject_stan_from_config",
+    "stan_estimator_spec_from_config",
 ]

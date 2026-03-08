@@ -213,8 +213,9 @@ def build_map_fit_function(
 
     raise RuntimeError(
         "SciPy Bayesian MAP estimators have been removed. "
-        "Use Stan estimators via estimator.type='within_subject_hierarchical_stan_map' "
-        "or estimator.type='within_subject_hierarchical_stan_nuts'."
+        "Use Stan estimators via estimator.type='subject_shared_stan_map', "
+        "'subject_block_hierarchy_stan_map', 'study_subject_hierarchy_stan_map', "
+        "or 'study_subject_block_hierarchy_stan_map'."
     )
 
 

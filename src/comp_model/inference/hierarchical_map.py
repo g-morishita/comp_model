@@ -77,8 +77,9 @@ def fit_subject_hierarchical_map(
 
     raise RuntimeError(
         "fit_subject_hierarchical_map has been removed. "
-        "Use Stan estimators with estimator.type='within_subject_hierarchical_stan_map' "
-        "or estimator.type='within_subject_hierarchical_stan_nuts'."
+        "Use Stan estimators with estimator.type='subject_shared_stan_map', "
+        "'subject_block_hierarchy_stan_map', 'study_subject_hierarchy_stan_map', "
+        "or 'study_subject_block_hierarchy_stan_map'."
     )
 
 
@@ -105,8 +106,8 @@ def fit_study_hierarchical_map(
 
     raise RuntimeError(
         "fit_study_hierarchical_map has been removed. "
-        "Use Stan estimators with estimator.type='within_subject_hierarchical_stan_map' "
-        "or estimator.type='within_subject_hierarchical_stan_nuts'."
+        "Use Stan estimators with estimator.type='study_subject_hierarchy_stan_map' "
+        "or estimator.type='study_subject_block_hierarchy_stan_map'."
     )
 
 

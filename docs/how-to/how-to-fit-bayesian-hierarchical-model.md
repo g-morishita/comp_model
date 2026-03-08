@@ -1,21 +1,13 @@
-# How-to: Fit a Bayesian Hierarchical Model (Script API)
+# How-to: Fit Stan Bayesian Hierarchies (Script API)
 
-Use this guide to fit Stan-backed Bayesian hierarchical models from a Python script.
+Use this guide to fit the Stan-backed Bayesian estimators from a Python script.
 
-This workflow uses the within-subject hierarchical estimators:
+The estimator matrix is:
 
-- `within_subject_hierarchical_stan_nuts`
-- `within_subject_hierarchical_stan_map`
-- `within_subject_pooled_stan_nuts`
-- `within_subject_pooled_stan_map`
-
-For `within_subject_hierarchical_stan_*` (non-pooled), block-level latent
-parameters are grouped by block condition labels:
-`block.metadata["condition"]`, `block.metadata["block_condition"]`, or
-`block.metadata["condition_label"]`.
-
-If two blocks use the same condition label, they share one latent estimate.
-If condition labels are omitted, each block is treated as its own condition.
+- `subject_shared_stan_nuts` / `subject_shared_stan_map`: one subject, one parameter vector shared across blocks
+- `subject_block_hierarchy_stan_nuts` / `subject_block_hierarchy_stan_map`: one subject, hierarchy `subject -> block`
+- `study_subject_hierarchy_stan_nuts` / `study_subject_hierarchy_stan_map`: one study, hierarchy `population -> subject`
+- `study_subject_block_hierarchy_stan_nuts` / `study_subject_block_hierarchy_stan_map`: one study, hierarchy `population -> subject -> block`
 
 ## 1. Prerequisites
 
@@ -35,7 +27,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from comp_model.inference import (
-    sample_study_hierarchical_posterior_from_config,
+    infer_study_stan_from_config,
     write_hierarchical_mcmc_study_draw_records_csv,
     write_hierarchical_mcmc_study_summary_csv,
 )
@@ -46,7 +38,7 @@ def main() -> None:
     # 1) Load study-level behavioral data from CSV.
     study = read_study_decisions_csv("data/study.csv")
 
-    # 2) Define hierarchical Stan configuration.
+    # 2) Define a population -> subject Stan configuration.
     config = {
         "model": {
             "component_id": "asocial_state_q_value_softmax",
@@ -54,7 +46,7 @@ def main() -> None:
             "kwargs": {"initial_value": 0.0},
         },
         "estimator": {
-            "type": "within_subject_hierarchical_stan_nuts",
+            "type": "study_subject_hierarchy_stan_nuts",
             "parameter_names": ["alpha", "beta"],
             "transforms": {
                 "alpha": "unit_interval_logit",
@@ -76,19 +68,14 @@ def main() -> None:
         },
     }
 
-    # 3) Fit hierarchical posterior for each subject in the study.
-    result = sample_study_hierarchical_posterior_from_config(study, config=config)
+    # 3) Fit the population -> subject posterior for the whole study.
+    result = infer_study_stan_from_config(study, config=config)
 
     # 4) Inspect high-level summaries.
     print("n_subjects:", result.n_subjects)
-    print("total_map_log_posterior:", result.total_map_log_posterior)
-    for subject_result in result.subject_results:
-        print(
-            subject_result.subject_id,
-            "method=", subject_result.diagnostics.method,
-            "draws=", len(subject_result.draws),
-            "mean_map_params=", subject_result.mean_map_params,
-        )
+    print("total_log_posterior:", result.total_log_posterior)
+    print("population_location_z:", result.map_candidate.population_location_z)
+    print("mean_map_params_by_subject:", result.mean_map_params_by_subject)
 
     # 5) Export summary and draw-level CSV artifacts.
     out_dir = Path("fit_out/bayesian_hierarchical")
@@ -113,7 +100,7 @@ For faster point-estimate fitting, change only the estimator block:
 
 ```python
 config["estimator"] = {
-    "type": "within_subject_hierarchical_stan_map",
+    "type": "study_subject_hierarchy_stan_map",
     "parameter_names": ["alpha", "beta"],
     "transforms": {"alpha": "unit_interval_logit", "beta": "positive_log"},
     "method": "lbfgs",
@@ -123,22 +110,29 @@ config["estimator"] = {
 }
 ```
 
-The return type remains hierarchical posterior result containers, but each
-subject has one retained optimized draw.
+The return type remains a study-level posterior result container, but it
+contains one retained optimized point instead of NUTS draws.
 
-## 4. Use Pooled-Within-Subject Instead of Hierarchical-Within-Subject
+## 4. Choose the Right Estimator
 
-If you want one shared parameter set across blocks (per subject), use pooled
-estimator types:
+Use these estimator types depending on the hierarchy you want:
 
-- NUTS: `within_subject_pooled_stan_nuts`
-- MAP: `within_subject_pooled_stan_map`
+- One subject, shared across blocks:
+  `subject_shared_stan_nuts` or `subject_shared_stan_map`
+- One subject, block-specific parameters:
+  `subject_block_hierarchy_stan_nuts` or `subject_block_hierarchy_stan_map`
+- One study, subject-specific parameters shared across blocks:
+  `study_subject_hierarchy_stan_nuts` or `study_subject_hierarchy_stan_map`
+- One study, subject- and block-specific parameters:
+  `study_subject_block_hierarchy_stan_nuts` or
+  `study_subject_block_hierarchy_stan_map`
 
-Only change `config["estimator"]["type"]`; the rest of the script is the same.
+The study example above uses `study_subject_hierarchy_stan_*`, which matches
+data where each subject has one parameter vector reused across blocks.
 
 ## 5. Optional: One-Call CSV + Fit Helper
 
-If you prefer one call that loads CSV and dispatches fit in code:
+If you prefer one call that loads CSV and dispatches fit:
 
 ```python
 from comp_model.inference import fit_study_csv_from_config
@@ -150,7 +144,30 @@ study_result = fit_study_csv_from_config(
 )
 ```
 
-This is still script-based and does not use the CLI.
+For a subject-level fit from the same CSV, switch the estimator type and call:
+
+```python
+subject_config = {
+    "model": config["model"],
+    "estimator": {
+        "type": "subject_block_hierarchy_stan_nuts",
+        "parameter_names": ["alpha", "beta"],
+        "transforms": {
+            "alpha": "unit_interval_logit",
+            "beta": "positive_log",
+        },
+        "n_samples": 500,
+        "n_warmup": 500,
+    },
+}
+
+subject_result = fit_study_csv_from_config(
+    "data/study.csv",
+    config=subject_config,
+    level="subject",
+    subject_id="s1",
+)
+```
 
 ## Common Issues
 
@@ -160,3 +177,5 @@ This is still script-based and does not use the CLI.
   `model.kwargs`.
 - Supported transform kinds are `identity`, `unit_interval_logit`,
   and `positive_log`.
+- Subject-level estimators require `SubjectData`; study-level estimators require
+  `StudyData`.

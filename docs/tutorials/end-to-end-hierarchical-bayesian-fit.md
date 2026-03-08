@@ -1,27 +1,27 @@
 # Tutorial: End-to-End Simulation and Hierarchical Bayesian Fit
 
-This tutorial runs a full simulation-to-inference workflow using within-subject
-hierarchical Bayesian estimation (Stan-backed). This is an advanced workflow;
-if you want a lighter starting point, skip to [Parameter Recovery](parameter-recovery.md).
+This tutorial runs a full simulation-to-inference workflow using a study-level
+Stan Bayesian hierarchy. This is an advanced workflow; if you want a lighter
+starting point, skip to [Parameter Recovery](parameter-recovery.md).
 
 ## Why this matters
 
 - You still validate the full pipeline with synthetic data.
 - You move from point-estimate fitting to posterior-based fitting.
-- You can quantify uncertainty and stabilize estimates across blocks.
+- You estimate subject parameters jointly through a population-level prior.
 
 This tutorial uses:
 
 - task: `StationaryBanditProblem`
 - model family: `AsocialStateQValueSoftmaxModel`
-- estimator: `within_subject_hierarchical_stan_nuts`
+- estimator: `study_subject_hierarchy_stan_nuts`
 
 In this tutorial, you will:
 
 1. define a task and model family,
 2. simulate a multi-subject, multi-block study dataset,
-3. define a hierarchical Stan configuration (NUTS),
-4. fit the hierarchical posterior for the whole study,
+3. define a population -> subject Stan configuration (NUTS),
+4. fit the posterior for the whole study,
 5. inspect posterior output and compare to generating values.
 
 ## Prerequisites
@@ -34,22 +34,14 @@ If you have not installed and verified your environment yet, complete
 [Install and Verify](install-and-verify.md) first.
 
 ??? note "Hierarchy level in this tutorial"
-    In this library, `within_subject_hierarchical_stan_*` means hierarchical
-    inference within each subject while preserving trial dynamics per block.
+    This tutorial uses `study_subject_hierarchy_stan_*`, which means a true
+    study-level hierarchy `population -> subject`.
 
-    For non-pooled Stan estimators, block-level latent parameters are indexed by
-    block condition labels (`block.metadata["condition"]`,
-    `block.metadata["block_condition"]`, or
-    `block.metadata["condition_label"]`).
+    Each subject gets one latent parameter vector, and that vector is shared
+    across the subject's blocks.
 
-    If two blocks have the same condition label, they share one latent
-    parameter estimate.
-
-    If no condition label is provided, each block gets its own latent estimate.
-
-    When you pass `StudyData`, each subject is fit independently with the same
-    estimator configuration, and results are returned as a study-level
-    collection.
+    If you want block-specific parameters inside each subject, switch to
+    `study_subject_block_hierarchy_stan_*`.
 
 ## Step 1: Define task and model family
 
@@ -72,7 +64,7 @@ example_model = AsocialStateQValueSoftmaxModel(
 ## Step 2: Simulate a multi-subject, multi-block study dataset
 
 Now simulate synthetic data for multiple subjects and blocks.
-This gives us a realistic `StudyData` object for hierarchical fitting.
+This gives us a realistic `StudyData` object for study-level Bayesian fitting.
 
 ```python
 from comp_model.generators import (
@@ -122,9 +114,9 @@ print("total_trials:", sum(block.n_trials for subject in study.subjects for bloc
     Both help, but more trials per block usually improves per-subject parameter
     estimation directly, while more subjects improves population-level stability.
 
-## Step 3: Build hierarchical Bayesian config (NUTS)
+## Step 3: Build study-level Bayesian config (NUTS)
 
-Define a Stan estimator config for hierarchical posterior sampling.
+Define a Stan estimator config for population -> subject posterior sampling.
 
 ```python
 hierarchical_config = {
@@ -135,7 +127,7 @@ hierarchical_config = {
         },
     },
     "estimator": {
-        "type": "within_subject_hierarchical_stan_nuts",
+        "type": "study_subject_hierarchy_stan_nuts",
         "parameter_names": ["alpha", "beta"],
         "transforms": {
             "alpha": "unit_interval_logit",
@@ -169,21 +161,24 @@ Key points:
 - `parameter_names` are the free parameters to estimate.
 - `transforms` map constrained model parameters to unconstrained Stan space.
 - `model.kwargs` should include only fixed parameters.
+- This estimator shares one parameter vector across each subject's blocks.
 
 ## Step 4: Fit hierarchical posterior
 
-Now run hierarchical Bayesian fitting over the whole study.
+Now run population -> subject Bayesian fitting over the whole study.
 
 ```python
-from comp_model.inference import sample_study_hierarchical_posterior_from_config
+from comp_model.inference import infer_study_stan_from_config
 
-study_result = sample_study_hierarchical_posterior_from_config(
+study_result = infer_study_stan_from_config(
     study,
     config=hierarchical_config,
 )
 
 print("n_subjects:", study_result.n_subjects)
-print("total_map_log_posterior:", study_result.total_map_log_posterior)
+print("n_draws:", len(study_result.draws))
+print("sampler_method:", study_result.diagnostics.method)
+print("total_log_posterior:", study_result.total_log_posterior)
 ```
 
 ## Step 5: Inspect posterior output and compare to generating values
@@ -191,21 +186,19 @@ print("total_map_log_posterior:", study_result.total_map_log_posterior)
 Inspect per-subject summaries from posterior draws.
 
 ```python
-for subject_result in study_result.subject_results:
-    sid = subject_result.subject_id
+print("population_location_z:", study_result.map_candidate.population_location_z)
+
+for sid, fitted_params in study_result.mean_map_params_by_subject.items():
     print("subject:", sid)
-    print("  draws:", len(subject_result.draws))
-    print("  sampler method:", subject_result.diagnostics.method)
-    print("  acceptance rate:", subject_result.diagnostics.acceptance_rate)
     print("  true params:", true_params_by_subject[sid])
-    print("  mean MAP params:", subject_result.mean_map_params)
+    print("  mean MAP params:", fitted_params)
 ```
 
 What to check:
 
-1. draws are present for every subject,
-2. diagnostics look reasonable (for example, acceptance rate not degenerate),
-3. estimated values are directionally close to generating values.
+1. the study result contains retained draws,
+2. diagnostics look reasonable,
+3. each subject's fitted values are directionally close to generating values.
 
 ## Next steps
 

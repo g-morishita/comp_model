@@ -21,8 +21,7 @@ from comp_model.core.data import SubjectData
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from comp_model.inference.config_dispatch import (
-    HIERARCHICAL_ESTIMATORS,
-    HIERARCHICAL_MCMC_ESTIMATORS,
+    BAYES_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
@@ -717,7 +716,7 @@ def _build_fit_function(
         if likelihood_cfg is not None:
             fit_config["likelihood"] = dict(likelihood_cfg)
         fit_config["block_fit_strategy"] = block_fit_strategy
-    elif estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
+    elif estimator_type in BAYES_ESTIMATORS:
         if prior_cfg is not None:
             raise ValueError(
                 f"prior is not supported for estimator type {estimator_type!r}"
@@ -728,7 +727,7 @@ def _build_fit_function(
             )
     else:
         supported = sorted(
-            MLE_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS
+            MLE_ESTIMATORS | BAYES_ESTIMATORS
         )
         raise ValueError(
             f"estimator.type must be one of {supported}; got {estimator_type!r}"

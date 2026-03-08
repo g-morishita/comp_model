@@ -1,8 +1,4 @@
-"""Config-driven Bayesian fitting helpers.
-
-This module mirrors the MLE config entry points for MAP and within-subject
-hierarchical MAP fitting, using declarative mapping/JSON-style configurations.
-"""
+"""Legacy config-driven Bayesian fitting helpers kept only for fail-fast errors."""
 
 from __future__ import annotations
 
@@ -45,12 +41,12 @@ from .transforms import (
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalMapEstimatorSpec:
-    """Parsed estimator spec for within-subject hierarchical MAP.
+    """Legacy parsed estimator spec for removed hierarchical MAP APIs.
 
     Parameters
     ----------
     parameter_names : tuple[str, ...]
-        Hierarchically pooled parameter names.
+        Parameter names used by the removed estimator family.
     transforms : dict[str, ParameterTransform] | None
         Optional per-parameter transforms.
     initial_group_location : dict[str, float] | None
@@ -105,7 +101,8 @@ def map_fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> MapFitSpec:
 
     raise ValueError(
         "SciPy MAP estimators are no longer supported. "
-        "Use estimator.type='within_subject_hierarchical_stan_map'."
+        "Use estimator.type='subject_shared_stan_map' or "
+        "'subject_block_hierarchy_stan_map'."
     )
 
 
@@ -156,7 +153,7 @@ def prior_program_from_config(prior_cfg: Mapping[str, Any]) -> PriorProgram:
 
 
 def hierarchical_map_spec_from_config(estimator_cfg: Mapping[str, Any]) -> HierarchicalMapEstimatorSpec:
-    """Parse within-subject hierarchical MAP estimator config.
+    """Parse removed hierarchical MAP estimator config.
 
     Parameters
     ----------
@@ -171,7 +168,7 @@ def hierarchical_map_spec_from_config(estimator_cfg: Mapping[str, Any]) -> Hiera
 
     raise ValueError(
         "within_subject_hierarchical_map has been removed. "
-        "Use estimator.type='within_subject_hierarchical_stan_map'."
+        "Use estimator.type='subject_block_hierarchy_stan_map'."
     )
 
 
@@ -203,7 +200,8 @@ def fit_map_dataset_from_config(
 
     raise RuntimeError(
         "fit_map_dataset_from_config has been removed. "
-        "Use fit_dataset_auto_from_config with estimator.type='within_subject_hierarchical_stan_map'."
+        "Use fit_dataset_auto_from_config with estimator.type='subject_shared_stan_map' "
+        "or 'subject_block_hierarchy_stan_map'."
     )
 
 
@@ -218,7 +216,8 @@ def fit_map_block_from_config(
 
     raise RuntimeError(
         "fit_map_block_from_config has been removed. "
-        "Use fit_block_auto_from_config with estimator.type='within_subject_hierarchical_stan_map'."
+        "Use fit_block_auto_from_config with estimator.type='subject_shared_stan_map' "
+        "or 'subject_block_hierarchy_stan_map'."
     )
 
 
@@ -233,7 +232,8 @@ def fit_map_subject_from_config(
 
     raise RuntimeError(
         "fit_map_subject_from_config has been removed. "
-        "Use fit_subject_auto_from_config with estimator.type='within_subject_hierarchical_stan_map'."
+        "Use fit_subject_auto_from_config with estimator.type='subject_shared_stan_map' "
+        "or 'subject_block_hierarchy_stan_map'."
     )
 
 
@@ -248,7 +248,8 @@ def fit_map_study_from_config(
 
     raise RuntimeError(
         "fit_map_study_from_config has been removed. "
-        "Use fit_study_auto_from_config with estimator.type='within_subject_hierarchical_stan_map'."
+        "Use fit_study_auto_from_config with estimator.type='study_subject_hierarchy_stan_map' "
+        "or 'study_subject_block_hierarchy_stan_map'."
     )
 
 
@@ -280,8 +281,7 @@ def fit_subject_hierarchical_map_from_config(
 
     raise RuntimeError(
         "fit_subject_hierarchical_map_from_config has been removed. "
-        "Use sample_subject_hierarchical_posterior_from_config with "
-        "estimator.type='within_subject_hierarchical_stan_map'."
+        "Use infer_subject_stan_from_config with estimator.type='subject_block_hierarchy_stan_map'."
     )
 
 
@@ -313,8 +313,8 @@ def fit_study_hierarchical_map_from_config(
 
     raise RuntimeError(
         "fit_study_hierarchical_map_from_config has been removed. "
-        "Use sample_study_hierarchical_posterior_from_config with "
-        "estimator.type='within_subject_hierarchical_stan_map'."
+        "Use infer_study_stan_from_config with estimator.type='study_subject_hierarchy_stan_map' "
+        "or 'study_subject_block_hierarchy_stan_map'."
     )
 
 

@@ -6,13 +6,13 @@ import pytest
 
 from comp_model.inference import (
     BayesFitResult,
-    HierarchicalMCMCDraw,
-    HierarchicalPosteriorCandidate,
-    HierarchicalSubjectPosteriorResult,
     MCMCDiagnostics,
     MLECandidate,
     MLEFitResult,
     PosteriorCandidate,
+    StanPosteriorDraw,
+    SubjectBlockHierarchyPosteriorCandidate,
+    SubjectBlockHierarchyPosteriorResult,
     extract_best_fit_summary,
 )
 
@@ -57,13 +57,13 @@ def test_extract_best_fit_summary_rejects_unsupported_shape() -> None:
         extract_best_fit_summary(object())
 
 
-def test_extract_best_fit_summary_from_hierarchical_posterior_result() -> None:
-    """Hierarchical posterior results should expose MAP block-mean parameters."""
+def test_extract_best_fit_summary_from_subject_block_hierarchy_result() -> None:
+    """Hierarchical subject results should expose mean MAP block parameters."""
 
-    candidate = HierarchicalPosteriorCandidate(
+    candidate = SubjectBlockHierarchyPosteriorCandidate(
         parameter_names=("alpha", "beta"),
-        group_location_z={"alpha": 0.0, "beta": 0.0},
-        group_scale_z={"alpha": 1.0, "beta": 1.0},
+        subject_location_z={"alpha": 0.0, "beta": 0.0},
+        subject_scale={"alpha": 1.0, "beta": 1.0},
         block_params_z=(
             {"alpha": 0.1, "beta": 1.0},
             {"alpha": 0.2, "beta": 2.0},
@@ -76,12 +76,13 @@ def test_extract_best_fit_summary_from_hierarchical_posterior_result() -> None:
         log_prior=-1.5,
         log_posterior=-13.5,
     )
-    result = HierarchicalSubjectPosteriorResult(
+    result = SubjectBlockHierarchyPosteriorResult(
         subject_id="s1",
+        block_ids=("b1", "b2"),
         parameter_names=("alpha", "beta"),
-        draws=(HierarchicalMCMCDraw(candidate=candidate, accepted=True, iteration=0),),
+        draws=(StanPosteriorDraw(candidate=candidate, accepted=True, iteration=0),),
         diagnostics=MCMCDiagnostics(
-            method="within_subject_hierarchical_stan_nuts",
+            method="subject_block_hierarchy_stan_nuts",
             n_iterations=10,
             n_warmup=2,
             n_kept_draws=1,
@@ -97,3 +98,4 @@ def test_extract_best_fit_summary_from_hierarchical_posterior_result() -> None:
     assert summary.params["beta"] == pytest.approx(3.0)
     assert summary.log_likelihood == pytest.approx(-12.0)
     assert summary.log_posterior == pytest.approx(-13.5)
+

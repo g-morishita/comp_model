@@ -234,7 +234,7 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     if fit_spec.inference == "bayesian":
         raise ValueError(
             "fit_dataset currently supports only inference='mle'. "
-            "Use Stan Bayesian APIs (for example, sample_subject_hierarchical_posterior_stan)."
+            "Use Stan Bayesian APIs (for example, draw_subject_block_hierarchy_posterior_stan)."
         )
     if fit_spec.inference != "mle":
         raise ValueError("fit_spec.inference must be either 'mle' or 'bayesian'")

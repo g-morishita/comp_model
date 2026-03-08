@@ -1,5 +1,4 @@
-// Stan program for social model component: social_policy_learning_only (pooled across blocks)
-// This file is intentionally per-model for researcher-facing traceability.
+// Stan program for social population -> subject -> block Bayesian estimation.
 
 functions {
   real determinism_reliability(vector probabilities, int n_actions) {
@@ -30,7 +29,9 @@ functions {
 }
 
 data {
+  int<lower=1> J;
   int<lower=1> B;
+  array[B] int<lower=1, upper=J> subject_idx;
   int<lower=1> K;
   int<lower=1> S;
   int<lower=1> A;
@@ -83,25 +84,35 @@ data {
 }
 
 parameters {
-  vector[K] group_loc_z;
+  vector[K] population_loc_z;
+  vector[K] population_log_scale;
+  array[J] vector[K] subject_loc_z;
+  array[J] vector[K] subject_log_scale;
+  array[B] vector[K] block_z;
 }
 
 transformed parameters {
-  vector[K] group_log_scale;
-  array[B] vector[K] block_z;
+  array[J] vector[K] subject_param;
   array[B] vector[K] block_param;
-  for (k in 1:K) {
-    group_log_scale[k] = -20.0;
+  for (j in 1:J) {
+    for (k in 1:K) {
+      if (transform_codes[k] == 0) {
+        subject_param[j][k] = subject_loc_z[j][k];
+      } else if (transform_codes[k] == 1) {
+        subject_param[j][k] = inv_logit(subject_loc_z[j][k]);
+      } else {
+        subject_param[j][k] = exp(subject_loc_z[j][k]);
+      }
+    }
   }
   for (b in 1:B) {
     for (k in 1:K) {
-      block_z[b][k] = group_loc_z[k];
       if (transform_codes[k] == 0) {
-        block_param[b][k] = group_loc_z[k];
+        block_param[b][k] = block_z[b][k];
       } else if (transform_codes[k] == 1) {
-        block_param[b][k] = inv_logit(group_loc_z[k]);
+        block_param[b][k] = inv_logit(block_z[b][k]);
       } else {
-        block_param[b][k] = exp(group_loc_z[k]);
+        block_param[b][k] = exp(block_z[b][k]);
       }
     }
   }
@@ -109,7 +120,22 @@ transformed parameters {
 
 model {
   for (k in 1:K) {
-    target += normal_lpdf(group_loc_z[k] | mu_prior_mean[k], mu_prior_std[k]);
+    target += normal_lpdf(population_loc_z[k] | mu_prior_mean[k], mu_prior_std[k]);
+    target += normal_lpdf(population_log_scale[k] | log_sigma_prior_mean[k], log_sigma_prior_std[k]);
+  }
+
+  for (j in 1:J) {
+    for (k in 1:K) {
+      target += normal_lpdf(subject_loc_z[j][k] | population_loc_z[k], exp(population_log_scale[k]));
+      target += normal_lpdf(subject_log_scale[j][k] | log_sigma_prior_mean[k], log_sigma_prior_std[k]);
+    }
+  }
+
+  for (b in 1:B) {
+    int j = subject_idx[b];
+    for (k in 1:K) {
+      target += normal_lpdf(block_z[b][k] | subject_loc_z[j][k], exp(subject_log_scale[j][k]));
+    }
   }
 
   for (b in 1:B) {
@@ -311,7 +337,22 @@ generated quantities {
   real log_posterior_total;
 
   for (k in 1:K) {
-    log_prior_total += normal_lpdf(group_loc_z[k] | mu_prior_mean[k], mu_prior_std[k]);
+    log_prior_total += normal_lpdf(population_loc_z[k] | mu_prior_mean[k], mu_prior_std[k]);
+    log_prior_total += normal_lpdf(population_log_scale[k] | log_sigma_prior_mean[k], log_sigma_prior_std[k]);
+  }
+
+  for (j in 1:J) {
+    for (k in 1:K) {
+      log_prior_total += normal_lpdf(subject_loc_z[j][k] | population_loc_z[k], exp(population_log_scale[k]));
+      log_prior_total += normal_lpdf(subject_log_scale[j][k] | log_sigma_prior_mean[k], log_sigma_prior_std[k]);
+    }
+  }
+
+  for (b in 1:B) {
+    int j = subject_idx[b];
+    for (k in 1:K) {
+      log_prior_total += normal_lpdf(block_z[b][k] | subject_loc_z[j][k], exp(subject_log_scale[j][k]));
+    }
   }
 
   for (b in 1:B) {

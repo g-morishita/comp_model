@@ -1,9 +1,9 @@
-"""Social-model Stan adapter utilities for hierarchical within-subject inference.
+"""Social-model Stan adapter utilities for explicit Stan hierarchy estimators.
 
 This module provides:
 
 - Supported social component IDs for the Stan backend.
-- One Stan program file per supported social model component.
+- Stan source loaders keyed by explicit hierarchy structure.
 - Input-building helpers that convert subject block data into Stan arrays while
   preserving trial-event timing (subject and demonstrator decision rows).
 """
@@ -342,38 +342,31 @@ def _build_social_specs() -> dict[str, _SocialStanSpec]:
 _SOCIAL_STAN_SPECS = _build_social_specs()
 
 _STAN_WITHIN_SUBJECT_DIR = Path(__file__).with_name("stan") / "within_subject"
+_SOCIAL_STAN_FILENAME_BY_STRUCTURE: dict[str, str] = {
+    "subject_shared": "social_subject_shared.stan",
+    "subject_block_hierarchy": "social_subject_block_hierarchy.stan",
+    "study_subject_hierarchy": "social_study_subject_hierarchy.stan",
+    "study_subject_block_hierarchy": "social_study_subject_block_hierarchy.stan",
+}
 
 
-def load_social_stan_code(component_id: str) -> str:
-    """Load one social-model Stan program source by component ID."""
-
-    if component_id not in _SOCIAL_STAN_SPECS:
-        raise ValueError(
-            f"unsupported social component_id {component_id!r}; "
-            f"supported {sorted(_SOCIAL_STAN_SPECS)}"
-        )
-
-    path = _STAN_WITHIN_SUBJECT_DIR / f"{component_id}.stan"
-    if not path.exists():
-        raise RuntimeError(
-            f"Stan program file is missing for component {component_id!r}: {path}"
-        )
-    return path.read_text(encoding="utf-8")
-
-
-def load_social_pooled_stan_code(component_id: str) -> str:
-    """Load one pooled-across-blocks social-model Stan source by component ID."""
+def load_social_stan_code(component_id: str, structure: str) -> str:
+    """Load generic social Stan source for one supported component and structure."""
 
     if component_id not in _SOCIAL_STAN_SPECS:
         raise ValueError(
             f"unsupported social component_id {component_id!r}; "
             f"supported {sorted(_SOCIAL_STAN_SPECS)}"
         )
-
-    path = _STAN_WITHIN_SUBJECT_DIR / f"{component_id}_pooled.stan"
+    if structure not in _SOCIAL_STAN_FILENAME_BY_STRUCTURE:
+        raise ValueError(
+            f"unsupported social Stan structure {structure!r}; "
+            f"supported {sorted(_SOCIAL_STAN_FILENAME_BY_STRUCTURE)}"
+        )
+    path = _STAN_WITHIN_SUBJECT_DIR / _SOCIAL_STAN_FILENAME_BY_STRUCTURE[structure]
     if not path.exists():
         raise RuntimeError(
-            f"pooled Stan program file is missing for component {component_id!r}: {path}"
+            f"Stan program file is missing for social structure {structure!r}: {path}"
         )
     return path.read_text(encoding="utf-8")
 
@@ -385,26 +378,20 @@ def social_supported_component_ids() -> tuple[str, ...]:
     return tuple(sorted(_SOCIAL_STAN_SPECS))
 
 
-def social_cache_tag(component_id: str) -> str:
-    """Return compile-cache tag for one social model component."""
+def social_cache_tag(component_id: str, structure: str) -> str:
+    """Return compile-cache tag for one social hierarchy/component pair."""
 
     if component_id not in _SOCIAL_STAN_SPECS:
         raise ValueError(
             f"unsupported social component_id {component_id!r}; "
             f"supported {sorted(_SOCIAL_STAN_SPECS)}"
         )
-    return f"hierarchical_{component_id}"
-
-
-def social_pooled_cache_tag(component_id: str) -> str:
-    """Return compile-cache tag for one pooled social model component."""
-
-    if component_id not in _SOCIAL_STAN_SPECS:
+    if structure not in _SOCIAL_STAN_FILENAME_BY_STRUCTURE:
         raise ValueError(
-            f"unsupported social component_id {component_id!r}; "
-            f"supported {sorted(_SOCIAL_STAN_SPECS)}"
+            f"unsupported social Stan structure {structure!r}; "
+            f"supported {sorted(_SOCIAL_STAN_FILENAME_BY_STRUCTURE)}"
         )
-    return f"pooled_{component_id}"
+    return f"{structure}_{component_id}"
 
 
 def build_social_subject_inputs(
@@ -885,9 +872,7 @@ def _inverse_transform(value: float, kind: str) -> float:
 
 __all__ = [
     "build_social_subject_inputs",
-    "load_social_pooled_stan_code",
     "load_social_stan_code",
     "social_cache_tag",
-    "social_pooled_cache_tag",
     "social_supported_component_ids",
 ]
