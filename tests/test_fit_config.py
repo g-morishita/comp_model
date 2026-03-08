@@ -9,7 +9,7 @@ import pytest
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
-    fit_dataset_from_config,
+    fit_trace_from_config,
     fit_spec_from_config,
     fit_study_from_config,
     fit_subject_from_config,
@@ -116,7 +116,7 @@ def test_fit_spec_from_config_rejects_unknown_estimator_keys() -> None:
         )
 
 
-def test_fit_dataset_from_config_on_trial_rows() -> None:
+def test_fit_trace_from_config_on_trial_rows() -> None:
     """Config-driven fit should run directly on TrialDecision rows."""
 
     rows = [_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)]
@@ -135,12 +135,12 @@ def test_fit_dataset_from_config_on_trial_rows() -> None:
         },
     }
 
-    result = fit_dataset_from_config(rows, config=config)
+    result = fit_trace_from_config(rows, config=config)
     assert result.best.params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
     assert math.isfinite(result.best.log_likelihood)
 
 
-def test_fit_dataset_from_config_rejects_unknown_top_level_keys() -> None:
+def test_fit_trace_from_config_rejects_unknown_top_level_keys() -> None:
     """Dataset config should fail fast on unknown top-level keys."""
 
     rows = [_trial(0, 1, 1.0), _trial(1, 0, 0.0)]
@@ -161,7 +161,7 @@ def test_fit_dataset_from_config_rejects_unknown_top_level_keys() -> None:
     }
 
     with pytest.raises(ValueError, match="config has unknown keys"):
-        fit_dataset_from_config(rows, config=config)
+        fit_trace_from_config(rows, config=config)
 
 
 def test_fit_study_from_config_runs_all_subjects() -> None:
@@ -264,7 +264,7 @@ def test_fit_subject_from_config_rejects_unknown_block_fit_strategy() -> None:
         fit_subject_from_config(subject, config=config)
 
 
-def test_fit_dataset_from_config_supports_social_actor_subset_likelihood() -> None:
+def test_fit_trace_from_config_supports_social_actor_subset_likelihood() -> None:
     """Config-driven fit should parse and use actor-subset likelihood on social traces."""
 
     trace = _social_trace(n_trials=12, seed=5)
@@ -289,5 +289,5 @@ def test_fit_dataset_from_config_supports_social_actor_subset_likelihood() -> No
         },
     }
 
-    result = fit_dataset_from_config(trace, config=config)
+    result = fit_trace_from_config(trace, config=config)
     assert math.isfinite(result.best.log_likelihood)

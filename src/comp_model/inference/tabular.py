@@ -1,4 +1,4 @@
-"""Config-driven fitting helpers for tabular CSV datasets."""
+"""Config-driven fitting helpers for tabular CSV inputs."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from comp_model.io import read_study_decisions_csv, read_trial_decisions_csv
 from comp_model.plugins import PluginRegistry
 
 from .config_dispatch import (
-    fit_dataset_auto_from_config,
+    fit_trace_auto_from_config,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
@@ -22,7 +22,7 @@ def fit_trial_csv_from_config(
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
 ):
-    """Fit one trial-level CSV dataset from declarative config.
+    """Fit one trial-level CSV from declarative config.
 
     Parameters
     ----------
@@ -36,11 +36,11 @@ def fit_trial_csv_from_config(
     Returns
     -------
     Any
-        Auto-dispatch fit result for one dataset.
+        Auto-dispatch fit result for one trace-like input.
     """
 
     decisions = read_trial_decisions_csv(path)
-    return fit_dataset_auto_from_config(decisions, config=config, registry=registry)
+    return fit_trace_auto_from_config(decisions, config=config, registry=registry)
 
 
 def fit_study_csv_from_config(

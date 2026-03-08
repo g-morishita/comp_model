@@ -10,7 +10,7 @@ This tutorial shows a workflow to fit a model to your own dataset.
 - `StudyData` validation catches common problems early (non-unique subject IDs,
   non-contiguous trial indices, unsorted trials) before you run expensive fits.
 - Once your dataset is represented as `StudyData`, you can use study-level
-  utilities like `fit_study_data(...)` and `fit_study_csv_from_config(...)`.
+  utilities like `fit_study(...)` and `fit_study_csv_from_config(...)`.
 
 In this tutorial, you will:
 
@@ -108,9 +108,9 @@ You can bridge between them:
 
 Which API to use:
 
-- one dataset/one block: `fit_dataset(...)` accepts `EpisodeTrace`, `BlockData`, or
+- one dataset/one block: `fit_trace(...)` accepts `EpisodeTrace`, `BlockData`, or
   `Sequence[TrialDecision]`.
-- many subjects/blocks: `fit_study_data(...)` expects `StudyData`.
+- many subjects/blocks: `fit_study(...)` expects `StudyData`.
 
 ## Step 1: Convert your data
 
@@ -286,15 +286,15 @@ It verifies the converted file by:
 `fit_study_csv_from_config(...)` is a normal Python API call. In this tutorial,
 `FIT_CONFIG` is an in-script Python dictionary (not a required YAML file).
 
-If you prefer a no-config API, you can call `fit_study_data(...)` with
+If you prefer a no-config API, you can call `fit_study(...)` with
 `FitSpec(...)` directly:
 
 ```python
-from comp_model.inference import FitSpec, fit_study_data
+from comp_model.inference import FitSpec, fit_study
 from comp_model.io import read_study_decisions_csv
 
 study = read_study_decisions_csv(canonical_csv_path)
-result = fit_study_data(
+result = fit_study(
     study,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=FitSpec(

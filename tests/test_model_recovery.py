@@ -17,7 +17,7 @@ from comp_model.inference import (
     GridSearchMLEEstimator,
     MLECandidate,
     MLEFitResult,
-    fit_dataset,
+    fit_trace,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import (
@@ -225,7 +225,7 @@ def test_run_model_recovery_supports_custom_social_trace_factory() -> None:
     """Model recovery should support multi-actor traces via trace_factory hook."""
 
     def fit_fixed_choice_social(trace: Any) -> MLEFitResult:
-        return fit_dataset(
+        return fit_trace(
             trace,
             model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
             fit_spec=FitSpec(

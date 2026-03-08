@@ -12,7 +12,7 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import coerce_block_fit_strategy
-from .fitting import FitInferenceType, FitSpec, MLESolverType, fit_dataset_from_registry
+from .fitting import FitInferenceType, FitSpec, MLESolverType, fit_trace_from_registry
 from .likelihood_config import likelihood_program_from_config
 from .mle import MLEFitResult
 from .study_fitting import (
@@ -20,9 +20,9 @@ from .study_fitting import (
     BlockFitStrategy,
     StudyFitResult,
     SubjectFitResult,
-    fit_block_data,
-    fit_study_data,
-    fit_subject_data,
+    fit_block,
+    fit_study,
+    fit_subject,
 )
 from .transforms import (
     ParameterTransform,
@@ -211,18 +211,18 @@ def model_component_spec_from_config(model_cfg: Mapping[str, Any]) -> ModelCompo
     return ModelComponentSpec(component_id=component_id, kwargs=dict(kwargs))
 
 
-def fit_dataset_from_config(
+def fit_trace_from_config(
     data: EpisodeTrace | BlockData | tuple[TrialDecision, ...] | list[TrialDecision],
     *,
     config: Mapping[str, Any],
     registry: PluginRegistry | None = None,
 ) -> MLEFitResult:
-    """Fit a single dataset using declarative config.
+    """Fit one trace-like input using declarative config.
 
     Parameters
     ----------
     data : EpisodeTrace | BlockData | tuple[TrialDecision, ...] | list[TrialDecision]
-        Input dataset.
+        Input trace-like container.
     config : Mapping[str, Any]
         Config mapping with keys ``model`` and ``estimator``.
     registry : PluginRegistry | None, optional
@@ -245,7 +245,7 @@ def fit_dataset_from_config(
     )
 
     reg = registry if registry is not None else build_default_registry()
-    return fit_dataset_from_registry(
+    return fit_trace_from_registry(
         data,
         model_component_id=model_spec.component_id,
         fit_spec=fit_spec,
@@ -274,7 +274,7 @@ def fit_block_from_config(
     )
 
     reg = registry if registry is not None else build_default_registry()
-    return fit_block_data(
+    return fit_block(
         block,
         model_component_id=model_spec.component_id,
         fit_spec=fit_spec,
@@ -311,7 +311,7 @@ def fit_subject_from_config(
     )
 
     reg = registry if registry is not None else build_default_registry()
-    return fit_subject_data(
+    return fit_subject(
         subject,
         model_component_id=model_spec.component_id,
         fit_spec=fit_spec,
@@ -349,7 +349,7 @@ def fit_study_from_config(
     )
 
     reg = registry if registry is not None else build_default_registry()
-    return fit_study_data(
+    return fit_study(
         study,
         model_component_id=model_spec.component_id,
         fit_spec=fit_spec,
@@ -460,7 +460,7 @@ def _require_sequence(raw: Any, *, field_name: str) -> list[Any]:
 __all__ = [
     "ModelComponentSpec",
     "fit_block_from_config",
-    "fit_dataset_from_config",
+    "fit_trace_from_config",
     "fit_spec_from_config",
     "fit_study_from_config",
     "fit_subject_from_config",

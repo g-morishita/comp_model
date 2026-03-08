@@ -12,7 +12,7 @@ from comp_model.inference.block_strategy import (
     coerce_block_fit_strategy,
 )
 from comp_model.inference.compatibility import assert_trace_compatible
-from comp_model.inference.fitting import FitSpec, fit_dataset_from_registry
+from comp_model.inference.fitting import FitSpec, fit_trace_from_registry
 from comp_model.inference.likelihood import LikelihoodProgram
 from comp_model.inference.mle import MLEFitResult
 from comp_model.plugins import PluginRegistry, build_default_registry
@@ -88,7 +88,7 @@ class StudyFitResult:
         return len(self.subject_results)
 
 
-def fit_block_data(
+def fit_block(
     block: BlockData,
     *,
     model_component_id: str,
@@ -118,7 +118,7 @@ def fit_block_data(
         Block-level fit summary.
     """
 
-    fit = fit_dataset_from_registry(
+    fit = fit_trace_from_registry(
         block,
         model_component_id=model_component_id,
         fit_spec=fit_spec,
@@ -133,7 +133,7 @@ def fit_block_data(
     )
 
 
-def fit_subject_data(
+def fit_subject(
     subject: SubjectData,
     *,
     model_component_id: str,
@@ -173,7 +173,7 @@ def fit_subject_data(
 
     if strategy == "independent":
         block_results = tuple(
-            fit_block_data(
+            fit_block(
                 block,
                 model_component_id=model_component_id,
                 fit_spec=fit_spec,
@@ -206,7 +206,7 @@ def fit_subject_data(
         block_traces=block_traces,
         likelihood_program=likelihood_program,
     )
-    joint_fit = fit_dataset_from_registry(
+    joint_fit = fit_trace_from_registry(
         subject.blocks[0],
         model_component_id=model_component_id,
         fit_spec=fit_spec,
@@ -232,7 +232,7 @@ def fit_subject_data(
     )
 
 
-def fit_study_data(
+def fit_study(
     study: StudyData,
     *,
     model_component_id: str,
@@ -259,12 +259,12 @@ def fit_study_data(
     likelihood_program : LikelihoodProgram | None, optional
         Optional likelihood evaluator.
     block_fit_strategy : {"independent", "joint"}, optional
-        Block handling strategy passed to :func:`fit_subject_data`.
+        Block handling strategy passed to :func:`fit_subject`.
     """
 
     reg = registry if registry is not None else build_default_registry()
     subject_results = tuple(
-        fit_subject_data(
+        fit_subject(
             subject,
             model_component_id=model_component_id,
             fit_spec=fit_spec,
@@ -311,7 +311,7 @@ __all__ = [
     "BlockFitResult",
     "StudyFitResult",
     "SubjectFitResult",
-    "fit_block_data",
-    "fit_study_data",
-    "fit_subject_data",
+    "fit_block",
+    "fit_study",
+    "fit_subject",
 ]

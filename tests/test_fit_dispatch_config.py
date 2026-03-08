@@ -8,7 +8,7 @@ import comp_model.inference.config_dispatch as config_dispatch_module
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference import (
     fit_block_auto_from_config,
-    fit_dataset_auto_from_config,
+    fit_trace_auto_from_config,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
@@ -75,12 +75,12 @@ def _study_subject_nuts_config() -> dict:
     return cfg
 
 
-def test_fit_dataset_auto_dispatches_mle_and_subject_stan(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fit_trace_auto_dispatches_mle_and_subject_stan(monkeypatch: pytest.MonkeyPatch) -> None:
     """Dataset auto-dispatch should route MLE and subject-level Stan fit paths."""
 
     rows = (_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0))
 
-    mle_result = fit_dataset_auto_from_config(rows, config=_mle_config())
+    mle_result = fit_trace_auto_from_config(rows, config=_mle_config())
     assert hasattr(mle_result, "best")
 
     sentinel = object()
@@ -89,7 +89,7 @@ def test_fit_dataset_auto_dispatches_mle_and_subject_stan(monkeypatch: pytest.Mo
         "infer_subject_stan_from_config",
         lambda *args, **kwargs: sentinel,
     )
-    map_result = fit_dataset_auto_from_config(rows, config=_subject_shared_map_config())
+    map_result = fit_trace_auto_from_config(rows, config=_subject_shared_map_config())
     assert map_result is sentinel
 
 
@@ -135,7 +135,7 @@ def test_fit_auto_rejects_study_estimators_for_dataset_and_subject_estimators_fo
     study = StudyData(subjects=(subject,))
 
     with pytest.raises(ValueError, match="study-level Stan estimators require StudyData"):
-        fit_dataset_auto_from_config(rows, config=_study_subject_nuts_config())
+        fit_trace_auto_from_config(rows, config=_study_subject_nuts_config())
 
     with pytest.raises(ValueError, match="subject-level Stan estimators require SubjectData"):
         fit_study_auto_from_config(study, config=_subject_shared_map_config())
@@ -151,5 +151,5 @@ def test_fit_auto_rejects_legacy_scipy_map_estimator() -> None:
     }
 
     with pytest.raises(ValueError, match="unsupported estimator.type"):
-        fit_dataset_auto_from_config(rows, config=config)
+        fit_trace_auto_from_config(rows, config=config)
 

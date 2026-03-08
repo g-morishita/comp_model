@@ -50,7 +50,7 @@ print("n_blocks:", len(subject.blocks))
 ## Step 2: Fit One Shared Parameter Set Across Blocks
 
 ```python
-from comp_model.inference import FitSpec, fit_subject_data
+from comp_model.inference import FitSpec, fit_subject
 
 fit_spec = FitSpec(
     inference="mle",
@@ -61,7 +61,7 @@ fit_spec = FitSpec(
     random_seed=21,
 )
 
-joint_result = fit_subject_data(
+joint_result = fit_subject(
     subject,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=fit_spec,
@@ -85,7 +85,7 @@ What `joint` means here:
 ## Step 3: Compare with Independent Block Fits
 
 ```python
-independent_result = fit_subject_data(
+independent_result = fit_subject(
     subject,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=fit_spec,

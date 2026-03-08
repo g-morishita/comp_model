@@ -14,7 +14,7 @@ from comp_model.inference import (
     ActionReplayLikelihood,
     ActorSubsetReplayLikelihood,
     FitSpec,
-    fit_dataset,
+    fit_trace,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram
@@ -103,8 +103,8 @@ def test_actor_subset_likelihood_without_autofill_requires_all_actor_models() ->
         ).evaluate(trace, UniformRandomPolicyModel())
 
 
-def test_fit_dataset_supports_social_trace_with_actor_subset_likelihood() -> None:
-    """fit_dataset should recover subject policy on social traces via actor subset likelihood."""
+def test_fit_trace_supports_social_trace_with_actor_subset_likelihood() -> None:
+    """fit_trace should recover subject policy on social traces via actor subset likelihood."""
 
     n_trials = 80
     trace = run_trial_program(
@@ -116,7 +116,7 @@ def test_fit_dataset_supports_social_trace_with_actor_subset_likelihood() -> Non
         config=SimulationConfig(n_trials=n_trials, seed=9),
     )
 
-    fit = fit_dataset(
+    fit = fit_trace(
         trace,
         model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
         fit_spec=FitSpec(

@@ -14,7 +14,7 @@ ComponentRef = {
 
 ## Inference Configs
 
-### MLE (`fit_dataset_from_config`, `fit_block_from_config`, ...)
+### MLE (`fit_trace_from_config`, `fit_block_from_config`, ...)
 
 ```python
 MLEFitConfig = {
@@ -138,7 +138,7 @@ Notes:
 
 - `initial_block_params` is only for subject-level estimators.
 - `initial_block_params_by_subject` is only for study-level estimators.
-- `fit_dataset_auto_from_config(...)`, `fit_block_auto_from_config(...)`, and `fit_subject_auto_from_config(...)` accept only subject-level Stan estimators.
+- `fit_trace_auto_from_config(...)`, `fit_block_auto_from_config(...)`, and `fit_subject_auto_from_config(...)` accept only subject-level Stan estimators.
 - `fit_study_auto_from_config(...)` accepts only study-level Stan estimators.
 
 ### Model Selection (`compare_*_candidates_from_config`)

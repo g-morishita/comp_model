@@ -1,4 +1,4 @@
-"""Reusable model-fitting helpers for user datasets and recovery pipelines."""
+"""Reusable model-fitting helpers for traces, blocks, and recovery pipelines."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ class FitSpec:
     Parameters
     ----------
     inference : {"mle", "bayesian"}, optional
-        High-level inference family. ``fit_dataset`` currently supports
+        High-level inference family. ``fit_trace`` currently supports
         ``"mle"`` only; ``"bayesian"`` is routed through Stan posterior APIs.
     solver : {"grid_search", "scipy_minimize", "transformed_scipy_minimize"} | None, optional
         Concrete MLE solver/backend. If omitted, a solver is chosen
@@ -80,12 +80,12 @@ class FitSpec:
 
 
 def coerce_episode_trace(data: EpisodeTrace | BlockData | Sequence[TrialDecision]) -> EpisodeTrace:
-    """Coerce supported dataset containers into canonical ``EpisodeTrace``.
+    """Coerce supported trace-like containers into canonical ``EpisodeTrace``.
 
     Parameters
     ----------
     data : EpisodeTrace | BlockData | Sequence[TrialDecision]
-        Input dataset.
+        Input trace-like container.
 
     Returns
     -------
@@ -227,13 +227,13 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     Raises
     ------
     ValueError
-        If inference type is unsupported in ``fit_dataset`` or solver hints
+        If inference type is unsupported in ``fit_trace`` or solver hints
         are contradictory.
     """
 
     if fit_spec.inference == "bayesian":
         raise ValueError(
-            "fit_dataset currently supports only inference='mle'. "
+            "fit_trace currently supports only inference='mle'. "
             "Use Stan Bayesian APIs (for example, draw_subject_block_hierarchy_posterior_stan)."
         )
     if fit_spec.inference != "mle":
@@ -249,7 +249,7 @@ def _resolve_mle_solver(fit_spec: FitSpec) -> MLESolverType:
     return solver
 
 
-def fit_dataset(
+def fit_trace(
     data: EpisodeTrace | BlockData | Sequence[TrialDecision],
     *,
     model_factory: Callable[[dict[str, float]], AgentModel],
@@ -257,12 +257,12 @@ def fit_dataset(
     requirements: ComponentRequirements | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> MLEFitResult:
-    """Fit a model to supported dataset containers.
+    """Fit a model to supported trace-like containers.
 
     Parameters
     ----------
     data : EpisodeTrace | BlockData | Sequence[TrialDecision]
-        Input dataset to fit.
+        Input trace-like container to fit.
     model_factory : Callable[[dict[str, float]], AgentModel]
         Factory building model instances from parameter mappings.
     fit_spec : FitSpec
@@ -288,7 +288,7 @@ def fit_dataset(
     return fit_function(trace)
 
 
-def fit_dataset_from_registry(
+def fit_trace_from_registry(
     data: EpisodeTrace | BlockData | Sequence[TrialDecision],
     *,
     model_component_id: str,
@@ -297,12 +297,12 @@ def fit_dataset_from_registry(
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> MLEFitResult:
-    """Fit one registered model component to a dataset.
+    """Fit one registered model component to a trace-like container.
 
     Parameters
     ----------
     data : EpisodeTrace | BlockData | Sequence[TrialDecision]
-        Input dataset to fit.
+        Input trace-like container to fit.
     model_component_id : str
         Model component ID in the plugin registry.
     fit_spec : FitSpec
@@ -324,7 +324,7 @@ def fit_dataset_from_registry(
     manifest = reg.get("model", model_component_id)
     fixed_kwargs = dict(model_kwargs) if model_kwargs is not None else {}
 
-    return fit_dataset(
+    return fit_trace(
         data,
         model_factory=lambda params: reg.create_model(
             model_component_id,
@@ -349,6 +349,6 @@ __all__ = [
     "FitSpec",
     "MLESolverType",
     "coerce_episode_trace",
-    "fit_dataset",
-    "fit_dataset_from_registry",
+    "fit_trace",
+    "fit_trace_from_registry",
 ]

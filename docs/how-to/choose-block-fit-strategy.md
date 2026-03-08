@@ -15,9 +15,9 @@ block-level estimates.
 ## Python API
 
 ```python
-from comp_model.inference import FitSpec, fit_subject_data
+from comp_model.inference import FitSpec, fit_subject
 
-result = fit_subject_data(
+result = fit_subject(
     subject_data,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=FitSpec(

@@ -38,7 +38,7 @@ First, define small reusable functions:
 - `fit_function(trace)` fits one synthetic dataset.
 
 ```python
-from comp_model.inference import FitSpec, fit_dataset
+from comp_model.inference import FitSpec, fit_trace
 from comp_model.models import AsocialStateQValueSoftmaxModel
 from comp_model.problems import StationaryBanditProblem
 
@@ -56,7 +56,7 @@ def model_factory(params: dict[str, float]) -> AsocialStateQValueSoftmaxModel:
 
 
 def fit_function(trace):
-    return fit_dataset(
+    return fit_trace(
         trace,
         model_factory=model_factory,
         fit_spec=FitSpec(
