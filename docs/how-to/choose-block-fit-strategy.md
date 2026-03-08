@@ -4,7 +4,7 @@ When a subject has multiple blocks, you can choose how parameters are shared
 across those blocks.
 
 - `independent`:
-  fit each block separately, then aggregate summaries.
+  fit each block separately and keep one estimate per block.
 - `joint`:
   fit one shared parameter set across all blocks.
 
@@ -30,6 +30,7 @@ result = fit_subject(
 
 print(result.fit_mode)        # "joint"
 print(result.input_n_blocks)  # original number of blocks in subject_data
+print(result.shared_best_params)  # only populated for joint fits
 ```
 
 ## YAML Config

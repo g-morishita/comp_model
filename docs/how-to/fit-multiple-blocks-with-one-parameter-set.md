@@ -72,7 +72,7 @@ joint_result = fit_subject(
 print("fit_mode:", joint_result.fit_mode)                 # joint
 print("input_n_blocks:", joint_result.input_n_blocks)     # 3
 print("stored_block_results:", len(joint_result.block_results))  # 1 (joint summary)
-print("joint best params:", joint_result.mean_best_params)
+print("joint best params:", joint_result.shared_best_params)
 print("joint total log-likelihood:", joint_result.total_log_likelihood)
 ```
 
@@ -94,7 +94,10 @@ independent_result = fit_subject(
 )
 
 print("independent stored blocks:", len(independent_result.block_results))  # 3
-print("independent mean best params:", independent_result.mean_best_params)
+print(
+    "independent block best params:",
+    [block.fit_result.best.params for block in independent_result.block_results],
+)
 print("independent total log-likelihood:", independent_result.total_log_likelihood)
 ```
 
@@ -129,7 +132,7 @@ config = {
 
 joint_result_cfg = fit_subject_from_config(subject, config=config)
 print(joint_result_cfg.fit_mode)
-print(joint_result_cfg.mean_best_params)
+print(joint_result_cfg.shared_best_params)
 ```
 
 ## Practical Checks
@@ -138,7 +141,8 @@ Before trusting estimates:
 
 1. Confirm `fit_mode` is `"joint"`.
 2. Confirm `input_n_blocks` matches your subject data.
-3. Confirm fitted values are plausible and not stuck at bounds.
+3. Confirm `shared_best_params` is populated for joint fits.
+4. Confirm fitted values are plausible and not stuck at bounds.
 
 ## Next Steps
 

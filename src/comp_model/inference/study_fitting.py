@@ -49,9 +49,9 @@ class SubjectFitResult:
         Per-block fit results.
     total_log_likelihood : float
         Sum of best block-level log-likelihood values.
-    mean_best_params : dict[str, float]
-        Mean best-fit parameter values across blocks for keys shared by all
-        block best-parameter mappings.
+    shared_best_params : dict[str, float] | None
+        Shared best-fit parameter values when one parameter set is fit across
+        all blocks. ``None`` for independent block fits.
     fit_mode : {"independent", "joint"}
         Block-fitting strategy used for this subject.
     input_n_blocks : int | None
@@ -61,7 +61,7 @@ class SubjectFitResult:
     subject_id: str
     block_results: tuple[BlockFitResult, ...]
     total_log_likelihood: float
-    mean_best_params: dict[str, float]
+    shared_best_params: dict[str, float] | None = None
     fit_mode: BlockFitStrategy = "independent"
     input_n_blocks: int | None = None
 
@@ -160,9 +160,9 @@ def fit_subject(
     likelihood_program : LikelihoodProgram | None, optional
         Optional likelihood evaluator.
     block_fit_strategy : {"independent", "joint"}, optional
-        ``"independent"`` fits each block separately and aggregates fit
-        summaries. ``"joint"`` fits one shared parameter set by summing block
-        likelihoods.
+        ``"independent"`` fits each block separately and returns one block
+        estimate per block. ``"joint"`` fits one shared parameter set by
+        summing block likelihoods.
     """
 
     reg = registry if registry is not None else build_default_registry()
@@ -186,12 +186,10 @@ def fit_subject(
         total_log_likelihood = float(
             sum(block.fit_result.best.log_likelihood for block in block_results)
         )
-        mean_best_params = _mean_params_across_block_best(block_results)
         return SubjectFitResult(
             subject_id=subject.subject_id,
             block_results=block_results,
             total_log_likelihood=total_log_likelihood,
-            mean_best_params=mean_best_params,
             fit_mode="independent",
             input_n_blocks=len(subject.blocks),
         )
@@ -226,7 +224,7 @@ def fit_subject(
         subject_id=subject.subject_id,
         block_results=block_results,
         total_log_likelihood=float(joint_fit.best.log_likelihood),
-        mean_best_params=dict(joint_fit.best.params),
+        shared_best_params=dict(joint_fit.best.params),
         fit_mode="joint",
         input_n_blocks=len(subject.blocks),
     )
@@ -283,28 +281,6 @@ def fit_study(
         subject_results=subject_results,
         total_log_likelihood=total_log_likelihood,
     )
-
-
-def _mean_params_across_block_best(block_results: tuple[BlockFitResult, ...]) -> dict[str, float]:
-    """Average shared best-fit parameters across block fits."""
-
-    if not block_results:
-        return {}
-
-    shared_keys: set[str] | None = None
-    for block in block_results:
-        keys = set(block.fit_result.best.params)
-        shared_keys = keys if shared_keys is None else (shared_keys & keys)
-
-    if not shared_keys:
-        return {}
-
-    out: dict[str, float] = {}
-    for key in sorted(shared_keys):
-        values = [float(block.fit_result.best.params[key]) for block in block_results]
-        out[key] = float(sum(values) / len(values))
-    return out
-
 
 __all__ = [
     "BlockFitStrategy",

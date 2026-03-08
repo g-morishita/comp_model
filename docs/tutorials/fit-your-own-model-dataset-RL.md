@@ -224,11 +224,26 @@ def fit_data(canonical_csv_path: Path) -> Path:
         "subjects": [
             {
                 "subject_id": subject.subject_id,
+                "fit_mode": subject.fit_mode,
                 "total_log_likelihood": float(subject.total_log_likelihood),
-                "mean_best_params": {
-                    key: float(value)
-                    for key, value in sorted(subject.mean_best_params.items())
-                },
+                "shared_best_params": (
+                    {
+                        key: float(value)
+                        for key, value in sorted(subject.shared_best_params.items())
+                    }
+                    if subject.shared_best_params is not None
+                    else None
+                ),
+                "block_best_params": [
+                    {
+                        "block_id": block.block_id,
+                        "params": {
+                            key: float(value)
+                            for key, value in sorted(block.fit_result.best.params.items())
+                        },
+                    }
+                    for block in subject.block_results
+                ],
             }
             for subject in result.subject_results
         ],
@@ -250,8 +265,10 @@ def see_the_result(overview_path: Path) -> None:
     print(f"  total_log_likelihood: {overview['total_log_likelihood']:.3f}")
     for subject in overview["subjects"]:
         print(f"  subject={subject['subject_id']}")
+        print(f"    fit_mode={subject['fit_mode']}")
         print(f"    total_log_likelihood={subject['total_log_likelihood']:.3f}")
-        print(f"    mean_best_params={subject['mean_best_params']}")
+        print(f"    shared_best_params={subject['shared_best_params']}")
+        print(f"    block_best_params={subject['block_best_params']}")
 
 
 def main() -> None:

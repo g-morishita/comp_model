@@ -50,7 +50,7 @@ class _FakeJointResult:
     def __init__(self, *, log_likelihood: float, log_posterior: float, alpha: float) -> None:
         self.total_log_likelihood = float(log_likelihood)
         self.total_log_posterior = float(log_posterior)
-        self.mean_map_params = {"alpha": float(alpha)}
+        self.shared_best_params = {"alpha": float(alpha)}
 
 
 def test_compare_dataset_candidates_from_config_supports_mle() -> None:

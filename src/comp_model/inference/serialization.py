@@ -82,8 +82,9 @@ def subject_summary_records(subject_result: SubjectFitResult) -> list[dict[str, 
         "fit_mode": fit_mode,
         "total_log_likelihood": float(subject_result.total_log_likelihood),
     }
-    for key, value in sorted(subject_result.mean_best_params.items()):
-        row[f"mean_best_param__{key}"] = float(value)
+    if subject_result.shared_best_params is not None:
+        for key, value in sorted(subject_result.shared_best_params.items()):
+            row[f"shared_best_param__{key}"] = float(value)
     return [row]
 
 

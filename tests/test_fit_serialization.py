@@ -39,13 +39,13 @@ def _mock_study_fit() -> StudyFitResult:
         subject_id="s1",
         block_results=(_mock_block("b1"),),
         total_log_likelihood=-8.0,
-        mean_best_params={"alpha": 0.5, "beta": 2.0},
     )
     s2 = SubjectFitResult(
         subject_id="s2",
         block_results=(_mock_block("b2"),),
         total_log_likelihood=-8.0,
-        mean_best_params={"alpha": 0.5, "beta": 2.0},
+        shared_best_params={"alpha": 0.5, "beta": 2.0},
+        fit_mode="joint",
     )
     return StudyFitResult(subject_results=(s1, s2), total_log_likelihood=-16.0)
 
@@ -62,7 +62,6 @@ def test_block_and_subject_records_shapes() -> None:
         subject_id="s1",
         block_results=(block,),
         total_log_likelihood=-8.0,
-        mean_best_params={"alpha": 0.5, "beta": 2.0},
     )
     subject_rows = subject_fit_records(subject)
     assert len(subject_rows) == 2
@@ -78,8 +77,12 @@ def test_study_records_and_summary_rows() -> None:
     assert len(candidate_rows) == 4
     assert len(summary_rows) == 2
     assert {row["subject_id"] for row in summary_rows} == {"s1", "s2"}
-    assert {row["fit_mode"] for row in summary_rows} == {"independent"}
+    assert {row["fit_mode"] for row in summary_rows} == {"independent", "joint"}
     assert {row["input_n_blocks"] for row in summary_rows} == {1}
+    summary_by_subject = {row["subject_id"]: row for row in summary_rows}
+    assert "shared_best_param__alpha" not in summary_by_subject["s1"]
+    assert summary_by_subject["s2"]["shared_best_param__alpha"] == 0.5
+    assert summary_by_subject["s2"]["shared_best_param__beta"] == 2.0
 
 
 def test_fit_serialization_csv_writers(tmp_path: Path) -> None:

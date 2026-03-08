@@ -271,7 +271,7 @@ def test_compare_subject_candidate_models_supports_joint_block_strategy() -> Non
             subject_id="s1",
             block_results=(BlockFitResult(block_id="__joint__", n_trials=4, fit_result=fit),),
             total_log_likelihood=log_likelihood,
-            mean_best_params={"alpha": 0.3},
+            shared_best_params={"alpha": 0.3},
             fit_mode="joint",
             input_n_blocks=2,
         )

@@ -60,8 +60,8 @@ def test_fit_block_returns_block_summary() -> None:
     assert result.fit_result.best.params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
 
 
-def test_fit_subject_aggregates_block_results() -> None:
-    """Subject fitting helper should aggregate all block fits."""
+def test_fit_subject_independent_returns_one_fit_per_block() -> None:
+    """Independent subject fitting should return one estimate per block."""
 
     subject = SubjectData(
         subject_id="s1",
@@ -79,10 +79,18 @@ def test_fit_subject_aggregates_block_results() -> None:
 
     assert result.subject_id == "s1"
     assert len(result.block_results) == 2
-    assert set(result.mean_best_params) == {"alpha", "beta", "initial_value"}
-    assert result.mean_best_params["alpha"] == 0.3
-    assert result.mean_best_params["beta"] == 2.0
-    assert result.mean_best_params["initial_value"] == 0.0
+    assert result.fit_mode == "independent"
+    assert result.shared_best_params is None
+    assert result.block_results[0].fit_result.best.params == {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0,
+    }
+    assert result.block_results[1].fit_result.best.params == {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0,
+    }
     assert math.isfinite(result.total_log_likelihood)
 
 
@@ -147,7 +155,12 @@ def test_fit_subject_supports_joint_block_strategy() -> None:
     assert len(joint.block_results) == 1
     assert joint.block_results[0].block_id == "__joint__"
     assert joint.block_results[0].n_trials == 4
-    assert joint.mean_best_params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
+    assert joint.shared_best_params == {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0,
+    }
+    assert independent.shared_best_params is None
     assert joint.total_log_likelihood == pytest.approx(independent.total_log_likelihood)
 
 

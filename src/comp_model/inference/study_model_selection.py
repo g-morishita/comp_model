@@ -419,9 +419,7 @@ def _extract_joint_subject_summary(fit_result: object) -> tuple[dict[str, float]
 
     total_log_likelihood = getattr(fit_result, "total_log_likelihood", None)
     if total_log_likelihood is not None:
-        params_raw = getattr(fit_result, "mean_best_params", None)
-        if params_raw is None:
-            params_raw = getattr(fit_result, "mean_map_params", None)
+        params_raw = getattr(fit_result, "shared_best_params", None)
         if isinstance(params_raw, dict):
             log_posterior = getattr(fit_result, "total_log_posterior", None)
             if log_posterior is None:
@@ -430,6 +428,11 @@ def _extract_joint_subject_summary(fit_result: object) -> tuple[dict[str, float]
                 {str(key): float(value) for key, value in params_raw.items()},
                 float(total_log_likelihood),
                 float(log_posterior) if log_posterior is not None else None,
+            )
+        if getattr(fit_result, "fit_mode", None) == "independent":
+            raise TypeError(
+                "joint subject comparison requires a shared subject-level "
+                "parameter estimate; got block-wise independent fits"
             )
 
     best = extract_best_fit_summary(fit_result)

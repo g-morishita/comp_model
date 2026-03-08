@@ -27,6 +27,7 @@ from comp_model.inference.config_dispatch import (
     fit_subject_auto_from_config,
 )
 from comp_model.inference.mle import MLECandidate, MLEFitResult
+from comp_model.inference.study_fitting import SubjectFitResult
 from comp_model.inference.model_selection import SelectionCriterion
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.inference.transforms import (
@@ -741,12 +742,17 @@ def _build_fit_function(
             config=fit_config,
             registry=registry,
         )
-        if hasattr(result, "mean_best_params") and hasattr(result, "total_log_likelihood"):
-            mean_best_params = getattr(result, "mean_best_params")
-            if isinstance(mean_best_params, Mapping):
+        if isinstance(result, SubjectFitResult):
+            if result.shared_best_params is None:
+                raise ValueError(
+                    "subject-level parameter recovery requires one shared parameter "
+                    "estimate per subject; set block_fit_strategy='joint' or use "
+                    "block-level recovery"
+                )
+            if isinstance(result.shared_best_params, Mapping):
                 candidate = MLECandidate(
-                    params={str(k): float(v) for k, v in mean_best_params.items()},
-                    log_likelihood=float(getattr(result, "total_log_likelihood")),
+                    params={str(k): float(v) for k, v in result.shared_best_params.items()},
+                    log_likelihood=float(result.total_log_likelihood),
                 )
                 return MLEFitResult(best=candidate, candidates=(candidate,))
         return result
