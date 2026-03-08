@@ -14,8 +14,8 @@ import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
 from comp_model.core.data import StudyData, SubjectData
-from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from comp_model.inference.best_fit_summary import extract_best_fit_summary
+from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from comp_model.inference.model_selection import (
     CandidateFitSpec,
     SelectionCriterion,

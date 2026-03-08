@@ -12,7 +12,6 @@ from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .component_config import model_component_spec_from_config
-from .mle.config import mle_fit_spec_from_config
 from .estimator_dispatch import (
     MAP_ESTIMATORS,
     MLE_ESTIMATORS,
@@ -20,9 +19,10 @@ from .estimator_dispatch import (
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from .mle.fitting import _build_trace_fit_function
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
+from .mle.config import mle_fit_spec_from_config
+from .mle.fitting import _build_trace_fit_function
 from .model_selection import (
     CandidateFitSpec,
     ModelComparisonResult,

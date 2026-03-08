@@ -12,8 +12,8 @@ from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
     ActorSubsetReplayLikelihood,
-    MLEFitSpec,
     GridSearchMLEEstimator,
+    MLEFitSpec,
     fit_trace,
 )
 from comp_model.problems import (

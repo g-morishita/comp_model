@@ -16,10 +16,10 @@ from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecisio
 from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
-from .criteria import compute_pointwise_information_criteria
-from .mle.fitting import MLEFitSpec, _build_trace_fit_function, coerce_episode_trace
 from .best_fit_summary import extract_best_fit_summary
+from .criteria import compute_pointwise_information_criteria
 from .likelihood import LikelihoodProgram
+from .mle.fitting import MLEFitSpec, _build_trace_fit_function, coerce_episode_trace
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
 

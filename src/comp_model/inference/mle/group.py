@@ -13,12 +13,12 @@ from ..block_strategy import (
     coerce_block_fit_strategy,
 )
 from ..likelihood import LikelihoodProgram
+from .estimators import MLEFitResult
 from .fitting import (
     MLEFitSpec,
     fit_joint_traces_from_registry,
     fit_trace_from_registry,
 )
-from .estimators import MLEFitResult
 
 
 @dataclass(frozen=True, slots=True)

@@ -15,9 +15,9 @@ from comp_model.plugins import PluginRegistry
 
 from .mle.config import (
     fit_block_from_config,
-    fit_trace_from_config,
     fit_study_from_config,
     fit_subject_from_config,
+    fit_trace_from_config,
 )
 from .mle.fitting import coerce_episode_trace
 from .stan_config import (

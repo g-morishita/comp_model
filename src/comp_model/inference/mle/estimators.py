@@ -12,6 +12,7 @@ import numpy as np
 from comp_model.core.contracts import AgentModel
 from comp_model.core.events import EpisodeTrace
 from comp_model.core.requirements import ComponentRequirements
+
 from ..compatibility import (
     CompatibilityReport,
     assert_trace_compatible,

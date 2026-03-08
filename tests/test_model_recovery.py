@@ -13,10 +13,10 @@ from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
     ActionReplayLikelihood,
     ActorSubsetReplayLikelihood,
-    MLEFitSpec,
     GridSearchMLEEstimator,
     MLECandidate,
     MLEFitResult,
+    MLEFitSpec,
     fit_trace,
 )
 from comp_model.models import UniformRandomPolicyModel

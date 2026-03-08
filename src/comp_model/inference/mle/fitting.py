@@ -18,13 +18,13 @@ from comp_model.core.requirements import ComponentRequirements
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from ..likelihood import ActionReplayLikelihood, LikelihoodProgram
+from ..transforms import ParameterTransform
 from .estimators import (
     GridSearchMLEEstimator,
     MLEFitResult,
     ScipyMinimizeMLEEstimator,
     TransformedScipyMinimizeMLEEstimator,
 )
-from ..transforms import ParameterTransform
 
 MLESolverType = Literal["grid_search", "scipy_minimize", "transformed_scipy_minimize"]
 

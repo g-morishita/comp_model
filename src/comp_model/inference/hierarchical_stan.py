@@ -28,6 +28,14 @@ from comp_model.core.data import (
 from comp_model.core.requirements import ComponentRequirements
 
 from .compatibility import CompatibilityReport, assert_trace_compatible, check_trace_compatibility
+from .hierarchical_stan_social import (
+    build_social_subject_inputs,
+    load_social_stan_code,
+    social_cache_tag,
+    social_supported_component_ids,
+)
+from .mcmc_diagnostics import MCMCDiagnostics
+from .stan_backend import compile_cmdstan_model
 from .stan_posterior import (
     StanPosteriorDraw,
     StudySubjectBlockHierarchyPosteriorCandidate,
@@ -39,14 +47,6 @@ from .stan_posterior import (
     SubjectSharedPosteriorCandidate,
     SubjectSharedPosteriorResult,
 )
-from .hierarchical_stan_social import (
-    build_social_subject_inputs,
-    load_social_stan_code,
-    social_cache_tag,
-    social_supported_component_ids,
-)
-from .mcmc_diagnostics import MCMCDiagnostics
-from .stan_backend import compile_cmdstan_model
 
 _ASOCIAL_COMPONENT_ID = "asocial_state_q_value_softmax"
 _ASOCIAL_PERSEVERATION_COMPONENT_ID = "asocial_state_q_value_softmax_perseveration"

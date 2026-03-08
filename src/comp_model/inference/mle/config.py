@@ -19,6 +19,7 @@ from ..transforms import (
     positive_log_transform,
     unit_interval_logit_transform,
 )
+from .estimators import MLEFitResult
 from .fitting import MLEFitSpec, MLESolverType, fit_trace_from_registry
 from .group import (
     BlockFitResult,
@@ -28,7 +29,6 @@ from .group import (
     fit_study,
     fit_subject,
 )
-from .estimators import MLEFitResult
 
 
 def mle_fit_spec_from_config(estimator_cfg: Mapping[str, Any]) -> MLEFitSpec:

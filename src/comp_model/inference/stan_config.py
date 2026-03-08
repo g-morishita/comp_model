@@ -11,12 +11,6 @@ from comp_model.core.data import StudyData, SubjectData
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .component_config import model_component_spec_from_config
-from .stan_posterior import (
-    StudySubjectBlockHierarchyPosteriorResult,
-    StudySubjectHierarchyPosteriorResult,
-    SubjectBlockHierarchyPosteriorResult,
-    SubjectSharedPosteriorResult,
-)
 from .hierarchical_stan import (
     draw_study_subject_block_hierarchy_posterior_stan,
     draw_study_subject_hierarchy_posterior_stan,
@@ -26,6 +20,12 @@ from .hierarchical_stan import (
     estimate_study_subject_hierarchy_map_stan,
     estimate_subject_block_hierarchy_map_stan,
     estimate_subject_shared_map_stan,
+)
+from .stan_posterior import (
+    StudySubjectBlockHierarchyPosteriorResult,
+    StudySubjectHierarchyPosteriorResult,
+    SubjectBlockHierarchyPosteriorResult,
+    SubjectSharedPosteriorResult,
 )
 
 SUBJECT_NUTS_ESTIMATORS = {

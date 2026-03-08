@@ -9,10 +9,10 @@ import pytest
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.demonstrators import FixedSequenceDemonstrator
 from comp_model.inference import (
-    fit_trace_from_config,
-    mle_fit_spec_from_config,
     fit_study_from_config,
     fit_subject_from_config,
+    fit_trace_from_config,
+    mle_fit_spec_from_config,
 )
 from comp_model.models import UniformRandomPolicyModel
 from comp_model.problems import DemonstratorThenSubjectObservedOutcomeSelfOutcomeProgram

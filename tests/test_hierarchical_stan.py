@@ -8,10 +8,8 @@ import pytest
 import comp_model.inference.hierarchical_stan as hierarchical_stan_module
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference.hierarchical_stan import (
-    draw_study_subject_block_hierarchy_posterior_stan,
     draw_study_subject_hierarchy_posterior_stan,
     draw_subject_block_hierarchy_posterior_stan,
-    draw_subject_shared_posterior_stan,
     estimate_study_subject_block_hierarchy_map_stan,
     estimate_subject_shared_map_stan,
 )

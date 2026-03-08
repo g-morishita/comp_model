@@ -26,8 +26,8 @@ from comp_model.inference.estimator_dispatch import (
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from comp_model.inference.mle.group import SubjectFitResult
 from comp_model.inference.mle.estimators import MLECandidate, MLEFitResult
+from comp_model.inference.mle.group import SubjectFitResult
 from comp_model.inference.model_selection import SelectionCriterion
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.inference.transforms import (

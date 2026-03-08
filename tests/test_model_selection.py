@@ -11,9 +11,9 @@ from comp_model.core.contracts import DecisionContext
 from comp_model.core.data import TrialDecision
 from comp_model.inference import (
     CandidateFitSpec,
-    MLEFitSpec,
     MLECandidate,
     MLEFitResult,
+    MLEFitSpec,
     RegistryCandidateFitSpec,
     compare_candidate_models,
     compare_registry_candidate_models,
