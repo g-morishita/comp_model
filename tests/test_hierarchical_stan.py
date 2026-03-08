@@ -1,4 +1,4 @@
-"""Tests for Stan-backed hierarchical posterior sampling helpers."""
+"""Tests for explicit Stan Bayesian hierarchy helpers."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ import numpy as np
 import pytest
 
 import comp_model.inference.hierarchical_stan as hierarchical_stan_module
-from comp_model.core.data import BlockData, SubjectData, TrialDecision
+from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.inference.hierarchical_stan import (
-    optimize_subject_hierarchical_posterior_stan,
-    optimize_subject_pooled_posterior_stan,
-    sample_subject_hierarchical_posterior_stan,
-    sample_subject_pooled_posterior_stan,
+    draw_study_subject_hierarchy_posterior_stan,
+    draw_subject_block_hierarchy_posterior_stan,
+    estimate_study_subject_block_hierarchy_map_stan,
+    estimate_subject_shared_map_stan,
 )
 from comp_model.inference.hierarchical_stan_social import (
     load_social_stan_code,
@@ -20,7 +20,7 @@ from comp_model.inference.hierarchical_stan_social import (
 
 
 def _trial(trial_index: int, action: int, reward: float) -> TrialDecision:
-    """Build one trial row for hierarchical Stan tests."""
+    """Build one trial row for Stan hierarchy tests."""
 
     return TrialDecision(
         trial_index=trial_index,
@@ -92,15 +92,14 @@ class _FakeFit:
         return self._variables[name]
 
 
-def _fake_fit(*, n_draws: int, n_blocks: int, n_params: int, block_param_value: float = 0.52) -> _FakeFit:
-    """Construct a fake CmdStan fit object with compatible variable shapes."""
+def _fake_subject_shared_fit(*, n_draws: int, n_blocks: int, n_params: int) -> _FakeFit:
+    """Construct a fake CmdStan fit object for the subject-shared case."""
 
     return _FakeFit(
         variables={
-            "group_loc_z": np.linspace(-0.1, 0.2, n_draws * n_params).reshape(n_draws, n_params),
-            "group_log_scale": np.linspace(-1.0, -0.7, n_draws * n_params).reshape(n_draws, n_params),
+            "subject_param_z": np.linspace(-0.2, 0.3, n_draws * n_params).reshape(n_draws, n_params),
             "block_z": np.full((n_draws, n_blocks, n_params), 0.1, dtype=float),
-            "block_param": np.full((n_draws, n_blocks, n_params), block_param_value, dtype=float),
+            "block_param": np.full((n_draws, n_blocks, n_params), 0.52, dtype=float),
             "log_likelihood_total": np.linspace(-5.0, -4.0, n_draws),
             "log_prior_total": np.linspace(-1.0, -0.5, n_draws),
             "log_posterior_total": np.linspace(-6.0, -4.5, n_draws),
@@ -108,110 +107,88 @@ def _fake_fit(*, n_draws: int, n_blocks: int, n_params: int, block_param_value: 
     )
 
 
-def test_sample_subject_hierarchical_posterior_stan_decodes_draws(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Stan helper should decode backend draws into public result dataclasses."""
+def _fake_subject_block_fit(*, n_draws: int, n_blocks: int, n_params: int) -> _FakeFit:
+    """Construct a fake CmdStan fit object for the subject -> block case."""
 
-    block_1 = BlockData(
-        block_id="b1",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
-    )
-    block_2 = BlockData(
-        block_id="b2",
-        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0), _trial(2, 1, 1.0)),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
-
-    n_draws = 8
-    fake_fit = _fake_fit(n_draws=n_draws, n_blocks=2, n_params=1, block_param_value=0.52)
-
-    monkeypatch.setattr(
-        hierarchical_stan_module,
-        "_run_stan_hierarchical_nuts",
-        lambda **kwargs: fake_fit,
+    return _FakeFit(
+        variables={
+            "subject_loc_z": np.linspace(-0.1, 0.2, n_draws * n_params).reshape(n_draws, n_params),
+            "subject_log_scale": np.linspace(-1.0, -0.7, n_draws * n_params).reshape(n_draws, n_params),
+            "block_z": np.full((n_draws, n_blocks, n_params), 0.15, dtype=float),
+            "block_param": np.full((n_draws, n_blocks, n_params), 0.37, dtype=float),
+            "log_likelihood_total": np.linspace(-7.0, -6.0, n_draws),
+            "log_prior_total": np.linspace(-1.5, -0.8, n_draws),
+            "log_posterior_total": np.linspace(-8.5, -6.8, n_draws),
+        }
     )
 
-    result = sample_subject_hierarchical_posterior_stan(
-        subject,
-        model_component_id="asocial_state_q_value_softmax",
-        model_kwargs={"beta": 2.0, "initial_value": 0.0},
-        parameter_names=["alpha"],
-        transform_kinds={"alpha": "unit_interval_logit"},
-        n_samples=4,
-        n_warmup=3,
-        thin=1,
-        n_chains=2,
-        random_seed=10,
+
+def _fake_study_subject_fit(
+    *,
+    n_draws: int,
+    n_subjects: int,
+    n_blocks: int,
+    n_params: int,
+) -> _FakeFit:
+    """Construct a fake CmdStan fit object for the population -> subject case."""
+
+    return _FakeFit(
+        variables={
+            "population_loc_z": np.linspace(-0.2, 0.2, n_draws * n_params).reshape(n_draws, n_params),
+            "population_log_scale": np.linspace(-1.1, -0.8, n_draws * n_params).reshape(n_draws, n_params),
+            "subject_z": np.full((n_draws, n_subjects, n_params), 0.11, dtype=float),
+            "subject_param": np.full((n_draws, n_subjects, n_params), 0.42, dtype=float),
+            "block_z": np.full((n_draws, n_blocks, n_params), 0.11, dtype=float),
+            "block_param": np.full((n_draws, n_blocks, n_params), 0.42, dtype=float),
+            "log_likelihood_total": np.linspace(-10.0, -9.0, n_draws),
+            "log_prior_total": np.linspace(-2.0, -1.0, n_draws),
+            "log_posterior_total": np.linspace(-12.0, -10.0, n_draws),
+        }
     )
 
-    assert result.subject_id == "s1"
-    assert result.parameter_names == ("alpha",)
-    assert len(result.draws) == n_draws
-    assert result.draws[0].candidate.block_params[0]["alpha"] == pytest.approx(0.52)
-    assert result.draws[0].candidate.log_likelihood == pytest.approx(-5.0)
-    assert result.diagnostics.method == "within_subject_hierarchical_stan_nuts"
-    assert result.diagnostics.n_kept_draws == n_draws
+
+def _fake_study_subject_block_fit(
+    *,
+    n_draws: int,
+    n_subjects: int,
+    n_blocks: int,
+    n_params: int,
+) -> _FakeFit:
+    """Construct a fake CmdStan fit object for the population -> subject -> block case."""
+
+    return _FakeFit(
+        variables={
+            "population_loc_z": np.linspace(-0.2, 0.2, n_draws * n_params).reshape(n_draws, n_params),
+            "population_log_scale": np.linspace(-1.1, -0.8, n_draws * n_params).reshape(n_draws, n_params),
+            "subject_loc_z": np.full((n_draws, n_subjects, n_params), 0.2, dtype=float),
+            "subject_log_scale": np.full((n_draws, n_subjects, n_params), -0.9, dtype=float),
+            "subject_param": np.full((n_draws, n_subjects, n_params), 0.55, dtype=float),
+            "block_z": np.full((n_draws, n_blocks, n_params), 0.25, dtype=float),
+            "block_param": np.full((n_draws, n_blocks, n_params), 0.61, dtype=float),
+            "log_likelihood_total": np.linspace(-12.0, -11.0, n_draws),
+            "log_prior_total": np.linspace(-3.0, -2.0, n_draws),
+            "log_posterior_total": np.linspace(-15.0, -13.0, n_draws),
+        }
+    )
 
 
-def test_optimize_subject_hierarchical_posterior_stan_decodes_single_mode(
+def test_draw_subject_block_hierarchy_posterior_stan_decodes_draws(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Stan MAP helper should decode one optimized mode candidate."""
+    """Subject -> block Stan helper should decode backend draws."""
 
-    block = BlockData(
-        block_id="b1",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(block_id="b1", trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0))),
+            BlockData(block_id="b2", trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0))),
+        ),
     )
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-    fake_fit = _fake_fit(n_draws=1, n_blocks=1, n_params=1, block_param_value=0.33)
+    fake_fit = _fake_subject_block_fit(n_draws=6, n_blocks=2, n_params=1)
 
-    monkeypatch.setattr(
-        hierarchical_stan_module,
-        "_run_stan_hierarchical_optimize",
-        lambda **kwargs: fake_fit,
-    )
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", lambda **kwargs: fake_fit)
 
-    result = optimize_subject_hierarchical_posterior_stan(
-        subject,
-        model_component_id="asocial_state_q_value_softmax",
-        model_kwargs={"beta": 2.0, "initial_value": 0.0},
-        parameter_names=["alpha"],
-        transform_kinds={"alpha": "unit_interval_logit"},
-        method="lbfgs",
-        max_iterations=100,
-        random_seed=9,
-    )
-
-    assert result.subject_id == "s1"
-    assert result.parameter_names == ("alpha",)
-    assert len(result.draws) == 1
-    assert result.draws[0].candidate.block_params[0]["alpha"] == pytest.approx(0.33)
-    assert result.diagnostics.method == "within_subject_hierarchical_stan_map"
-
-
-def test_sample_subject_pooled_posterior_stan_uses_pooled_backend(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Pooled Stan helper should use pooled cache tag and diagnostics label."""
-
-    block_1 = BlockData(
-        block_id="b1",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
-    )
-    block_2 = BlockData(
-        block_id="b2",
-        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0)),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
-    fake_fit = _fake_fit(n_draws=6, n_blocks=2, n_params=1, block_param_value=0.44)
-    captured: dict[str, object] = {}
-
-    def _fake_run(**kwargs: object) -> _FakeFit:
-        captured.update(kwargs)
-        return fake_fit
-
-    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-
-    result = sample_subject_pooled_posterior_stan(
+    result = draw_subject_block_hierarchy_posterior_stan(
         subject,
         model_component_id="asocial_state_q_value_softmax",
         model_kwargs={"beta": 2.0, "initial_value": 0.0},
@@ -220,25 +197,30 @@ def test_sample_subject_pooled_posterior_stan_uses_pooled_backend(
         n_warmup=2,
         thin=1,
         n_chains=2,
-        random_seed=12,
+        random_seed=10,
     )
 
     assert result.subject_id == "s1"
-    assert result.diagnostics.method == "within_subject_pooled_stan_nuts"
-    assert captured["cache_tag"] == "pooled_asocial_state_q_value_softmax"
-    assert captured["init_parameter_names"] == ("group_loc_z",)
-    assert len(result.draws[0].candidate.block_params) == 2
+    assert result.parameter_names == ("alpha",)
+    assert len(result.draws) == 6
+    assert result.draws[0].candidate.block_params[0]["alpha"] == pytest.approx(0.37)
+    assert result.draws[0].candidate.subject_scale["alpha"] == pytest.approx(np.exp(-1.0))
+    assert result.diagnostics.method == "subject_block_hierarchy_stan_nuts"
 
 
-def test_optimize_subject_pooled_posterior_stan_uses_pooled_backend(
+def test_estimate_subject_shared_map_stan_uses_shared_backend(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Pooled Stan MAP helper should use pooled cache tag and diagnostics label."""
+    """Subject-shared Stan MAP helper should use the shared cache tag and init data."""
 
-    block_1 = BlockData(block_id="b1", trials=(_trial(0, 1, 1.0),))
-    block_2 = BlockData(block_id="b2", trials=(_trial(0, 0, 0.0),))
-    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
-    fake_fit = _fake_fit(n_draws=1, n_blocks=2, n_params=1, block_param_value=0.31)
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(block_id="b1", trials=(_trial(0, 1, 1.0),)),
+            BlockData(block_id="b2", trials=(_trial(0, 0, 0.0),)),
+        ),
+    )
+    fake_fit = _fake_subject_shared_fit(n_draws=1, n_blocks=2, n_params=1)
     captured: dict[str, object] = {}
 
     def _fake_run(**kwargs: object) -> _FakeFit:
@@ -247,7 +229,7 @@ def test_optimize_subject_pooled_posterior_stan_uses_pooled_backend(
 
     monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_optimize", _fake_run)
 
-    result = optimize_subject_pooled_posterior_stan(
+    result = estimate_subject_shared_map_stan(
         subject,
         model_component_id="asocial_state_q_value_softmax",
         model_kwargs={"beta": 2.0, "initial_value": 0.0},
@@ -258,20 +240,106 @@ def test_optimize_subject_pooled_posterior_stan_uses_pooled_backend(
     )
 
     assert result.subject_id == "s1"
-    assert result.diagnostics.method == "within_subject_pooled_stan_map"
-    assert captured["cache_tag"] == "pooled_asocial_state_q_value_softmax"
-    assert captured["init_parameter_names"] == ("group_loc_z",)
-    assert len(result.draws[0].candidate.block_params) == 2
+    assert result.diagnostics.method == "subject_shared_stan_map"
+    assert captured["cache_tag"] == "subject_shared_asocial_state_q_value_softmax"
+    assert captured["init_data"] == {"subject_param_z": [0.0]}
+    assert result.map_candidate.subject_params["alpha"] == pytest.approx(0.52)
+
+
+def test_draw_study_subject_hierarchy_posterior_stan_decodes_population_draws(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Population -> subject Stan helper should decode population and subject draws."""
+
+    study = StudyData(
+        subjects=(
+            SubjectData(
+                subject_id="s1",
+                blocks=(
+                    BlockData(block_id="b1", trials=(_trial(0, 1, 1.0),)),
+                    BlockData(block_id="b2", trials=(_trial(0, 0, 0.0),)),
+                ),
+            ),
+            SubjectData(
+                subject_id="s2",
+                blocks=(BlockData(block_id="b3", trials=(_trial(0, 1, 1.0),)),),
+            ),
+        )
+    )
+    fake_fit = _fake_study_subject_fit(n_draws=4, n_subjects=2, n_blocks=3, n_params=1)
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", lambda **kwargs: fake_fit)
+
+    result = draw_study_subject_hierarchy_posterior_stan(
+        study,
+        model_component_id="asocial_state_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        n_samples=2,
+        n_warmup=1,
+        thin=1,
+        n_chains=2,
+        random_seed=5,
+    )
+
+    assert result.subject_ids == ("s1", "s2")
+    assert result.block_ids_by_subject == (("b1", "b2"), ("b3",))
+    assert len(result.draws) == 4
+    assert result.map_candidate.subject_params[0]["alpha"] == pytest.approx(0.42)
+    assert result.map_candidate.block_params_by_subject[0][1]["alpha"] == pytest.approx(0.42)
+    assert result.diagnostics.method == "study_subject_hierarchy_stan_nuts"
+
+
+def test_estimate_study_subject_block_hierarchy_map_stan_decodes_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Population -> subject -> block Stan MAP helper should decode subject and block structure."""
+
+    study = StudyData(
+        subjects=(
+            SubjectData(
+                subject_id="s1",
+                blocks=(
+                    BlockData(block_id="b1", trials=(_trial(0, 1, 1.0),)),
+                    BlockData(block_id="b2", trials=(_trial(0, 0, 0.0),)),
+                ),
+            ),
+            SubjectData(
+                subject_id="s2",
+                blocks=(BlockData(block_id="b3", trials=(_trial(0, 1, 1.0),)),),
+            ),
+        )
+    )
+    fake_fit = _fake_study_subject_block_fit(n_draws=1, n_subjects=2, n_blocks=3, n_params=1)
+    captured: dict[str, object] = {}
+
+    def _fake_run(**kwargs: object) -> _FakeFit:
+        captured.update(kwargs)
+        return fake_fit
+
+    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_optimize", _fake_run)
+
+    result = estimate_study_subject_block_hierarchy_map_stan(
+        study,
+        model_component_id="asocial_state_q_value_softmax",
+        model_kwargs={"beta": 2.0, "initial_value": 0.0},
+        parameter_names=["alpha"],
+        method="lbfgs",
+        max_iterations=20,
+        random_seed=8,
+    )
+
+    assert result.subject_ids == ("s1", "s2")
+    assert result.diagnostics.method == "study_subject_block_hierarchy_stan_map"
+    assert captured["cache_tag"] == "study_subject_block_hierarchy_asocial_state_q_value_softmax"
+    assert result.map_candidate.subject_params[0]["alpha"] == pytest.approx(0.55)
+    assert result.map_candidate.block_params_by_subject[0][0]["alpha"] == pytest.approx(0.61)
 
 
 @pytest.mark.parametrize(
     ("component_id", "parameter_names", "model_kwargs"),
     [
-        (
-            "asocial_q_value_softmax",
-            ["alpha"],
-            {"beta": 2.0, "initial_value": 0.0},
-        ),
+        ("asocial_q_value_softmax", ["alpha"], {"beta": 2.0, "initial_value": 0.0}),
         (
             "asocial_state_q_value_softmax_perseveration",
             ["alpha", "kappa"],
@@ -284,21 +352,19 @@ def test_optimize_subject_pooled_posterior_stan_uses_pooled_backend(
         ),
     ],
 )
-def test_sample_subject_hierarchical_posterior_stan_supports_additional_asocial_models(
+def test_draw_subject_block_hierarchy_posterior_stan_supports_additional_asocial_models(
     monkeypatch: pytest.MonkeyPatch,
     component_id: str,
     parameter_names: list[str],
     model_kwargs: dict[str, float],
 ) -> None:
-    """Stan helper should support all asocial model component IDs."""
+    """Subject -> block Stan helper should support all asocial component IDs."""
 
-    block = BlockData(
-        block_id="b1",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0), _trial(2, 1, 1.0)),
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(BlockData(block_id="b1", trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0))),),
     )
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-
-    fake_fit = _fake_fit(n_draws=6, n_blocks=1, n_params=len(parameter_names), block_param_value=0.37)
+    fake_fit = _fake_subject_block_fit(n_draws=4, n_blocks=1, n_params=len(parameter_names))
     captured: dict[str, object] = {}
 
     def _fake_run(**kwargs: object) -> _FakeFit:
@@ -307,98 +373,34 @@ def test_sample_subject_hierarchical_posterior_stan_supports_additional_asocial_
 
     monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
 
-    result = sample_subject_hierarchical_posterior_stan(
+    result = draw_subject_block_hierarchy_posterior_stan(
         subject,
         model_component_id=component_id,
         model_kwargs=model_kwargs,
         parameter_names=parameter_names,
-        n_samples=3,
-        n_warmup=2,
-        thin=1,
-        n_chains=2,
-        random_seed=14,
-    )
-
-    assert result.subject_id == "s1"
-    assert result.parameter_names == tuple(parameter_names)
-    assert len(result.draws) == 6
-    for name in parameter_names:
-        assert result.draws[0].candidate.block_params[0][name] == pytest.approx(0.37)
-    assert captured["cache_tag"] == f"hierarchical_{component_id}"
-
-
-def test_asocial_q_hierarchical_stan_ignores_state_index(monkeypatch: pytest.MonkeyPatch) -> None:
-    """State-free asocial Q model should collapse all observations to one state in Stan data."""
-
-    block = BlockData(
-        block_id="b1",
-        trials=(
-            TrialDecision(
-                trial_index=0,
-                decision_index=0,
-                actor_id="subject",
-                available_actions=(0, 1),
-                action=1,
-                observation={"state": 0},
-                outcome={"reward": 1.0},
-            ),
-            TrialDecision(
-                trial_index=1,
-                decision_index=0,
-                actor_id="subject",
-                available_actions=(0, 1),
-                action=0,
-                observation={"state": 7},
-                outcome={"reward": 0.0},
-            ),
-        ),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-    fake_fit = _fake_fit(n_draws=4, n_blocks=1, n_params=1, block_param_value=0.28)
-    captured: dict[str, object] = {}
-
-    def _fake_run(**kwargs: object) -> _FakeFit:
-        captured.update(kwargs)
-        return fake_fit
-
-    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-    sample_subject_hierarchical_posterior_stan(
-        subject,
-        model_component_id="asocial_q_value_softmax",
-        model_kwargs={"beta": 2.0, "initial_value": 0.0},
-        parameter_names=["alpha"],
         n_samples=2,
         n_warmup=1,
+        thin=1,
         n_chains=2,
     )
 
-    stan_data = captured["stan_data"]
-    assert isinstance(stan_data, dict)
-    assert stan_data["S"] == 1
+    assert result.parameter_names == tuple(parameter_names)
+    assert captured["cache_tag"] == f"subject_block_hierarchy_{component_id}"
 
 
-def test_hierarchical_stan_pools_latents_by_repeated_block_condition(
+def test_subject_block_hierarchy_uses_explicit_block_latents_not_condition_pooling(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Blocks sharing one condition should map to one latent condition index."""
+    """Subject -> block inputs should not build condition-level latent indices."""
 
-    block_1 = BlockData(
-        block_id="b1",
-        metadata={"condition": "A"},
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
+    subject = SubjectData(
+        subject_id="s1",
+        blocks=(
+            BlockData(block_id="b1", metadata={"condition": "A"}, trials=(_trial(0, 1, 1.0),)),
+            BlockData(block_id="b2", metadata={"condition": "A"}, trials=(_trial(0, 0, 0.0),)),
+        ),
     )
-    block_2 = BlockData(
-        block_id="b2",
-        metadata={"condition": "A"},
-        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0)),
-    )
-    block_3 = BlockData(
-        block_id="b3",
-        metadata={"condition": "B"},
-        trials=(_trial(0, 1, 1.0), _trial(1, 1, 1.0)),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2, block_3))
-    fake_fit = _fake_fit(n_draws=4, n_blocks=3, n_params=1, block_param_value=0.25)
+    fake_fit = _fake_subject_block_fit(n_draws=2, n_blocks=2, n_params=1)
     captured: dict[str, object] = {}
 
     def _fake_run(**kwargs: object) -> _FakeFit:
@@ -406,33 +408,29 @@ def test_hierarchical_stan_pools_latents_by_repeated_block_condition(
         return fake_fit
 
     monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-    sample_subject_hierarchical_posterior_stan(
+    draw_subject_block_hierarchy_posterior_stan(
         subject,
         model_component_id="asocial_state_q_value_softmax",
         model_kwargs={"beta": 2.0, "initial_value": 0.0},
         parameter_names=["alpha"],
-        n_samples=2,
-        n_warmup=1,
+        n_samples=1,
+        n_warmup=0,
         n_chains=2,
     )
 
     stan_data = captured["stan_data"]
     assert isinstance(stan_data, dict)
-    assert captured["init_parameter_names"] == ("group_loc_z", "group_log_scale", "condition_z")
-    assert stan_data["C"] == 2
-    assert stan_data["condition_idx"] == [1, 1, 2]
+    assert "C" not in stan_data
+    assert "condition_idx" not in stan_data
 
 
-def test_hierarchical_stan_social_pools_latents_by_repeated_block_condition(
+def test_draw_subject_block_hierarchy_posterior_stan_supports_social_models(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Social Stan inputs should use one latent condition per repeated condition label."""
+    """Subject -> block Stan helper should accept supported social model component IDs."""
 
-    block_1 = BlockData(block_id="b1", metadata={"condition": "A"}, trials=_social_trials())
-    block_2 = BlockData(block_id="b2", metadata={"condition": "A"}, trials=_social_trials())
-    block_3 = BlockData(block_id="b3", metadata={"condition": "B"}, trials=_social_trials())
-    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2, block_3))
-    fake_fit = _fake_fit(n_draws=4, n_blocks=3, n_params=1, block_param_value=0.35)
+    subject = SubjectData(subject_id="s1", blocks=(BlockData(block_id="b1", trials=_social_trials()),))
+    fake_fit = _fake_subject_block_fit(n_draws=4, n_blocks=1, n_params=1)
     captured: dict[str, object] = {}
 
     def _fake_run(**kwargs: object) -> _FakeFit:
@@ -440,7 +438,7 @@ def test_hierarchical_stan_social_pools_latents_by_repeated_block_condition(
         return fake_fit
 
     monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-    sample_subject_hierarchical_posterior_stan(
+    result = draw_subject_block_hierarchy_posterior_stan(
         subject,
         model_component_id="social_observed_outcome_q",
         model_kwargs={},
@@ -450,202 +448,19 @@ def test_hierarchical_stan_social_pools_latents_by_repeated_block_condition(
         n_chains=2,
     )
 
-    stan_data = captured["stan_data"]
-    assert isinstance(stan_data, dict)
-    assert captured["init_parameter_names"] == ("group_loc_z", "group_log_scale", "condition_z")
-    assert stan_data["C"] == 2
-    assert stan_data["condition_idx"] == [1, 1, 2]
-
-
-def test_hierarchical_stan_rejects_conflicting_initial_block_params_for_same_condition() -> None:
-    """Repeated conditions require one shared initial point when initial block params are provided."""
-
-    block_1 = BlockData(
-        block_id="b1",
-        metadata={"condition": "A"},
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
-    )
-    block_2 = BlockData(
-        block_id="b2",
-        metadata={"condition": "A"},
-        trials=(_trial(0, 0, 0.0), _trial(1, 1, 1.0)),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block_1, block_2))
-
-    with pytest.raises(ValueError, match="identical across blocks sharing the same condition"):
-        sample_subject_hierarchical_posterior_stan(
-            subject,
-            model_component_id="asocial_state_q_value_softmax",
-            model_kwargs={"beta": 2.0, "initial_value": 0.0},
-            parameter_names=["alpha"],
-            initial_block_params=({"alpha": 0.2}, {"alpha": 0.8}),
-            n_samples=2,
-            n_warmup=1,
-            n_chains=2,
-        )
-
-
-@pytest.mark.parametrize(
-    ("component_id", "parameter_name"),
-    [
-        ("social_observed_outcome_q", "alpha_observed"),
-        ("social_observed_outcome_q_perseveration", "alpha_observed"),
-        ("social_observed_outcome_value_shaping", "alpha_social"),
-        ("social_observed_outcome_value_shaping_perseveration", "alpha_social"),
-        ("social_policy_reliability_gated_value_shaping", "alpha_social_base"),
-        ("social_constant_demo_bias_observed_outcome_q_perseveration", "demo_bias"),
-        ("social_policy_reliability_gated_demo_bias_observed_outcome_q_perseveration", "demo_bias_rel"),
-        ("social_dirichlet_reliability_gated_demo_bias_observed_outcome_q_perseveration", "demo_bias_rel"),
-        ("social_observed_outcome_policy_shared_mix", "mix_weight"),
-        ("social_observed_outcome_policy_shared_mix_perseveration", "mix_weight"),
-        ("social_observed_outcome_policy_independent_mix_perseveration", "beta_q"),
-        ("social_policy_learning_only", "alpha_policy"),
-        ("social_policy_learning_only_perseveration", "alpha_policy"),
-        ("social_self_outcome_value_shaping", "alpha_self"),
-    ],
-)
-def test_sample_subject_hierarchical_posterior_stan_supports_social_models(
-    monkeypatch: pytest.MonkeyPatch,
-    component_id: str,
-    parameter_name: str,
-) -> None:
-    """Stan helper should accept all social model component IDs."""
-
-    block = BlockData(block_id="b1", trials=_social_trials())
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-
-    fake_fit = _fake_fit(n_draws=6, n_blocks=1, n_params=1, block_param_value=0.41)
-    captured: dict[str, object] = {}
-
-    def _fake_run(**kwargs: object) -> _FakeFit:
-        captured.update(kwargs)
-        return fake_fit
-
-    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-
-    result = sample_subject_hierarchical_posterior_stan(
-        subject,
-        model_component_id=component_id,
-        model_kwargs={},
-        parameter_names=[parameter_name],
-        n_samples=3,
-        n_warmup=2,
-        thin=1,
-        n_chains=2,
-        random_seed=11,
-    )
-
-    assert result.subject_id == "s1"
-    assert result.parameter_names == (parameter_name,)
-    assert len(result.draws) == 6
-    assert result.draws[0].candidate.block_params[0][parameter_name] == pytest.approx(0.41)
-    assert captured["cache_tag"] == f"hierarchical_{component_id}"
-
+    assert result.parameter_names == ("alpha_observed",)
+    assert captured["cache_tag"] == "subject_block_hierarchy_social_observed_outcome_q"
     stan_data = captured["stan_data"]
     assert isinstance(stan_data, dict)
     assert stan_data["actor_code"][0][0] == 2
     assert stan_data["actor_code"][0][1] == 1
 
 
-def test_social_stan_loader_uses_per_model_files() -> None:
-    """Each social component should resolve to a dedicated Stan source file."""
+def test_social_stan_loader_uses_structure_specific_files() -> None:
+    """Social Stan loaders should resolve generic structure files for all components."""
 
     for component_id in social_supported_component_ids():
-        source = load_social_stan_code(component_id)
-        assert f"component: {component_id}" in source
+        source = load_social_stan_code(component_id, "subject_block_hierarchy")
+        assert "social subject -> block Bayesian estimation" in source
         assert "data {" in source
 
-
-def test_sample_subject_hierarchical_posterior_stan_rejects_unsupported_model() -> None:
-    """Stan helper should fail fast on unsupported model component IDs."""
-
-    block = BlockData(
-        block_id="b1",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-
-    with pytest.raises(ValueError, match="does not support"):
-        sample_subject_hierarchical_posterior_stan(
-            subject,
-            model_component_id="totally_unknown_component",
-            model_kwargs={},
-            parameter_names=["alpha"],
-        )
-
-
-def test_sample_subject_hierarchical_posterior_stan_supports_per_parameter_priors_asocial(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Asocial Stan helper should accept per-parameter prior mappings."""
-
-    block = BlockData(
-        block_id="b1",
-        trials=(_trial(0, 1, 1.0), _trial(1, 0, 0.0)),
-    )
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-    fake_fit = _fake_fit(n_draws=4, n_blocks=1, n_params=2, block_param_value=0.3)
-    captured: dict[str, object] = {}
-
-    def _fake_run(**kwargs: object) -> _FakeFit:
-        captured.update(kwargs)
-        return fake_fit
-
-    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-    sample_subject_hierarchical_posterior_stan(
-        subject,
-        model_component_id="asocial_state_q_value_softmax",
-        model_kwargs={},
-        parameter_names=["alpha", "beta"],
-        mu_prior_mean={"alpha": 0.1, "beta": 0.2},
-        mu_prior_std={"alpha": 1.1, "beta": 1.2},
-        log_sigma_prior_mean={"alpha": -0.9, "beta": -0.8},
-        log_sigma_prior_std={"alpha": 0.7, "beta": 0.8},
-        n_samples=2,
-        n_warmup=1,
-        n_chains=2,
-    )
-
-    stan_data = captured["stan_data"]
-    assert isinstance(stan_data, dict)
-    assert stan_data["mu_prior_mean"] == pytest.approx([0.1, 0.2])
-    assert stan_data["mu_prior_std"] == pytest.approx([1.1, 1.2])
-    assert stan_data["log_sigma_prior_mean"] == pytest.approx([-0.9, -0.8])
-    assert stan_data["log_sigma_prior_std"] == pytest.approx([0.7, 0.8])
-
-
-def test_sample_subject_hierarchical_posterior_stan_supports_per_parameter_priors_social(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Social Stan helper should accept per-parameter prior mappings."""
-
-    block = BlockData(block_id="b1", trials=_social_trials())
-    subject = SubjectData(subject_id="s1", blocks=(block,))
-    fake_fit = _fake_fit(n_draws=4, n_blocks=1, n_params=2, block_param_value=0.3)
-    captured: dict[str, object] = {}
-
-    def _fake_run(**kwargs: object) -> _FakeFit:
-        captured.update(kwargs)
-        return fake_fit
-
-    monkeypatch.setattr(hierarchical_stan_module, "_run_stan_hierarchical_nuts", _fake_run)
-    sample_subject_hierarchical_posterior_stan(
-        subject,
-        model_component_id="social_observed_outcome_q_perseveration",
-        model_kwargs={},
-        parameter_names=["alpha_observed", "beta"],
-        mu_prior_mean={"alpha_observed": 0.4, "beta": 0.5},
-        mu_prior_std={"alpha_observed": 1.4, "beta": 1.5},
-        log_sigma_prior_mean={"alpha_observed": -0.4, "beta": -0.5},
-        log_sigma_prior_std={"alpha_observed": 0.9, "beta": 1.0},
-        n_samples=2,
-        n_warmup=1,
-        n_chains=2,
-    )
-
-    stan_data = captured["stan_data"]
-    assert isinstance(stan_data, dict)
-    assert stan_data["mu_prior_mean"] == pytest.approx([0.4, 0.5])
-    assert stan_data["mu_prior_std"] == pytest.approx([1.4, 1.5])
-    assert stan_data["log_sigma_prior_mean"] == pytest.approx([-0.4, -0.5])
-    assert stan_data["log_sigma_prior_std"] == pytest.approx([0.9, 1.0])

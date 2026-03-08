@@ -50,7 +50,7 @@ class _FakeJointResult:
     def __init__(self, *, log_likelihood: float, log_posterior: float, alpha: float) -> None:
         self.total_log_likelihood = float(log_likelihood)
         self.total_log_posterior = float(log_posterior)
-        self.mean_map_params = {"alpha": float(alpha)}
+        self.shared_best_params = {"alpha": float(alpha)}
 
 
 def test_compare_dataset_candidates_from_config_supports_mle() -> None:
@@ -290,7 +290,7 @@ def test_compare_subject_candidates_from_config_supports_hierarchical_stan_estim
                     "kwargs": {"beta": 2.0, "initial_value": 0.0},
                 },
                 "estimator": {
-                    "type": "within_subject_hierarchical_stan_nuts",
+                    "type": "subject_block_hierarchy_stan_nuts",
                     "parameter_names": ["alpha"],
                     "transforms": {"alpha": "unit_interval_logit"},
                     "n_samples": 4,
@@ -306,7 +306,7 @@ def test_compare_subject_candidates_from_config_supports_hierarchical_stan_estim
                     "kwargs": {"beta": 0.2, "initial_value": 0.0},
                 },
                 "estimator": {
-                    "type": "within_subject_hierarchical_stan_nuts",
+                    "type": "subject_block_hierarchy_stan_nuts",
                     "parameter_names": ["alpha"],
                     "transforms": {"alpha": "unit_interval_logit"},
                     "n_samples": 4,

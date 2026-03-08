@@ -13,7 +13,7 @@ from typing import Any, TypeAlias, TypeVar
 import numpy as np
 
 from comp_model.core.contracts import AgentModel, DecisionProblem
-from comp_model.inference.fit_result import extract_best_fit_summary
+from comp_model.inference.best_fit_summary import extract_best_fit_summary
 from comp_model.inference.transforms import (
     ParameterTransform,
     identity_transform,

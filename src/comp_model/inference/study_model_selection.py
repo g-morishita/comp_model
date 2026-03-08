@@ -10,9 +10,9 @@ from comp_model.analysis.information_criteria import aic, bic
 from comp_model.core.data import StudyData, SubjectData, get_block_trace
 from comp_model.core.events import EventPhase
 
+from .best_fit_summary import extract_best_fit_summary
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .criteria import compute_pointwise_information_criteria
-from .fit_result import extract_best_fit_summary
 from .model_selection import CandidateFitSpec
 
 SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
@@ -419,9 +419,7 @@ def _extract_joint_subject_summary(fit_result: object) -> tuple[dict[str, float]
 
     total_log_likelihood = getattr(fit_result, "total_log_likelihood", None)
     if total_log_likelihood is not None:
-        params_raw = getattr(fit_result, "mean_best_params", None)
-        if params_raw is None:
-            params_raw = getattr(fit_result, "mean_map_params", None)
+        params_raw = getattr(fit_result, "shared_best_params", None)
         if isinstance(params_raw, dict):
             log_posterior = getattr(fit_result, "total_log_posterior", None)
             if log_posterior is None:
@@ -430,6 +428,11 @@ def _extract_joint_subject_summary(fit_result: object) -> tuple[dict[str, float]
                 {str(key): float(value) for key, value in params_raw.items()},
                 float(total_log_likelihood),
                 float(log_posterior) if log_posterior is not None else None,
+            )
+        if getattr(fit_result, "fit_mode", None) == "independent":
+            raise TypeError(
+                "joint subject comparison requires a shared subject-level "
+                "parameter estimate; got block-wise independent fits"
             )
 
     best = extract_best_fit_summary(fit_result)

@@ -42,7 +42,7 @@ surfaces.
 
 ## `comp_model.inference`
 
-- MLE fitting (`fit_dataset`, config-driven and dataset/study variants)
+- MLE fitting (`fit_trace`, config-driven and dataset/study variants)
 - Stan-backed MAP and posterior sampling
 - Subject/study block handling via `block_fit_strategy` (`independent` or `joint`)
 - Hierarchical within-subject Stan workflows

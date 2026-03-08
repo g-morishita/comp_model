@@ -50,10 +50,9 @@ print("n_blocks:", len(subject.blocks))
 ## Step 2: Fit One Shared Parameter Set Across Blocks
 
 ```python
-from comp_model.inference import FitSpec, fit_subject_data
+from comp_model.inference import MLEFitSpec, fit_subject
 
-fit_spec = FitSpec(
-    inference="mle",
+fit_spec = MLEFitSpec(
     initial_params={"alpha": 0.3, "beta": 2.0},
     bounds={"alpha": (0.0, 1.0), "beta": (0.01, 10.0)},
     method="L-BFGS-B",
@@ -61,7 +60,7 @@ fit_spec = FitSpec(
     random_seed=21,
 )
 
-joint_result = fit_subject_data(
+joint_result = fit_subject(
     subject,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=fit_spec,
@@ -72,7 +71,7 @@ joint_result = fit_subject_data(
 print("fit_mode:", joint_result.fit_mode)                 # joint
 print("input_n_blocks:", joint_result.input_n_blocks)     # 3
 print("stored_block_results:", len(joint_result.block_results))  # 1 (joint summary)
-print("joint best params:", joint_result.mean_best_params)
+print("joint best params:", joint_result.shared_best_params)
 print("joint total log-likelihood:", joint_result.total_log_likelihood)
 ```
 
@@ -85,7 +84,7 @@ What `joint` means here:
 ## Step 3: Compare with Independent Block Fits
 
 ```python
-independent_result = fit_subject_data(
+independent_result = fit_subject(
     subject,
     model_component_id="asocial_state_q_value_softmax",
     fit_spec=fit_spec,
@@ -94,7 +93,10 @@ independent_result = fit_subject_data(
 )
 
 print("independent stored blocks:", len(independent_result.block_results))  # 3
-print("independent mean best params:", independent_result.mean_best_params)
+print(
+    "independent block best params:",
+    [block.fit_result.best.params for block in independent_result.block_results],
+)
 print("independent total log-likelihood:", independent_result.total_log_likelihood)
 ```
 
@@ -129,7 +131,7 @@ config = {
 
 joint_result_cfg = fit_subject_from_config(subject, config=config)
 print(joint_result_cfg.fit_mode)
-print(joint_result_cfg.mean_best_params)
+print(joint_result_cfg.shared_best_params)
 ```
 
 ## Practical Checks
@@ -138,7 +140,8 @@ Before trusting estimates:
 
 1. Confirm `fit_mode` is `"joint"`.
 2. Confirm `input_n_blocks` matches your subject data.
-3. Confirm fitted values are plausible and not stuck at bounds.
+3. Confirm `shared_best_params` is populated for joint fits.
+4. Confirm fitted values are plausible and not stuck at bounds.
 
 ## Next Steps
 

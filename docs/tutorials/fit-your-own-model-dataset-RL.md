@@ -10,7 +10,7 @@ This tutorial shows a workflow to fit a model to your own dataset.
 - `StudyData` validation catches common problems early (non-unique subject IDs,
   non-contiguous trial indices, unsorted trials) before you run expensive fits.
 - Once your dataset is represented as `StudyData`, you can use study-level
-  utilities like `fit_study_data(...)` and `fit_study_csv_from_config(...)`.
+  utilities like `fit_study(...)` and `fit_study_csv_from_config(...)`.
 
 In this tutorial, you will:
 
@@ -108,9 +108,9 @@ You can bridge between them:
 
 Which API to use:
 
-- one dataset/one block: `fit_dataset(...)` accepts `EpisodeTrace`, `BlockData`, or
+- one dataset/one block: `fit_trace(...)` accepts `EpisodeTrace`, `BlockData`, or
   `Sequence[TrialDecision]`.
-- many subjects/blocks: `fit_study_data(...)` expects `StudyData`.
+- many subjects/blocks: `fit_study(...)` expects `StudyData`.
 
 ## Step 1: Convert your data
 
@@ -224,11 +224,26 @@ def fit_data(canonical_csv_path: Path) -> Path:
         "subjects": [
             {
                 "subject_id": subject.subject_id,
+                "fit_mode": subject.fit_mode,
                 "total_log_likelihood": float(subject.total_log_likelihood),
-                "mean_best_params": {
-                    key: float(value)
-                    for key, value in sorted(subject.mean_best_params.items())
-                },
+                "shared_best_params": (
+                    {
+                        key: float(value)
+                        for key, value in sorted(subject.shared_best_params.items())
+                    }
+                    if subject.shared_best_params is not None
+                    else None
+                ),
+                "block_best_params": [
+                    {
+                        "block_id": block.block_id,
+                        "params": {
+                            key: float(value)
+                            for key, value in sorted(block.fit_result.best.params.items())
+                        },
+                    }
+                    for block in subject.block_results
+                ],
             }
             for subject in result.subject_results
         ],
@@ -250,8 +265,10 @@ def see_the_result(overview_path: Path) -> None:
     print(f"  total_log_likelihood: {overview['total_log_likelihood']:.3f}")
     for subject in overview["subjects"]:
         print(f"  subject={subject['subject_id']}")
+        print(f"    fit_mode={subject['fit_mode']}")
         print(f"    total_log_likelihood={subject['total_log_likelihood']:.3f}")
-        print(f"    mean_best_params={subject['mean_best_params']}")
+        print(f"    shared_best_params={subject['shared_best_params']}")
+        print(f"    block_best_params={subject['block_best_params']}")
 
 
 def main() -> None:
@@ -286,18 +303,18 @@ It verifies the converted file by:
 `fit_study_csv_from_config(...)` is a normal Python API call. In this tutorial,
 `FIT_CONFIG` is an in-script Python dictionary (not a required YAML file).
 
-If you prefer a no-config API, you can call `fit_study_data(...)` with
-`FitSpec(...)` directly:
+If you prefer a no-config API, you can call `fit_study(...)` with
+`MLEFitSpec(...)` directly:
 
 ```python
-from comp_model.inference import FitSpec, fit_study_data
+from comp_model.inference import MLEFitSpec, fit_study
 from comp_model.io import read_study_decisions_csv
 
 study = read_study_decisions_csv(canonical_csv_path)
-result = fit_study_data(
+result = fit_study(
     study,
     model_component_id="asocial_state_q_value_softmax",
-    fit_spec=FitSpec(
+    fit_spec=MLEFitSpec(
         solver="grid_search",
         parameter_grid={
             "alpha": [0.1, 0.3, 0.5, 0.7],

@@ -7,8 +7,8 @@ import math
 import pytest
 
 from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
-from comp_model.inference import FitSpec
-from comp_model.inference.study_fitting import fit_block_data, fit_study_data, fit_subject_data
+from comp_model.inference import MLEFitSpec
+from comp_model.inference.mle.group import fit_block, fit_study, fit_subject
 
 
 def _make_trial(trial_index: int, action: int, reward: float) -> TrialDecision:
@@ -25,10 +25,10 @@ def _make_trial(trial_index: int, action: int, reward: float) -> TrialDecision:
     )
 
 
-def _fit_spec() -> FitSpec:
+def _fit_spec() -> MLEFitSpec:
     """Return deterministic one-candidate fit spec for asocial state model."""
 
-    return FitSpec(
+    return MLEFitSpec(
         solver="grid_search",
         parameter_grid={
             "alpha": [0.3],
@@ -38,7 +38,7 @@ def _fit_spec() -> FitSpec:
     )
 
 
-def test_fit_block_data_returns_block_summary() -> None:
+def test_fit_block_returns_block_summary() -> None:
     """Block fitting helper should return block metadata and fit result."""
 
     block = BlockData(
@@ -49,7 +49,7 @@ def test_fit_block_data_returns_block_summary() -> None:
         ),
     )
 
-    result = fit_block_data(
+    result = fit_block(
         block,
         model_component_id="asocial_state_q_value_softmax",
         fit_spec=_fit_spec(),
@@ -60,8 +60,8 @@ def test_fit_block_data_returns_block_summary() -> None:
     assert result.fit_result.best.params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
 
 
-def test_fit_subject_data_aggregates_block_results() -> None:
-    """Subject fitting helper should aggregate all block fits."""
+def test_fit_subject_independent_returns_one_fit_per_block() -> None:
+    """Independent subject fitting should return one estimate per block."""
 
     subject = SubjectData(
         subject_id="s1",
@@ -71,7 +71,7 @@ def test_fit_subject_data_aggregates_block_results() -> None:
         ),
     )
 
-    result = fit_subject_data(
+    result = fit_subject(
         subject,
         model_component_id="asocial_state_q_value_softmax",
         fit_spec=_fit_spec(),
@@ -79,14 +79,22 @@ def test_fit_subject_data_aggregates_block_results() -> None:
 
     assert result.subject_id == "s1"
     assert len(result.block_results) == 2
-    assert set(result.mean_best_params) == {"alpha", "beta", "initial_value"}
-    assert result.mean_best_params["alpha"] == 0.3
-    assert result.mean_best_params["beta"] == 2.0
-    assert result.mean_best_params["initial_value"] == 0.0
+    assert result.fit_mode == "independent"
+    assert result.shared_best_params is None
+    assert result.block_results[0].fit_result.best.params == {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0,
+    }
+    assert result.block_results[1].fit_result.best.params == {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0,
+    }
     assert math.isfinite(result.total_log_likelihood)
 
 
-def test_fit_study_data_runs_all_subjects() -> None:
+def test_fit_study_runs_all_subjects() -> None:
     """Study fitting helper should run one fit per subject and block."""
 
     study = StudyData(
@@ -106,7 +114,7 @@ def test_fit_study_data_runs_all_subjects() -> None:
         )
     )
 
-    result = fit_study_data(
+    result = fit_study(
         study,
         model_component_id="asocial_state_q_value_softmax",
         fit_spec=_fit_spec(),
@@ -120,7 +128,7 @@ def test_fit_study_data_runs_all_subjects() -> None:
     assert subject_ids == {"s1", "s2"}
 
 
-def test_fit_subject_data_supports_joint_block_strategy() -> None:
+def test_fit_subject_supports_joint_block_strategy() -> None:
     """Joint strategy should fit one shared parameter set over all blocks."""
 
     subject = SubjectData(
@@ -131,13 +139,13 @@ def test_fit_subject_data_supports_joint_block_strategy() -> None:
         ),
     )
 
-    joint = fit_subject_data(
+    joint = fit_subject(
         subject,
         model_component_id="asocial_state_q_value_softmax",
         fit_spec=_fit_spec(),
         block_fit_strategy="joint",
     )
-    independent = fit_subject_data(
+    independent = fit_subject(
         subject,
         model_component_id="asocial_state_q_value_softmax",
         fit_spec=_fit_spec(),
@@ -147,11 +155,16 @@ def test_fit_subject_data_supports_joint_block_strategy() -> None:
     assert len(joint.block_results) == 1
     assert joint.block_results[0].block_id == "__joint__"
     assert joint.block_results[0].n_trials == 4
-    assert joint.mean_best_params == {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0}
+    assert joint.shared_best_params == {
+        "alpha": 0.3,
+        "beta": 2.0,
+        "initial_value": 0.0,
+    }
+    assert independent.shared_best_params is None
     assert joint.total_log_likelihood == pytest.approx(independent.total_log_likelihood)
 
 
-def test_fit_subject_data_rejects_unknown_block_fit_strategy() -> None:
+def test_fit_subject_rejects_unknown_block_fit_strategy() -> None:
     """Subject fitting should reject unsupported block-fit strategy values."""
 
     subject = SubjectData(
@@ -160,7 +173,7 @@ def test_fit_subject_data_rejects_unknown_block_fit_strategy() -> None:
     )
 
     with pytest.raises(ValueError, match="block_fit_strategy must be one of"):
-        fit_subject_data(
+        fit_subject(
             subject,
             model_component_id="asocial_state_q_value_softmax",
             fit_spec=_fit_spec(),

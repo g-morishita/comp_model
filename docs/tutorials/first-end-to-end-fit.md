@@ -17,7 +17,7 @@ This tutorial uses:
 
 - task: `StationaryBanditProblem`
 - model: `AsocialStateQValueSoftmaxModel`
-- fitter: `fit_dataset(...)`
+- fitter: `fit_trace(...)`
 
 You will choose a set of parameters, simulate a dataset from those values, and
 then fit the same model back to that dataset. If everything is working, the
@@ -199,7 +199,7 @@ Click to reveal the answer.
 Now fit the model to the pilot dataset (`pilot_trace`) and inspect the
 estimated parameters.
 
-To do this, we use `fit_dataset(...)`. It takes three core inputs:
+To do this, we use `fit_trace(...)`. It takes three core inputs:
 
 - the simulated data (`pilot_trace`) from Step 3,
 - a model definition for fitting (`model_factory`),
@@ -208,18 +208,17 @@ To do this, we use `fit_dataset(...)`. It takes three core inputs:
 Here is the fitting code:
 
 ```python
-from comp_model.inference import FitSpec, fit_dataset
+from comp_model.inference import MLEFitSpec, fit_trace
 from comp_model.models import AsocialStateQValueSoftmaxModel
 
-pilot_fit_result = fit_dataset(
+pilot_fit_result = fit_trace(
     pilot_trace,
     model_factory=lambda params: AsocialStateQValueSoftmaxModel(
         alpha=params["alpha"],
         beta=params["beta"],
         initial_value=0.0,  # fixed (not estimated)
     ),
-    fit_spec=FitSpec(
-        inference="mle",
+    fit_spec=MLEFitSpec(
         initial_params={
             "alpha": 0.3,
             "beta": 2.0,
@@ -242,7 +241,7 @@ print("pilot best params:", pilot_fit_result.best.params)
 
 `model_factory` is a Python function that takes candidate parameter values and returns a model built with those values.
 
-`fit_dataset` uses that returned model to compute likelihood on the observed trace.
+`fit_trace` uses that returned model to compute likelihood on the observed trace.
 
 You can think of `model_factory` as a translator:
 candidate parameters -> model instance -> likelihood score.
@@ -261,8 +260,6 @@ In this example, `alpha` and `beta` are estimated (`params["alpha"]`, `params["b
 
 `fit_spec` defines the estimation setup:
 
-- `inference="mle"`:
-  use maximum-likelihood estimation.
 - `initial_params={"alpha": 0.3, "beta": 2.0}`:
   one anchor start for optimization.
 - `n_starts=5`:
@@ -307,15 +304,14 @@ pilot run do not leak into the fitting dataset.
 Now estimate model parameters from the larger synthetic dataset in `trace`.
 
 ```python
-fit_result = fit_dataset(
+fit_result = fit_trace(
     trace,
     model_factory=lambda params: AsocialStateQValueSoftmaxModel(
         alpha=params["alpha"],
         beta=params["beta"],
         initial_value=0.0,  # fixed (not estimated)
     ),
-    fit_spec=FitSpec(
-        inference="mle",
+    fit_spec=MLEFitSpec(
         initial_params={
             "alpha": 0.3,
             "beta": 2.0,

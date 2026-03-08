@@ -11,18 +11,18 @@ from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
-from .config import fit_spec_from_config, model_component_spec_from_config
-from .config_dispatch import (
-    HIERARCHICAL_ESTIMATORS,
-    HIERARCHICAL_MCMC_ESTIMATORS,
+from .component_config import model_component_spec_from_config
+from .estimator_dispatch import (
     MAP_ESTIMATORS,
     MLE_ESTIMATORS,
+    SUBJECT_BAYES_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from .fitting import _build_trace_fit_function
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
+from .mle.config import mle_fit_spec_from_config
+from .mle.fitting import _build_trace_fit_function
 from .model_selection import (
     CandidateFitSpec,
     ModelComparisonResult,
@@ -93,7 +93,7 @@ def build_fit_function_from_model_config(
         field_name="estimator.type",
     )
     if estimator_type in MLE_ESTIMATORS:
-        mle_fit_spec = fit_spec_from_config(estimator_cfg)
+        mle_fit_spec = mle_fit_spec_from_config(estimator_cfg)
         return _build_trace_fit_function(
             model_factory=model_factory,
             fit_spec=mle_fit_spec,
@@ -104,17 +104,18 @@ def build_fit_function_from_model_config(
     if estimator_type in MAP_ESTIMATORS:
         raise ValueError(
             "MAP estimator types backed by SciPy have been removed; "
-            "use estimator.type='within_subject_hierarchical_stan_map' for Bayesian MAP via Stan."
+            "use estimator.type='subject_shared_stan_map' or "
+            "'subject_block_hierarchy_stan_map' for Stan Bayesian MAP."
         )
 
-    if estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
+    if estimator_type in SUBJECT_BAYES_ESTIMATORS:
         if prior_cfg is not None:
             raise ValueError(
                 f"prior is not supported for estimator type {estimator_type!r}"
             )
-        if estimator_type in HIERARCHICAL_MCMC_ESTIMATORS and likelihood_cfg is not None:
+        if estimator_type.endswith("_stan_nuts") and likelihood_cfg is not None:
             raise ValueError(
-                "likelihood config is not supported for hierarchical Stan estimators"
+                "likelihood config is not supported for Stan Bayesian estimators"
             )
 
         fit_config: dict[str, Any] = {
@@ -124,7 +125,7 @@ def build_fit_function_from_model_config(
             },
             "estimator": dict(estimator_cfg),
         }
-        if estimator_type in HIERARCHICAL_ESTIMATORS and likelihood_cfg is not None:
+        if estimator_type.endswith("_stan_map") and likelihood_cfg is not None:
             fit_config["likelihood"] = dict(likelihood_cfg)
 
         def _fit_trace_with_hierarchical_estimator(trace: EpisodeTrace) -> Any:
@@ -148,7 +149,7 @@ def build_fit_function_from_model_config(
         return _fit_trace_with_hierarchical_estimator
 
     supported = sorted(
-        MLE_ESTIMATORS | MAP_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS
+        MLE_ESTIMATORS | MAP_ESTIMATORS | SUBJECT_BAYES_ESTIMATORS
     )
     raise ValueError(
         f"estimator.type must be one of {supported}; got {estimator_type!r}"

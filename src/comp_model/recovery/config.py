@@ -20,14 +20,14 @@ from comp_model.core.config_validation import validate_allowed_keys, validate_re
 from comp_model.core.data import SubjectData
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
-from comp_model.inference.config_dispatch import (
-    HIERARCHICAL_ESTIMATORS,
-    HIERARCHICAL_MCMC_ESTIMATORS,
+from comp_model.inference.estimator_dispatch import (
+    BAYES_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
 )
-from comp_model.inference.mle import MLECandidate, MLEFitResult
+from comp_model.inference.mle.estimators import MLECandidate, MLEFitResult
+from comp_model.inference.mle.group import SubjectFitResult
 from comp_model.inference.model_selection import SelectionCriterion
 from comp_model.inference.model_selection_config import build_fit_function_from_model_config
 from comp_model.inference.transforms import (
@@ -717,7 +717,7 @@ def _build_fit_function(
         if likelihood_cfg is not None:
             fit_config["likelihood"] = dict(likelihood_cfg)
         fit_config["block_fit_strategy"] = block_fit_strategy
-    elif estimator_type in HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS:
+    elif estimator_type in BAYES_ESTIMATORS:
         if prior_cfg is not None:
             raise ValueError(
                 f"prior is not supported for estimator type {estimator_type!r}"
@@ -728,7 +728,7 @@ def _build_fit_function(
             )
     else:
         supported = sorted(
-            MLE_ESTIMATORS | HIERARCHICAL_ESTIMATORS | HIERARCHICAL_MCMC_ESTIMATORS
+            MLE_ESTIMATORS | BAYES_ESTIMATORS
         )
         raise ValueError(
             f"estimator.type must be one of {supported}; got {estimator_type!r}"
@@ -742,12 +742,17 @@ def _build_fit_function(
             config=fit_config,
             registry=registry,
         )
-        if hasattr(result, "mean_best_params") and hasattr(result, "total_log_likelihood"):
-            mean_best_params = getattr(result, "mean_best_params")
-            if isinstance(mean_best_params, Mapping):
+        if isinstance(result, SubjectFitResult):
+            if result.shared_best_params is None:
+                raise ValueError(
+                    "subject-level parameter recovery requires one shared parameter "
+                    "estimate per subject; set block_fit_strategy='joint' or use "
+                    "block-level recovery"
+                )
+            if isinstance(result.shared_best_params, Mapping):
                 candidate = MLECandidate(
-                    params={str(k): float(v) for k, v in mean_best_params.items()},
-                    log_likelihood=float(getattr(result, "total_log_likelihood")),
+                    params={str(k): float(v) for k, v in result.shared_best_params.items()},
+                    log_likelihood=float(result.total_log_likelihood),
                 )
                 return MLEFitResult(best=candidate, candidates=(candidate,))
         return result

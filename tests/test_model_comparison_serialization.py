@@ -3,11 +3,30 @@
 from __future__ import annotations
 
 import csv
+from dataclasses import dataclass
 from pathlib import Path
 
-from comp_model.inference import BayesFitResult, MLECandidate, MLEFitResult, PosteriorCandidate
+from comp_model.inference import MLECandidate, MLEFitResult
 from comp_model.inference.model_selection import CandidateComparison, ModelComparisonResult
 from comp_model.inference.serialization import model_comparison_records, write_model_comparison_csv
+
+
+@dataclass(frozen=True, slots=True)
+class _MapCandidate:
+    """Minimal MAP candidate shape for serialization tests."""
+
+    params: dict[str, float]
+    log_likelihood: float
+    log_prior: float
+    log_posterior: float
+
+
+@dataclass(frozen=True, slots=True)
+class _MapFitResult:
+    """Minimal MAP fit-result shape for serialization tests."""
+
+    map_candidate: _MapCandidate
+    candidates: tuple[_MapCandidate, ...]
 
 
 def _mock_result() -> ModelComparisonResult:
@@ -17,13 +36,13 @@ def _mock_result() -> ModelComparisonResult:
         best=MLECandidate(params={"alpha": 0.3}, log_likelihood=-10.0),
         candidates=(MLECandidate(params={"alpha": 0.3}, log_likelihood=-10.0),),
     )
-    map_candidate = PosteriorCandidate(
+    map_candidate = _MapCandidate(
         params={"alpha": 0.4},
         log_likelihood=-9.0,
         log_prior=-0.5,
         log_posterior=-9.5,
     )
-    map_fit = BayesFitResult(
+    map_fit = _MapFitResult(
         map_candidate=map_candidate,
         candidates=(map_candidate,),
     )

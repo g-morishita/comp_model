@@ -4,7 +4,7 @@ When a subject has multiple blocks, you can choose how parameters are shared
 across those blocks.
 
 - `independent`:
-  fit each block separately, then aggregate summaries.
+  fit each block separately and keep one estimate per block.
 - `joint`:
   fit one shared parameter set across all blocks.
 
@@ -15,13 +15,12 @@ block-level estimates.
 ## Python API
 
 ```python
-from comp_model.inference import FitSpec, fit_subject_data
+from comp_model.inference import MLEFitSpec, fit_subject
 
-result = fit_subject_data(
+result = fit_subject(
     subject_data,
     model_component_id="asocial_state_q_value_softmax",
-    fit_spec=FitSpec(
-        inference="mle",
+    fit_spec=MLEFitSpec(
         initial_params={"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
         bounds={"alpha": (0.0, 1.0), "beta": (0.01, 20.0), "initial_value": (None, None)},
     ),
@@ -30,6 +29,7 @@ result = fit_subject_data(
 
 print(result.fit_mode)        # "joint"
 print(result.input_n_blocks)  # original number of blocks in subject_data
+print(result.shared_best_params)  # only populated for joint fits
 ```
 
 ## YAML Config
@@ -56,9 +56,14 @@ block_fit_strategy: joint
 This key is supported in subject- and study-level config entrypoints for:
 
 - MLE (`fit_subject_from_config`, `fit_study_from_config`)
-- hierarchical Stan MAP and posterior sampling
-  (`sample_subject_hierarchical_posterior_from_config`,
-  `sample_study_hierarchical_posterior_from_config`)
+
+Stan Bayesian estimators do not use `block_fit_strategy`. Block sharing is
+selected directly by `estimator.type`:
+
+- shared across blocks:
+  `subject_shared_stan_*` or `study_subject_hierarchy_stan_*`
+- block-specific:
+  `subject_block_hierarchy_stan_*` or `study_subject_block_hierarchy_stan_*`
 
 ## Recovery Workflows
 

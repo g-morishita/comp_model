@@ -1218,8 +1218,55 @@ def test_parameter_recovery_supports_subject_level_joint_block_fit_strategy() ->
     }
 
 
-def test_parameter_recovery_supports_subject_level_pooled_stan_estimator(monkeypatch) -> None:
-    """Subject-level parameter recovery should dispatch pooled Stan estimators."""
+def test_parameter_recovery_rejects_subject_level_independent_block_fit_strategy() -> None:
+    """Subject-level parameter recovery should reject block-wise MLE estimates."""
+
+    config = {
+        "simulation": {
+            "type": "generator",
+            "level": "subject",
+            "generator": {
+                "component_id": "event_trace_asocial_generator",
+                "kwargs": {},
+            },
+            "block": {
+                "n_trials": 10,
+                "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
+            },
+        },
+        "generating_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "fitting_model": {
+            "component_id": "asocial_state_q_value_softmax",
+            "kwargs": {},
+        },
+        "estimator": {
+            "type": "mle",
+            "solver": "grid_search",
+            "parameter_grid": {
+                "alpha": [0.3],
+                "beta": [2.0],
+                "initial_value": [0.0],
+            },
+        },
+        "true_parameter_sets": [
+            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
+        ],
+        "n_trials": 10,
+        "seed": 54,
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="subject-level parameter recovery requires one shared parameter estimate per subject",
+    ):
+        run_parameter_recovery_from_config(config)
+
+
+def test_parameter_recovery_supports_subject_level_shared_stan_estimator(monkeypatch) -> None:
+    """Subject-level parameter recovery should dispatch shared-parameter Stan estimators."""
 
     captured: dict[str, object] = {}
 
@@ -1274,7 +1321,7 @@ def test_parameter_recovery_supports_subject_level_pooled_stan_estimator(monkeyp
             "kwargs": {},
         },
         "estimator": {
-            "type": "within_subject_pooled_stan_map",
+            "type": "subject_shared_stan_map",
             "parameter_names": ["alpha", "beta", "initial_value"],
         },
         "true_parameter_sets": [
@@ -1291,7 +1338,7 @@ def test_parameter_recovery_supports_subject_level_pooled_stan_estimator(monkeyp
         "beta": 1.5,
         "initial_value": 0.0,
     }
-    assert captured["estimator_type"] == "within_subject_pooled_stan_map"
+    assert captured["estimator_type"] == "subject_shared_stan_map"
     assert captured["n_blocks"] == 2
 
 

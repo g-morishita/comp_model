@@ -14,7 +14,7 @@ ComponentRef = {
 
 ## Inference Configs
 
-### MLE (`fit_dataset_from_config`, `fit_block_from_config`, ...)
+### MLE (`fit_trace_from_config`, `fit_block_from_config`, ...)
 
 ```python
 MLEFitConfig = {
@@ -58,20 +58,25 @@ TransformedScipyMinimizeOptions = {
 
 ```
 
-### Stan MAP / Posterior (`sample_*_hierarchical_posterior_from_config`)
+### Stan MAP / Posterior (`infer_subject_stan_from_config`, `infer_study_stan_from_config`)
 
 ```python
 StanPosteriorConfig = {
     "model": ComponentRef,
-    "estimator": HierarchicalStanNUTSEstimator | HierarchicalStanMapEstimator,
+    "estimator": StanNUTSEstimator | StanMapEstimator,
 }
 
-HierarchicalStanNUTSEstimator = {
-    "type": "within_subject_hierarchical_stan_nuts" | "within_subject_pooled_stan_nuts",
+StanNUTSEstimator = {
+    "type": (
+        "subject_shared_stan_nuts"
+        | "subject_block_hierarchy_stan_nuts"
+        | "study_subject_hierarchy_stan_nuts"
+        | "study_subject_block_hierarchy_stan_nuts"
+    ),
     "parameter_names": list[str],
     "transforms": dict[str, str | {"kind": str}],  # optional
     "initial_group_location": dict[str, float],     # optional
-    "initial_group_scale": dict[str, float],        # optional
+    "initial_group_scale": dict[str, float],        # optional for hierarchical estimators
     "initial_block_params": list[dict[str, float]], # optional (subject-level)
     "initial_block_params_by_subject": dict[str, list[dict[str, float]]],  # optional (study-level)
     "mu_prior_mean": float,         # optional
@@ -90,12 +95,17 @@ HierarchicalStanNUTSEstimator = {
     "random_seed": int,             # optional
 }
 
-HierarchicalStanMapEstimator = {
-    "type": "within_subject_hierarchical_stan_map" | "within_subject_pooled_stan_map",
+StanMapEstimator = {
+    "type": (
+        "subject_shared_stan_map"
+        | "subject_block_hierarchy_stan_map"
+        | "study_subject_hierarchy_stan_map"
+        | "study_subject_block_hierarchy_stan_map"
+    ),
     "parameter_names": list[str],
     "transforms": dict[str, str | {"kind": str}],  # optional
     "initial_group_location": dict[str, float],     # optional
-    "initial_group_scale": dict[str, float],        # optional
+    "initial_group_scale": dict[str, float],        # optional for hierarchical estimators
     "initial_block_params": list[dict[str, float]], # optional (subject-level)
     "initial_block_params_by_subject": dict[str, list[dict[str, float]]],  # optional (study-level)
     "mu_prior_mean": float | dict[str, float],        # optional
@@ -117,14 +127,19 @@ HierarchicalStanMapEstimator = {
 }
 ```
 
-Note: For `within_subject_hierarchical_stan_*` (non-pooled), block-level
-latent parameters are indexed by block condition labels from
-`block.metadata["condition"]`, `block.metadata["block_condition"]`, or
-`block.metadata["condition_label"]`.
+Estimator semantics:
 
-If multiple blocks share the same condition label, they share one latent
-parameter estimate. If condition labels are omitted, each block is treated as a
-separate condition.
+- `subject_shared_stan_*`: `SubjectData` input, one parameter vector shared across that subject's blocks.
+- `subject_block_hierarchy_stan_*`: `SubjectData` input, one-level hierarchy `subject -> block`.
+- `study_subject_hierarchy_stan_*`: `StudyData` input, one-level hierarchy `population -> subject`, with one parameter vector per subject shared across blocks.
+- `study_subject_block_hierarchy_stan_*`: `StudyData` input, two-level hierarchy `population -> subject -> block`.
+
+Notes:
+
+- `initial_block_params` is only for subject-level estimators.
+- `initial_block_params_by_subject` is only for study-level estimators.
+- `fit_trace_auto_from_config(...)`, `fit_block_auto_from_config(...)`, and `fit_subject_auto_from_config(...)` accept only subject-level Stan estimators.
+- `fit_study_auto_from_config(...)` accepts only study-level Stan estimators.
 
 ### Model Selection (`compare_*_candidates_from_config`)
 
@@ -178,9 +193,9 @@ PriorDistribution = (
 ```
 
 Note: `PriorConfig` is retained for legacy parser compatibility. Current
-Stan-based Bayesian estimators (`within_subject_hierarchical_stan_map`,
-`within_subject_hierarchical_stan_nuts`, `within_subject_pooled_stan_map`, and
-`within_subject_pooled_stan_nuts`) encode priors through estimator fields
+Stan-based Bayesian estimators (`subject_shared_stan_*`,
+`subject_block_hierarchy_stan_*`, `study_subject_hierarchy_stan_*`, and
+`study_subject_block_hierarchy_stan_*`) encode priors through estimator fields
 (`mu_prior_*`, `log_sigma_prior_*`) instead of `prior`.
 
 ## Recovery Configs
