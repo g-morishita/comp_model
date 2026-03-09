@@ -21,7 +21,6 @@ from comp_model.core.data import SubjectData
 from comp_model.generators import AsocialBlockSpec, SocialBlockSpec
 from comp_model.inference.block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from comp_model.inference.estimator_dispatch import (
-    BAYES_ESTIMATORS,
     MLE_ESTIMATORS,
     fit_study_auto_from_config,
     fit_subject_auto_from_config,
@@ -133,7 +132,6 @@ def run_parameter_recovery_from_config(
             "generating_model",
             "fitting_model",
             "estimator",
-            "prior",
             "likelihood",
             "true_parameter_sets",
             "true_parameter_distributions",
@@ -152,7 +150,6 @@ def run_parameter_recovery_from_config(
     generating_ref = _parse_component_ref(_require_mapping(config, "generating_model"), field_name="generating_model")
     fitting_ref = _parse_component_ref(_require_mapping(config, "fitting_model"), field_name="fitting_model")
     estimator_cfg = _require_mapping(config, "estimator")
-    prior_cfg = config.get("prior")
     likelihood_cfg = config.get("likelihood")
 
     n_trials = _coerce_positive_int(config.get("n_trials"), field_name="n_trials")
@@ -174,7 +171,6 @@ def run_parameter_recovery_from_config(
 
     fit_function = _build_fit_function(
         estimator_cfg=estimator_cfg,
-        prior_cfg=prior_cfg,
         likelihood_cfg=(
             _require_mapping(likelihood_cfg, field_name="likelihood")
             if likelihood_cfg is not None
@@ -291,7 +287,6 @@ def run_model_recovery_from_config(
             field_name=f"candidates[{index}].model",
         )
         estimator_cfg = _require_mapping(item, "estimator", field_name=f"candidates[{index}]")
-        prior_cfg = item.get("prior")
         candidate_likelihood_cfg = (
             _require_mapping(item["likelihood"], field_name=f"candidates[{index}].likelihood")
             if "likelihood" in item
@@ -300,7 +295,6 @@ def run_model_recovery_from_config(
 
         fit_function = _build_fit_function(
             estimator_cfg=estimator_cfg,
-            prior_cfg=prior_cfg,
             likelihood_cfg=candidate_likelihood_cfg,
             registry=reg,
             fitting_ref=model_ref,
@@ -315,10 +309,6 @@ def run_model_recovery_from_config(
             "estimator": dict(estimator_cfg),
             "block_fit_strategy": block_fit_strategy,
         }
-        if prior_cfg is not None:
-            candidate_fit_config["prior"] = dict(
-                _require_mapping(prior_cfg, field_name=f"candidates[{index}].prior")
-            )
         if candidate_likelihood_cfg is not None:
             candidate_fit_config["likelihood"] = dict(candidate_likelihood_cfg)
 
@@ -678,7 +668,6 @@ def _build_simulation_sources(
 def _build_fit_function(
     *,
     estimator_cfg: dict[str, Any],
-    prior_cfg: Any,
     likelihood_cfg: dict[str, Any] | None,
     registry: PluginRegistry,
     fitting_ref: ComponentRef,
@@ -695,11 +684,6 @@ def _build_fit_function(
         return build_fit_function_from_model_config(
             model_cfg=model_cfg,
             estimator_cfg=estimator_cfg,
-            prior_cfg=(
-                _require_mapping(prior_cfg, field_name="prior")
-                if prior_cfg is not None
-                else None
-            ),
             likelihood_cfg=likelihood_cfg,
             registry=registry,
         )
@@ -717,19 +701,8 @@ def _build_fit_function(
         if likelihood_cfg is not None:
             fit_config["likelihood"] = dict(likelihood_cfg)
         fit_config["block_fit_strategy"] = block_fit_strategy
-    elif estimator_type in BAYES_ESTIMATORS:
-        if prior_cfg is not None:
-            raise ValueError(
-                f"prior is not supported for estimator type {estimator_type!r}"
-            )
-        if likelihood_cfg is not None:
-            raise ValueError(
-                f"likelihood is not supported for estimator type {estimator_type!r}"
-            )
     else:
-        supported = sorted(
-            MLE_ESTIMATORS | BAYES_ESTIMATORS
-        )
+        supported = sorted(MLE_ESTIMATORS)
         raise ValueError(
             f"estimator.type must be one of {supported}; got {estimator_type!r}"
         )
@@ -1530,10 +1503,10 @@ def _parse_selection_criterion(raw: Any, *, field_name: str) -> SelectionCriteri
     """Parse criterion name into strict model-selection literal type."""
 
     value = _coerce_non_empty_str(raw, field_name=field_name)
-    if value not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
+    if value not in {"log_likelihood", "aic", "bic"}:
         raise ValueError(
             f"{field_name} must be one of "
-            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
+            "{'log_likelihood', 'aic', 'bic'}"
         )
     return cast(SelectionCriterion, value)
 

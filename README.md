@@ -22,9 +22,8 @@ tasks are included as concrete task implementations, not as the core abstraction
 
 ## What You Can Do
 
-- Fit models with MLE, MAP, and MCMC workflows.
-- Compare candidate models with `log_likelihood`, `aic`, `bic`, `waic`,
-  and `psis_loo` (when posterior pointwise draws are available).
+- Fit models with MLE workflows.
+- Compare candidate models with `log_likelihood`, `aic`, and `bic`.
 - Run parameter recovery and model recovery from config files.
 - Work from canonical in-memory traces or tabular CSV datasets.
 

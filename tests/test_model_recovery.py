@@ -59,24 +59,6 @@ class FixedChoiceModel:
         """No-op update."""
 
 
-@dataclass(frozen=True, slots=True)
-class _MapCandidate:
-    """Minimal MAP candidate shape for model-recovery tests."""
-
-    params: dict[str, float]
-    log_likelihood: float
-    log_prior: float
-    log_posterior: float
-
-
-@dataclass(frozen=True, slots=True)
-class _MapFitResult:
-    """Minimal MAP fit-result shape for model-recovery tests."""
-
-    map_candidate: _MapCandidate
-    candidates: tuple[_MapCandidate, ...]
-
-
 
 def _fit_fixed_choice(trace: Any) -> MLEFitResult:
     """Fit fixed-choice model with grid-search MLE."""
@@ -97,18 +79,6 @@ def _fit_uniform_policy(trace: Any) -> MLEFitResult:
     replay = ActionReplayLikelihood().evaluate(trace, UniformRandomPolicyModel())
     candidate = MLECandidate(params={}, log_likelihood=float(replay.total_log_likelihood))
     return MLEFitResult(best=candidate, candidates=(candidate,))
-
-
-def _fit_constant_map(trace: Any) -> _MapFitResult:
-    """Return a constant MAP fit result for compatibility tests."""
-
-    candidate = _MapCandidate(
-        params={"p_right": 0.8},
-        log_likelihood=-5.0,
-        log_prior=-0.5,
-        log_posterior=-5.5,
-    )
-    return _MapFitResult(map_candidate=candidate, candidates=(candidate,))
 
 
 def test_run_model_recovery_prefers_matching_candidate() -> None:
@@ -190,35 +160,6 @@ def test_run_model_recovery_validates_inputs() -> None:
             n_trials=20,
             n_replications_per_generator=1,
         )
-
-
-def test_run_model_recovery_accepts_map_fit_results() -> None:
-    """Model recovery should accept MAP-style candidate fit outputs."""
-
-    result = run_model_recovery(
-        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
-        generating_specs=(
-            GeneratingModelSpec(
-                name="fixed_choice",
-                model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-                true_params={"p_right": 0.8},
-            ),
-        ),
-        candidate_specs=(
-            CandidateModelSpec(name="map_candidate", fit_function=_fit_constant_map, n_parameters=1),
-            CandidateModelSpec(name="uniform_random", fit_function=_fit_uniform_policy, n_parameters=0),
-        ),
-        n_trials=50,
-        n_replications_per_generator=2,
-        criterion="log_likelihood",
-        seed=12,
-    )
-
-    assert len(result.cases) == 2
-    assert result.confusion_matrix["fixed_choice"].get("map_candidate", 0) == 2
-    for case in result.cases:
-        map_summary = next(item for item in case.candidate_summaries if item.candidate_name == "map_candidate")
-        assert map_summary.log_posterior == pytest.approx(-5.5)
 
 
 def test_run_model_recovery_supports_custom_social_trace_factory() -> None:

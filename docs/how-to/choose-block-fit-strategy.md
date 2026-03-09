@@ -57,14 +57,6 @@ This key is supported in subject- and study-level config entrypoints for:
 
 - MLE (`fit_subject_from_config`, `fit_study_from_config`)
 
-Stan Bayesian estimators do not use `block_fit_strategy`. Block sharing is
-selected directly by `estimator.type`:
-
-- shared across blocks:
-  `subject_shared_stan_*` or `study_subject_hierarchy_stan_*`
-- block-specific:
-  `subject_block_hierarchy_stan_*` or `study_subject_block_hierarchy_stan_*`
-
 ## Recovery Workflows
 
 Model recovery config also accepts `block_fit_strategy` at top level. This is

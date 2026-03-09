@@ -1,21 +1,4 @@
-"""Top-level package for ``comp_model``.
-
-The package is organized around a generic decision loop:
-
-1. a :class:`~comp_model.core.contracts.DecisionProblem` generates observations,
-2. an :class:`~comp_model.core.contracts.AgentModel` chooses actions,
-3. the problem returns outcomes,
-4. the agent updates internal memory.
-
-For multi-phase tasks, use
-:func:`~comp_model.runtime.engine.run_trial_program` with a
-:class:`~comp_model.runtime.program.TrialProgram`.
-
-Notes
------
-Bandit is intentionally implemented as a specific problem under
-``comp_model.problems`` and is not used as the central abstraction.
-"""
+"""Top-level package for ``comp_model``."""
 
 from .core.contracts import AgentModel, DecisionContext, DecisionProblem
 from .core.data import StudyData
@@ -31,14 +14,6 @@ from .inference import (
     compare_subject_candidate_models,
     compare_subject_candidates_from_config,
     compare_trial_csv_candidates_from_config,
-    draw_study_subject_block_hierarchy_posterior_stan,
-    draw_study_subject_hierarchy_posterior_stan,
-    draw_subject_block_hierarchy_posterior_stan,
-    draw_subject_shared_posterior_stan,
-    estimate_study_subject_block_hierarchy_map_stan,
-    estimate_study_subject_hierarchy_map_stan,
-    estimate_subject_block_hierarchy_map_stan,
-    estimate_subject_shared_map_stan,
     fit_block_auto_from_config,
     fit_joint_traces,
     fit_joint_traces_from_registry,
@@ -52,17 +27,10 @@ from .inference import (
     fit_trace_from_config,
     fit_trace_from_registry,
     fit_trial_csv_from_config,
-    infer_study_stan_from_config,
-    infer_subject_stan_from_config,
     likelihood_program_from_config,
-    posterior_summary_records,
     run_fit_cli,
     run_model_comparison_cli,
-    summarize_posterior,
-    write_hierarchical_mcmc_study_draw_records_csv,
-    write_hierarchical_mcmc_study_summary_csv,
     write_model_comparison_csv,
-    write_posterior_summary_csv,
     write_study_fit_records_csv,
     write_study_fit_summary_csv,
     write_study_model_comparison_csv,
@@ -95,10 +63,10 @@ from .runtime.engine import (
 
 __all__ = [
     "AgentModel",
+    "ActorSubsetReplayLikelihood",
     "DecisionContext",
     "DecisionProblem",
     "MLEFitSpec",
-    "ActorSubsetReplayLikelihood",
     "SimulationConfig",
     "StudyData",
     "compare_candidate_models",
@@ -113,54 +81,39 @@ __all__ = [
     "fit_block_auto_from_config",
     "fit_joint_traces",
     "fit_joint_traces_from_registry",
-    "fit_trace_from_config",
-    "fit_trace_auto_from_config",
-    "fit_trace",
-    "fit_trace_from_registry",
-    "infer_study_stan_from_config",
     "fit_study",
     "fit_study_auto_from_config",
     "fit_study_csv_from_config",
-    "estimate_study_subject_block_hierarchy_map_stan",
-    "estimate_study_subject_hierarchy_map_stan",
-    "draw_study_subject_block_hierarchy_posterior_stan",
-    "draw_study_subject_hierarchy_posterior_stan",
     "fit_study_from_config",
-    "fit_trial_csv_from_config",
-    "estimate_subject_block_hierarchy_map_stan",
-    "estimate_subject_shared_map_stan",
-    "draw_subject_block_hierarchy_posterior_stan",
-    "draw_subject_shared_posterior_stan",
-    "infer_subject_stan_from_config",
     "fit_subject_auto_from_config",
+    "fit_trace",
+    "fit_trace_auto_from_config",
+    "fit_trace_from_config",
+    "fit_trace_from_registry",
+    "fit_trial_csv_from_config",
+    "likelihood_program_from_config",
+    "load_json_config",
+    "read_mapped_study_csv",
+    "read_study_decisions_csv",
+    "read_trial_decisions_csv",
+    "run_episode",
     "run_fit_cli",
     "run_model_comparison_cli",
-    "load_json_config",
-    "likelihood_program_from_config",
-    "write_hierarchical_mcmc_study_draw_records_csv",
-    "write_hierarchical_mcmc_study_summary_csv",
-    "posterior_summary_records",
     "run_model_recovery",
     "run_model_recovery_from_config",
     "run_parameter_recovery",
     "run_parameter_recovery_from_config",
     "run_recovery_cli",
-    "run_episode",
     "run_social_episode",
     "run_trial_program",
-    "read_mapped_study_csv",
-    "read_study_decisions_csv",
-    "read_trial_decisions_csv",
-    "study_from_mapped_rows",
     "study_decision_rows",
-    "write_study_decisions_csv",
-    "write_trial_decisions_csv",
-    "summarize_posterior",
+    "study_from_mapped_rows",
     "write_model_comparison_csv",
-    "write_posterior_summary_csv",
+    "write_study_decisions_csv",
+    "write_study_fit_records_csv",
+    "write_study_fit_summary_csv",
     "write_study_model_comparison_csv",
     "write_study_model_comparison_subject_csv",
     "write_subject_model_comparison_csv",
-    "write_study_fit_records_csv",
-    "write_study_fit_summary_csv",
+    "write_trial_decisions_csv",
 ]

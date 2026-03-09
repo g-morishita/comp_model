@@ -1,8 +1,4 @@
-"""Auto-dispatch config fitting helpers.
-
-These helpers route declarative fitting configs to MLE or Stan-backed Bayesian
-estimators based on ``config.estimator.type``.
-"""
+"""Auto-dispatch config fitting helpers."""
 
 from __future__ import annotations
 
@@ -19,20 +15,8 @@ from .mle.config import (
     fit_subject_from_config,
     fit_trace_from_config,
 )
-from .mle.fitting import coerce_episode_trace
-from .stan_config import (
-    STUDY_STAN_ESTIMATORS,
-    SUBJECT_STAN_ESTIMATORS,
-    infer_study_stan_from_config,
-    infer_subject_stan_from_config,
-)
 
 MLE_ESTIMATORS = {"mle"}
-MAP_ESTIMATORS: set[str] = set()
-MCMC_ESTIMATORS: set[str] = set()
-SUBJECT_BAYES_ESTIMATORS = set(SUBJECT_STAN_ESTIMATORS)
-STUDY_BAYES_ESTIMATORS = set(STUDY_STAN_ESTIMATORS)
-BAYES_ESTIMATORS = SUBJECT_BAYES_ESTIMATORS | STUDY_BAYES_ESTIMATORS
 
 
 def fit_trace_auto_from_config(
@@ -46,22 +30,9 @@ def fit_trace_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_trace_from_config(data, config=config, registry=registry)
-    if estimator_type in SUBJECT_BAYES_ESTIMATORS:
-        if isinstance(data, BlockData):
-            block = data
-        else:
-            trace = coerce_episode_trace(data)
-            block = BlockData(block_id="__trace__", event_trace=trace)
-        subject = SubjectData(subject_id="__trace__", blocks=(block,))
-        return infer_subject_stan_from_config(subject, config=config, registry=registry)
-    if estimator_type in STUDY_BAYES_ESTIMATORS:
-        raise ValueError(
-            f"unsupported estimator.type {estimator_type!r} for trace fitting; "
-            f"study-level Stan estimators require StudyData"
-        )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for trace fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | BAYES_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS)}"
     )
 
 
@@ -76,17 +47,9 @@ def fit_block_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_block_from_config(block, config=config, registry=registry)
-    if estimator_type in SUBJECT_BAYES_ESTIMATORS:
-        wrapped_subject = SubjectData(subject_id="__block__", blocks=(block,))
-        return infer_subject_stan_from_config(wrapped_subject, config=config, registry=registry)
-    if estimator_type in STUDY_BAYES_ESTIMATORS:
-        raise ValueError(
-            f"unsupported estimator.type {estimator_type!r} for block fitting; "
-            f"study-level Stan estimators require StudyData"
-        )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for block fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | BAYES_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS)}"
     )
 
 
@@ -101,16 +64,9 @@ def fit_subject_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_subject_from_config(subject, config=config, registry=registry)
-    if estimator_type in SUBJECT_BAYES_ESTIMATORS:
-        return infer_subject_stan_from_config(subject, config=config, registry=registry)
-    if estimator_type in STUDY_BAYES_ESTIMATORS:
-        raise ValueError(
-            f"unsupported estimator.type {estimator_type!r} for subject fitting; "
-            f"study-level Stan estimators require StudyData"
-        )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for subject fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | BAYES_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS)}"
     )
 
 
@@ -125,16 +81,9 @@ def fit_study_auto_from_config(
     estimator_type = _estimator_type(config)
     if estimator_type in MLE_ESTIMATORS:
         return fit_study_from_config(study, config=config, registry=registry)
-    if estimator_type in STUDY_BAYES_ESTIMATORS:
-        return infer_study_stan_from_config(study, config=config, registry=registry)
-    if estimator_type in SUBJECT_BAYES_ESTIMATORS:
-        raise ValueError(
-            f"unsupported estimator.type {estimator_type!r} for study fitting; "
-            f"subject-level Stan estimators require SubjectData"
-        )
     raise ValueError(
         f"unsupported estimator.type {estimator_type!r} for study fitting; "
-        f"expected one of {sorted(MLE_ESTIMATORS | BAYES_ESTIMATORS)}"
+        f"expected one of {sorted(MLE_ESTIMATORS)}"
     )
 
 
@@ -158,12 +107,7 @@ def _estimator_type(config: Mapping[str, Any]) -> str:
 
 
 __all__ = [
-    "BAYES_ESTIMATORS",
-    "MAP_ESTIMATORS",
-    "MCMC_ESTIMATORS",
     "MLE_ESTIMATORS",
-    "STUDY_BAYES_ESTIMATORS",
-    "SUBJECT_BAYES_ESTIMATORS",
     "fit_block_auto_from_config",
     "fit_trace_auto_from_config",
     "fit_study_auto_from_config",

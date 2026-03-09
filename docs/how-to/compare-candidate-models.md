@@ -71,7 +71,5 @@ written.
 
 ## Notes
 
-- `waic` and `psis_loo` require candidate fitters that expose posterior
-  pointwise log-likelihood draws.
 - If you compare subject-level results for multi-subject study CSV input, pass
   `--level subject --subject-id <id>`.

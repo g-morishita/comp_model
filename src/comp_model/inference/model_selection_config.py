@@ -6,19 +6,13 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from comp_model.core.config_validation import validate_allowed_keys
-from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
+from comp_model.core.data import StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .component_config import model_component_spec_from_config
-from .estimator_dispatch import (
-    MAP_ESTIMATORS,
-    MLE_ESTIMATORS,
-    SUBJECT_BAYES_ESTIMATORS,
-    fit_study_auto_from_config,
-    fit_subject_auto_from_config,
-)
+from .estimator_dispatch import MLE_ESTIMATORS, fit_study_auto_from_config, fit_subject_auto_from_config
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
 from .mle.config import mle_fit_spec_from_config
@@ -41,7 +35,6 @@ def build_fit_function_from_model_config(
     *,
     model_cfg: Mapping[str, Any],
     estimator_cfg: Mapping[str, Any],
-    prior_cfg: Mapping[str, Any] | None,
     registry: PluginRegistry,
     likelihood_cfg: Mapping[str, Any] | None = None,
     likelihood_program: LikelihoodProgram | None = None,
@@ -54,8 +47,6 @@ def build_fit_function_from_model_config(
         Model config with ``component_id`` and optional ``kwargs``.
     estimator_cfg : Mapping[str, Any]
         Estimator config mapping.
-    prior_cfg : Mapping[str, Any] | None
-        Prior config (unsupported for Stan-only Bayesian estimators).
     registry : PluginRegistry
         Plugin registry used to resolve model components.
     likelihood_cfg : Mapping[str, Any] | None, optional
@@ -71,7 +62,7 @@ def build_fit_function_from_model_config(
     Raises
     ------
     ValueError
-        If estimator type is unsupported or prior usage is invalid.
+        If estimator type is unsupported.
     """
 
     model_spec = model_component_spec_from_config(model_cfg)
@@ -101,56 +92,7 @@ def build_fit_function_from_model_config(
             likelihood_program=resolved_likelihood,
         )
 
-    if estimator_type in MAP_ESTIMATORS:
-        raise ValueError(
-            "MAP estimator types backed by SciPy have been removed; "
-            "use estimator.type='subject_shared_stan_map' or "
-            "'subject_block_hierarchy_stan_map' for Stan Bayesian MAP."
-        )
-
-    if estimator_type in SUBJECT_BAYES_ESTIMATORS:
-        if prior_cfg is not None:
-            raise ValueError(
-                f"prior is not supported for estimator type {estimator_type!r}"
-            )
-        if estimator_type.endswith("_stan_nuts") and likelihood_cfg is not None:
-            raise ValueError(
-                "likelihood config is not supported for Stan Bayesian estimators"
-            )
-
-        fit_config: dict[str, Any] = {
-            "model": {
-                "component_id": model_spec.component_id,
-                "kwargs": dict(model_spec.kwargs),
-            },
-            "estimator": dict(estimator_cfg),
-        }
-        if estimator_type.endswith("_stan_map") and likelihood_cfg is not None:
-            fit_config["likelihood"] = dict(likelihood_cfg)
-
-        def _fit_trace_with_hierarchical_estimator(trace: EpisodeTrace) -> Any:
-            """Fit one dataset by wrapping it as a one-block subject."""
-
-            wrapped_subject = SubjectData(
-                subject_id="__dataset__",
-                blocks=(
-                    BlockData(
-                        block_id="__dataset__",
-                        event_trace=trace,
-                    ),
-                ),
-            )
-            return fit_subject_auto_from_config(
-                wrapped_subject,
-                config=fit_config,
-                registry=registry,
-            )
-
-        return _fit_trace_with_hierarchical_estimator
-
-    supported = sorted(
-        MLE_ESTIMATORS | MAP_ESTIMATORS | SUBJECT_BAYES_ESTIMATORS
-    )
+    supported = sorted(MLE_ESTIMATORS)
     raise ValueError(
         f"estimator.type must be one of {supported}; got {estimator_type!r}"
     )
@@ -317,16 +259,11 @@ def _candidate_specs_from_config(
         validate_allowed_keys(
             item,
             field_name=f"config.candidates[{index}]",
-            allowed_keys=("name", "model", "estimator", "prior", "likelihood", "n_parameters"),
+            allowed_keys=("name", "model", "estimator", "likelihood", "n_parameters"),
         )
         name = _coerce_non_empty_str(item.get("name"), field_name=f"config.candidates[{index}].name")
         model_cfg = _require_mapping(item.get("model"), field_name=f"config.candidates[{index}].model")
         estimator_cfg = _require_mapping(item.get("estimator"), field_name=f"config.candidates[{index}].estimator")
-        prior_cfg = (
-            _require_mapping(item["prior"], field_name=f"config.candidates[{index}].prior")
-            if "prior" in item
-            else None
-        )
         candidate_likelihood_cfg = (
             _require_mapping(
                 item.get("likelihood"),
@@ -339,7 +276,6 @@ def _candidate_specs_from_config(
         fit_function = build_fit_function_from_model_config(
             model_cfg=model_cfg,
             estimator_cfg=estimator_cfg,
-            prior_cfg=prior_cfg,
             registry=reg,
             likelihood_cfg=candidate_likelihood_cfg,
             likelihood_program=likelihood_program,
@@ -348,8 +284,6 @@ def _candidate_specs_from_config(
             "model": dict(model_cfg),
             "estimator": dict(estimator_cfg),
         }
-        if prior_cfg is not None:
-            candidate_fit_config["prior"] = dict(prior_cfg)
         if candidate_likelihood_cfg is not None:
             candidate_fit_config["likelihood"] = dict(candidate_likelihood_cfg)
         if "block_fit_strategy" in cfg:
@@ -411,10 +345,10 @@ def _parse_selection_criterion(raw: Any, *, field_name: str) -> SelectionCriteri
     """Parse model-selection criterion into strict literal type."""
 
     value = _coerce_non_empty_str(raw, field_name=field_name)
-    if value not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
+    if value not in {"log_likelihood", "aic", "bic"}:
         raise ValueError(
             f"{field_name} must be one of "
-            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
+            "{'log_likelihood', 'aic', 'bic'}"
         )
     return cast(SelectionCriterion, value)
 

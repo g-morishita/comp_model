@@ -13,8 +13,6 @@ If you are new to the library, follow the tutorials in this order.
   the package, and run a smoke check.
 - [End-to-End Simulation and Fit](first-end-to-end-fit.md): simulate data from
   a known model and fit it back to validate your full pipeline.
-- [End-to-End Hierarchical Bayesian Fit](end-to-end-hierarchical-bayesian-fit.md):
-  simulate study data and run population-level Stan estimation end-to-end.
 - [Parameter Recovery](parameter-recovery.md): check whether true parameters
   can be recovered across multiple simulated cases.
 - [Model Recovery](model-recovery.md): evaluate whether model selection

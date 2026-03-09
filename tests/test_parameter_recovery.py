@@ -124,41 +124,6 @@ def test_run_parameter_recovery_validates_inputs() -> None:
         )
 
 
-def test_run_parameter_recovery_accepts_map_fit_functions() -> None:
-    """Recovery should accept MAP fit outputs in addition to MLE outputs."""
-
-    class _MapCandidate:
-        def __init__(self, p_right: float) -> None:
-            self.params = {"p_right": float(p_right)}
-            self.log_likelihood = -10.0
-            self.log_posterior = -10.5
-
-    class _MapLikeResult:
-        def __init__(self, p_right: float) -> None:
-            self.map_candidate = _MapCandidate(p_right)
-
-    def fit_function(trace: Any):
-        del trace
-        return _MapLikeResult(0.7)
-
-    result = run_parameter_recovery(
-        problem_factory=lambda: StationaryBanditProblem([0.5, 0.5]),
-        model_factory=lambda params: FixedChoiceModel(p_right=params["p_right"]),
-        fit_function=fit_function,
-        true_parameter_sets=(
-            {"p_right": 0.7},
-        ),
-        n_trials=40,
-        seed=17,
-    )
-
-    assert len(result.cases) == 1
-    assert 0.0 <= result.cases[0].estimated_params["p_right"] <= 1.0
-    assert result.cases[0].best_log_posterior is not None
-    assert "p_right" in result.mean_absolute_error
-    assert result.true_estimate_correlation["p_right"] is None
-
-
 def test_run_parameter_recovery_supports_custom_social_trace_factory() -> None:
     """Recovery should support multi-actor traces via trace_factory hook."""
 

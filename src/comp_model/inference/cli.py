@@ -13,18 +13,7 @@ from .tabular_fit import fit_study_csv_from_config, fit_trial_csv_from_config
 
 
 def run_fit_cli(argv: Sequence[str] | None = None) -> int:
-    """Run config-driven fitting from tabular CSV input.
-
-    Parameters
-    ----------
-    argv : Sequence[str] | None, optional
-        CLI argument list. When ``None``, process arguments are used.
-
-    Returns
-    -------
-    int
-        Exit code (`0` on success).
-    """
+    """Run config-driven fitting from tabular CSV input."""
 
     parser = argparse.ArgumentParser(description="Run comp_model fitting from CSV and config.")
     parser.add_argument("--config", required=True, help="Path to fitting JSON or YAML config.")
@@ -104,9 +93,8 @@ def _resolve_level(*, input_kind: str, level: str) -> str:
 
 
 def _fit_result_summary(result: Any) -> dict[str, Any]:
-    """Build compact JSON-serializable summary from heterogeneous fit outputs."""
+    """Build compact JSON-serializable summary from fit outputs."""
 
-    # MLE-style results.
     if hasattr(result, "best") and hasattr(result.best, "params"):
         best = result.best
         return {
@@ -115,28 +103,6 @@ def _fit_result_summary(result: Any) -> dict[str, Any]:
             "best_params": {key: float(value) for key, value in best.params.items()},
         }
 
-    # MAP-style single-dataset results.
-    if hasattr(result, "map_candidate") and hasattr(result.map_candidate, "params"):
-        candidate = result.map_candidate
-        return {
-            "result_type": type(result).__name__,
-            "map_log_likelihood": float(candidate.log_likelihood),
-            "map_log_prior": float(candidate.log_prior),
-            "map_log_posterior": float(candidate.log_posterior),
-            "map_params": {key: float(value) for key, value in candidate.params.items()},
-        }
-
-    # MCMC single-dataset results.
-    if hasattr(result, "posterior_samples") and hasattr(result, "draws"):
-        map_candidate = result.map_candidate
-        return {
-            "result_type": type(result).__name__,
-            "n_draws": int(len(result.draws)),
-            "parameter_names": list(result.posterior_samples.parameter_names),
-            "map_log_posterior": float(map_candidate.log_posterior),
-        }
-
-    # Study-level aggregate results (MLE/MAP/MCMC/hierarchical wrappers).
     if hasattr(result, "subject_results"):
         out: dict[str, Any] = {
             "result_type": type(result).__name__,
@@ -144,13 +110,8 @@ def _fit_result_summary(result: Any) -> dict[str, Any]:
         }
         if hasattr(result, "total_log_likelihood"):
             out["total_log_likelihood"] = float(result.total_log_likelihood)
-        if hasattr(result, "total_log_posterior"):
-            out["total_log_posterior"] = float(result.total_log_posterior)
-        if hasattr(result, "total_map_log_posterior"):
-            out["total_map_log_posterior"] = float(result.total_map_log_posterior)
         return out
 
-    # Subject-level aggregate results.
     if hasattr(result, "subject_id"):
         out = {
             "result_type": type(result).__name__,
@@ -158,10 +119,6 @@ def _fit_result_summary(result: Any) -> dict[str, Any]:
         }
         if hasattr(result, "total_log_likelihood"):
             out["total_log_likelihood"] = float(result.total_log_likelihood)
-        if hasattr(result, "total_log_posterior"):
-            out["total_log_posterior"] = float(result.total_log_posterior)
-        if hasattr(result, "draws"):
-            out["n_draws"] = int(len(result.draws))
         return out
 
     return {"result_type": type(result).__name__}

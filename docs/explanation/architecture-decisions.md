@@ -34,7 +34,7 @@ Tradeoff:
 
 ## Decision: Unified Fitting Surface
 
-MLE, MAP, Stan posterior sampling, and hierarchical methods share canonical replay likelihood
+MLE fitting and model-comparison workflows share canonical replay likelihood
 paths and fit-result extraction conventions.
 
 Why:

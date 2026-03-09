@@ -147,5 +147,3 @@ Before trusting estimates:
 
 - For a compact API reference, see
   [Choose a Block Fit Strategy](../how-to/choose-block-fit-strategy.md).
-- For Bayesian multi-block workflows, see
-  [End-to-End Simulation and Hierarchical Bayesian Fit](../tutorials/end-to-end-hierarchical-bayesian-fit.md).

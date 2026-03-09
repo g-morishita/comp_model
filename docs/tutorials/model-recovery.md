@@ -264,8 +264,7 @@ What `run_model_recovery(...)` does for each case:
 - `candidate_specs` sets which models are fit and how each one is estimated.
 - `n_replications_per_generator` controls how many datasets are simulated per
   generating model.
-- `criterion` sets selection rule (`"log_likelihood"`, `"aic"`, `"bic"`,
-  `"waic"`, `"psis_loo"`).
+- `criterion` sets selection rule (`"log_likelihood"`, `"aic"`, `"bic"`).
 - `n_parameters` controls complexity penalties for AIC/BIC.
 
 Interpretation rule:

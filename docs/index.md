@@ -13,7 +13,6 @@ GitHub repository: <https://github.com/g-morishita/comp_model>.
 - Recovery tutorials: [Parameter Recovery](tutorials/parameter-recovery.md) and
   [Model Recovery](tutorials/model-recovery.md)
 - Use your own data last: [Fit Your Own Dataset](tutorials/fit-your-own-model-dataset-RL.md)
-- Advanced workflow: [End-to-End Hierarchical Bayesian Fit](tutorials/end-to-end-hierarchical-bayesian-fit.md)
 
 ## How-to guides
 
@@ -25,7 +24,6 @@ GitHub repository: <https://github.com/g-morishita/comp_model>.
 - [Choose a Block Fit Strategy](how-to/choose-block-fit-strategy.md)
 - [Fit Existing CSV Data](how-to/fit-existing-csv-data.md)
 - [Fit Multiple Blocks with One Parameter Set](how-to/fit-multiple-blocks-with-one-parameter-set.md)
-- [Fit Bayesian Hierarchical Models](how-to/how-to-fit-bayesian-hierarchical-model.md)
 - [Deploy Docs and Enable Hooks](how-to/deploy-docs-and-enable-hooks.md)
 - [Contribute New Models and Tasks](how-to/contribute-new-models-and-tasks.md)
 

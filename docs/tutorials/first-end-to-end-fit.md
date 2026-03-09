@@ -374,8 +374,6 @@ Minimum checks before moving on:
 ## Next steps
 
 - Continue with next tutorial: [Parameter Recovery](parameter-recovery.md).
-- If you are interested in Bayesian hierarchical model, move on to
-  [How to fit Bayesian hierarchical model](../how-to/how-to-fit-bayesian-hierarchical-model.md).
 
 ## References
 

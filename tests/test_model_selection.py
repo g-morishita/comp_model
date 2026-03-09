@@ -57,25 +57,6 @@ class FixedChoiceModel:
         """No-op update."""
 
 
-@dataclass(frozen=True, slots=True)
-class _MapCandidate:
-    """Minimal MAP candidate shape for model-selection tests."""
-
-    params: dict[str, float]
-    log_likelihood: float
-    log_prior: float
-    log_posterior: float
-
-
-@dataclass(frozen=True, slots=True)
-class _MapFitResult:
-    """Minimal MAP fit-result shape for model-selection tests."""
-
-    map_candidate: _MapCandidate
-    candidates: tuple[_MapCandidate, ...]
-
-
-
 def _fit_fixed_choice(trace: Any) -> MLEFitResult:
     """Fit fixed-choice model with grid-search MLE."""
 
@@ -89,7 +70,6 @@ def _fit_fixed_choice(trace: Any) -> MLEFitResult:
     )
 
 
-
 def _fit_uniform_policy(trace: Any) -> MLEFitResult:
     """Compute likelihood under fixed uniform-random policy (no fitting)."""
 
@@ -98,29 +78,11 @@ def _fit_uniform_policy(trace: Any) -> MLEFitResult:
     return MLEFitResult(best=candidate, candidates=(candidate,))
 
 
-
 def _constant_fit(log_likelihood: float, params: dict[str, float]) -> MLEFitResult:
     """Build a constant fit result helper for deterministic criterion tests."""
 
     candidate = MLECandidate(params=dict(params), log_likelihood=float(log_likelihood))
     return MLEFitResult(best=candidate, candidates=(candidate,))
-
-
-def _constant_map_fit(
-    *,
-    log_likelihood: float,
-    log_prior: float,
-    params: dict[str, float],
-) -> _MapFitResult:
-    """Build a constant MAP fit result helper for compatibility tests."""
-
-    candidate = _MapCandidate(
-        params=dict(params),
-        log_likelihood=float(log_likelihood),
-        log_prior=float(log_prior),
-        log_posterior=float(log_likelihood + log_prior),
-    )
-    return _MapFitResult(map_candidate=candidate, candidates=(candidate,))
 
 
 def test_compare_candidate_models_prefers_higher_log_likelihood() -> None:
@@ -142,7 +104,6 @@ def test_compare_candidate_models_prefers_higher_log_likelihood() -> None:
     assert result.criterion == "log_likelihood"
     assert result.n_observations == 120
     assert result.selected_candidate_name == "fixed_choice"
-
 
 
 def test_compare_candidate_models_infers_bic_observations_from_decisions() -> None:
@@ -181,11 +142,7 @@ def test_compare_candidate_models_infers_bic_observations_from_decisions() -> No
     result = compare_candidate_models(
         decisions,
         candidate_specs=(
-            CandidateFitSpec(
-                name="simple_model",
-                fit_function=lambda trace: _constant_fit(-1.0, {}),
-                n_parameters=0,
-            ),
+            CandidateFitSpec(name="simple_model", fit_function=lambda trace: _constant_fit(-1.0, {}), n_parameters=0),
             CandidateFitSpec(
                 name="complex_model",
                 fit_function=lambda trace: _constant_fit(0.0, {"a": 0.1, "b": 0.2}),
@@ -197,7 +154,6 @@ def test_compare_candidate_models_infers_bic_observations_from_decisions() -> No
 
     assert result.n_observations == 3
     assert result.selected_candidate_name == "simple_model"
-
 
 
 def test_compare_registry_candidate_models_runs_end_to_end() -> None:
@@ -254,7 +210,6 @@ def test_compare_registry_candidate_models_runs_end_to_end() -> None:
     assert len(result.comparisons) == 2
 
 
-
 def test_compare_candidate_models_validates_candidate_specs() -> None:
     """Comparison helper should reject missing candidate specifications."""
 
@@ -272,79 +227,3 @@ def test_compare_candidate_models_validates_candidate_specs() -> None:
 
     with pytest.raises(ValueError, match="candidate_specs must not be empty"):
         compare_candidate_models(decisions, candidate_specs=(), criterion="log_likelihood")
-
-
-def test_compare_candidate_models_accepts_map_fit_results() -> None:
-    """Model comparison should accept MAP-style fit results as candidates."""
-
-    decisions = (
-        TrialDecision(
-            trial_index=0,
-            decision_index=0,
-            actor_id="subject",
-            available_actions=(0, 1),
-            action=1,
-            observation={"state": 0},
-            outcome={"reward": 1.0},
-        ),
-        TrialDecision(
-            trial_index=1,
-            decision_index=0,
-            actor_id="subject",
-            available_actions=(0, 1),
-            action=1,
-            observation={"state": 0},
-            outcome={"reward": 1.0},
-        ),
-    )
-
-    result = compare_candidate_models(
-        decisions,
-        candidate_specs=(
-            CandidateFitSpec(
-                name="map_good",
-                fit_function=lambda trace: _constant_map_fit(
-                    log_likelihood=-1.0,
-                    log_prior=-0.2,
-                    params={"p_right": 0.8},
-                ),
-                n_parameters=1,
-            ),
-            CandidateFitSpec(
-                name="map_bad",
-                fit_function=lambda trace: _constant_map_fit(
-                    log_likelihood=-3.0,
-                    log_prior=-0.1,
-                    params={"p_right": 0.6},
-                ),
-                n_parameters=1,
-            ),
-        ),
-        criterion="log_likelihood",
-    )
-
-    assert result.selected_candidate_name == "map_good"
-    assert len(result.comparisons) == 2
-
-
-def test_compare_candidate_models_waic_rejects_non_posterior_fit_results() -> None:
-    """WAIC criterion should fail when candidate fit lacks pointwise draws."""
-
-    trace = run_episode(
-        problem=StationaryBanditProblem([0.5, 0.5]),
-        model=FixedChoiceModel(p_right=0.8),
-        config=SimulationConfig(n_trials=20, seed=12),
-    )
-
-    with pytest.raises(ValueError, match="does not support criterion"):
-        compare_candidate_models(
-            trace,
-            candidate_specs=(
-                CandidateFitSpec(
-                    name="mle_only",
-                    fit_function=_fit_fixed_choice,
-                    n_parameters=1,
-                ),
-            ),
-            criterion="waic",
-        )

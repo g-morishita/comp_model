@@ -11,18 +11,7 @@ from .parameter import ParameterRecoveryResult
 
 
 def parameter_recovery_records(result: ParameterRecoveryResult) -> list[dict[str, Any]]:
-    """Convert parameter-recovery result into flat row dictionaries.
-
-    Parameters
-    ----------
-    result : ParameterRecoveryResult
-        Recovery result object.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Flat records containing case metadata and parameter columns.
-    """
+    """Convert parameter-recovery result into flat row dictionaries."""
 
     rows: list[dict[str, Any]] = []
     for case in result.cases:
@@ -30,11 +19,6 @@ def parameter_recovery_records(result: ParameterRecoveryResult) -> list[dict[str
             "case_index": int(case.case_index),
             "simulation_seed": int(case.simulation_seed),
             "best_log_likelihood": float(case.best_log_likelihood),
-            "best_log_posterior": (
-                float(case.best_log_posterior)
-                if case.best_log_posterior is not None
-                else None
-            ),
         }
 
         all_keys = sorted(set(case.true_params) | set(case.estimated_params))
@@ -43,10 +27,11 @@ def parameter_recovery_records(result: ParameterRecoveryResult) -> list[dict[str
             estimated_value = case.estimated_params.get(key)
             row[f"true__{key}"] = float(true_value) if true_value is not None else None
             row[f"estimated__{key}"] = float(estimated_value) if estimated_value is not None else None
-            if true_value is not None and estimated_value is not None:
-                row[f"error__{key}"] = float(estimated_value) - float(true_value)
-            else:
-                row[f"error__{key}"] = None
+            row[f"error__{key}"] = (
+                float(estimated_value) - float(true_value)
+                if true_value is not None and estimated_value is not None
+                else None
+            )
 
         rows.append(row)
 
@@ -66,24 +51,9 @@ def model_recovery_case_records(result: ModelRecoveryResult) -> list[dict[str, A
                 "selected_candidate_name": str(case.selected_candidate_name),
                 "candidate_name": str(summary.candidate_name),
                 "log_likelihood": float(summary.log_likelihood),
-                "log_posterior": (
-                    float(summary.log_posterior)
-                    if summary.log_posterior is not None
-                    else None
-                ),
                 "n_parameters": int(summary.n_parameters),
                 "aic": float(summary.aic),
                 "bic": float(summary.bic),
-                "waic": (
-                    float(summary.waic)
-                    if summary.waic is not None
-                    else None
-                ),
-                "psis_loo": (
-                    float(summary.psis_loo)
-                    if summary.psis_loo is not None
-                    else None
-                ),
                 "score": float(summary.score),
             }
             for key, value in sorted(summary.best_params.items()):
@@ -111,25 +81,7 @@ def model_recovery_confusion_records(result: ModelRecoveryResult) -> list[dict[s
 
 
 def write_records_csv(rows: list[dict[str, Any]], path: str | Path) -> Path:
-    """Write generic row dictionaries to CSV.
-
-    Parameters
-    ----------
-    rows : list[dict[str, Any]]
-        Row dictionaries to write.
-    path : str | pathlib.Path
-        Destination CSV path.
-
-    Returns
-    -------
-    pathlib.Path
-        Resolved output path.
-
-    Raises
-    ------
-    ValueError
-        If ``rows`` is empty.
-    """
+    """Write generic row dictionaries to CSV."""
 
     if not rows:
         raise ValueError("rows must not be empty")

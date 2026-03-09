@@ -86,7 +86,7 @@ def test_mle_fit_spec_from_config_rejects_non_mle_estimator_type() -> None:
     """MLE fit-spec parser should reject non-MLE estimator types."""
 
     with pytest.raises(ValueError, match="must be 'mle' for direct MLE fitting helpers"):
-        mle_fit_spec_from_config({"type": "bayesian"})
+        mle_fit_spec_from_config({"type": "not_mle"})
 
 
 def test_mle_fit_spec_from_config_rejects_unknown_transform() -> None:

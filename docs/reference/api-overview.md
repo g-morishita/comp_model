@@ -43,9 +43,7 @@ surfaces.
 ## `comp_model.inference`
 
 - MLE fitting (`fit_trace`, config-driven and dataset/study variants)
-- Stan-backed MAP and posterior sampling
 - Subject/study block handling via `block_fit_strategy` (`independent` or `joint`)
-- Hierarchical within-subject Stan workflows
 - Candidate model comparison APIs
 - CSV-driven fit/comparison CLIs
 
@@ -58,7 +56,7 @@ surfaces.
 
 ## `comp_model.analysis`
 
-- Information criteria: `aic`, `bic`, `waic`, `psis_loo`
+- Information criteria: `aic`, `bic`
 - Profile likelihood: 1D/2D utilities
 
 ## `comp_model.io`

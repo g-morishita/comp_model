@@ -1,7 +1,8 @@
 # Config Schemas
 
-This document defines strict config shapes accepted by the public config APIs.
-Unknown keys fail fast with a `ValueError`.
+This document defines the strict config shapes accepted by the public MLE,
+model-comparison, and recovery APIs. Unknown keys fail fast with a
+`ValueError`.
 
 ## Common Types
 
@@ -21,144 +22,68 @@ MLEFitConfig = {
     "model": ComponentRef,
     "estimator": MLEEstimator,
     "likelihood": LikelihoodConfig,  # optional
-    "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
+    "block_fit_strategy": "independent" | "joint",  # subject/study only
 }
 
 MLEEstimator = {
     "type": "mle",
     "solver": "grid_search" | "scipy_minimize" | "transformed_scipy_minimize",  # optional
-    # plus one solver option block (below)
-    # when solver is omitted:
-    #   - grid_search if parameter_grid is present
-    #   - otherwise scipy_minimize
 }
 
-GridSearchOptions = {
+GridSearchEstimator = {
+    "type": "mle",
+    "solver": "grid_search",  # optional when parameter_grid is present
     "parameter_grid": dict[str, list[float]],
 }
 
-ScipyMinimizeOptions = {
+ScipyMinimizeEstimator = {
+    "type": "mle",
+    "solver": "scipy_minimize",  # optional default when no grid/transforms are given
     "initial_params": dict[str, float],
     "bounds": dict[str, tuple[float | None, float | None]],  # optional
-    "method": str,  # optional
+    "method": str,  # optional, default "L-BFGS-B"
     "tol": float,   # optional
-    "n_starts": int,      # optional, default 5
+    "n_starts": int,            # optional, default 5
     "random_seed": int | None,  # optional, default 0
 }
 
-TransformedScipyMinimizeOptions = {
+TransformedScipyMinimizeEstimator = {
+    "type": "mle",
+    "solver": "transformed_scipy_minimize",  # optional when bounds_z/transforms are present
     "initial_params": dict[str, float],
     "bounds_z": dict[str, tuple[float | None, float | None]],  # optional
-    "transforms": dict[str, str | {"kind": str}],              # optional
-    "method": str,  # optional
+    "transforms": dict[str, "identity" | "unit_interval_logit" | "positive_log"],  # optional
+    "method": str,  # optional, default "L-BFGS-B"
     "tol": float,   # optional
-    "n_starts": int,      # optional, default 5
+    "n_starts": int,            # optional, default 5
     "random_seed": int | None,  # optional, default 0
 }
-
 ```
-
-### Stan MAP / Posterior (`infer_subject_stan_from_config`, `infer_study_stan_from_config`)
-
-```python
-StanPosteriorConfig = {
-    "model": ComponentRef,
-    "estimator": StanNUTSEstimator | StanMapEstimator,
-}
-
-StanNUTSEstimator = {
-    "type": (
-        "subject_shared_stan_nuts"
-        | "subject_block_hierarchy_stan_nuts"
-        | "study_subject_hierarchy_stan_nuts"
-        | "study_subject_block_hierarchy_stan_nuts"
-    ),
-    "parameter_names": list[str],
-    "transforms": dict[str, str | {"kind": str}],  # optional
-    "initial_group_location": dict[str, float],     # optional
-    "initial_group_scale": dict[str, float],        # optional for hierarchical estimators
-    "initial_block_params": list[dict[str, float]], # optional (subject-level)
-    "initial_block_params_by_subject": dict[str, list[dict[str, float]]],  # optional (study-level)
-    "mu_prior_mean": float,         # optional
-    "mu_prior_std": float,          # optional
-    "log_sigma_prior_mean": float,  # optional
-    "log_sigma_prior_std": float,   # optional
-    "n_samples": int,
-    "n_warmup": int,                # optional
-    "thin": int,                    # optional
-    "n_chains": int,                # optional
-    "parallel_chains": int,         # optional
-    "adapt_delta": float,           # optional
-    "max_treedepth": int,           # optional
-    "step_size": float,             # optional
-    "refresh": int,                 # optional
-    "random_seed": int,             # optional
-}
-
-StanMapEstimator = {
-    "type": (
-        "subject_shared_stan_map"
-        | "subject_block_hierarchy_stan_map"
-        | "study_subject_hierarchy_stan_map"
-        | "study_subject_block_hierarchy_stan_map"
-    ),
-    "parameter_names": list[str],
-    "transforms": dict[str, str | {"kind": str}],  # optional
-    "initial_group_location": dict[str, float],     # optional
-    "initial_group_scale": dict[str, float],        # optional for hierarchical estimators
-    "initial_block_params": list[dict[str, float]], # optional (subject-level)
-    "initial_block_params_by_subject": dict[str, list[dict[str, float]]],  # optional (study-level)
-    "mu_prior_mean": float | dict[str, float],        # optional
-    "mu_prior_std": float | dict[str, float],         # optional
-    "log_sigma_prior_mean": float | dict[str, float], # optional
-    "log_sigma_prior_std": float | dict[str, float],  # optional
-    "method": "lbfgs" | "bfgs" | "newton",  # optional
-    "max_iterations": int,                   # optional
-    "jacobian": bool,                        # optional
-    "init_alpha": float,                     # optional
-    "tol_obj": float,                        # optional
-    "tol_rel_obj": float,                    # optional
-    "tol_grad": float,                       # optional
-    "tol_rel_grad": float,                   # optional
-    "tol_param": float,                      # optional
-    "history_size": int,                     # optional
-    "refresh": int,                          # optional
-    "random_seed": int,                      # optional
-}
-```
-
-Estimator semantics:
-
-- `subject_shared_stan_*`: `SubjectData` input, one parameter vector shared across that subject's blocks.
-- `subject_block_hierarchy_stan_*`: `SubjectData` input, one-level hierarchy `subject -> block`.
-- `study_subject_hierarchy_stan_*`: `StudyData` input, one-level hierarchy `population -> subject`, with one parameter vector per subject shared across blocks.
-- `study_subject_block_hierarchy_stan_*`: `StudyData` input, two-level hierarchy `population -> subject -> block`.
 
 Notes:
 
-- `initial_block_params` is only for subject-level estimators.
-- `initial_block_params_by_subject` is only for study-level estimators.
-- `fit_trace_auto_from_config(...)`, `fit_block_auto_from_config(...)`, and `fit_subject_auto_from_config(...)` accept only subject-level Stan estimators.
-- `fit_study_auto_from_config(...)` accepts only study-level Stan estimators.
+- `fit_trace_auto_from_config(...)`, `fit_block_auto_from_config(...)`,
+  `fit_subject_auto_from_config(...)`, and `fit_study_auto_from_config(...)`
+  currently accept only `estimator.type == "mle"`.
+- `block_fit_strategy` is only valid for subject- and study-level fitting.
 
 ### Model Selection (`compare_*_candidates_from_config`)
 
 ```python
 ModelSelectionConfig = {
     "candidates": list[CandidateConfig],
-    "criterion": "log_likelihood" | "aic" | "bic" | "waic" | "psis_loo",  # optional
+    "criterion": "log_likelihood" | "aic" | "bic",  # optional
     "n_observations": int,  # dataset-level only, optional
     "likelihood": LikelihoodConfig,  # optional global default
-    "block_fit_strategy": "independent" | "joint",  # optional; subject/study APIs only
+    "block_fit_strategy": "independent" | "joint",  # subject/study only
 }
 
 CandidateConfig = {
     "name": str,
     "model": ComponentRef,
-    "estimator": dict[str, Any],  # estimator schema above
-    "prior": PriorConfig,         # legacy only (removed estimators reject this)
+    "estimator": MLEEstimator,
     "likelihood": LikelihoodConfig,  # optional candidate override
-    "n_parameters": int,          # optional
+    "n_parameters": int,             # optional
 }
 ```
 
@@ -166,25 +91,21 @@ CandidateConfig = {
 
 ```python
 LikelihoodConfig = {
-    "type": "action_replay"
+    "type": "action_replay",
 } | {
     "type": "actor_subset_replay",
     "fitted_actor_id": str,                # optional, default "subject"
-    "scored_actor_ids": list[str] | None,  # optional
+    "scored_actor_ids": list[str] | None,  # optional, default ["subject"]
     "auto_fill_unmodeled_actors": bool,    # optional, default True
 }
 ```
 
-### Prior Config
+## Recovery Configs
+
+### Distribution Specs Used by Recovery Sampling
 
 ```python
-PriorConfig = {
-    "type": "independent",
-    "parameters": dict[str, PriorDistribution],  # recommended form
-    "require_all": bool,  # optional
-}
-
-PriorDistribution = (
+DistributionSpec = (
     {"distribution": "normal", "mean": float, "std": float}
     | {"distribution": "uniform", "lower": float | None, "upper": float | None}
     | {"distribution": "beta", "alpha": float, "beta": float}
@@ -192,68 +113,59 @@ PriorDistribution = (
 )
 ```
 
-Note: `PriorConfig` is retained for legacy parser compatibility. Current
-Stan-based Bayesian estimators (`subject_shared_stan_*`,
-`subject_block_hierarchy_stan_*`, `study_subject_hierarchy_stan_*`, and
-`study_subject_block_hierarchy_stan_*`) encode priors through estimator fields
-(`mu_prior_*`, `log_sigma_prior_*`) instead of `prior`.
-
-## Recovery Configs
-
 ### Parameter Recovery
 
 ```python
 ParameterRecoveryConfig = {
-    "problem": ComponentRef,     # required when simulation omitted
-    "simulation": SimulationConfig,  # optional
+    "problem": ComponentRef,          # required when simulation omitted
+    "simulation": SimulationConfig,   # optional
     "generating_model": ComponentRef,
     "fitting_model": ComponentRef,
-    "estimator": dict[str, Any],
-    "prior": PriorConfig,        # optional
-    "likelihood": LikelihoodConfig,  # optional
+    "estimator": MLEEstimator,
+    "likelihood": LikelihoodConfig,   # optional
+    "block_fit_strategy": "independent" | "joint",  # optional
     # exactly one of:
     "true_parameter_sets": list[dict[str, float]],
-    "true_parameter_distributions": dict[str, PriorDistribution],
+    "true_parameter_distributions": dict[str, DistributionSpec],
     "sampling": ParameterSamplingConfig,
-    "n_parameter_sets": int,  # required when true_parameter_distributions is used
+    "n_parameter_sets": int,  # required with true_parameter_distributions
     "n_trials": int,
-    "seed": int,                 # optional
+    "seed": int,              # optional
 }
 
 ParameterSamplingConfig = {
-    "mode": "independent" | "hierarchical",  # "fixed" is not supported
+    "mode": "independent" | "hierarchical",
     "space": "param" | "z",  # optional, default "param"
     "n_parameter_sets": int,  # optional fallback to top-level n_parameter_sets
-    # independent mode:
-    "distributions": dict[str, PriorDistribution],
-    # hierarchical mode:
-    "population": dict[str, PriorDistribution],
-    "individual_sd": dict[str, float],
-    # optional z-space and clipping controls:
-    "transforms": dict[str, "identity" | "unit_interval_logit" | "positive_log"],
-    "bounds": dict[str, [float | None, float | None]],
-    "clip_to_bounds": bool,
-    # optional shared+delta condition-wise overrides:
+    "distributions": dict[str, DistributionSpec],  # independent mode
+    "population": dict[str, DistributionSpec],     # hierarchical mode
+    "individual_sd": dict[str, float],             # hierarchical mode
+    "transforms": dict[str, "identity" | "unit_interval_logit" | "positive_log"],  # optional
+    "bounds": dict[str, [float | None, float | None]],  # optional
+    "clip_to_bounds": bool,  # optional
     "by_condition": dict[str, {
-        "distributions": dict[str, PriorDistribution],  # mode="independent"
-        "population": dict[str, PriorDistribution],     # mode="hierarchical"
-        "individual_sd": dict[str, float],              # mode="hierarchical"
+        "distributions": dict[str, DistributionSpec],  # independent mode
+        "population": dict[str, DistributionSpec],     # hierarchical mode
+        "individual_sd": dict[str, float],             # hierarchical mode
     }],
-    "conditions": list[str],      # required when by_condition is used
-    "baseline_condition": str,    # required when by_condition is used
+    "conditions": list[str],   # required when by_condition is used
+    "baseline_condition": str, # required when by_condition is used
 }
 ```
 
-Note: parameter recovery supports `simulation.level == "block"` and
-`simulation.level == "subject"`. For subject-level MLE with one shared
-parameter set across blocks, set `block_fit_strategy: "joint"`.
+Notes:
+
+- Parameter recovery currently supports `simulation.level == "block"` and
+  `simulation.level == "subject"`.
+- Subject-level recovery with one shared parameter vector across blocks requires
+  `block_fit_strategy: "joint"`.
 
 ### Model Recovery
 
 ```python
 ModelRecoveryConfig = {
-    "problem": ComponentRef,     # required when simulation omitted
-    "simulation": SimulationConfig,  # optional
+    "problem": ComponentRef,        # required when simulation omitted
+    "simulation": SimulationConfig, # optional
     "generating": list[{
         "name": str,
         "model": ComponentRef,
@@ -261,10 +173,10 @@ ModelRecoveryConfig = {
     }],
     "candidates": list[CandidateConfig],
     "likelihood": LikelihoodConfig,  # optional global default
-    "block_fit_strategy": "independent" | "joint",  # optional; subject/study simulation levels
+    "block_fit_strategy": "independent" | "joint",  # optional
     "n_trials": int,
     "n_replications_per_generator": int,
-    "criterion": "log_likelihood" | "aic" | "bic" | "waic" | "psis_loo",  # optional
+    "criterion": "log_likelihood" | "aic" | "bic",  # optional
     "seed": int,  # optional
 }
 ```
@@ -275,9 +187,7 @@ ModelRecoveryConfig = {
 SimulationConfig = {
     "type": "problem" | "generator",
     "level": "block" | "subject" | "study",  # optional, default "block"
-    # problem mode:
-    "problem": ComponentRef,  # optional fallback to top-level "problem"
-    # generator mode:
+    "problem": ComponentRef,  # optional fallback to top-level problem
     "generator": ComponentRef,
     "demonstrator_model": ComponentRef,  # required for social generators
     "block": BlockSpec,                  # mutually exclusive with "blocks"
@@ -289,81 +199,9 @@ SimulationConfig = {
 
 BlockSpec = {
     "n_trials": int,  # optional fallback to top-level n_trials
-    "block_id": str | int,              # optional
-    "metadata": dict[str, Any],         # optional
-    "problem_kwargs": dict[str, Any],   # asocial generators
-    "program_kwargs": dict[str, Any],   # social generators
-}
-```
-
-## Example: Social Study-Level Model Recovery
-
-```json
-{
-  "simulation": {
-    "type": "generator",
-    "level": "study",
-    "n_subjects": 2,
-    "generator": {
-      "component_id": "event_trace_social_pre_choice_generator",
-      "kwargs": {}
-    },
-    "demonstrator_model": {
-      "component_id": "fixed_sequence_demonstrator",
-      "kwargs": {
-        "sequence": [1, 1, 1, 1, 1]
-      }
-    },
-    "blocks": [
-      {
-        "n_trials": 40,
-        "program_kwargs": {
-          "reward_probabilities": [0.2, 0.8]
-        }
-      }
-    ]
-  },
-  "generating": [
-    {
-      "name": "qrl_generator",
-      "model": {
-        "component_id": "asocial_state_q_value_softmax",
-        "kwargs": {}
-      },
-      "true_params": {
-        "alpha": 0.3,
-        "beta": 2.0,
-        "initial_value": 0.0
-      }
-    }
-  ],
-  "candidates": [
-    {
-      "name": "candidate_good",
-      "model": {
-        "component_id": "asocial_state_q_value_softmax",
-        "kwargs": {}
-      },
-      "estimator": {
-        "type": "mle", "solver": "grid_search",
-        "parameter_grid": {
-          "alpha": [0.3],
-          "beta": [2.0],
-          "initial_value": [0.0]
-        }
-      },
-      "n_parameters": 3
-    }
-  ],
-  "likelihood": {
-    "type": "actor_subset_replay",
-    "fitted_actor_id": "subject",
-    "scored_actor_ids": ["subject"],
-    "auto_fill_unmodeled_actors": true
-  },
-  "n_trials": 40,
-  "n_replications_per_generator": 2,
-  "criterion": "log_likelihood",
-  "seed": 123
+    "block_id": str | int,            # optional
+    "metadata": dict[str, Any],       # optional
+    "problem_kwargs": dict[str, Any], # asocial generators
+    "program_kwargs": dict[str, Any], # social generators
 }
 ```

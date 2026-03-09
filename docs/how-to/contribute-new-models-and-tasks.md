@@ -1,4 +1,4 @@
-# How-to: Step-by-Step Contribution (Task + Model + Hierarchical Bayesian)
+# How-to: Step-by-Step Contribution (Task + Model)
 
 Use this page as a strict checklist from local setup to merge.
 
@@ -628,5 +628,4 @@ Then open a PR, pass CI, and merge.
 ## Related Guides
 
 - [Create a New Problem](create-a-new-problem.md)
-- [Fit a Bayesian Hierarchical Model](how-to-fit-bayesian-hierarchical-model.md)
 - [Contribution Rules](../reference/contribution-rules.md)

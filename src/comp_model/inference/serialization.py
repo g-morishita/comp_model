@@ -9,34 +9,11 @@ from typing import Any
 from .best_fit_summary import extract_best_fit_summary
 from .mle.group import BlockFitResult, StudyFitResult, SubjectFitResult
 from .model_selection import ModelComparisonResult
-from .posterior import PosteriorSummary, posterior_summary_records
-from .stan_posterior import (
-    StudySubjectBlockHierarchyPosteriorResult,
-    StudySubjectHierarchyPosteriorResult,
-    SubjectBlockHierarchyPosteriorResult,
-    SubjectSharedPosteriorResult,
-)
-from .study_model_selection import (
-    StudyModelComparisonResult,
-    SubjectModelComparisonResult,
-)
+from .study_model_selection import StudyModelComparisonResult, SubjectModelComparisonResult
 
 
 def block_fit_records(block_result: BlockFitResult, *, subject_id: str | None = None) -> list[dict[str, Any]]:
-    """Convert one block-fit result to flat row records.
-
-    Parameters
-    ----------
-    block_result : BlockFitResult
-        Block-level fit output.
-    subject_id : str | None, optional
-        Optional subject label attached to each row.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        Candidate-level fit rows for the block.
-    """
+    """Convert one block-fit result to flat row records."""
 
     rows: list[dict[str, Any]] = []
     for candidate in block_result.fit_result.candidates:
@@ -98,25 +75,7 @@ def study_summary_records(study_result: StudyFitResult) -> list[dict[str, Any]]:
 
 
 def write_records_csv(rows: list[dict[str, Any]], path: str | Path) -> Path:
-    """Write generic rows to CSV.
-
-    Parameters
-    ----------
-    rows : list[dict[str, Any]]
-        Rows to write.
-    path : str | pathlib.Path
-        Destination path.
-
-    Returns
-    -------
-    pathlib.Path
-        Output path.
-
-    Raises
-    ------
-    ValueError
-        If ``rows`` is empty.
-    """
+    """Write generic rows to CSV."""
 
     if not rows:
         raise ValueError("rows must not be empty")
@@ -153,142 +112,8 @@ def write_study_fit_summary_csv(study_result: StudyFitResult, path: str | Path) 
     return write_records_csv(study_summary_records(study_result), path)
 
 
-def hierarchical_mcmc_subject_draw_records(
-    subject_result: SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult,
-) -> list[dict[str, Any]]:
-    """Convert one hierarchical-MCMC subject result to draw-level rows.
-
-    Parameters
-    ----------
-    subject_result : SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult
-        Subject-level hierarchical posterior output.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        One row per retained draw.
-    """
-
-    rows: list[dict[str, Any]] = []
-    for draw in subject_result.draws:
-        row: dict[str, Any] = {
-            "subject_id": subject_result.subject_id,
-            "iteration": int(draw.iteration),
-            "accepted": bool(draw.accepted),
-            "log_likelihood": float(draw.candidate.log_likelihood),
-            "log_prior": float(draw.candidate.log_prior),
-            "log_posterior": float(draw.candidate.log_posterior),
-        }
-        if hasattr(draw.candidate, "subject_params"):
-            for key, value in sorted(draw.candidate.subject_params.items()):
-                row[f"subject_param__{key}"] = float(value)
-        if hasattr(draw.candidate, "subject_location_z"):
-            for key, value in sorted(draw.candidate.subject_location_z.items()):
-                row[f"subject_location_z__{key}"] = float(value)
-        if hasattr(draw.candidate, "subject_scale"):
-            for key, value in sorted(draw.candidate.subject_scale.items()):
-                row[f"subject_scale__{key}"] = float(value)
-        for block_index, block_params in enumerate(draw.candidate.block_params):
-            for key, value in sorted(block_params.items()):
-                row[f"block_{block_index}__param__{key}"] = float(value)
-        rows.append(row)
-    return rows
-
-
-def hierarchical_mcmc_study_draw_records(
-    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
-) -> list[dict[str, Any]]:
-    """Convert study-level posterior result to draw-level rows."""
-
-    rows: list[dict[str, Any]] = []
-    for draw in study_result.draws:
-        row: dict[str, Any] = {
-            "iteration": int(draw.iteration),
-            "accepted": bool(draw.accepted),
-            "log_likelihood": float(draw.candidate.log_likelihood),
-            "log_prior": float(draw.candidate.log_prior),
-            "log_posterior": float(draw.candidate.log_posterior),
-        }
-        for key, value in sorted(draw.candidate.population_location_z.items()):
-            row[f"population_location_z__{key}"] = float(value)
-        for key, value in sorted(draw.candidate.population_scale.items()):
-            row[f"population_scale__{key}"] = float(value)
-        if hasattr(draw.candidate, "subject_location_z"):
-            for subject_index, subject_location in enumerate(draw.candidate.subject_location_z):
-                for key, value in sorted(subject_location.items()):
-                    row[f"subject_{subject_index}__location_z__{key}"] = float(value)
-        for subject_index, subject_params in enumerate(draw.candidate.subject_params):
-            for key, value in sorted(subject_params.items()):
-                row[f"subject_{subject_index}__param__{key}"] = float(value)
-        for subject_index, block_params_by_subject in enumerate(draw.candidate.block_params_by_subject):
-            for block_index, block_params in enumerate(block_params_by_subject):
-                for key, value in sorted(block_params.items()):
-                    row[f"subject_{subject_index}__block_{block_index}__param__{key}"] = float(value)
-        rows.append(row)
-    return rows
-
-
-def hierarchical_mcmc_subject_summary_records(
-    subject_result: SubjectSharedPosteriorResult | SubjectBlockHierarchyPosteriorResult,
-) -> list[dict[str, Any]]:
-    """Convert one hierarchical-MCMC subject result to summary row."""
-
-    map_candidate = subject_result.map_candidate
-    row: dict[str, Any] = {
-        "subject_id": subject_result.subject_id,
-        "n_draws": len(subject_result.draws),
-        "n_blocks": int(subject_result.n_blocks),
-        "acceptance_rate": float(subject_result.diagnostics.acceptance_rate),
-        "map_log_likelihood": float(map_candidate.log_likelihood),
-        "map_log_prior": float(map_candidate.log_prior),
-        "map_log_posterior": float(map_candidate.log_posterior),
-    }
-    if hasattr(map_candidate, "subject_params"):
-        for key, value in sorted(map_candidate.subject_params.items()):
-            row[f"map_subject_param__{key}"] = float(value)
-    if hasattr(map_candidate, "subject_location_z"):
-        for key, value in sorted(map_candidate.subject_location_z.items()):
-            row[f"map_subject_location_z__{key}"] = float(value)
-    if hasattr(map_candidate, "subject_scale"):
-        for key, value in sorted(map_candidate.subject_scale.items()):
-            row[f"map_subject_scale__{key}"] = float(value)
-    return [row]
-
-
-def hierarchical_mcmc_study_summary_records(
-    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
-) -> list[dict[str, Any]]:
-    """Convert study-level posterior result to summary rows."""
-
-    map_candidate = study_result.map_candidate
-    row: dict[str, Any] = {
-        "n_draws": len(study_result.draws),
-        "n_subjects": int(study_result.n_subjects),
-        "acceptance_rate": float(study_result.diagnostics.acceptance_rate),
-        "map_log_likelihood": float(map_candidate.log_likelihood),
-        "map_log_prior": float(map_candidate.log_prior),
-        "map_log_posterior": float(map_candidate.log_posterior),
-    }
-    for key, value in sorted(map_candidate.population_location_z.items()):
-        row[f"map_population_location_z__{key}"] = float(value)
-    for key, value in sorted(map_candidate.population_scale.items()):
-        row[f"map_population_scale__{key}"] = float(value)
-    return [row]
-
-
 def model_comparison_records(result: ModelComparisonResult) -> list[dict[str, Any]]:
-    """Convert model-comparison output to flat row dictionaries.
-
-    Parameters
-    ----------
-    result : ModelComparisonResult
-        Candidate-model comparison output.
-
-    Returns
-    -------
-    list[dict[str, Any]]
-        One row per candidate.
-    """
+    """Convert model-comparison output to flat row dictionaries."""
 
     rows: list[dict[str, Any]] = []
     for comparison in result.comparisons:
@@ -300,24 +125,9 @@ def model_comparison_records(result: ModelComparisonResult) -> list[dict[str, An
             "candidate_name": str(comparison.candidate_name),
             "is_selected": bool(comparison.candidate_name == result.selected_candidate_name),
             "log_likelihood": float(comparison.log_likelihood),
-            "log_posterior": (
-                float(best.log_posterior)
-                if best.log_posterior is not None
-                else None
-            ),
             "n_parameters": int(comparison.n_parameters),
             "aic": float(comparison.aic),
             "bic": float(comparison.bic),
-            "waic": (
-                float(comparison.waic)
-                if comparison.waic is not None
-                else None
-            ),
-            "psis_loo": (
-                float(comparison.psis_loo)
-                if comparison.psis_loo is not None
-                else None
-            ),
             "score": float(comparison.score),
         }
         for key, value in sorted(best.params.items()):
@@ -340,24 +150,9 @@ def subject_model_comparison_records(result: SubjectModelComparisonResult) -> li
                 "candidate_name": str(comparison.candidate_name),
                 "is_selected": bool(comparison.candidate_name == result.selected_candidate_name),
                 "log_likelihood": float(comparison.log_likelihood),
-                "log_posterior": (
-                    float(comparison.log_posterior)
-                    if comparison.log_posterior is not None
-                    else None
-                ),
                 "n_parameters": int(comparison.n_parameters),
                 "aic": float(comparison.aic),
                 "bic": float(comparison.bic),
-                "waic": (
-                    float(comparison.waic)
-                    if comparison.waic is not None
-                    else None
-                ),
-                "psis_loo": (
-                    float(comparison.psis_loo)
-                    if comparison.psis_loo is not None
-                    else None
-                ),
                 "score": float(comparison.score),
             }
         )
@@ -378,24 +173,9 @@ def study_model_comparison_records(result: StudyModelComparisonResult) -> list[d
                 "candidate_name": str(comparison.candidate_name),
                 "is_selected": bool(comparison.candidate_name == result.selected_candidate_name),
                 "log_likelihood": float(comparison.log_likelihood),
-                "log_posterior": (
-                    float(comparison.log_posterior)
-                    if comparison.log_posterior is not None
-                    else None
-                ),
                 "n_parameters": int(comparison.n_parameters),
                 "aic": float(comparison.aic),
                 "bic": float(comparison.bic),
-                "waic": (
-                    float(comparison.waic)
-                    if comparison.waic is not None
-                    else None
-                ),
-                "psis_loo": (
-                    float(comparison.psis_loo)
-                    if comparison.psis_loo is not None
-                    else None
-                ),
                 "score": float(comparison.score),
             }
         )
@@ -409,24 +189,6 @@ def study_model_comparison_subject_records(result: StudyModelComparisonResult) -
     for subject_result in result.subject_results:
         rows.extend(subject_model_comparison_records(subject_result))
     return rows
-
-
-def write_hierarchical_mcmc_study_draw_records_csv(
-    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
-    path: str | Path,
-) -> Path:
-    """Write hierarchical-MCMC study draw rows to CSV."""
-
-    return write_records_csv(hierarchical_mcmc_study_draw_records(study_result), path)
-
-
-def write_hierarchical_mcmc_study_summary_csv(
-    study_result: StudySubjectHierarchyPosteriorResult | StudySubjectBlockHierarchyPosteriorResult,
-    path: str | Path,
-) -> Path:
-    """Write hierarchical-MCMC study summary rows to CSV."""
-
-    return write_records_csv(hierarchical_mcmc_study_summary_records(study_result), path)
 
 
 def _subject_fit_mode_and_input_n_blocks(subject_result: Any) -> tuple[str, int]:
@@ -473,34 +235,21 @@ def write_study_model_comparison_subject_csv(result: StudyModelComparisonResult,
     return write_records_csv(study_model_comparison_subject_records(result), path)
 
 
-def write_posterior_summary_csv(summary: PosteriorSummary, path: str | Path) -> Path:
-    """Write posterior summary rows to CSV."""
-
-    return write_records_csv(posterior_summary_records(summary), path)
-
-
 __all__ = [
     "block_fit_records",
-    "hierarchical_mcmc_study_draw_records",
-    "hierarchical_mcmc_study_summary_records",
-    "hierarchical_mcmc_subject_draw_records",
-    "hierarchical_mcmc_subject_summary_records",
     "model_comparison_records",
     "study_model_comparison_records",
     "study_model_comparison_subject_records",
-    "subject_model_comparison_records",
     "study_fit_records",
     "study_summary_records",
     "subject_fit_records",
+    "subject_model_comparison_records",
     "subject_summary_records",
-    "write_hierarchical_mcmc_study_draw_records_csv",
-    "write_hierarchical_mcmc_study_summary_csv",
     "write_model_comparison_csv",
-    "write_study_model_comparison_csv",
-    "write_study_model_comparison_subject_csv",
-    "write_subject_model_comparison_csv",
-    "write_posterior_summary_csv",
     "write_records_csv",
     "write_study_fit_records_csv",
     "write_study_fit_summary_csv",
+    "write_study_model_comparison_csv",
+    "write_study_model_comparison_subject_csv",
+    "write_subject_model_comparison_csv",
 ]

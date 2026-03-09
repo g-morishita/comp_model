@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
 from pathlib import Path
 
 from comp_model.inference import MLECandidate, MLEFitResult
@@ -11,64 +10,40 @@ from comp_model.inference.model_selection import CandidateComparison, ModelCompa
 from comp_model.inference.serialization import model_comparison_records, write_model_comparison_csv
 
 
-@dataclass(frozen=True, slots=True)
-class _MapCandidate:
-    """Minimal MAP candidate shape for serialization tests."""
-
-    params: dict[str, float]
-    log_likelihood: float
-    log_prior: float
-    log_posterior: float
-
-
-@dataclass(frozen=True, slots=True)
-class _MapFitResult:
-    """Minimal MAP fit-result shape for serialization tests."""
-
-    map_candidate: _MapCandidate
-    candidates: tuple[_MapCandidate, ...]
-
-
 def _mock_result() -> ModelComparisonResult:
-    """Build one mixed MLE/MAP model-comparison result."""
+    """Build one deterministic model-comparison result."""
 
-    mle_fit = MLEFitResult(
+    good_fit = MLEFitResult(
+        best=MLECandidate(params={"alpha": 0.4}, log_likelihood=-9.0),
+        candidates=(MLECandidate(params={"alpha": 0.4}, log_likelihood=-9.0),),
+    )
+    bad_fit = MLEFitResult(
         best=MLECandidate(params={"alpha": 0.3}, log_likelihood=-10.0),
         candidates=(MLECandidate(params={"alpha": 0.3}, log_likelihood=-10.0),),
-    )
-    map_candidate = _MapCandidate(
-        params={"alpha": 0.4},
-        log_likelihood=-9.0,
-        log_prior=-0.5,
-        log_posterior=-9.5,
-    )
-    map_fit = _MapFitResult(
-        map_candidate=map_candidate,
-        candidates=(map_candidate,),
     )
 
     return ModelComparisonResult(
         criterion="log_likelihood",
         n_observations=100,
-        selected_candidate_name="map_candidate",
+        selected_candidate_name="good_candidate",
         comparisons=(
             CandidateComparison(
-                candidate_name="mle_candidate",
+                candidate_name="bad_candidate",
                 log_likelihood=-10.0,
                 n_parameters=1,
                 aic=22.0,
                 bic=24.6,
                 score=-10.0,
-                fit_result=mle_fit,
+                fit_result=bad_fit,
             ),
             CandidateComparison(
-                candidate_name="map_candidate",
+                candidate_name="good_candidate",
                 log_likelihood=-9.0,
                 n_parameters=1,
                 aic=20.0,
                 bic=22.6,
                 score=-9.0,
-                fit_result=map_fit,
+                fit_result=good_fit,
             ),
         ),
     )
@@ -81,12 +56,10 @@ def test_model_comparison_records_include_selected_and_params() -> None:
     assert len(rows) == 2
 
     row_by_name = {row["candidate_name"]: row for row in rows}
-    assert row_by_name["mle_candidate"]["is_selected"] is False
-    assert row_by_name["map_candidate"]["is_selected"] is True
-    assert row_by_name["mle_candidate"]["param__alpha"] == 0.3
-    assert row_by_name["map_candidate"]["param__alpha"] == 0.4
-    assert row_by_name["mle_candidate"]["log_posterior"] is None
-    assert row_by_name["map_candidate"]["log_posterior"] == -9.5
+    assert row_by_name["bad_candidate"]["is_selected"] is False
+    assert row_by_name["good_candidate"]["is_selected"] is True
+    assert row_by_name["bad_candidate"]["param__alpha"] == 0.3
+    assert row_by_name["good_candidate"]["param__alpha"] == 0.4
 
 
 def test_write_model_comparison_csv(tmp_path: Path) -> None:
@@ -98,4 +71,4 @@ def test_write_model_comparison_csv(tmp_path: Path) -> None:
     with path.open("r", encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
     assert len(rows) == 2
-    assert {row["candidate_name"] for row in rows} == {"mle_candidate", "map_candidate"}
+    assert {row["candidate_name"] for row in rows} == {"bad_candidate", "good_candidate"}

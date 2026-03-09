@@ -1,9 +1,4 @@
-"""Model-comparison fitting helpers.
-
-This module provides reusable utilities to fit multiple candidate models on
-the same dataset and rank them under a selected criterion. Recovery workflows
-reuse this exact path so user-facing fitting and recovery stay consistent.
-"""
+"""Model-comparison fitting helpers."""
 
 from __future__ import annotations
 
@@ -17,35 +12,15 @@ from comp_model.core.events import EpisodeTrace, EventPhase
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .best_fit_summary import extract_best_fit_summary
-from .criteria import compute_pointwise_information_criteria
 from .likelihood import LikelihoodProgram
 from .mle.fitting import MLEFitSpec, _build_trace_fit_function, coerce_episode_trace
 
-SelectionCriterion = Literal["log_likelihood", "aic", "bic", "waic", "psis_loo"]
+SelectionCriterion = Literal["log_likelihood", "aic", "bic"]
 
 
 @dataclass(frozen=True, slots=True)
 class CandidateFitSpec:
-    """One candidate model specification for model comparison.
-
-    Parameters
-    ----------
-    name : str
-        Candidate label used in outputs.
-    fit_function : Callable[[EpisodeTrace], Any]
-        Function fitting one canonical episode trace and returning an inference
-        fit result with either an MLE-style ``.best`` candidate or a MAP-style
-        ``.map_candidate``.
-    n_parameters : int | None, optional
-        Effective free parameter count used by information criteria.
-        If ``None``, ``len(fit_result.best.params)`` is used.
-    fit_subject_function : Callable[[SubjectData], Any] | None, optional
-        Optional subject-level fit callable used when block aggregation strategy
-        requires one joint fit per subject.
-    fit_study_function : Callable[[StudyData], Any] | None, optional
-        Optional study-level fit callable used when block aggregation strategy
-        requires one joint fit per subject.
-    """
+    """One candidate model specification for model comparison."""
 
     name: str
     fit_function: Callable[[EpisodeTrace], Any]
@@ -56,22 +31,7 @@ class CandidateFitSpec:
 
 @dataclass(frozen=True, slots=True)
 class RegistryCandidateFitSpec:
-    """Registry-backed candidate definition.
-
-    Parameters
-    ----------
-    name : str
-        Candidate label used in outputs.
-    model_component_id : str
-        Plugin model component ID.
-    fit_spec : MLEFitSpec
-        Estimator specification for this candidate.
-    model_kwargs : dict[str, Any] | None, optional
-        Fixed keyword arguments passed to model construction.
-    n_parameters : int | None, optional
-        Effective free parameter count used by information criteria.
-        If ``None``, ``len(fit_result.best.params)`` is used.
-    """
+    """Registry-backed candidate definition."""
 
     name: str
     model_component_id: str
@@ -82,30 +42,7 @@ class RegistryCandidateFitSpec:
 
 @dataclass(frozen=True, slots=True)
 class CandidateComparison:
-    """Fit summary for one candidate model.
-
-    Parameters
-    ----------
-    candidate_name : str
-        Candidate label.
-    log_likelihood : float
-        Best log-likelihood for this candidate.
-    n_parameters : int
-        Effective free parameter count.
-    aic : float
-        Akaike Information Criterion (lower is better).
-    bic : float
-        Bayesian Information Criterion (lower is better).
-    score : float
-        Criterion-specific selection score.
-    fit_result : Any
-        Full fit output for downstream inspection.
-    waic : float | None, optional
-        Widely Applicable Information Criterion when pointwise draws are
-        available.
-    psis_loo : float | None, optional
-        PSIS-LOO information criterion when pointwise draws are available.
-    """
+    """Fit summary for one candidate model."""
 
     candidate_name: str
     log_likelihood: float
@@ -114,25 +51,11 @@ class CandidateComparison:
     bic: float
     score: float
     fit_result: Any
-    waic: float | None = None
-    psis_loo: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class ModelComparisonResult:
-    """Model-comparison output.
-
-    Parameters
-    ----------
-    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}
-        Selection criterion.
-    n_observations : int
-        Number of decision observations used for BIC computation.
-    comparisons : tuple[CandidateComparison, ...]
-        Candidate summaries in input order.
-    selected_candidate_name : str
-        Name of candidate selected under ``criterion``.
-    """
+    """Model-comparison output."""
 
     criterion: SelectionCriterion
     n_observations: int
@@ -147,40 +70,12 @@ def compare_candidate_models(
     criterion: SelectionCriterion = "log_likelihood",
     n_observations: int | None = None,
 ) -> ModelComparisonResult:
-    """Fit and compare candidate models on one dataset.
-
-    Parameters
-    ----------
-    data : EpisodeTrace | BlockData | Sequence[TrialDecision]
-        Dataset container supported by :func:`coerce_episode_trace`.
-    candidate_specs : Sequence[CandidateFitSpec]
-        Candidate fitting definitions.
-    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}, optional
-        Selection criterion.
-    n_observations : int | None, optional
-        Observation count for BIC. If ``None``, inferred as the number of
-        decision events in the canonical trace.
-
-    Returns
-    -------
-    ModelComparisonResult
-        Candidate summaries and selected model label.
-
-    Raises
-    ------
-    ValueError
-        If inputs are invalid.
-    """
+    """Fit and compare candidate models on one dataset."""
 
     trace = coerce_episode_trace(data)
     if not candidate_specs:
         raise ValueError("candidate_specs must not be empty")
-
-    if criterion not in {"log_likelihood", "aic", "bic", "waic", "psis_loo"}:
-        raise ValueError(
-            "criterion must be one of "
-            "{'log_likelihood', 'aic', 'bic', 'waic', 'psis_loo'}"
-        )
+    _validate_criterion(criterion)
 
     inferred_observations = _count_decision_events(trace)
     n_obs = inferred_observations if n_observations is None else int(n_observations)
@@ -192,11 +87,7 @@ def compare_candidate_models(
         fit_result = spec.fit_function(trace)
         best = extract_best_fit_summary(fit_result)
         log_likelihood = float(best.log_likelihood)
-        n_parameters = (
-            int(spec.n_parameters)
-            if spec.n_parameters is not None
-            else int(len(best.params))
-        )
+        n_parameters = int(spec.n_parameters) if spec.n_parameters is not None else int(len(best.params))
         if n_parameters < 0:
             raise ValueError(f"n_parameters must be >= 0 for candidate {spec.name!r}")
 
@@ -206,25 +97,6 @@ def compare_candidate_models(
             n_parameters=n_parameters,
             n_observations=n_obs,
         )
-        waic_value: float | None = None
-        looic_value: float | None = None
-        try:
-            waic_value, looic_value = compute_pointwise_information_criteria(fit_result)
-        except (TypeError, ValueError) as exc:
-            if criterion in {"waic", "psis_loo"}:
-                raise ValueError(
-                    f"candidate {spec.name!r} does not support criterion "
-                    f"{criterion!r}: {exc}"
-                ) from exc
-        score = _selection_score(
-            criterion=criterion,
-            log_likelihood=log_likelihood,
-            aic_value=aic_value,
-            bic_value=bic_value,
-            waic_value=waic_value,
-            looic_value=looic_value,
-        )
-
         comparisons.append(
             CandidateComparison(
                 candidate_name=str(spec.name),
@@ -232,10 +104,13 @@ def compare_candidate_models(
                 n_parameters=n_parameters,
                 aic=aic_value,
                 bic=bic_value,
-                score=score,
+                score=_selection_score(
+                    criterion=criterion,
+                    log_likelihood=log_likelihood,
+                    aic_value=aic_value,
+                    bic_value=bic_value,
+                ),
                 fit_result=fit_result,
-                waic=waic_value,
-                psis_loo=looic_value,
             )
         )
 
@@ -257,28 +132,7 @@ def compare_registry_candidate_models(
     registry: PluginRegistry | None = None,
     likelihood_program: LikelihoodProgram | None = None,
 ) -> ModelComparisonResult:
-    """Fit and compare registry-backed model candidates.
-
-    Parameters
-    ----------
-    data : EpisodeTrace | BlockData | Sequence[TrialDecision]
-        Dataset container supported by :func:`coerce_episode_trace`.
-    candidate_specs : Sequence[RegistryCandidateFitSpec]
-        Registry-based candidate definitions.
-    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}, optional
-        Selection criterion.
-    n_observations : int | None, optional
-        Observation count for BIC. If ``None``, inferred from data.
-    registry : PluginRegistry | None, optional
-        Optional plugin registry instance.
-    likelihood_program : LikelihoodProgram | None, optional
-        Likelihood evaluator for candidate fitting.
-
-    Returns
-    -------
-    ModelComparisonResult
-        Candidate summaries and selected model label.
-    """
+    """Fit and compare registry-backed model candidates."""
 
     reg = registry if registry is not None else build_default_registry()
 
@@ -318,14 +172,22 @@ def _count_decision_events(trace: EpisodeTrace) -> int:
     return sum(1 for event in trace.events if event.phase == EventPhase.DECISION)
 
 
+def _validate_criterion(criterion: str) -> None:
+    """Validate supported selection criterion."""
+
+    if criterion not in {"log_likelihood", "aic", "bic"}:
+        raise ValueError(
+            "criterion must be one of "
+            "{'log_likelihood', 'aic', 'bic'}"
+        )
+
+
 def _selection_score(
     *,
     criterion: SelectionCriterion,
     log_likelihood: float,
     aic_value: float,
     bic_value: float,
-    waic_value: float | None,
-    looic_value: float | None,
 ) -> float:
     """Compute criterion-specific score for one candidate."""
 
@@ -335,14 +197,6 @@ def _selection_score(
         return float(aic_value)
     if criterion == "bic":
         return float(bic_value)
-    if criterion == "waic":
-        if waic_value is None:
-            raise ValueError("waic criterion requires pointwise posterior draws")
-        return float(waic_value)
-    if criterion == "psis_loo":
-        if looic_value is None:
-            raise ValueError("psis_loo criterion requires pointwise posterior draws")
-        return float(looic_value)
     raise ValueError(f"unsupported criterion: {criterion!r}")
 
 

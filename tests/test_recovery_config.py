@@ -603,14 +603,6 @@ def test_parameter_recovery_rejects_removed_scipy_map_config() -> None:
             "component_id": "asocial_state_q_value_softmax",
             "kwargs": {},
         },
-        "prior": {
-            "type": "independent",
-            "parameters": {
-                "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-            },
-        },
         "estimator": {
             "type": "scipy_map",
             "initial_params": {"alpha": 0.4, "beta": 1.0, "initial_value": 0.0},
@@ -655,14 +647,6 @@ def test_model_recovery_rejects_removed_scipy_map_candidates() -> None:
                 "model": {
                     "component_id": "asocial_state_q_value_softmax",
                     "kwargs": {},
-                },
-                "prior": {
-                    "type": "independent",
-                    "parameters": {
-                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-                    },
                 },
                 "estimator": {
                     "type": "scipy_map",
@@ -757,18 +741,10 @@ def test_model_recovery_config_rejects_random_walk_candidate_estimators() -> Non
         ],
         "candidates": [
             {
-                "name": "candidate_good_mcmc",
+                "name": "candidate_good_removed",
                 "model": {
                     "component_id": "asocial_state_q_value_softmax",
                     "kwargs": {},
-                },
-                "prior": {
-                    "type": "independent",
-                    "parameters": {
-                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-                    },
                 },
                 "estimator": {
                     "type": "random_walk_metropolis",
@@ -787,18 +763,10 @@ def test_model_recovery_config_rejects_random_walk_candidate_estimators() -> Non
                 "n_parameters": 3,
             },
             {
-                "name": "candidate_bad_mcmc",
+                "name": "candidate_bad_removed",
                 "model": {
                     "component_id": "asocial_state_q_value_softmax",
                     "kwargs": {},
-                },
-                "prior": {
-                    "type": "independent",
-                    "parameters": {
-                        "alpha": {"distribution": "uniform", "lower": 0.0, "upper": 1.0},
-                        "beta": {"distribution": "uniform", "lower": 0.0, "upper": 20.0},
-                        "initial_value": {"distribution": "normal", "mean": 0.0, "std": 1.0},
-                    },
                 },
                 "estimator": {
                     "type": "random_walk_metropolis",
@@ -819,7 +787,7 @@ def test_model_recovery_config_rejects_random_walk_candidate_estimators() -> Non
         ],
         "n_trials": 30,
         "n_replications_per_generator": 1,
-        "criterion": "waic",
+        "criterion": "log_likelihood",
         "seed": 22,
     }
 
@@ -1263,83 +1231,6 @@ def test_parameter_recovery_rejects_subject_level_independent_block_fit_strategy
         match="subject-level parameter recovery requires one shared parameter estimate per subject",
     ):
         run_parameter_recovery_from_config(config)
-
-
-def test_parameter_recovery_supports_subject_level_shared_stan_estimator(monkeypatch) -> None:
-    """Subject-level parameter recovery should dispatch shared-parameter Stan estimators."""
-
-    captured: dict[str, object] = {}
-
-    class _FakeMapCandidate:
-        def __init__(self) -> None:
-            self.params = {"alpha": 0.25, "beta": 1.5, "initial_value": 0.0}
-            self.log_likelihood = -10.0
-            self.log_posterior = -10.5
-
-    class _FakePosteriorResult:
-        def __init__(self) -> None:
-            self.map_candidate = _FakeMapCandidate()
-
-    def _fake_fit_subject_auto_from_config(subject, *, config, registry=None):
-        del registry
-        captured["n_blocks"] = len(subject.blocks)
-        captured["estimator_type"] = config["estimator"]["type"]
-        return _FakePosteriorResult()
-
-    monkeypatch.setattr(
-        "comp_model.recovery.config.fit_subject_auto_from_config",
-        _fake_fit_subject_auto_from_config,
-    )
-
-    config = {
-        "simulation": {
-            "type": "generator",
-            "level": "subject",
-            "generator": {
-                "component_id": "event_trace_asocial_generator",
-                "kwargs": {},
-            },
-            "blocks": [
-                {
-                    "n_trials": 12,
-                    "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
-                    "block_id": "b1",
-                },
-                {
-                    "n_trials": 12,
-                    "problem_kwargs": {"reward_probabilities": [0.2, 0.8]},
-                    "block_id": "b2",
-                },
-            ],
-        },
-        "generating_model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "fitting_model": {
-            "component_id": "asocial_state_q_value_softmax",
-            "kwargs": {},
-        },
-        "estimator": {
-            "type": "subject_shared_stan_map",
-            "parameter_names": ["alpha", "beta", "initial_value"],
-        },
-        "true_parameter_sets": [
-            {"alpha": 0.3, "beta": 2.0, "initial_value": 0.0},
-        ],
-        "n_trials": 12,
-        "seed": 57,
-    }
-
-    result = run_parameter_recovery_from_config(config)
-    assert len(result.cases) == 1
-    assert result.cases[0].estimated_params == {
-        "alpha": 0.25,
-        "beta": 1.5,
-        "initial_value": 0.0,
-    }
-    assert captured["estimator_type"] == "subject_shared_stan_map"
-    assert captured["n_blocks"] == 2
 
 
 def test_parameter_recovery_rejects_study_level_simulation() -> None:

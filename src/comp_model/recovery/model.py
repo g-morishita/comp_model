@@ -1,8 +1,4 @@
-"""Model-recovery workflow utilities.
-
-This module compares candidate model families on synthetic datasets generated
-from known models, then summarizes selection outcomes.
-"""
+"""Model-recovery workflow utilities."""
 
 from __future__ import annotations
 
@@ -34,17 +30,7 @@ OutcomeT = TypeVar("OutcomeT")
 
 @dataclass(frozen=True, slots=True)
 class GeneratingModelSpec:
-    """Generating model definition for model-recovery simulation.
-
-    Parameters
-    ----------
-    name : str
-        Label used for generating model in reports.
-    model_factory : Callable[[dict[str, float]], AgentModel[ObsT, ActionT, OutcomeT]]
-        Factory that builds a generating model from ``true_params``.
-    true_params : dict[str, float]
-        Ground-truth generating parameters.
-    """
+    """Generating model definition for model-recovery simulation."""
 
     name: str
     model_factory: Callable[[dict[str, float]], AgentModel[ObsT, ActionT, OutcomeT]]
@@ -53,25 +39,7 @@ class GeneratingModelSpec:
 
 @dataclass(frozen=True, slots=True)
 class CandidateModelSpec:
-    """Candidate fitting model definition for model-recovery comparison.
-
-    Parameters
-    ----------
-    name : str
-        Candidate label used in reports.
-    fit_function : Callable[[Any], Any]
-        Function fitting one trace and returning a supported inference fit
-        result (MLE-style or MAP-style).
-    n_parameters : int | None, optional
-        Number of effective free parameters for information criteria.
-        If ``None``, this defaults to ``len(fit_result.best.params)``.
-    fit_subject_function : Callable[[SubjectData], Any] | None, optional
-        Optional subject-level fit callable used when block aggregation strategy
-        requires one joint fit per subject.
-    fit_study_function : Callable[[StudyData], Any] | None, optional
-        Optional study-level fit callable used when block aggregation strategy
-        requires one joint fit per subject.
-    """
+    """Candidate fitting model definition for model-recovery comparison."""
 
     name: str
     fit_function: Callable[[Any], Any]
@@ -82,31 +50,7 @@ class CandidateModelSpec:
 
 @dataclass(frozen=True, slots=True)
 class CandidateFitSummary:
-    """Per-candidate fit summary for one synthetic dataset.
-
-    Parameters
-    ----------
-    candidate_name : str
-        Candidate model label.
-    log_likelihood : float
-        Best log-likelihood from fitting.
-    n_parameters : int
-        Effective free parameter count.
-    aic : float
-        AIC score for this candidate.
-    bic : float
-        BIC score for this candidate.
-    waic : float | None, optional
-        WAIC score when available.
-    psis_loo : float | None, optional
-        PSIS-LOO information criterion when available.
-    score : float
-        Selection score under the chosen criterion.
-    best_params : dict[str, float]
-        Best-fit parameter mapping.
-    log_posterior : float | None, optional
-        Best log-posterior when available (for MAP-style fits).
-    """
+    """Per-candidate fit summary for one synthetic dataset."""
 
     candidate_name: str
     log_likelihood: float
@@ -115,28 +59,11 @@ class CandidateFitSummary:
     bic: float
     score: float
     best_params: dict[str, float]
-    log_posterior: float | None = None
-    waic: float | None = None
-    psis_loo: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class ModelRecoveryCase:
-    """One generated dataset and candidate-model selection result.
-
-    Parameters
-    ----------
-    case_index : int
-        Zero-based dataset index.
-    generating_model_name : str
-        Name of the generating model used for this dataset.
-    simulation_seed : int
-        Seed used to generate this dataset.
-    selected_candidate_name : str
-        Candidate selected under the criterion.
-    candidate_summaries : tuple[CandidateFitSummary, ...]
-        Fit summaries for all candidates.
-    """
+    """One generated dataset and candidate-model selection result."""
 
     case_index: int
     generating_model_name: str
@@ -147,17 +74,7 @@ class ModelRecoveryCase:
 
 @dataclass(frozen=True, slots=True)
 class ModelRecoveryResult:
-    """Output summary for model-recovery workflows.
-
-    Parameters
-    ----------
-    cases : tuple[ModelRecoveryCase, ...]
-        Per-dataset model-recovery records.
-    confusion_matrix : dict[str, dict[str, int]]
-        Nested counts ``confusion[generating][selected]``.
-    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}
-        Selection criterion used.
-    """
+    """Output summary for model-recovery workflows."""
 
     cases: tuple[ModelRecoveryCase, ...]
     confusion_matrix: dict[str, dict[str, int]]
@@ -176,44 +93,7 @@ def run_model_recovery(
     trace_factory: Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None = None,
     block_fit_strategy: BlockFitStrategy = "independent",
 ) -> ModelRecoveryResult:
-    """Run model-recovery simulation and candidate selection.
-
-    Parameters
-    ----------
-    problem_factory : Callable[[], DecisionProblem[ObsT, ActionT, OutcomeT]] | None, optional
-        Factory returning a fresh problem instance. Used when
-        ``trace_factory`` is not provided.
-    generating_specs : Sequence[GeneratingModelSpec]
-        Generating model definitions.
-    candidate_specs : Sequence[CandidateModelSpec]
-        Candidate model fitting definitions.
-    n_trials : int
-        Number of trials per synthetic dataset.
-    n_replications_per_generator : int
-        Number of datasets to generate per generating model.
-    criterion : {"log_likelihood", "aic", "bic", "waic", "psis_loo"}, optional
-        Selection criterion.
-    seed : int, optional
-        Master seed for deriving simulation seeds.
-    trace_factory : Callable[[AgentModel[ObsT, ActionT, OutcomeT], int], Any] | None, optional
-        Optional custom trace simulator receiving ``(generating_model, seed)``
-        and returning a fit-compatible dataset object. This supports model
-        recovery on trial-program and multi-actor traces. When omitted, traces
-        are generated via :func:`comp_model.runtime.run_episode`.
-    block_fit_strategy : {"independent", "joint"}, optional
-        Subject/study block aggregation strategy used when generated datasets
-        are :class:`SubjectData` or :class:`StudyData`.
-
-    Returns
-    -------
-    ModelRecoveryResult
-        Case-level summaries and confusion matrix.
-
-    Raises
-    ------
-    ValueError
-        If inputs are invalid or both simulation sources are missing.
-    """
+    """Run model-recovery simulation and candidate selection."""
 
     if not generating_specs:
         raise ValueError("generating_specs must not be empty")
@@ -225,23 +105,18 @@ def run_model_recovery(
         raise ValueError("n_replications_per_generator must be > 0")
     if trace_factory is None and problem_factory is None:
         raise ValueError("either problem_factory or trace_factory must be provided")
-    strategy = coerce_block_fit_strategy(
-        block_fit_strategy,
-        field_name="block_fit_strategy",
-    )
+    strategy = coerce_block_fit_strategy(block_fit_strategy, field_name="block_fit_strategy")
 
-    # Compile one reusable candidate set so every simulated dataset is evaluated
-    # with exactly the same fitting configuration.
     compiled_candidates = tuple(
-            CandidateFitSpec(
-                name=candidate.name,
-                fit_function=candidate.fit_function,
-                n_parameters=candidate.n_parameters,
-                fit_subject_function=candidate.fit_subject_function,
-                fit_study_function=candidate.fit_study_function,
-            )
-            for candidate in candidate_specs
+        CandidateFitSpec(
+            name=candidate.name,
+            fit_function=candidate.fit_function,
+            n_parameters=candidate.n_parameters,
+            fit_subject_function=candidate.fit_subject_function,
+            fit_study_function=candidate.fit_study_function,
         )
+        for candidate in candidate_specs
+    )
 
     rng = np.random.default_rng(seed)
     cases: list[ModelRecoveryCase] = []
@@ -252,8 +127,6 @@ def run_model_recovery(
             model: AgentModel[Any, Any, Any] = generating.model_factory(dict(generating.true_params))
 
             if trace_factory is not None:
-                # Custom simulator path allows recovery on generic canonical
-                # traces, including multi-actor social trial programs.
                 trace = trace_factory(model, simulation_seed)
             else:
                 assert problem_factory is not None
@@ -285,18 +158,16 @@ def run_model_recovery(
                     criterion=criterion,
                 )
 
-            candidate_summaries = tuple(
-                _candidate_summary_from_comparison_item(item)
-                for item in comparison.comparisons
-            )
-
             cases.append(
                 ModelRecoveryCase(
                     case_index=len(cases),
                     generating_model_name=generating.name,
                     simulation_seed=simulation_seed,
                     selected_candidate_name=comparison.selected_candidate_name,
-                    candidate_summaries=candidate_summaries,
+                    candidate_summaries=tuple(
+                        _candidate_summary_from_comparison_item(item)
+                        for item in comparison.comparisons
+                    ),
                 )
             )
 
@@ -321,9 +192,7 @@ def _build_confusion_matrix(cases: Sequence[ModelRecoveryCase]) -> dict[str, dic
 def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
     """Convert one model-comparison record into recovery summary form."""
 
-    best = None
-    if hasattr(item, "fit_result"):
-        best = extract_best_fit_summary(item.fit_result)
+    best = extract_best_fit_summary(item.fit_result) if hasattr(item, "fit_result") else None
     return CandidateFitSummary(
         candidate_name=item.candidate_name,
         log_likelihood=float(item.log_likelihood),
@@ -331,30 +200,7 @@ def _candidate_summary_from_comparison_item(item: Any) -> CandidateFitSummary:
         aic=float(item.aic),
         bic=float(item.bic),
         score=float(item.score),
-        best_params=(
-            {key: float(value) for key, value in best.params.items()}
-            if best is not None
-            else {}
-        ),
-        log_posterior=(
-            float(best.log_posterior)
-            if best is not None and best.log_posterior is not None
-            else (
-                float(item.log_posterior)
-                if getattr(item, "log_posterior", None) is not None
-                else None
-            )
-        ),
-        waic=(
-            float(item.waic)
-            if getattr(item, "waic", None) is not None
-            else None
-        ),
-        psis_loo=(
-            float(item.psis_loo)
-            if getattr(item, "psis_loo", None) is not None
-            else None
-        ),
+        best_params={key: float(value) for key, value in best.params.items()} if best is not None else {},
     )
 
 

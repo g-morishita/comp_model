@@ -36,7 +36,7 @@ The goal is fail-fast behavior and reproducibility under automation.
 Modules are separated by responsibility:
 
 - runtime executes interactions,
-- inference optimizes/posterior-samples,
+- inference optimizes model parameters,
 - analysis computes diagnostics,
 - recovery orchestrates simulation-plus-fitting experiments,
 - I/O handles persistence boundaries.
