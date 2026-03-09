@@ -6,13 +6,17 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from comp_model.core.config_validation import validate_allowed_keys
-from comp_model.core.data import StudyData, SubjectData, TrialDecision
+from comp_model.core.data import BlockData, StudyData, SubjectData, TrialDecision
 from comp_model.core.events import EpisodeTrace
 from comp_model.plugins import PluginRegistry, build_default_registry
 
 from .block_strategy import BlockFitStrategy, coerce_block_fit_strategy
 from .component_config import model_component_spec_from_config
-from .estimator_dispatch import MLE_ESTIMATORS, fit_study_auto_from_config, fit_subject_auto_from_config
+from .estimator_dispatch import (
+    MLE_ESTIMATORS,
+    fit_study_auto_from_config,
+    fit_subject_auto_from_config,
+)
 from .likelihood import LikelihoodProgram
 from .likelihood_config import likelihood_program_from_config
 from .mle.config import mle_fit_spec_from_config
